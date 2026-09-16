@@ -71,10 +71,12 @@ modal run modal_qlib_cn_a10g.py --best
 
 ## 未来方向（按优先级）
 
-1. **消息面**：北向资金 / 融资融券 / 龙虎榜（akshare 免费接口，A股特有资金流 alpha，与 20 日周期匹配）
-2. 基本面 PIT 精修（真实披露日期）后重试基本面因子
-3. RD-Agent（Azure VM + Azure OpenAI）：LLM 自动因子挖掘（构建在 Qlib 之上）
-4. 组合优化：EnhancedIndexingModel（预期一般，A股风险模型精度有限）
+1. **P1.5 RNN 公正审判**：GRU/ALSTM 在 20 日标签 + csi500 + 专门调参（lr/early_stop/hidden_size）下的单独 IC 与回测，补齐"RNN 在 20 日场景从未单独评估"的证据缺口；若翻身可作为集成成员（GPU 容器 ×2-3，约 $3-5）
+2. **消息面**：北向资金 / 融资融券 / 龙虎榜（akshare 免费接口，A股特有资金流 alpha，与 20 日周期匹配）
+3. 基本面 PIT 精修（真实披露日期）后重试基本面因子
+4. RD-Agent（Azure VM + Azure OpenAI）：LLM 自动因子挖掘（构建在 Qlib 之上）
+5. 组合优化：EnhancedIndexingModel（预期一般，A股风险模型精度有限）
+6. 重型模型试点：Transformer / Localformer / TRA / GATs / HIST 等（需 GPU，见下）
 
 ## 资源使用规范（Modal）
 
