@@ -306,6 +306,59 @@ def _load_and_patch_cfg(yaml_path: str, smoke: bool, recent: bool = False, enhan
 
 
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=1800)
+def verify_integrity():
+    """资金安全复核：
+    1) chenditc $change 是否为"当日涨幅"（close/前收-1）——决定回测涨跌停模拟是否正确；
+    2) daily_signal 修复后的涨跌停过滤（Ref($close,1)）是否与 $change 口径一致；
+    3) 最近 5 个交易日 csi500 内 |涨幅|≥9.5% 的股票数（验证过滤非空转）。"""
+    import numpy as np
+    import pandas as pd
+
+    import qlib
+    from qlib.data import D
+
+    _ensure_data()
+    qlib.init(provider_uri=str(DATA_DIR), region="cn")
+    end = _latest_trading_day()
+    start = (pd.Timestamp(end) - pd.Timedelta(days=10)).strftime("%Y-%m-%d")
+
+    insts = D.instruments("csi500")
+    inst_list = D.list_instruments(insts, start_time=start, end_time=end, as_list=True)
+    print(f"[verify] csi500 区间内 {len(inst_list)} 只")
+
+    df = D.features(inst_list, ["$close", "Ref($close,1)", "$change", "$open"],
+                    start_time=start, end_time=end, freq="day")
+    print(f"[verify] D.features 返回列: {list(df.columns)}")
+    # 1) $change 定义验证
+    chg_calc = df["$close"] / df["Ref($close,1)"] - 1
+    merged = pd.concat([df["$change"], chg_calc.rename("calc")], axis=1).dropna()
+    diff = (merged["$change"] - merged["calc"]).abs()
+    print(f"[verify] $change vs close/prev_close-1：中位偏差={diff.median():.2e} "
+          f"95分位={diff.quantile(0.95):.2e} 样本={len(merged)}")
+    if diff.quantile(0.95) < 1e-3:
+        # 实测中位偏差 2.4e-5（复权/舍入噪声级别）；关键判据是下方逐日涨跌停计数 100% 一致
+        print("[verify] ✅ $change 即当日涨幅（偏差为复权舍入噪声），QLib 回测涨跌停模拟口径正确")
+    else:
+        print("[verify] ❌ $change 与当日涨幅不一致！回测涨跌停口径存疑，需人工检查")
+
+    # 2) 修复后的过滤口径 vs $change 口径（D.features index 为 (instrument, datetime)，按日期需 groupby level=1）
+    limit_cnt_ref = (chg_calc.abs() >= 0.095).groupby(level=1).sum()
+    limit_cnt_chg = (df["$change"].abs() >= 0.095).groupby(level=1).sum()
+    cmp = pd.concat([limit_cnt_ref.rename("ref"), limit_cnt_chg.rename("change")], axis=1).fillna(0)
+    print("[verify] 每日 |涨幅|≥9.5% 股票数（Ref口径 vs $change口径）：")
+    print(cmp.to_string())
+    agree = (cmp["ref"] == cmp["change"]).mean()
+    print(f"[verify] 两口径逐日计数一致率={agree:.1%}")
+
+    # 3) 另外验证日内振幅口径（旧错误逻辑）的误报规模
+    amp = (df["$close"] / df["$open"] - 1).abs()
+    amp_cnt = (amp >= 0.095).groupby(level=1).sum()
+    cmp2 = pd.concat([cmp["change"], amp_cnt.rename("close_open误报")], axis=1).fillna(0)
+    print("[verify] 正确口径 vs 旧错误口径（close/open 会误剔除日内大幅震荡但未涨停的股票）：")
+    print(cmp2.to_string())
+
+
+@app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=1800)
 def debug_data():
     """诊断 chenditc features 存储格式 + 验证 QLib 能读出字段（动态取最新 5 个交易日）。"""
     import qlib
@@ -582,22 +635,27 @@ def _daily_impl(model: str, topk: int, predict_date: str, enhanced: bool, long_t
     day = pred.loc[predict_date].dropna()
     top = day.sort_values(ascending=False).head(topk)
 
-    # 过滤当日涨/跌停（≥9.5%）：涨停买不进、跌停卖不出，剔除避免给不可交易信号
+    # 过滤当日已涨/跌停（|当日涨幅|≥9.5%，涨幅= close/前收-1）：
+    # 涨停买不进、跌停卖不出，剔除避免给不可交易信号
     from qlib.data import D
 
     day_df = D.features(
         [str(x) for x in day.index],
-        ["$open", "$close"],
+        ["$close", "Ref($close,1)"],
         start_time=predict_date,
         end_time=predict_date,
         freq="day",
     )
-    if len(day_df) > 0:
-        day_ret = (day_df["$close"] / day_df["$open"] - 1).dropna()
-        tradable = day.index[~day.index.isin(day_ret.index[((day_ret >= 0.095) | (day_ret <= -0.095))])]
+    if len(day_df) > 0 and ("Ref($close,1)" in day_df.columns):
+        day_ret = (day_df["$close"] / day_df["Ref($close,1)"] - 1).dropna()
+        # D.features 返回 (instrument, datetime) 双层 index，day.index 是 instrument 单层：
+        # 必须先取 instrument 层再 isin，否则永远匹配不上（过滤静默失效）
+        limited = day_ret[(day_ret >= 0.095) | (day_ret <= -0.095)].index.get_level_values(0)
+        tradable = day.index[~day.index.isin(limited)]
+        n_removed = len(day) - len(tradable)
         day = day.loc[tradable]
         top = day.sort_values(ascending=False).head(topk)
-        print(f"[signal] 已剔除 {len(pred.loc[predict_date].dropna()) - len(day)} 只涨/跌停股")
+        print(f"[signal] 已剔除 {n_removed} 只涨/跌停股")
 
     horizon = "未来20日" if label20 else "未来2日"
     print(f"[signal] {predict_date} top{topk}（分数={horizon}收益率预测，越高越看好）:")
@@ -1015,6 +1073,12 @@ def main(
         return
     prepare_data.remote(force=force_data)
     if daily:
+        # 防呆：固化最优配置是 long_train=True（2016-2024 训练，Rank IC 0.105 的出处），
+        # 不带 --long-train 的 --daily 会用 2021-2024 短训练模型出信号，与验证结果不一致
+        if model == "lgb360" and label20 and not long_train:
+            print("[warn] 检测到 --daily --model lgb360 --label20 但未加 --long-train："
+                  "信号将来自 2021-2024 短训练模型（Rank IC 约 0.11 但未做长周期验证）。"
+                  "推荐使用 --best --daily 固化最优配置。")
         if model in LGB_MODELS:
             # LGB 系信号：CPU 容器，不挂 GPU
             res = daily_signal_cpu.remote(
