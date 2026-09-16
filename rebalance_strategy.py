@@ -1,9 +1,5 @@
 # 低频调仓版 TopkDropout：每 rebalance_days 个交易日调仓一次，其余交易日不交易。
 # 用于匹配 20 日标签（月度调仓）等低频信号的回测。
-import copy
-
-import numpy as np
-import pandas as pd
 from qlib.backtest.decision import TradeDecisionWO
 from qlib.contrib.strategy import TopkDropoutStrategy
 

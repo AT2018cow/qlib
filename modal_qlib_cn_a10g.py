@@ -149,6 +149,12 @@ def _ensure_data(force: bool = False):
     print(f"[data] 解压完成，内容: {sorted(p.name for p in root.iterdir() if p.is_dir())}")
 
     # 清空旧数据（features/calendars/instruments/缓存），避免两种格式混用
+    # ⚠️ 这会连同 build_fund_factors 写入的基本面因子 bin 一起删除——
+    #    force 更新后若需 --fund 模式，必须重跑 --build-fund
+    if (DATA_DIR / "features").exists() and any(
+        (p / "roe.day.bin").exists() for p in (DATA_DIR / "features").iterdir() if p.is_dir()
+    ):
+        print("[data] 警告：检测到基本面因子 bin，force 更新将一并清除，--fund 模式需重跑 --build-fund")
     for name in ["features", "calendars", "instruments", "features_cache", "dataset_cache"]:
         p = DATA_DIR / name
         if p.exists():
@@ -169,6 +175,16 @@ def _ensure_data(force: bool = False):
         print(f"[data] instruments: {sorted(p.name for p in inst.iterdir())}")
 
 
+def _latest_trading_day() -> str:
+    """读取 Volume 日历的最新交易日（YYYY-MM-DD），供配置动态使用。"""
+    cal_file = DATA_DIR / "calendars" / "day.txt"
+    if cal_file.exists():
+        lines = cal_file.read_text().strip().splitlines()
+        if lines:
+            return lines[-1]
+    return "2026-09-11"  # 兜底
+
+
 def _load_and_patch_cfg(yaml_path: str, smoke: bool, recent: bool = False, enhanced: bool = False, long_train: bool = False, fund: bool = False, label20: bool = False, label60: bool = False, rolling: bool = False, verify: bool = False, topk: int = None) -> dict:
     """读 bundled yaml，打上 Modal 路径补丁。不改仓库原文件。
 
@@ -181,7 +197,7 @@ def _load_and_patch_cfg(yaml_path: str, smoke: bool, recent: bool = False, enhan
     由 build_fund_factors 写入 bin），移除 FilterCol 以免过滤掉基本面字段。
     label20=True：标签换成 20 日收益。
     verify=True（需配合 recent）：walk-forward 验证模式——训练 2016-2023 /
-    验证 2023 / 回测 2024-01~2026-09（2.5 年），验证信号稳健性。
+    验证 2024 / 回测 2025-01~最新交易日（约 1.7 年），验证信号稳健性。
     topk：自定义策略持仓数（默认取 yaml 的 50）。
     """
     from ruamel.yaml import YAML
@@ -211,38 +227,39 @@ def _load_and_patch_cfg(yaml_path: str, smoke: bool, recent: bool = False, enhan
             cfg["task"]["model"]["kwargs"]["early_stop"] = 2
         except KeyError:
             pass
-    # 5) 近期模式：训练/验证/回测全部前移到 2026 年（配合 chenditc 每日更新数据）
+    # 5) 近期模式：训练/验证/回测全部前移到最新交易日（配合 chenditc 每日更新数据）
     if recent:
+        END = _latest_trading_day()
         dh = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
         train_start, fit_start = ("2016-01-01", "2016-01-01") if long_train else ("2021-01-01", "2021-01-01")
         dh["start_time"] = "2015-01-01" if long_train else "2020-01-01"  # 提前一年保证 Alpha158 60日窗口
-        dh["end_time"] = "2026-09-11"
+        dh["end_time"] = END
         dh["fit_start_time"] = fit_start
         dh["fit_end_time"] = "2024-12-31"
         segments = cfg["task"]["dataset"]["kwargs"]["segments"]
         segments["train"] = [train_start, "2024-12-31"]
         segments["valid"] = ["2025-01-01", "2025-12-31"]
-        segments["test"] = ["2026-01-01", "2026-09-11"]
+        segments["test"] = ["2026-01-01", END]
         bt = cfg["port_analysis_config"]["backtest"]
         bt["start_time"] = "2026-01-01"
-        bt["end_time"] = "2026-09-11"
+        bt["end_time"] = END
         # 降换手（n_drop 5→2）减少交易成本 + 固定 seed 保证可复现
         cfg["port_analysis_config"]["strategy"]["kwargs"]["n_drop"] = 2
         try:
             cfg["task"]["model"]["kwargs"]["seed"] = 0
         except KeyError:
             pass
-        # 5b) walk-forward 验证模式：训练 2016-2023 / 验证 2023 / 回测 2024-2026（2.5年）
+        # 5b) walk-forward 验证模式：训练 2016-2023 / 验证 2024 / 回测 2025~最新（约 1.7 年）
         if verify:
             dh["start_time"] = "2015-01-01"
-            dh["end_time"] = "2026-09-11"
+            dh["end_time"] = END
             dh["fit_start_time"] = "2016-01-01"
             dh["fit_end_time"] = "2023-12-31"
             segments["train"] = ["2016-01-01", "2023-12-31"]
             segments["valid"] = ["2024-01-01", "2024-12-31"]
-            segments["test"] = ["2025-01-01", "2026-09-11"]
+            segments["test"] = ["2025-01-01", END]
             bt["start_time"] = "2025-01-01"
-            bt["end_time"] = "2026-09-11"
+            bt["end_time"] = END
     # 自定义持仓数
     if topk is not None:
         cfg["port_analysis_config"]["strategy"]["kwargs"]["topk"] = topk
@@ -290,9 +307,7 @@ def _load_and_patch_cfg(yaml_path: str, smoke: bool, recent: bool = False, enhan
 
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=1800)
 def debug_data():
-    """诊断 chenditc features 存储格式 + 验证 QLib 能读出字段。"""
-    import os
-
+    """诊断 chenditc features 存储格式 + 验证 QLib 能读出字段（动态取最新 5 个交易日）。"""
     import qlib
     from qlib.data import D
 
@@ -307,8 +322,12 @@ def debug_data():
                 print(f"   {f.name} size={f.stat().st_size}")
         else:
             print(f"   file size={p.stat().st_size}")
-    # 2) QLib 实际读取
-    df = D.features(["SH600000"], ["$close", "$volume", "$roe", "$pe_ttm", "$pb"], start_time="2026-09-08", end_time="2026-09-11", freq="day")
+    # 2) QLib 实际读取（用最新交易日动态验证；$roe 等因子仅在 --build-fund 后存在，不在此验证）
+    end = _latest_trading_day()
+    start = (pd.Timestamp(end) - pd.Timedelta(days=7)).strftime("%Y-%m-%d")
+    import pandas as pd
+
+    df = D.features(["SH600000"], ["$close", "$volume"], start_time=start, end_time=end, freq="day")
     print(f"[debug] D.features shape={df.shape} columns={list(df.columns)}")
     print(df.head().to_string())
 
@@ -538,13 +557,6 @@ def build_fund_factors(market: str = "csi500", start_year: int = 2021, max_stock
     return {"fields_dumped": dumped, "stocks": n_stocks}
 
 
-@app.function(
-    volumes={str(VOL_ROOT): vol},
-    cpu=CPU_COUNT,
-    memory=32768,
-    gpu="A10G",
-    timeout=8 * 3600,
-)
 def _daily_impl(model: str, topk: int, predict_date: str, enhanced: bool, long_train: bool, fund: bool, label20: bool):
     """每日信号共享实现（CPU/GPU 两个 wrapper 调用）。LGB 系模型无需 GPU。"""
     import pandas as pd
@@ -640,8 +652,6 @@ def daily_signal_cpu(model: str = "lgb158", topk: int = 50, predict_date: str = 
 def train_ensemble(topk: int = 50, n_drop: int = 2):
     """三模型集成：LGB + GRU + ALSTM 各自训练（Alpha158 + 20日标签 + long_train），
     预测分数 z-score 标准化后平均，作为信号跑回测（TopkDropout，每日微调）。"""
-    import copy
-
     import numpy as np
     import pandas as pd
 
@@ -687,7 +697,7 @@ def train_ensemble(topk: int = 50, n_drop: int = 2):
     # 回测（TopkDropout 每日微调，与 20 日标签最优配置一致）
     bt = {
         "start_time": "2026-01-01",
-        "end_time": "2026-09-11",
+        "end_time": _latest_trading_day(),
         "account": 100000000,
         "benchmark": "SH000905",
         "exchange_kwargs": {"limit_threshold": 0.095, "deal_price": "close", "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5},
@@ -747,14 +757,15 @@ TUNE_WORKERS = 4  # 普通 modal run 模式（本地保持连接驱动 map），
 )
 def tune_one(params: dict, horizon: int = 20):
     """给定一组 LGB 超参，训练（Alpha360 + N日标签 + long_train）并返回 test 段 Rank IC。
-    供 --tune 并行搜索使用。LGB 是 CPU 模型，无需 GPU；max_containers 限制并行数（≤6）。
+    供 --tune 并行搜索使用。LGB 是 CPU 模型，无需 GPU；max_containers=TUNE_WORKERS 限制并行数。
     容器会被 map 复用（一组容器跑多组参数），因此 init 用 skip_if_reg 防重复注册，
-    Rank IC 用 D.features 直接算未来收益（绕开 dataset.prepare 的 DK_I 路径）。"""
+    Rank IC 用 dataset.prepare(DK_L) 拿 label——与 LGB 训练同路径；
+    不要用 D.features（容器 fork 后会触发 LocalDatasetProvider 的
+    inst_processors 参数冲突 TypeError）。"""
     import numpy as np
     import pandas as pd
 
     import qlib
-    from qlib.data import D
     from qlib.data.dataset import Dataset
     from qlib.model.base import Model
     from qlib.utils import init_instance_by_config
@@ -775,8 +786,8 @@ def tune_one(params: dict, horizon: int = 20):
     dataset = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
     model.fit(dataset)
     pred = model.predict(dataset)
-    # 用 dataset.prepare 拿 label（与 LGB 训练同路径 DK_L，可靠）；避免容器 fork 后 D.features 的
-    # inst_processors 参数冲突（LocalDatasetProvider 无 disk_cache 参数导致 TypeError）
+    # 用 dataset.prepare 拿 label（与 LGB 训练同路径 DK_L，可靠）；不要用 D.features——
+    # 容器 fork 后会触发 LocalDatasetProvider 的 inst_processors 参数冲突 TypeError
     from qlib.data.dataset.handler import DataHandlerLP
 
     label_df = dataset.prepare("test", col_set=["feature", "label"], data_key=DataHandlerLP.DK_L)
@@ -806,9 +817,10 @@ def _sample_params(rng):
     timeout=12 * 3600,
 )
 def tune_driver(n_trials: int = 40, horizon: int = 20):
-    """云端超参搜索入口：内部并行 map N 组，Top10 与最优参数保存到 Volume。
-    用法：modal run --detach modal_qlib_cn_a10g.py::tune_driver --n 40
-    云端 function 直接执行，本地断连不影响（无需 --detach 也可，推荐 detach）。"""
+    """云端超参搜索入口：内部并行 map N 组，Top10 与最优参数保存到 Volume（供 main 分支无 /vol 写权限时用）。
+    用法：modal run modal_qlib_cn_a10g.py::tune_driver
+    ⚠️ 用普通 modal run 保持本地连接；不要 --detach（本地断开后平台会取消未完成的输入，
+    已被实证：两次 detach 均在约 10 分钟后输入被取消）。"""
     import json as _json
 
     _ensure_data()
@@ -844,7 +856,6 @@ def dual_horizon(topk: int = 50, n_drop: int = 2, best_params: dict = None):
     import pandas as pd
 
     import qlib
-    import torch
     from qlib.backtest import backtest as normal_backtest
     from qlib.contrib.evaluate import risk_analysis
     from qlib.data.dataset import Dataset
@@ -880,7 +891,7 @@ def dual_horizon(topk: int = 50, n_drop: int = 2, best_params: dict = None):
 
     bt = {
         "start_time": "2026-01-01",
-        "end_time": "2026-09-11",
+        "end_time": _latest_trading_day(),
         "account": 100000000,
         "benchmark": "SH000905",
         "exchange_kwargs": {"limit_threshold": 0.095, "deal_price": "close", "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5},
@@ -944,21 +955,23 @@ def main(
 ):
     """入口：
     modal run modal_qlib_cn_a10g.py --model gru [--smoke] [--recent] [--enhanced] [--long-train] [--fund] [--label20] [--force-data] [--data-only]
-    modal run modal_qlib_cn_a10g.py --daily [--model gru] [--topk 50] [--predict-date 2026-09-11] [--enhanced] [--fund]
+    modal run modal_qlib_cn_a10g.py --daily [--model lgb360] [--topk 50] [--label20] [--predict-date <最新交易日>]
     modal run modal_qlib_cn_a10g.py --build-fund [--fund-market csi500] [--fund-max-stocks 100]
     modal run modal_qlib_cn_a10g.py --ensemble [--topk-bt 50] [--n-drop-bt 2]
     modal run modal_qlib_cn_a10g.py --tune 40 [--tune-horizon 20]
     modal run modal_qlib_cn_a10g.py --dual
-    modal run modal_qlib_cn_a10g.py --best
-    --best: 固化最优配置 = lgb360 + recent + long_train + label20（训练+回测，见 VALIDATION.md）
-    --recent: 训练 2021-2024/验证 2025/回测 2026-01~今，降换手+固定seed（预测未来用）
+    modal run modal_qlib_cn_a10g.py --best              # 固化最优配置训练+回测
+    modal run modal_qlib_cn_a10g.py --best --daily      # 固化最优配置出每日信号
+    --best: 固化最优配置 = lgb360 + recent + long_train + label20（见 VALIDATION.md），
+        可与 --daily 组合出信号；被 --tune/--dual/--ensemble/--build-fund 覆盖时优先执行后者
+    --recent: 训练 2021-2024/验证 2025/回测 2026-01~最新交易日，降换手+固定seed（预测未来用）
     --enhanced: csi500 股票池 + early_stop 放宽到 30（V2 增强）
     --long-train: 训练区间延长到 2016-2024（覆盖完整牛熊周期，需配合 --recent）
-    --fund: 使用 Alpha158+基本面因子（先跑 --build-fund 生成因子 bin）
+    --fund: 使用 Alpha158+基本面因子（先跑 --build-fund 生成因子 bin；force 更新数据后需重跑）
     --label20: 标签换成 20 日收益（与基本面因子周期匹配）
     --build-fund: akshare 拉财报/估值，生成基本面因子 bin 到 Volume
     --ensemble: 三模型集成（LGB+GRU+ALSTM，20日标签分数平均）训练+回测+输出信号
-    --verify: walk-forward 验证（训练 2016-2023/回测 2025-2026 共 1.7 年）
+    --verify: walk-forward 验证（训练 2016-2023/验证 2024/回测 2025~今 约 1.7 年）
     --tune N: LGB 超参随机搜索 N 组（并行），输出按 Rank IC 排序
     --dual: 多周期融合（20日+60日标签 LGB 分数平均）回测+信号
     --topk N: 自定义持仓数（默认 50）"""
