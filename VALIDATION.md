@@ -53,13 +53,13 @@
 ## 固化最优配置（当前最佳）
 
 ```bash
-# 每日信号（预测未来 20 日收益的 top50 候选池）
-modal run modal_qlib_cn_a10g.py --daily --model lgb360 --label20 --topk 50
+# 每日信号（推荐入口：--best 组合自动带上 long_train=True，与验证模型一致）
+modal run modal_qlib_cn_a10g.py --best --daily --topk 50
+
+# 手动等价写法（注意必须带 --long-train，否则是短训练模型，程序会打印警告）
+modal run modal_qlib_cn_a10g.py --daily --model lgb360 --label20 --long-train --topk 50
 
 # 完整训练+回测（PortAnaRecord 输出 IC/回撤/超额）
-modal run modal_qlib_cn_a10g.py --model lgb360 --recent --long-train --label20
-
-# 等价 --best 快捷方式
 modal run modal_qlib_cn_a10g.py --best
 ```
 
@@ -82,6 +82,16 @@ modal run modal_qlib_cn_a10g.py --best
 - **GPU 只挂给 RNN 模型（GRU/ALSTM/集成）**；LGB/数据/超参搜索全走 CPU 容器（挂载未使用 = 按挂载计费，浪费）
 - 超参搜索等并行任务：`TUNE_WORKERS=8`（8 并发 × 16 核）
 - 长任务建议普通 `modal run`（本地保持连接），不要 detach（本地断开后输入会被平台取消）
+
+## 已知风险与局限（资金安全相关，务必阅读）
+
+1. **复权因子的潜在前视**：chenditc 数据的 `$factor` 复权因子的生成时点未经我们审计。若因子按"最新价格回算全部历史"，回测收益会被轻微高估（业界称 restatement bias）。**缓解**：结论以 walk-forward（训练截止早于回测期）为准，且实盘小仓位跟踪是最終校验。
+2. **回测成交价 vs 实际执行**：回测用当日收盘价成交（`deal_price: close`），实盘按次日开盘价执行，存在隔夜跳空偏差。
+3. **并列分数与边界不稳定**：LGB 输出存在并列分数（叶子值离散），top50 截断边界在并列处的选择对排序扰动敏感——每日榜单可能有几只边界股出入，属正常现象，用等权+纪律换仓可消解。
+4. **样本外衰减已实测**：2026 前 8 个月有成本超额 +6.5%，拉长到 1.7 年（含 2025 大涨市）衰减为 +1.0%。**不要用 8 个月结果外推长期收益**。
+5. **训练配置一致性**：固化最优配置为 `--best --daily`（long_train=True，2016-2024 训练）。不带 `--long-train` 的 `--daily --model lgb360 --label20` 用的是短训练模型，程序会打印警告。
+6. **涨跌停过滤口径**：按"当日涨幅 = close/前收 − 1，|涨幅|≥9.5%"剔除（此前版本误用 close/open 日内振幅，已修正）。创业板/科创板 20% 涨跌幅股票会被 9.5% 阈值提前剔除——保守方向，可接受。
+7. **模型只提供排序**：不提供仓位、止损、择时。仓位/风控规则见"策略落地操作手册"。
 
 ## 策略落地操作手册（把模型嵌入实盘框架）
 
