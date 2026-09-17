@@ -185,7 +185,7 @@ def _latest_trading_day() -> str:
     return "2026-09-11"  # 兜底
 
 
-def _load_and_patch_cfg(yaml_path: str, smoke: bool, recent: bool = False, enhanced: bool = False, long_train: bool = False, fund: bool = False, label20: bool = False, label60: bool = False, rolling: bool = False, verify: bool = False, topk: int = None) -> dict:
+def _load_and_patch_cfg(yaml_path: str, smoke: bool, recent: bool = False, enhanced: bool = False, long_train: bool = False, fund: bool = False, label20: bool = False, label40: bool = False, label60: bool = False, rolling: bool = False, verify: bool = False, topk: int = None) -> dict:
     """读 bundled yaml，打上 Modal 路径补丁。不改仓库原文件。
 
     recent=True 时把整套数据区间前移到 2026 年（训练 2021-2024 / 验证 2025 /
@@ -288,7 +288,11 @@ def _load_and_patch_cfg(yaml_path: str, smoke: bool, recent: bool = False, enhan
     if label20:
         dh = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
         dh["label"] = ["Ref($close, -20)/$close - 1"]
-    # 8b) 60 日收益标签（更长期动量，用于多周期融合）
+    # 8b) 40 日收益标签（P0-5 实测 IC 峰值在 40 日：0.137 vs 20 日 0.108）
+    if label40:
+        dh = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
+        dh["label"] = ["Ref($close, -40)/$close - 1"]
+    # 8c) 60 日收益标签（更长期动量，用于多周期融合）
     if label60:
         dh = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
         dh["label"] = ["Ref($close, -60)/$close - 1"]
@@ -1129,6 +1133,151 @@ def p0_diagnostics():
     return results
 
 
+@app.function(
+    volumes={str(VOL_ROOT): vol},
+    cpu=CPU_COUNT,
+    memory=32768,
+    timeout=6 * 3600,
+)
+def p1_diagnostics():
+    """P1 进攻批次（3 次训练 + 多次回测，统一 n_drop=3 / P0 修正参数）：
+    - P1-7b 双 LGB 变体分数融合：lgb360(20日) + lgb158(20日) z-score 平均 vs 单模型
+    - P0 升级项：40 日标签模型（IC 峰值 0.137）的收益验证
+    - P1-7c 组合构造：等权 top30/50/70 网格（QLib 回测，含涨跌停约束）
+      + 手动模拟"等权 vs 分数加权"对照（简化模拟，无涨跌停约束，仅内部对比）
+    结果写入 /vol/p1_results/。"""
+    import json
+
+    import numpy as np
+    import pandas as pd
+
+    import qlib
+    from qlib.backtest import backtest as normal_backtest
+    from qlib.contrib.evaluate import risk_analysis
+    from qlib.data import D
+    from qlib.data.dataset import Dataset
+    from qlib.model.base import Model
+    from qlib.utils import init_instance_by_config
+
+    _ensure_data()
+    END = _latest_trading_day()
+    qlib.init(provider_uri=str(DATA_DIR), region="cn",
+              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
+                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-p1"}})
+
+    def train_predict(model_key, label40=False):
+        cfg = _load_and_patch_cfg(MODEL_CFG[model_key], smoke=False, recent=True, long_train=True,
+                                  label20=not label40, label40=label40)
+        m = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
+        ds = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
+        m.fit(ds)
+        p = m.predict(ds)
+        return (p - p.mean()) / p.std()
+
+    # ---------- 训练三个模型 ----------
+    print("[p1] 训练 lgb360-20d ...")
+    p360_20 = train_predict("lgb360")
+    print("[p1] 训练 lgb158-20d ...")
+    p158_20 = train_predict("lgb158")
+    print("[p1] 训练 lgb360-40d ...")
+    p360_40 = train_predict("lgb360", label40=True)
+    # 融合（对齐 index 后平均）
+    common = p360_20.index.intersection(p158_20.index)
+    p_blend = ((p360_20.reindex(common) + p158_20.reindex(common)) / 2).sort_index()
+
+    # ---------- QLib 回测（等权 TopkDropout，n_drop=3） ----------
+    bt_kwargs = dict(start_time="2026-01-01", end_time=END, account=100000000, benchmark="SH000905",
+                     exchange_kwargs={"limit_threshold": 0.095, "deal_price": "close",
+                                      "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
+    executor = {"class": "SimulatorExecutor", "module_path": "qlib.backtest.executor",
+                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
+
+    def bt(signal, topk=50, n_drop=3):
+        strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
+                    "kwargs": {"signal": signal, "topk": topk, "n_drop": n_drop}}
+        pm, _ = normal_backtest(strategy=strategy, executor=executor, **bt_kwargs)
+        rep = pm["1day"][0]
+        ra = risk_analysis(rep["return"] - rep["bench"] - rep["cost"])
+        return {"excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
+                "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
+                "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4)}, rep
+
+    results = {"data_package": END, "n_drop": 3}
+
+    # P1-7b 信号对比（top50 等权）
+    r, rep_blend = bt(p_blend)
+    results["blend_20d"] = r; print(f"[p1] 7b 融合(158+360, 20日): {r}")
+    r, _ = bt(p360_20)
+    results["single_360_20d"] = r; print(f"[p1] 7b 单360(20日): {r}")
+    r, _ = bt(p158_20)
+    results["single_158_20d"] = r; print(f"[p1] 7b 单158(20日): {r}")
+    # 40 日标签
+    r, rep_40 = bt(p360_40)
+    results["single_360_40d"] = r; print(f"[p1] 40日标签: {r}")
+
+    # P1-7c topk 网格（用最优信号；先以 360-20d 为基准网格，融合信号跑 top50 已有）
+    topk_grid = {}
+    for tk in [30, 50, 70]:
+        r, _ = bt(p360_20, topk=tk)
+        topk_grid[tk] = r
+        print(f"[p1] 7c topk={tk}: {r}")
+    results["topk_grid_360_20d"] = topk_grid
+
+    # P1-7c 分数加权 vs 等权（手动模拟：每 20 交易日调仓，无涨跌停约束，仅内部对比）
+    insts = sorted(set(p360_20.index.get_level_values(1)))
+    close = D.features(insts, ["$close"], start_time=p360_20.index.get_level_values(0).min(),
+                       end_time=END, freq="day")["$close"]
+    close = close.swaplevel().sort_index()  # (datetime, instrument)
+    fwd20 = close.groupby(level=1).shift(-20) / close - 1
+
+    def sim_weighted(pred, mode, topk=50, every=20, cost_one_side=0.002):
+        dates = pred.index.get_level_values(0).unique().sort_values()
+        reb_dates = dates[::every]
+        prev_w = pd.Series(dtype=float)
+        tot_ret, tot_cost, n = 0.0, 0.0, 0
+        for d in reb_dates:
+            day = pred.loc[d].dropna()
+            top = day.sort_values(ascending=False).head(topk)
+            if len(top) < 10:
+                continue
+            f = fwd20.reindex(pd.MultiIndex.from_arrays([[d] * len(top), top.index],
+                                                        names=["datetime", "instrument"])).dropna()
+            if len(f) < 10:
+                continue
+            if mode == "equal":
+                w = pd.Series(1.0 / len(top), index=top.index).reindex(f.index)
+            else:  # score：分数线性加权，min 映射 0.5 防负/零权
+                s = (top - top.min()) / (top.max() - top.min() + 1e-9) + 0.5
+                w = (s / s.sum()).reindex(f.index)
+            gross = float((w * f).sum())
+            turnover = float((w.reindex(prev_w.index).fillna(0) - prev_w.reindex(w.index).fillna(0)).abs().sum()) \
+                if len(prev_w) else 1.0
+            fee = turnover * cost_one_side
+            tot_ret += gross - fee
+            tot_cost += fee
+            n += 1
+            prev_w = w
+        ann = tot_ret / max(n, 1) * (238 / every)
+        return {"ann_excess_sim": round(ann, 4), "n_rebalance": n, "total_cost": round(tot_cost, 4)}
+
+    sim_eq = sim_weighted(p360_20, "equal")
+    sim_sc = sim_weighted(p360_20, "score")
+    results["sim_equal_vs_score"] = {"equal": sim_eq, "score": sim_sc,
+                                      "note": "手动模拟（每20日调仓、无涨跌停约束），仅内部对比可信"}
+    print(f"[p1] 7c 手动模拟: 等权={sim_eq} 分数加权={sim_sc}")
+
+    # ---------- 持久化 ----------
+    out = VOL_ROOT / "p1_results"
+    out.mkdir(parents=True, exist_ok=True)
+    with (out / "summary.json").open("w") as f:
+        json.dump(results, f, indent=2, ensure_ascii=False)
+    rep_blend.to_pickle(out / "report_blend_20d.pkl")
+    rep_40.to_pickle(out / "report_360_40d.pkl")
+    print(f"[p1] 全部结果已保存 {out}")
+    vol.commit()
+    return results
+
+
 @app.local_entrypoint()
 def main(
     model: str = "gru",
@@ -1156,6 +1305,7 @@ def main(
     dual: bool = False,
     best: bool = False,
     p0: bool = False,
+    p1: bool = False,
 ):
     """入口：
     modal run modal_qlib_cn_a10g.py --model gru [--smoke] [--recent] [--enhanced] [--long-train] [--fund] [--label20] [--force-data] [--data-only]
@@ -1185,6 +1335,15 @@ def main(
         # 结果存 /vol/p0_results/，取回：modal volume get qlib-cn-data p0_results ./p0_results
         prepare_data.remote(force=force_data)
         res = p0_diagnostics.remote()
+        import json as _json
+
+        print(_json.dumps(res, indent=2, ensure_ascii=False))
+        return
+    if p1:
+        # P1 进攻批次：双变体融合 / 40日标签 / 组合构造（topk网格+分数加权）
+        # 结果存 /vol/p1_results/，取回：modal volume get qlib-cn-data p1_results ./p1_results
+        prepare_data.remote(force=force_data)
+        res = p1_diagnostics.remote()
         import json as _json
 
         print(_json.dumps(res, indent=2, ensure_ascii=False))
