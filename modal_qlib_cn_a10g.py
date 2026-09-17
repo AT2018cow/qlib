@@ -243,8 +243,8 @@ def _load_and_patch_cfg(yaml_path: str, smoke: bool, recent: bool = False, enhan
         bt = cfg["port_analysis_config"]["backtest"]
         bt["start_time"] = "2026-01-01"
         bt["end_time"] = END
-        # 降换手（n_drop 5→2）减少交易成本 + 固定 seed 保证可复现
-        cfg["port_analysis_config"]["strategy"]["kwargs"]["n_drop"] = 2
+        # n_drop=3：P0 网格与 vcheck(Alpha158) 双重确认最优（2/1 均显著更差）
+        cfg["port_analysis_config"]["strategy"]["kwargs"]["n_drop"] = 3
         try:
             cfg["task"]["model"]["kwargs"]["seed"] = 0
         except KeyError:
@@ -1278,6 +1278,249 @@ def p1_diagnostics():
     return results
 
 
+CHENDITC_HIST_URL = "https://github.com/chenditc/investment_data/releases/download/{tag}/qlib_bin.tar.gz"
+
+
+def _read_bin(path):
+    import numpy as np
+
+    arr = np.fromfile(path, dtype="<f")
+    return int(arr[0]), arr[1:]
+
+
+def _load_0911_package():
+    """下载并解压 chenditc 09-11 历史数据包到 /tmp/v0911，返回根目录。"""
+    import shutil
+    import tarfile
+
+    import requests
+
+    root = Path("/tmp/v0911")
+    if (root / "features").exists():
+        return root
+    url = CHENDITC_HIST_URL.format(tag="2026-09-11")
+    zip_path = Path("/tmp/chenditc_0911.tar.gz")
+    print(f"[vcheck] 下载历史包 {url} ...")
+    with requests.get(url, stream=True, timeout=600) as r:
+        r.raise_for_status()
+        with zip_path.open("wb") as f:
+            for chunk in r.iter_content(chunk_size=1 << 20):
+                f.write(chunk)
+    extract = Path("/tmp/v0911_extract")
+    if extract.exists():
+        shutil.rmtree(extract)
+    extract.mkdir(parents=True)
+    with tarfile.open(zip_path, "r:gz") as tf:
+        tf.extractall(extract)
+    base = extract
+    if not (base / "features").exists():
+        for sub in base.iterdir():
+            if sub.is_dir() and (sub / "features").exists():
+                base = sub
+                break
+    shutil.move(str(base), str(root))
+    print(f"[vcheck] 历史包解压完成: {root}")
+    return root
+
+
+@app.function(
+    volumes={str(VOL_ROOT): vol},
+    cpu=CPU_COUNT,
+    memory=32768,
+    timeout=6 * 3600,
+)
+def version_check_0911():
+    """版本敏感性验证（历史包侧）：
+    1) bin 级 diff：09-11 包 vs 当前 09-16 包的 factor/close 历史修订幅度
+    2) 用 09-11 包训练 Alpha158/Alpha360（20日标签，long_train），回测统一区间 2026-01-01~09-11（n_drop=3）
+    结果存 /vol/p1_results/version_check/。"""
+    import json
+
+    import numpy as np
+    import pandas as pd
+
+    # ---------- 第一层：数据 diff（纯文件级，无需 qlib init） ----------
+    v0911 = _load_0911_package()
+    cal11 = pd.read_csv(v0911 / "calendars" / "day.txt", header=None)[0].tolist()
+    cal16 = pd.read_csv(DATA_DIR / "calendars" / "day.txt", header=None)[0].tolist()
+    overlap_end_idx = cal16.index("2026-09-11")
+    print(f"[vcheck] cal11={len(cal11)}天 cal16={len(cal16)}天 重叠至09-11={overlap_end_idx + 1}天")
+
+    feat11 = v0911 / "features"
+    feat16 = DATA_DIR / "features"
+    stocks = sorted(p.name for p in feat16.iterdir() if p.is_dir())
+    stocks = [s for s in stocks if (feat11 / s).is_dir()]
+
+    factor_diff_stocks, close_diff_stocks = 0, 0
+    factor_max, close_max_rel = 0.0, 0.0
+    diff_dates_min, diff_dates_max = None, None
+    detail = {}
+    for s in stocks:
+        f11, f16 = feat11 / s, feat16 / s
+        if not (f11 / "factor.day.bin").exists() or not (f16 / "factor.day.bin").exists():
+            continue
+        s11, v11 = _read_bin(f11 / "factor.day.bin")
+        s16, v16 = _read_bin(f16 / "factor.day.bin")
+        n = min(len(v11), len(v16))
+        # 对齐：各自起始索引不同，取日期重叠部分（简化：比较相同日历偏移的重叠窗）
+        off = max(s11, s16)
+        a11 = v11[off - s11: off - s11 + min(n, overlap_end_idx - off)]
+        a16 = v16[off - s16: off - s16 + min(n, overlap_end_idx - off)]
+        m = min(len(a11), len(a16))
+        if m <= 0:
+            continue
+        d = np.abs(a11[:m] - a16[:m])
+        dmax = float(d.max()) if len(d) else 0.0
+        if dmax > 1e-4:
+            factor_diff_stocks += 1
+            factor_max = max(factor_max, dmax)
+            bad = np.nonzero(d > 1e-4)[0]
+            dmin_date, dmax_date = cal16[off + bad.min()], cal16[off + bad.max()]
+            diff_dates_min = dmin_date if diff_dates_min is None else min(diff_dates_min, dmin_date)
+            diff_dates_max = dmax_date if diff_dates_max is None else max(diff_dates_max, dmax_date)
+            if len(detail) < 5:
+                detail[s] = {"factor_max_diff": round(dmax, 6), "n_days_diff": int(len(bad))}
+        # close 差异比较：factor 有差异的股票 + 前 50 只（抽样），比较相对差
+        want_close = (dmax > 1e-4) or (close_diff_stocks + factor_diff_stocks) < 50
+        if want_close and (f11 / "close.day.bin").exists() and (f16 / "close.day.bin").exists():
+            s11c, v11c = _read_bin(f11 / "close.day.bin")
+            s16c, v16c = _read_bin(f16 / "close.day.bin")
+            offc = max(s11c, s16c)
+            c11 = v11c[offc - s11c: offc - s11c + 300]
+            c16 = v16c[offc - s16c: offc - s16c + 300]
+            mc = min(len(c11), len(c16))
+            if mc > 0:
+                rel = np.abs((c11[:mc] - c16[:mc]) / np.where(c16[:mc] != 0, c16[:mc], 1))
+                rmax = float(rel.max())
+                if rmax > 1e-6:
+                    close_diff_stocks += 1
+                    close_max_rel = max(close_max_rel, rmax)
+                    if s in detail:
+                        detail[s]["close_max_rel_diff"] = round(rmax, 8)
+
+    diff_result = {
+        "n_stocks_compared": len(stocks),
+        "factor_diff_stocks": factor_diff_stocks,
+        "factor_max_abs_diff": round(factor_max, 6),
+        "close_sample_diff_stocks": close_diff_stocks,
+        "close_sample_max_rel_diff": round(close_max_rel, 8),
+        "factor_diff_date_range": [diff_dates_min, diff_dates_max],
+        "sample_detail": detail,
+    }
+    print(f"[vcheck] diff 结果: {json.dumps(diff_result, ensure_ascii=False)}")
+
+    # ---------- 第二层：09-11 包训练+回测 ----------
+    import qlib
+    from qlib.backtest import backtest as normal_backtest
+    from qlib.contrib.evaluate import risk_analysis
+    from qlib.data.dataset import Dataset
+    from qlib.model.base import Model
+    from qlib.utils import init_instance_by_config
+
+    qlib.init(provider_uri=str(v0911), region="cn",
+              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
+                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-vcheck"}})
+
+    bt_kwargs = dict(start_time="2026-01-01", end_time="2026-09-11", account=100000000, benchmark="SH000905",
+                     exchange_kwargs={"limit_threshold": 0.095, "deal_price": "close",
+                                      "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
+    executor = {"class": "SimulatorExecutor", "module_path": "qlib.backtest.executor",
+                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
+
+    matrix_0911 = {}
+    for key in ["lgb158", "lgb360"]:
+        cfg = _load_and_patch_cfg(MODEL_CFG[key], smoke=False, recent=True, long_train=True, label20=True)
+        # recent 模式 END 取自 09-11 包自身日历（_latest_trading_day 读的是主包——手动覆写）
+        dh = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
+        dh["end_time"] = "2026-09-11"
+        cfg["task"]["dataset"]["kwargs"]["segments"]["test"] = ["2026-01-01", "2026-09-11"]
+        m = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
+        ds = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
+        m.fit(ds)
+        pred = m.predict(ds)
+        strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
+                    "kwargs": {"signal": pred, "topk": 50, "n_drop": 3}}
+        pm, _ = normal_backtest(strategy=strategy, executor=executor, **bt_kwargs)
+        ra = risk_analysis(pm["1day"][0]["return"] - pm["1day"][0]["bench"] - pm["1day"][0]["cost"])
+        matrix_0911[key] = {"excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
+                             "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
+                             "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4)}
+        print(f"[vcheck] 09-11包 {key}: {matrix_0911[key]}")
+
+    out = VOL_ROOT / "p1_results" / "version_check"
+    out.mkdir(parents=True, exist_ok=True)
+    result = {"data_diff": diff_result, "matrix_0911": matrix_0911, "bt_window": "2026-01-01~2026-09-11", "n_drop": 3}
+    with (out / "vcheck_0911.json").open("w") as f:
+        json.dump(result, f, indent=2, ensure_ascii=False)
+    vol.commit()
+    return result
+
+
+@app.function(
+    volumes={str(VOL_ROOT): vol},
+    cpu=CPU_COUNT,
+    memory=32768,
+    timeout=4 * 3600,
+)
+def version_check_0916():
+    """版本敏感性验证（当前包侧）：09-16 包训练 Alpha158/Alpha360，回测统一区间 2026-01-01~09-11（n_drop=3）。"""
+    import json
+
+    import qlib
+    from qlib.backtest import backtest as normal_backtest
+    from qlib.contrib.evaluate import risk_analysis
+    from qlib.data.dataset import Dataset
+    from qlib.model.base import Model
+    from qlib.utils import init_instance_by_config
+
+    _ensure_data()
+    qlib.init(provider_uri=str(DATA_DIR), region="cn",
+              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
+                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-vcheck"}})
+
+    bt_kwargs = dict(start_time="2026-01-01", end_time="2026-09-11", account=100000000, benchmark="SH000905",
+                     exchange_kwargs={"limit_threshold": 0.095, "deal_price": "close",
+                                      "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
+    executor = {"class": "SimulatorExecutor", "module_path": "qlib.backtest.executor",
+                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
+
+    matrix_0916 = {}
+    preds = {}
+    for key in ["lgb158", "lgb360"]:
+        cfg = _load_and_patch_cfg(MODEL_CFG[key], smoke=False, recent=True, long_train=True, label20=True)
+        m = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
+        ds = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
+        m.fit(ds)
+        preds[key] = m.predict(ds)
+    # 158 特征下 n_drop 网格（P0 的网格是在 Alpha360 上做的，特征终判为 158 后需重测）
+    for nd in [1, 2, 3, 5]:
+        strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
+                    "kwargs": {"signal": preds["lgb158"], "topk": 50, "n_drop": nd}}
+        pm, _ = normal_backtest(strategy=strategy, executor=executor, **bt_kwargs)
+        ra = risk_analysis(pm["1day"][0]["return"] - pm["1day"][0]["bench"] - pm["1day"][0]["cost"])
+        matrix_0916[f"lgb158_ndrop{nd}"] = {"excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
+                                             "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
+                                             "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4)}
+        print(f"[vcheck] 09-16包 lgb158 n_drop={nd}: {matrix_0916[f'lgb158_ndrop{nd}']}")
+    # 360 对照（n_drop=3）
+    strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
+                "kwargs": {"signal": preds["lgb360"], "topk": 50, "n_drop": 3}}
+    pm, _ = normal_backtest(strategy=strategy, executor=executor, **bt_kwargs)
+    ra = risk_analysis(pm["1day"][0]["return"] - pm["1day"][0]["bench"] - pm["1day"][0]["cost"])
+    matrix_0916["lgb360_ndrop3"] = {"excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
+                                     "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
+                                     "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4)}
+    print(f"[vcheck] 09-16包 lgb360 n_drop=3: {matrix_0916['lgb360_ndrop3']}")
+
+    out = VOL_ROOT / "p1_results" / "version_check"
+    out.mkdir(parents=True, exist_ok=True)
+    result = {"matrix_0916": matrix_0916, "bt_window": "2026-01-01~2026-09-11", "n_drop": 3}
+    with (out / "vcheck_0916.json").open("w") as f:
+        json.dump(result, f, indent=2, ensure_ascii=False)
+    vol.commit()
+    return result
+
+
 @app.local_entrypoint()
 def main(
     model: str = "gru",
@@ -1306,6 +1549,7 @@ def main(
     best: bool = False,
     p0: bool = False,
     p1: bool = False,
+    vcheck: bool = False,
 ):
     """入口：
     modal run modal_qlib_cn_a10g.py --model gru [--smoke] [--recent] [--enhanced] [--long-train] [--fund] [--label20] [--force-data] [--data-only]
@@ -1348,10 +1592,27 @@ def main(
 
         print(_json.dumps(res, indent=2, ensure_ascii=False))
         return
+    if vcheck:
+        # 版本敏感性验证：数据diff + 2×2 特征矩阵（两数据包统一回测区间）
+        prepare_data.remote(force=force_data)
+        res_0911 = version_check_0911.remote()
+        res_0916 = version_check_0916.remote()
+        import json as _json
+
+        print("[vcheck] === 09-11 包 ===")
+        print(_json.dumps(res_0911, indent=2, ensure_ascii=False))
+        print("[vcheck] === 09-16 包 ===")
+        print(_json.dumps(res_0916, indent=2, ensure_ascii=False))
+        print("2x2 矩阵（有成本年化超额，区间 2026-01-01~09-11，n_drop=3）：")
+        for k in ["lgb158", "lgb360"]:
+            print(f"  {k}: 09-11包={res_0911['matrix_0911'][k]['excess_with_cost_annual']}  "
+                  f"09-16包={res_0916['matrix_0916'][k]['excess_with_cost_annual']}")
+        return
     if best:
-        # 固化最优配置（见 VALIDATION.md）：LGB+Alpha360+20日标签，2016-2024 训练
-        model, recent, long_train, label20 = "lgb360", True, True, True
-        print("[best] 固化最优配置：lgb360 + recent + long_train + label20")
+        # 固化最优配置（见 VALIDATION.md，2026-09-17 vcheck 特征终判后更新）：
+        # LGB + Alpha158 + 20日标签 + 2016-2024 训练；回测策略 n_drop=3（P0/vcheck 双重确认）
+        model, recent, long_train, label20 = "lgb158", True, True, True
+        print("[best] 固化最优配置：lgb158(Alpha158) + recent + long_train + label20")
     if build_fund:
         res = build_fund_factors.remote(market=fund_market, max_stocks=fund_max_stocks)
         print(res)

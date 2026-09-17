@@ -1,0 +1,28 @@
+{
+  "data_diff": {
+    "n_stocks_compared": 6154,
+    "factor_diff_stocks": 0,
+    "factor_max_abs_diff": 0.0,
+    "close_sample_diff_stocks": 0,
+    "close_sample_max_rel_diff": 0.0,
+    "factor_diff_date_range": [
+      null,
+      null
+    ],
+    "sample_detail": {}
+  },
+  "matrix_0911": {
+    "lgb158": {
+      "excess_with_cost_annual": 0.0943,
+      "ir": 0.497,
+      "max_drawdown": -0.2179
+    },
+    "lgb360": {
+      "excess_with_cost_annual": 0.0762,
+      "ir": 0.363,
+      "max_drawdown": -0.2539
+    }
+  },
+  "bt_window": "2026-01-01~2026-09-11",
+  "n_drop": 3
+}

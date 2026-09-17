@@ -1,0 +1,31 @@
+{
+  "matrix_0916": {
+    "lgb158_ndrop1": {
+      "excess_with_cost_annual": 0.0029,
+      "ir": 0.014,
+      "max_drawdown": -0.2771
+    },
+    "lgb158_ndrop2": {
+      "excess_with_cost_annual": 0.0205,
+      "ir": 0.105,
+      "max_drawdown": -0.2563
+    },
+    "lgb158_ndrop3": {
+      "excess_with_cost_annual": 0.0942,
+      "ir": 0.497,
+      "max_drawdown": -0.218
+    },
+    "lgb158_ndrop5": {
+      "excess_with_cost_annual": 0.0844,
+      "ir": 0.469,
+      "max_drawdown": -0.1937
+    },
+    "lgb360_ndrop3": {
+      "excess_with_cost_annual": 0.0905,
+      "ir": 0.424,
+      "max_drawdown": -0.2621
+    }
+  },
+  "bt_window": "2026-01-01~2026-09-11",
+  "n_drop": 3
+}
