@@ -1,0 +1,43 @@
+{
+  "window": "2026-01-01~2026-09-11",
+  "note": "粗筛：差异<3pp视为噪声；终审以批次C滚动为准",
+  "a1_topk_ndrop": {
+    "top20_nd1": {
+      "excess_with_cost_annual": 0.0836,
+      "ir": 0.418,
+      "max_drawdown": -0.253
+    },
+    "top20_nd2": {
+      "excess_with_cost_annual": 0.0839,
+      "ir": 0.418,
+      "max_drawdown": -0.2721
+    },
+    "top20_nd3": {
+      "excess_with_cost_annual": 0.119,
+      "ir": 0.605,
+      "max_drawdown": -0.224
+    },
+    "top50_nd3": {
+      "excess_with_cost_annual": 0.0943,
+      "ir": 0.497,
+      "max_drawdown": -0.2179
+    }
+  },
+  "a2_market": {
+    "csi300": {
+      "excess_with_cost_annual": 0.0252,
+      "ir": 0.146,
+      "max_drawdown": -0.1619
+    },
+    "csi500": {
+      "excess_with_cost_annual": 0.0839,
+      "ir": 0.418,
+      "max_drawdown": -0.2721
+    },
+    "csi1000": {
+      "excess_with_cost_annual": 0.2618,
+      "ir": 1.225,
+      "max_drawdown": -0.1808
+    }
+  }
+}

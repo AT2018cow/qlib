@@ -1,0 +1,102 @@
+{
+  "window": "2026-01-01~2026-09-11",
+  "market": "csi1000",
+  "note": "粗筛：终审以批次C滚动为准",
+  "b1_train_start": {
+    "2011": {
+      "excess_with_cost_annual": 0.0913,
+      "ir": 0.416,
+      "max_drawdown": -0.2352
+    },
+    "2013": {
+      "excess_with_cost_annual": 0.0913,
+      "ir": 0.416,
+      "max_drawdown": -0.2352
+    },
+    "2016": {
+      "excess_with_cost_annual": 0.2618,
+      "ir": 1.225,
+      "max_drawdown": -0.1808
+    }
+  },
+  "b2_window_mode": {
+    "expanding": {
+      "excess_with_cost_annual": 0.2618,
+      "ir": 1.225,
+      "max_drawdown": -0.1808
+    },
+    "sliding_6y": {
+      "excess_with_cost_annual": 0.2255,
+      "ir": 1.096,
+      "max_drawdown": -0.2145
+    }
+  },
+  "b2_note": "expanding 即 B1 起点2016的结果；sliding 固定 6 年窗",
+  "b3_lgb_trials": {
+    "{'learning_rate': 0.08, 'num_leaves': 100, 'max_depth': 10, 'colsample_bytree': 1.0, 'subsample': 0.7, 'lambda_l1': 0.0, 'lambda_l2': 100.0}": {
+      "excess_with_cost_annual": 0.2771,
+      "ir": 1.278,
+      "max_drawdown": -0.1553
+    },
+    "{'learning_rate': 0.02, 'num_leaves': 200, 'max_depth': 4, 'colsample_bytree': 1.0, 'subsample': 0.7, 'lambda_l1': 0.0, 'lambda_l2': 0.0}": {
+      "excess_with_cost_annual": 0.141,
+      "ir": 0.656,
+      "max_drawdown": -0.1884
+    },
+    "{'learning_rate': 0.12, 'num_leaves': 300, 'max_depth': 4, 'colsample_bytree': 0.6, 'subsample': 0.7, 'lambda_l1': 100.0, 'lambda_l2': 10.0}": {
+      "excess_with_cost_annual": 0.2267,
+      "ir": 1.047,
+      "max_drawdown": -0.216
+    },
+    "{'learning_rate': 0.02, 'num_leaves': 50, 'max_depth': 6, 'colsample_bytree': 1.0, 'subsample': 1.0, 'lambda_l1': 100.0, 'lambda_l2': 0.0}": {
+      "excess_with_cost_annual": 0.1761,
+      "ir": 0.818,
+      "max_drawdown": -0.2001
+    },
+    "{'learning_rate': 0.12, 'num_leaves': 50, 'max_depth': 6, 'colsample_bytree': 0.6, 'subsample': 1.0, 'lambda_l1': 0.0, 'lambda_l2': 10.0}": {
+      "excess_with_cost_annual": 0.1552,
+      "ir": 0.766,
+      "max_drawdown": -0.1624
+    },
+    "{'learning_rate': 0.12, 'num_leaves': 100, 'max_depth': 4, 'colsample_bytree': 1.0, 'subsample': 0.9, 'lambda_l1': 100.0, 'lambda_l2': 100.0}": {
+      "excess_with_cost_annual": 0.0806,
+      "ir": 0.351,
+      "max_drawdown": -0.2619
+    },
+    "{'learning_rate': 0.05, 'num_leaves': 50, 'max_depth': 6, 'colsample_bytree': 0.8, 'subsample': 0.7, 'lambda_l1': 100.0, 'lambda_l2': 100.0}": {
+      "excess_with_cost_annual": 0.2163,
+      "ir": 0.993,
+      "max_drawdown": -0.2031
+    },
+    "{'learning_rate': 0.02, 'num_leaves': 50, 'max_depth': 6, 'colsample_bytree': 0.8, 'subsample': 1.0, 'lambda_l1': 100.0, 'lambda_l2': 10.0}": {
+      "excess_with_cost_annual": 0.1913,
+      "ir": 0.876,
+      "max_drawdown": -0.1956
+    },
+    "{'learning_rate': 0.08, 'num_leaves': 300, 'max_depth': 10, 'colsample_bytree': 0.8, 'subsample': 0.9, 'lambda_l1': 0.0, 'lambda_l2': 0.0}": {
+      "excess_with_cost_annual": 0.1674,
+      "ir": 0.975,
+      "max_drawdown": -0.1365
+    },
+    "{'learning_rate': 0.05, 'num_leaves': 50, 'max_depth': 8, 'colsample_bytree': 1.0, 'subsample': 0.9, 'lambda_l1': 10.0, 'lambda_l2': 100.0}": {
+      "excess_with_cost_annual": 0.1616,
+      "ir": 0.743,
+      "max_drawdown": -0.1996
+    },
+    "{'learning_rate': 0.12, 'num_leaves': 200, 'max_depth': 4, 'colsample_bytree': 0.6, 'subsample': 1.0, 'lambda_l1': 10.0, 'lambda_l2': 0.0}": {
+      "excess_with_cost_annual": 0.1239,
+      "ir": 0.595,
+      "max_drawdown": -0.1868
+    },
+    "{'learning_rate': 0.08, 'num_leaves': 100, 'max_depth': 10, 'colsample_bytree': 0.8, 'subsample': 0.7, 'lambda_l1': 100.0, 'lambda_l2': 0.0}": {
+      "excess_with_cost_annual": 0.2856,
+      "ir": 1.343,
+      "max_drawdown": -0.2022
+    }
+  },
+  "b3_baseline_default_params": {
+    "excess_with_cost_annual": 0.2618,
+    "ir": 1.225,
+    "max_drawdown": -0.1808
+  }
+}
