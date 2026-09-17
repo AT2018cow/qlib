@@ -984,6 +984,151 @@ def dual_horizon(topk: int = 50, n_drop: int = 2, best_params: dict = None):
     return {"latest_date": str(latest), "csv": str(csv)}
 
 
+@app.function(
+    volumes={str(VOL_ROOT): vol},
+    cpu=CPU_COUNT,
+    memory=32768,
+    timeout=4 * 3600,
+)
+def p0_diagnostics():
+    """P0 证据补强（训练 1 次，四项分析复用同一 pred）：
+    - P0-3 分组单调性：每日按预测分 10 组的 20 日真实收益是否单调递增
+    - P0-5 IC 衰减曲线：未来 1/5/10/20/40/60 日的 Rank IC
+    - P0-4 分月归因：月度有成本超额分布（是否集中于个别月份）
+    - P0-1 n_drop 网格：1/2/3/5 换手参数的有成本超额对比
+    结果全部写入 /vol/p0_results/ 并 vol.commit()，供取回本地。
+    配置：lgb360 + long_train + label20（固化最优配置）。"""
+    import json
+
+    import numpy as np
+    import pandas as pd
+
+    import qlib
+    from qlib.backtest import backtest as normal_backtest
+    from qlib.contrib.evaluate import risk_analysis
+    from qlib.data import D
+    from qlib.data.dataset import Dataset
+    from qlib.model.base import Model
+    from qlib.utils import init_instance_by_config
+
+    _ensure_data()
+    END = _latest_trading_day()
+    cfg = _load_and_patch_cfg(MODEL_CFG["lgb360"], smoke=False, recent=True, long_train=True, label20=True)
+    qlib.init(provider_uri=str(DATA_DIR), region="cn",
+              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
+                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-p0"}})
+
+    # ---------- 训练一次，取全 test 段预测 ----------
+    model = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
+    dataset = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
+    model.fit(dataset)
+    pred = model.predict(dataset)  # index (datetime, instrument)
+    print(f"[p0] pred {len(pred)} 行，{pred.index.get_level_values(0).nunique()} 个交易日")
+
+    # ---------- 拉收盘价，计算多周期前向收益（P0-3/5 共用） ----------
+    insts = sorted(set(pred.index.get_level_values(1)))
+    close = D.features(insts, ["$close"], start_time=pred.index.get_level_values(0).min(),
+                       end_time=END, freq="day")["$close"]
+    # D.features 返回 (instrument, datetime)；换到与 pred 一致的 (datetime, instrument)
+    close = close.swaplevel().sort_index()
+    assert not close.reindex(pred.index).isna().all(), "close 与 pred 索引对齐失败"
+
+    results = {}
+
+    # ---------- P0-5 IC 衰减曲线 ----------
+    ic_rows = {}
+    for h in [1, 5, 10, 20, 40, 60]:
+        fwd = close.groupby(level=1).shift(-h) / close - 1
+        label = fwd.reindex(pred.index)
+        df = pd.concat([pred.rename("pred"), label.rename("fwd")], axis=1).dropna()
+        if df.empty or df.index.get_level_values(0).nunique() < 30:
+            ic_rows[h] = None
+            continue
+        ic = df.groupby(level=0).apply(
+            lambda g: g["pred"].rank().corr(g["fwd"].rank()) if len(g) > 10 else np.nan
+        ).dropna()
+        ic_rows[h] = {"rank_ic": round(float(ic.mean()), 4),
+                      "icir": round(float(ic.mean() / ic.std() * np.sqrt(len(ic))), 3) if ic.std() > 0 else None,
+                      "n_days": int(len(ic))}
+    results["ic_decay"] = ic_rows
+    print(f"[p0] P0-5 IC 衰减: {ic_rows}")
+
+    # ---------- P0-3 分组单调性（每日截面 10 分组，20 日真实收益） ----------
+    fwd20 = close.groupby(level=1).shift(-20) / close - 1
+    df = pd.concat([pred.rename("pred"), fwd20.reindex(pred.index).rename("fwd")], axis=1).dropna()
+    # 逐日按预测分 10 组（rank(method='first') 保证并列分数均匀分配）
+    df["group"] = df.groupby(level=0)["pred"].transform(
+        lambda x: pd.qcut(x.rank(method="first"), 10, labels=False)
+    )
+    grp_mean = df.groupby("group")["fwd"].mean()  # 组号 0=最差 ~ 9=最好
+    grp_std = df.groupby("group")["fwd"].std()
+    # 分组序号即 rank，Pearson=Spearman；>0.9 视为单调
+    mono = float(np.corrcoef(range(10), grp_mean.values)[0, 1])
+    top_minus_bottom = float(grp_mean.iloc[-1] - grp_mean.iloc[0])
+    results["group_monotonicity"] = {
+        "group_mean_fwd20": {int(k): round(v, 5) for k, v in grp_mean.items()},
+        "group_std_fwd20": {int(k): round(v, 5) for k, v in grp_std.items()},
+        "spearman_groups_vs_return": round(mono, 4),
+        "top_minus_bottom_20d": round(top_minus_bottom, 5),
+        "verdict": "MONOTONIC" if mono > 0.9 else ("PARTIAL" if mono > 0.6 else "NON-MONOTONIC"),
+    }
+    print(f"[p0] P0-3 分组收益(组0最差~组9最好): {results['group_monotonicity']['group_mean_fwd20']}")
+    print(f"[p0] P0-3 单调性 spearman={mono:.4f} 判定={results['group_monotonicity']['verdict']}")
+
+    # ---------- 回测设置（P0-1/4 共用） ----------
+    bt_kwargs = dict(start_time="2026-01-01", end_time=END, account=100000000, benchmark="SH000905",
+                     exchange_kwargs={"limit_threshold": 0.095, "deal_price": "close",
+                                      "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
+    executor = {"class": "SimulatorExecutor", "module_path": "qlib.backtest.executor",
+                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
+
+    # ---------- P0-1 n_drop 网格 ----------
+    ndrop_rows = {}
+    report_nd2 = None
+    for nd in [1, 2, 3, 5]:
+        strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
+                    "kwargs": {"signal": pred, "topk": 50, "n_drop": nd}}
+        pm, _ = normal_backtest(strategy=strategy, executor=executor, **bt_kwargs)
+        rep = pm["1day"][0]
+        if nd == 2:
+            report_nd2 = rep  # 留给 P0-4 分月归因
+        ra = risk_analysis(rep["return"] - rep["bench"] - rep["cost"])
+        ndrop_rows[nd] = {"excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
+                          "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
+                          "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4)}
+        print(f"[p0] P0-1 n_drop={nd}: {ndrop_rows[nd]}")
+    results["ndrop_grid"] = ndrop_rows
+
+    # ---------- P0-4 分月归因（n_drop=2 基准） ----------
+    excess = report_nd2["return"] - report_nd2["bench"] - report_nd2["cost"]
+    monthly = excess.groupby(excess.index.to_period("M")).agg(["mean", "sum", "count"])
+    monthly.columns = ["daily_mean_excess", "cum_excess", "n_days"]
+    results["monthly_attribution"] = {str(k): {c: round(v, 5) for c, v in row.items()}
+                                      for k, row in monthly.iterrows()}
+    pos_months = int((monthly["cum_excess"] > 0).sum())
+    results["monthly_attribution_summary"] = {
+        "n_months": len(monthly), "positive_months": pos_months,
+        "best_month": str(monthly["cum_excess"].idxmax()), "worst_month": str(monthly["cum_excess"].idxmin()),
+        "concentration_top2_share": round(float(monthly["cum_excess"].nlargest(2).clip(lower=0).sum()
+                                          / max(monthly["cum_excess"].clip(lower=0).sum(), 1e-9)), 3),
+    }
+    print(f"[p0] P0-4 分月超额: {results['monthly_attribution']}")
+    print(f"[p0] P0-4 集中度(前2月占正超额比例)={results['monthly_attribution_summary']['concentration_top2_share']}")
+
+    # ---------- 持久化到 Volume ----------
+    out = VOL_ROOT / "p0_results"
+    out.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(ic_rows).T.to_csv(out / "ic_decay.csv")
+    pd.DataFrame({"group_mean_fwd20": grp_mean, "group_std_fwd20": grp_std}).to_csv(out / "group_monotonicity.csv")
+    monthly.to_csv(out / "monthly_attribution.csv")
+    pd.DataFrame(ndrop_rows).T.to_csv(out / "ndrop_grid.csv")
+    with (out / "summary.json").open("w") as f:
+        json.dump(results, f, indent=2, ensure_ascii=False)
+    print(f"[p0] 全部结果已保存 {out}")
+    vol.commit()
+    return results
+
+
 @app.local_entrypoint()
 def main(
     model: str = "gru",
@@ -1010,6 +1155,7 @@ def main(
     tune_horizon: int = 20,
     dual: bool = False,
     best: bool = False,
+    p0: bool = False,
 ):
     """入口：
     modal run modal_qlib_cn_a10g.py --model gru [--smoke] [--recent] [--enhanced] [--long-train] [--fund] [--label20] [--force-data] [--data-only]
@@ -1034,6 +1180,15 @@ def main(
     --dual: 多周期融合（20日+60日标签 LGB 分数平均）回测+信号
     --topk N: 自定义持仓数（默认 50）"""
     assert model in MODEL_CFG, f"model 须为 {list(MODEL_CFG)}"
+    if p0:
+        # P0 证据补强：训练1次完成分组单调性/IC衰减/分月归因/n_drop网格
+        # 结果存 /vol/p0_results/，取回：modal volume get qlib-cn-data p0_results ./p0_results
+        prepare_data.remote(force=force_data)
+        res = p0_diagnostics.remote()
+        import json as _json
+
+        print(_json.dumps(res, indent=2, ensure_ascii=False))
+        return
     if best:
         # 固化最优配置（见 VALIDATION.md）：LGB+Alpha360+20日标签，2016-2024 训练
         model, recent, long_train, label20 = "lgb360", True, True, True
