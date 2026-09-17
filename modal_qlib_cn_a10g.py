@@ -1675,7 +1675,7 @@ def main(
     modal run modal_qlib_cn_a10g.py --dual
     modal run modal_qlib_cn_a10g.py --best              # 固化最优配置训练+回测
     modal run modal_qlib_cn_a10g.py --best --daily      # 固化最优配置出每日信号
-    --best: 固化最优配置 = lgb360 + recent + long_train + label20（见 VALIDATION.md），
+    --best: 固化最优配置 = lgb360 + recent + long_train + label20（见 docs/experiments/），
         可与 --daily 组合出信号；被 --tune/--dual/--ensemble/--build-fund 覆盖时优先执行后者
     --recent: 训练 2021-2024/验证 2025/回测 2026-01~最新交易日，降换手+固定seed（预测未来用）
     --enhanced: csi500 股票池 + early_stop 放宽到 30（V2 增强）
@@ -1732,7 +1732,7 @@ def main(
                   f"09-16包={res_0916['matrix_0916'][k]['excess_with_cost_annual']}")
         return
     if best:
-        # 固化最优配置（见 VALIDATION.md，2026-09-17 vcheck 特征终判后更新）：
+        # 固化最优配置（见 docs/experiments/01-findings.md，2026-09-17 vcheck 特征终判后更新）：
         # LGB + Alpha158 + 20日标签 + 2016-2024 训练；回测策略 n_drop=3（P0/vcheck 双重确认）
         model, recent, long_train, label20 = "lgb158", True, True, True
         print("[best] 固化最优配置：lgb158(Alpha158) + recent + long_train + label20")
