@@ -1521,6 +1521,120 @@ def version_check_0916():
     return result
 
 
+ROLLING_WINDOWS = [
+    # (train_start, train_end, valid_start, valid_end, test_start, test_end)
+    ("2016-01-01", "2024-09-30", "2024-10-01", "2024-12-31", "2025-01-01", "2025-03-31"),
+    ("2016-01-01", "2024-12-31", "2025-01-01", "2025-03-31", "2025-04-01", "2025-06-30"),
+    ("2016-01-01", "2025-03-31", "2025-04-01", "2025-06-30", "2025-07-01", "2025-09-30"),
+    ("2016-01-01", "2025-06-30", "2025-07-01", "2025-09-30", "2025-10-01", "2025-12-31"),
+    ("2016-01-01", "2025-09-30", "2025-10-01", "2025-12-31", "2026-01-01", "2026-03-31"),
+    ("2016-01-01", "2025-12-31", "2026-01-01", "2026-03-31", "2026-04-01", "2026-06-30"),
+    ("2016-01-01", "2026-03-31", "2026-04-01", "2026-06-30", "2026-07-01", "2026-09-11"),
+]
+
+
+@app.function(
+    volumes={str(VOL_ROOT): vol},
+    cpu=CPU_COUNT,
+    memory=32768,
+    timeout=12 * 3600,
+)
+def p2_rolling():
+    """P2-13 滚动 walk-forward（Alpha158 + 20日标签 + top50 + n_drop=3）：
+    7 个季度窗口，每个窗口只用截至当时的数据训练（严格无前视），回测该季度。
+    拼接收益序列做 21 个月分月归因。
+    回答的问题：+9.4% 是稳定水平，还是单窗口运气？"""
+    import json
+
+    import numpy as np
+    import pandas as pd
+
+    import qlib
+    from qlib.backtest import backtest as normal_backtest
+    from qlib.contrib.evaluate import risk_analysis
+    from qlib.data.dataset import Dataset
+    from qlib.model.base import Model
+    from qlib.utils import init_instance_by_config
+
+    _ensure_data()
+    qlib.init(provider_uri=str(DATA_DIR), region="cn",
+              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
+                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-p2"}})
+
+    executor = {"class": "SimulatorExecutor", "module_path": "qlib.backtest.executor",
+                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
+    quarterly = []
+    report_parts = []
+    for w_idx, (tr_s, tr_e, va_s, va_e, te_s, te_e) in enumerate(ROLLING_WINDOWS, 1):
+        print(f"[p2] 窗口{w_idx}: train {tr_s}~{tr_e} valid {va_s}~{va_e} test {te_s}~{te_e}")
+        cfg = _load_and_patch_cfg(MODEL_CFG["lgb158"], smoke=False, recent=False, long_train=False, label20=True)
+        dh = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
+        dh["start_time"] = "2015-01-01"
+        dh["end_time"] = te_e
+        dh["fit_start_time"] = tr_s
+        dh["fit_end_time"] = tr_e
+        seg = cfg["task"]["dataset"]["kwargs"]["segments"]
+        seg["train"] = [tr_s, tr_e]
+        seg["valid"] = [va_s, va_e]
+        seg["test"] = [te_s, te_e]
+        m = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
+        ds = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
+        m.fit(ds)
+        pred = m.predict(ds)
+        if len(pred) == 0 or pred.index.get_level_values(0).nunique() < 20:
+            print(f"[p2] 窗口{w_idx} 预测样本不足，跳过")
+            continue
+        strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
+                    "kwargs": {"signal": pred, "topk": 50, "n_drop": 3}}
+        pm, _ = normal_backtest(strategy=strategy, executor=executor,
+                                start_time=te_s, end_time=te_e, account=100000000, benchmark="SH000905",
+                                exchange_kwargs={"limit_threshold": 0.095, "deal_price": "close",
+                                                 "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
+        rep = pm["1day"][0]
+        ra = risk_analysis(rep["return"] - rep["bench"] - rep["cost"])
+        quarterly.append({
+            "window": f"w{w_idx}", "test": f"{te_s}~{te_e}",
+            "excess_with_cost_total": round(float((rep["return"] - rep["bench"] - rep["cost"]).sum()), 4),
+            "excess_daily_mean": round(float((rep["return"] - rep["bench"] - rep["cost"]).mean()), 6),
+            "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
+            "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4),
+        })
+        print(f"[p2] 窗口{w_idx} 季度超额(累计)={quarterly[-1]['excess_with_cost_total']}")
+        report_parts.append(rep[["return", "bench", "cost"]])
+
+    # 拼接 21 个月收益序列 → 分月归因
+    full = pd.concat(report_parts).sort_index()
+    excess = full["return"] - full["bench"] - full["cost"]
+    monthly = excess.groupby(excess.index.to_period("M")).agg(["mean", "sum", "count"])
+    monthly.columns = ["daily_mean_excess", "cum_excess", "n_days"]
+    total_mean = float(excess.mean())
+    ann = total_mean * 238
+    pos_months = int((monthly["cum_excess"] > 0).sum())
+    # rolling(3) 的前 2 个值是 NaN，须 fillna(0) 再取 max
+    neg_streak = int((monthly["cum_excess"] < 0).astype(int).rolling(3).sum().fillna(0).max())
+    results = {
+        "config": "Alpha158 + 20d label + long-rolling train + top50 + n_drop=3",
+        "n_windows": len(quarterly), "n_days": int(len(excess)),
+        "overall": {"ann_excess_with_cost": round(ann, 4), "daily_mean": round(total_mean, 6),
+                     "positive_months": pos_months, "total_months": len(monthly),
+                     "worst_3m_streak_neg": neg_streak},
+        "quarterly": quarterly,
+        "monthly": {str(k): {c: round(v, 5) for c, v in row.items()} for k, row in monthly.iterrows()},
+    }
+    print(f"[p2] 滚动总览: 年化超额={results['overall']['ann_excess_with_cost']} "
+          f"正超额月份={pos_months}/{len(monthly)} 最差连续负月数={neg_streak}")
+    out = VOL_ROOT / "p2_results"
+    out.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(quarterly).to_csv(out / "rolling_quarterly.csv", index=False)
+    monthly.to_csv(out / "rolling_monthly.csv")
+    with (out / "summary.json").open("w") as f:
+        json.dump(results, f, indent=2, ensure_ascii=False)
+    full.to_pickle(out / "rolling_daily_report.pkl")
+    print(f"[p2] 全部结果已保存 {out}")
+    vol.commit()
+    return results
+
+
 @app.local_entrypoint()
 def main(
     model: str = "gru",
@@ -1550,6 +1664,7 @@ def main(
     p0: bool = False,
     p1: bool = False,
     vcheck: bool = False,
+    p2: bool = False,
 ):
     """入口：
     modal run modal_qlib_cn_a10g.py --model gru [--smoke] [--recent] [--enhanced] [--long-train] [--fund] [--label20] [--force-data] [--data-only]
@@ -1588,6 +1703,14 @@ def main(
         # 结果存 /vol/p1_results/，取回：modal volume get qlib-cn-data p1_results ./p1_results
         prepare_data.remote(force=force_data)
         res = p1_diagnostics.remote()
+        import json as _json
+
+        print(_json.dumps(res, indent=2, ensure_ascii=False))
+        return
+    if p2:
+        # P2-13 滚动 walk-forward + 21个月分月归因
+        prepare_data.remote(force=force_data)
+        res = p2_rolling.remote()
         import json as _json
 
         print(_json.dumps(res, indent=2, ensure_ascii=False))

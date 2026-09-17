@@ -1,0 +1,177 @@
+{
+  "config": "Alpha158 + 20d label + long-rolling train + top50 + n_drop=3",
+  "n_windows": 7,
+  "n_days": 412,
+  "overall": {
+    "ann_excess_with_cost": 0.0047,
+    "daily_mean": 2e-05,
+    "positive_months": 11,
+    "total_months": 21,
+    "worst_3m_streak_neg": 3
+  },
+  "quarterly": [
+    {
+      "window": "w1",
+      "test": "2025-01-01~2025-03-31",
+      "excess_with_cost_total": 0.0725,
+      "excess_daily_mean": 0.001272,
+      "ir": 2.529,
+      "max_drawdown": -0.0314
+    },
+    {
+      "window": "w2",
+      "test": "2025-04-01~2025-06-30",
+      "excess_with_cost_total": 0.0042,
+      "excess_daily_mean": 7e-05,
+      "ir": 0.193,
+      "max_drawdown": -0.0351
+    },
+    {
+      "window": "w3",
+      "test": "2025-07-01~2025-09-30",
+      "excess_with_cost_total": -0.0953,
+      "excess_daily_mean": -0.001445,
+      "ir": -3.763,
+      "max_drawdown": -0.1068
+    },
+    {
+      "window": "w4",
+      "test": "2025-10-01~2025-12-31",
+      "excess_with_cost_total": -0.015,
+      "excess_daily_mean": -0.00025,
+      "ir": -0.542,
+      "max_drawdown": -0.031
+    },
+    {
+      "window": "w5",
+      "test": "2026-01-01~2026-03-31",
+      "excess_with_cost_total": 0.0176,
+      "excess_daily_mean": 0.000314,
+      "ir": 0.59,
+      "max_drawdown": -0.0492
+    },
+    {
+      "window": "w6",
+      "test": "2026-04-01~2026-06-30",
+      "excess_with_cost_total": -0.1964,
+      "excess_daily_mean": -0.003273,
+      "ir": -4.621,
+      "max_drawdown": -0.1971
+    },
+    {
+      "window": "w7",
+      "test": "2026-07-01~2026-09-11",
+      "excess_with_cost_total": 0.2204,
+      "excess_daily_mean": 0.004159,
+      "ir": 5.445,
+      "max_drawdown": -0.027
+    }
+  ],
+  "monthly": {
+    "2025-01": {
+      "daily_mean_excess": 0.00254,
+      "cum_excess": 0.04566,
+      "n_days": 18.0
+    },
+    "2025-02": {
+      "daily_mean_excess": 0.00094,
+      "cum_excess": 0.01701,
+      "n_days": 18.0
+    },
+    "2025-03": {
+      "daily_mean_excess": 0.00047,
+      "cum_excess": 0.00985,
+      "n_days": 21.0
+    },
+    "2025-04": {
+      "daily_mean_excess": 0.00034,
+      "cum_excess": 0.00709,
+      "n_days": 21.0
+    },
+    "2025-05": {
+      "daily_mean_excess": 0.00156,
+      "cum_excess": 0.02964,
+      "n_days": 19.0
+    },
+    "2025-06": {
+      "daily_mean_excess": -0.00163,
+      "cum_excess": -0.0325,
+      "n_days": 20.0
+    },
+    "2025-07": {
+      "daily_mean_excess": -0.00039,
+      "cum_excess": -0.00907,
+      "n_days": 23.0
+    },
+    "2025-08": {
+      "daily_mean_excess": -0.00132,
+      "cum_excess": -0.02782,
+      "n_days": 21.0
+    },
+    "2025-09": {
+      "daily_mean_excess": -0.00266,
+      "cum_excess": -0.05845,
+      "n_days": 22.0
+    },
+    "2025-10": {
+      "daily_mean_excess": -0.00028,
+      "cum_excess": -0.00481,
+      "n_days": 17.0
+    },
+    "2025-11": {
+      "daily_mean_excess": 0.00049,
+      "cum_excess": 0.00973,
+      "n_days": 20.0
+    },
+    "2025-12": {
+      "daily_mean_excess": -0.00086,
+      "cum_excess": -0.01989,
+      "n_days": 23.0
+    },
+    "2026-01": {
+      "daily_mean_excess": -0.00231,
+      "cum_excess": -0.04616,
+      "n_days": 20.0
+    },
+    "2026-02": {
+      "daily_mean_excess": 2e-05,
+      "cum_excess": 0.00035,
+      "n_days": 14.0
+    },
+    "2026-03": {
+      "daily_mean_excess": 0.00288,
+      "cum_excess": 0.06342,
+      "n_days": 22.0
+    },
+    "2026-04": {
+      "daily_mean_excess": -0.0005,
+      "cum_excess": -0.01049,
+      "n_days": 21.0
+    },
+    "2026-05": {
+      "daily_mean_excess": -0.00281,
+      "cum_excess": -0.05049,
+      "n_days": 18.0
+    },
+    "2026-06": {
+      "daily_mean_excess": -0.00645,
+      "cum_excess": -0.13539,
+      "n_days": 21.0
+    },
+    "2026-07": {
+      "daily_mean_excess": 0.00727,
+      "cum_excess": 0.1671,
+      "n_days": 23.0
+    },
+    "2026-08": {
+      "daily_mean_excess": 0.00219,
+      "cum_excess": 0.04598,
+      "n_days": 21.0
+    },
+    "2026-09": {
+      "daily_mean_excess": 0.00082,
+      "cum_excess": 0.00734,
+      "n_days": 9.0
+    }
+  }
+}
