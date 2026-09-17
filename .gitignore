@@ -14,6 +14,9 @@ dist/
 *.hd5
 *.csv
 
+# 实验结果数据（P0/P1 诊断等，随仓库跟踪）
+!results/**
+
 .env
 .venv/
 .vim

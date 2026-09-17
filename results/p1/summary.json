@@ -1,0 +1,54 @@
+{
+  "data_package": "2026-09-16",
+  "n_drop": 3,
+  "blend_20d": {
+    "excess_with_cost_annual": 0.0627,
+    "ir": 0.312,
+    "max_drawdown": -0.2287
+  },
+  "single_360_20d": {
+    "excess_with_cost_annual": 0.0635,
+    "ir": 0.299,
+    "max_drawdown": -0.2621
+  },
+  "single_158_20d": {
+    "excess_with_cost_annual": 0.0852,
+    "ir": 0.452,
+    "max_drawdown": -0.218
+  },
+  "single_360_40d": {
+    "excess_with_cost_annual": -0.068,
+    "ir": -0.274,
+    "max_drawdown": -0.2875
+  },
+  "topk_grid_360_20d": {
+    "30": {
+      "excess_with_cost_annual": 0.016,
+      "ir": 0.074,
+      "max_drawdown": -0.2887
+    },
+    "50": {
+      "excess_with_cost_annual": 0.0635,
+      "ir": 0.299,
+      "max_drawdown": -0.2621
+    },
+    "70": {
+      "excess_with_cost_annual": 0.02,
+      "ir": 0.094,
+      "max_drawdown": -0.2688
+    }
+  },
+  "sim_equal_vs_score": {
+    "equal": {
+      "ann_excess_sim": -0.003,
+      "n_rebalance": 8,
+      "total_cost": 0.002
+    },
+    "score": {
+      "ann_excess_sim": -0.003,
+      "n_rebalance": 8,
+      "total_cost": 0.002
+    },
+    "note": "手动模拟（每20日调仓、无涨跌停约束），仅内部对比可信"
+  }
+}

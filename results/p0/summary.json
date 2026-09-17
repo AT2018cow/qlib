@@ -1,0 +1,139 @@
+{
+  "ic_decay": {
+    "1": {
+      "rank_ic": 0.0417,
+      "icir": 2.926,
+      "n_days": 171
+    },
+    "5": {
+      "rank_ic": 0.0627,
+      "icir": 4.603,
+      "n_days": 167
+    },
+    "10": {
+      "rank_ic": 0.0858,
+      "icir": 5.649,
+      "n_days": 162
+    },
+    "20": {
+      "rank_ic": 0.1078,
+      "icir": 6.655,
+      "n_days": 152
+    },
+    "40": {
+      "rank_ic": 0.1366,
+      "icir": 8.351,
+      "n_days": 132
+    },
+    "60": {
+      "rank_ic": 0.096,
+      "icir": 7.409,
+      "n_days": 112
+    }
+  },
+  "group_monotonicity": {
+    "group_mean_fwd20": {
+      "0": -0.01896,
+      "1": -0.01587,
+      "2": -0.00751,
+      "3": -0.00719,
+      "4": -0.00646,
+      "5": -0.00528,
+      "6": -0.00639,
+      "7": -0.0044,
+      "8": -0.00082,
+      "9": 0.00861
+    },
+    "group_std_fwd20": {
+      "0": 0.21148,
+      "1": 0.18312,
+      "2": 0.15957,
+      "3": 0.13902,
+      "4": 0.13,
+      "5": 0.12375,
+      "6": 0.11998,
+      "7": 0.12064,
+      "8": 0.11627,
+      "9": 0.11402
+    },
+    "spearman_groups_vs_return": 0.9075,
+    "top_minus_bottom_20d": 0.02758,
+    "verdict": "MONOTONIC"
+  },
+  "ndrop_grid": {
+    "1": {
+      "excess_with_cost_annual": -0.0316,
+      "ir": -0.135,
+      "max_drawdown": -0.2945
+    },
+    "2": {
+      "excess_with_cost_annual": 0.0038,
+      "ir": 0.018,
+      "max_drawdown": -0.2811
+    },
+    "3": {
+      "excess_with_cost_annual": 0.0635,
+      "ir": 0.299,
+      "max_drawdown": -0.2621
+    },
+    "5": {
+      "excess_with_cost_annual": -0.0208,
+      "ir": -0.101,
+      "max_drawdown": -0.2595
+    }
+  },
+  "monthly_attribution": {
+    "2026-01": {
+      "daily_mean_excess": -0.00358,
+      "cum_excess": -0.07165,
+      "n_days": 20.0
+    },
+    "2026-02": {
+      "daily_mean_excess": -0.00121,
+      "cum_excess": -0.017,
+      "n_days": 14.0
+    },
+    "2026-03": {
+      "daily_mean_excess": 0.00527,
+      "cum_excess": 0.11584,
+      "n_days": 22.0
+    },
+    "2026-04": {
+      "daily_mean_excess": -0.00359,
+      "cum_excess": -0.07531,
+      "n_days": 21.0
+    },
+    "2026-05": {
+      "daily_mean_excess": -0.00343,
+      "cum_excess": -0.06166,
+      "n_days": 18.0
+    },
+    "2026-06": {
+      "daily_mean_excess": -0.00661,
+      "cum_excess": -0.1389,
+      "n_days": 21.0
+    },
+    "2026-07": {
+      "daily_mean_excess": 0.0097,
+      "cum_excess": 0.223,
+      "n_days": 23.0
+    },
+    "2026-08": {
+      "daily_mean_excess": 0.00157,
+      "cum_excess": 0.03294,
+      "n_days": 21.0
+    },
+    "2026-09": {
+      "daily_mean_excess": -0.00037,
+      "cum_excess": -0.00449,
+      "n_days": 12.0
+    }
+  },
+  "monthly_attribution_summary": {
+    "n_months": 9,
+    "positive_months": 3,
+    "best_month": "2026-07",
+    "worst_month": "2026-06",
+    "concentration_top2_share": 0.911
+  }
+}
