@@ -2,6 +2,9 @@
 
 > **Fork 说明**：本 fork 在 Qlib 之上构建了 A 股日频量价研究管道（Modal 云端运行，入口 `modal_qlib_cn_a10g.py`）。
 > 研究结论、工作路线图、风险审计与实盘手册见 **[docs/experiments/](docs/experiments/README.md)**，实验原始数据在 `results/`。
+>
+> **免责声明**：本仓库仅供学术研究与实验性工程验证，不构成投资建议（research-only, not investment advice）。
+> 任何信号或配置均不得作为实际投资决策依据，用户需自担全部投资风险。
 [![Platform](https://img.shields.io/badge/platform-linux%20%7C%20windows%20%7C%20macos-lightgrey)](https://pypi.org/project/pyqlib/#files)
 [![PypI Versions](https://img.shields.io/pypi/v/pyqlib)](https://pypi.org/project/pyqlib/#history)
 [![Upload Python Package](https://github.com/microsoft/qlib/workflows/Upload%20Python%20Package/badge.svg)](https://pypi.org/project/pyqlib/)
