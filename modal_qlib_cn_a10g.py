@@ -1569,11 +1569,13 @@ def _gen_5y_windows():
     quarters = [(y, m) for (y, m) in quarters if not (y >= 2026 and m >= 10)]  # 截至 2026Q3
     wins = []
     for y, m in quarters:
-        py, pm = (y, m - 3) if m > 1 else (y - 1, 10)  # 上一季度
-        pe = qtr_end(py, pm)
-        wins.append(("2016-01-01", str(pe), str(qtr_start(py, pm)), str(pe),
-                     str(qtr_start(y, m)), str(qtr_end(y, m))))
-    # train_end 与 valid_end 相同（valid 是 train 末季度）：上面简化为 train 到 pe、valid 整季度即 [qs,pe]
+        py, pm = (y, m - 3) if m > 1 else (y - 1, 10)      # T-1 季度 = valid
+        ppy, ppm = (py, pm - 3) if pm > 1 else (py - 1, 10)  # T-2 季度
+        # train_end = T-2Q末（与 P2 一致）：train 末样本的 20 日标签只落到 valid 期，
+        # 不会泄露 test 头部。此前版本的 train_end=valid_end 会让标签直接 peek test —— 真前视。
+        wins.append(("2016-01-01", str(qtr_end(ppy, ppm)),
+                    str(qtr_start(py, pm)), str(qtr_end(py, pm)),
+                    str(qtr_start(y, m)), str(qtr_end(y, m))))
     return wins
 
 
