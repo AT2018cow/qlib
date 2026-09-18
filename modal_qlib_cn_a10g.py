@@ -335,6 +335,101 @@ def bench_years():
     return out
 
 
+@app.function(volumes={str(VOL_ROOT): vol}, cpu=8, memory=24576, timeout=2 * 3600)
+def independent_recheck():
+    """终审：完全独立实现的端到端复算（不经过 _load_and_patch_cfg / risk_analysis 等任何本文件公共代码）。
+    目标窗口：csi1000 w09 (test 2023-01-01~2023-03-31)，管道报告 excess_total = -0.0163。
+    手写全部配置：handler / processors / label / LGB 超参 / 回测参数 / 超额计算。"""
+    import numpy as np
+    import pandas as pd
+
+    import qlib
+    from qlib.backtest import backtest as normal_backtest
+    from qlib.data.dataset import DatasetH
+    from qlib.model.base import Model
+    from qlib.utils import init_instance_by_config
+
+    _ensure_data()
+    qlib.init(provider_uri=str(DATA_DIR), region="cn",
+              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
+                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-recheck"}})
+
+    # ---- 手写 task 配置（对照 lgb158 yaml + 修复后批次C窗口 w09 的语义）----
+    task = {
+        "model": {
+            "class": "LGBModel",
+            "module_path": "qlib.contrib.model.gbdt",
+            "kwargs": {
+                "loss": "mse",
+                "colsample_bytree": 0.8879,
+                "learning_rate": 0.0421,
+                "subsample": 0.8789,
+                "lambda_l1": 205.6999,
+                "lambda_l2": 580.9768,
+                "max_depth": 8,
+                "num_leaves": 210,
+                "num_threads": 8,
+            },
+        },
+        "dataset": {
+            "class": "DatasetH",
+            "module_path": "qlib.data.dataset",
+            "kwargs": {
+                "handler": {
+                    "class": "Alpha158",
+                    "module_path": "qlib.contrib.data.handler",
+                    "kwargs": {
+                        "start_time": "2015-01-01",
+                        "end_time": "2023-03-31",
+                        "fit_start_time": "2016-01-01",
+                        "fit_end_time": "2022-09-30",
+                        "instruments": "csi1000",
+                        "label": ["Ref($close, -20)/$close - 1"],
+                        "infer_processors": [
+                            {"class": "RobustZScoreNorm", "kwargs": {"fields_group": "feature", "clip_outlier": True}},
+                            {"class": "Fillna", "kwargs": {"fields_group": "feature"}},
+                        ],
+                        "learn_processors": [
+                            {"class": "DropnaLabel"},
+                            {"class": "CSRankNorm", "kwargs": {"fields_group": "label"}},
+                        ],
+                    },
+                },
+                "segments": {
+                    "train": ["2016-01-01", "2022-09-30"],
+                    "valid": ["2022-10-01", "2022-12-31"],
+                    "test": ["2023-01-01", "2023-03-31"],
+                },
+            },
+        },
+    }
+    model: Model = init_instance_by_config(task["model"], accept_types=Model)
+    dataset: DatasetH = init_instance_by_config(task["dataset"], accept_types=DatasetH)
+    model.fit(dataset)
+    pred = model.predict(dataset)
+
+    executor = {"class": "SimulatorExecutor", "module_path": "qlib.backtest.executor",
+                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
+    strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
+                "kwargs": {"signal": pred, "topk": 20, "n_drop": 2}}
+    pm, _ = normal_backtest(strategy=strategy, executor=executor,
+                             start_time="2023-01-01", end_time="2023-03-31", account=100000000,
+                             benchmark="SH000852",
+                             exchange_kwargs={"limit_threshold": 0.095, "deal_price": "close",
+                                              "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
+    rep = pm["1day"][0]
+    # 手动计算有成本超额（不用 risk_analysis）
+    excess = rep["return"] - rep["bench"] - rep["cost"]
+    result = {"excess_total": round(float(excess.sum()), 4),
+              "daily_mean": round(float(excess.mean()), 6),
+              "n_days": int(len(excess))}
+    print(f"[recheck] 独立实现: {result}")
+    print(f"[recheck] 管道报告: {{'excess_total': -0.0163, 'daily_mean': -0.000277, 'n_days': 59}}")
+    diff = abs(result["excess_total"] - (-0.0163))
+    print(f"[recheck] 偏差: {diff:.4f} ({'✅ 一致' if diff < 0.005 else '❌ 需排查'})")
+    return result
+
+
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=1800)
 def verify_integrity():
     """资金安全复核：
