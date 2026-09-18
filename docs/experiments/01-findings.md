@@ -5,8 +5,9 @@
 ## 环境与数据
 
 - 计算：Modal serverless（Starter 计划：并发容器 100 / GPU 并发 10），入口 `modal_qlib_cn_a10g.py`
-- 数据：chenditc/investment_data 每日 release（A股日频，qlib 格式），Volume `qlib-cn-data`。
-  **已实证 append-only**（两版本包 6154 只股票全量 diff 为零，历史从不修订）
+- 数据：chenditc/investment_data 每日 release（A股日频，qlib 格式，全量包 565MB、历史 append-only
+  已实证零修订）。**每日信号（--best --daily）为单容器自包含模式：每次运行自动下载最新包，
+  不依赖 Volume**；Volume `qlib-cn-data` 仅供研究批并行（多容器共享一份数据）使用
 - 股票池：csi500 全历史成分（~1800 只，按区间过滤），benchmark SH000905
 - 费率基准：买 0.05% + 卖 0.15%（敏感区间见文末）
 

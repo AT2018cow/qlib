@@ -80,3 +80,4 @@
 - 原始数据：`results/p0|p1|p2|batch_a|batch_b|batch_c/`（每批含 summary.json，关键数值均经云端运行日志双重核对）
 - 阶段记录：[01-findings.md](01-findings.md)（全实验矩阵）、[02-roadmap.md](02-roadmap.md)（路线图终态）、[03-risks-and-audit.md](03-risks-and-audit.md)（风险与 bug 审计）、[04-playbook.md](04-playbook.md)（操作手册）
 - 复现入口：`--p0 / --p1 / --p2 / --vcheck / --batcha / --batchb / --batchc / ::verify_integrity / ::independent_recheck / ::bench_years`
+  （研究批经 Volume 共享数据；每日信号 `--best --daily` 单容器自包含，无需 Volume）
