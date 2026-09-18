@@ -175,17 +175,18 @@ def _ensure_data(force: bool = False):
         print(f"[data] instruments: {sorted(p.name for p in inst.iterdir())}")
 
 
-def _latest_trading_day() -> str:
-    """读取 Volume 日历的最新交易日（YYYY-MM-DD），供配置动态使用。"""
-    cal_file = DATA_DIR / "calendars" / "day.txt"
+def _latest_trading_day(data_dir=None) -> str:
+    """读取数据日历的最新交易日（YYYY-MM-DD）。data_dir=None 时用 Volume 路径；
+    standalone 模式必须传容器本地解压目录（否则读到不存在的 Volume → 兜底旧日期）。"""
+    cal_file = (data_dir or DATA_DIR) / "calendars" / "day.txt"
     if cal_file.exists():
         lines = cal_file.read_text().strip().splitlines()
         if lines:
             return lines[-1]
-    return "2026-09-11"  # 兜底
+    return "2026-09-11"  # 兜底（仅当数据目录不可读时）
 
 
-def _load_and_patch_cfg(yaml_path: str, smoke: bool, recent: bool = False, enhanced: bool = False, long_train: bool = False, fund: bool = False, label20: bool = False, label40: bool = False, label60: bool = False, rolling: bool = False, verify: bool = False, topk: int = None, market: str = None, nd: int = None) -> dict:
+def _load_and_patch_cfg(yaml_path: str, smoke: bool, recent: bool = False, enhanced: bool = False, long_train: bool = False, fund: bool = False, label20: bool = False, label40: bool = False, label60: bool = False, rolling: bool = False, verify: bool = False, topk: int = None, market: str = None, nd: int = None, provider_dir: str = None) -> dict:
     """读 bundled yaml，打上 Modal 路径补丁。不改仓库原文件。
 
     recent=True 时把整套数据区间前移到 2026 年（训练 2021-2024 / 验证 2025 /
@@ -206,8 +207,8 @@ def _load_and_patch_cfg(yaml_path: str, smoke: bool, recent: bool = False, enhan
     with open(yaml_path) as f:
         cfg = yaml.load(f)
 
-    # 1) 数据路径指向 Volume；region 保持 cn（A股日历/涨跌停逻辑依赖它）
-    cfg.setdefault("qlib_init", {})["provider_uri"] = str(DATA_DIR)
+    # 1) 数据路径：默认 Volume；standalone 模式可传本地解压目录
+    cfg.setdefault("qlib_init", {})["provider_uri"] = str(provider_dir) if provider_dir else str(DATA_DIR)
     cfg["qlib_init"]["region"] = "cn"
     # 2) mlflow 落到 Volume，否则容器退出即丢
     cfg["qlib_init"]["exp_manager"] = {
@@ -229,7 +230,7 @@ def _load_and_patch_cfg(yaml_path: str, smoke: bool, recent: bool = False, enhan
             pass
     # 5) 近期模式：训练/验证/回测全部前移到最新交易日（配合 chenditc 每日更新数据）
     if recent:
-        END = _latest_trading_day()
+        END = _latest_trading_day(Path(provider_dir) if provider_dir else None)
         dh = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
         train_start, fit_start = ("2016-01-01", "2016-01-01") if long_train else ("2021-01-01", "2021-01-01")
         dh["start_time"] = "2015-01-01" if long_train else "2020-01-01"  # 提前一年保证 Alpha158 60日窗口
@@ -747,7 +748,7 @@ def _save_and_commit_signal(res: dict):
     import subprocess
     from datetime import datetime
 
-    fname = Path(res["csv"]).name
+    fname = Path(res.get("csv", f"signals/{res['date']}_top{res['topk']}_lgb158.csv")).name
     local_dir = Path(__file__).resolve().parent / "results" / "signals"
     local_dir.mkdir(parents=True, exist_ok=True)
     local_path = local_dir / fname
@@ -2182,6 +2183,97 @@ def batch_b(lgb_trials: int = 12, market: str = "csi1000", bench: str = "SH00085
     return results
 
 
+CHENDITC_LATEST_URL = "https://github.com/chenditc/investment_data/releases/latest/download/qlib_bin.tar.gz"
+
+
+@app.function(
+    cpu=CPU_COUNT,
+    memory=32768,
+    timeout=4 * 3600,
+)
+def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
+    """每日信号（自包含单容器版，--best --daily 的实现）：
+    下载 chenditc 最新全量包 → 解压到容器本地盘 → 训练终审候选 → top-k 信号 → 返回 CSV 内容。
+    - 无 Volume 依赖：每次必然最新数据（根治"忘记 force-data 导致数据陈旧"）
+    - 结果由本地入口写入 results/signals/ 并 git 推送（Volume 仅在研究批并行场景保留）
+    """
+    import shutil
+    import tarfile
+
+    import numpy as np
+    import pandas as pd
+    import requests
+
+    import qlib
+    from qlib.data import D
+    from qlib.data.dataset import Dataset
+    from qlib.model.base import Model
+    from qlib.utils import init_instance_by_config
+
+    # ---- 1) 下载最新数据包并解压到容器本地盘 ----
+    data_dir = Path("/tmp/cn_data")
+    if data_dir.exists():
+        shutil.rmtree(data_dir)
+    zip_path = Path("/tmp/chenditc_latest.tar.gz")
+    extract = Path("/tmp/chenditc_extract")
+    print(f"[daily] 下载最新数据 {CHENDITC_LATEST_URL} ...")
+    with requests.get(CHENDITC_LATEST_URL, stream=True, timeout=600) as r:
+        r.raise_for_status()
+        with zip_path.open("wb") as f:
+            for chunk in r.iter_content(chunk_size=1 << 20):
+                f.write(chunk)
+    if extract.exists():
+        shutil.rmtree(extract)
+    extract.mkdir(parents=True)
+    with tarfile.open(zip_path, "r:gz") as tf:
+        tf.extractall(extract)
+    base = extract
+    if not (base / "features").exists():
+        for sub in base.iterdir():
+            if sub.is_dir() and (sub / "features").exists():
+                base = sub
+                break
+    shutil.move(str(base), str(data_dir))
+    cal_lines = (data_dir / "calendars" / "day.txt").read_text().strip().splitlines()
+    print(f"[daily] 数据就绪：日历 {cal_lines[0]} ~ {cal_lines[-1]}（{len(cal_lines)} 个交易日）")
+
+    # ---- 2) 训练终审候选 ----
+    qlib.init(provider_uri=str(data_dir), region="cn",
+              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
+                           "kwargs": {"uri": "file:/tmp/mlruns", "default_exp_name": "qlib-cn-daily"}})
+    cfg = _load_and_patch_cfg(MODEL_CFG["lgb158"], smoke=False, recent=True, long_train=True, label20=True,
+                              topk=topk, nd=nd, market=market, provider_dir=str(data_dir))
+    model_obj = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
+    dataset = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
+    model_obj.fit(dataset)
+    pred = model_obj.predict(dataset)
+    predict_date = pred.index.get_level_values(0).max()
+    day = pred.loc[predict_date].dropna()
+    top = day.sort_values(ascending=False).head(topk)
+
+    # ---- 3) 涨跌停过滤（口径与 verify_integrity 审计一致：当日涨幅=close/前收-1，|涨幅|≥9.5% 剔除） ----
+    day_df = D.features([str(x) for x in day.index], ["$close", "Ref($close,1)"],
+                        start_time=predict_date, end_time=predict_date, freq="day")
+    if len(day_df) > 0 and ("Ref($close,1)" in day_df.columns):
+        day_ret = (day_df["$close"] / day_df["Ref($close,1)"] - 1).dropna()
+        limited = day_ret[(day_ret >= 0.095) | (day_ret <= -0.095)].index.get_level_values(0)
+        n_removed = len(day) - len(day.index[~day.index.isin(limited)])
+        day = day.loc[day.index[~day.index.isin(limited)]]
+        top = day.sort_values(ascending=False).head(topk)
+        print(f"[daily] 已剔除 {n_removed} 只涨/跌停股")
+
+    # ---- 4) 组装 CSV 内容返回 ----
+    csv_content = "rank,instrument,score\n" + "\n".join(
+        f"{i},{inst},{score}" for i, (inst, score) in enumerate(top.items(), 1)
+    )
+    print(f"[daily] {predict_date} top{topk}（{market}，未来20日收益预测）:")
+    for rank, (inst, score) in enumerate(top.items(), 1):
+        print(f"  {rank:>2}. {inst}  score={score:.4f}")
+    return {"date": str(predict_date)[:10], "topk": topk, "n_stocks": len(top),
+            "csv_content": csv_content, "data_calendar_end": cal_lines[-1]}
+
+
+
 @app.local_entrypoint()
 def main(
     model: str = "gru",
@@ -2351,28 +2443,14 @@ def main(
     if data_only:
         prepare_data.remote(force=force_data)
         return
-    prepare_data.remote(force=force_data)
     if daily:
-        # 防呆：固化最优配置是 long_train=True（2016-2024 训练，Rank IC 0.105 的出处），
-        # 不带 --long-train 的 --daily 会用 2021-2024 短训练模型出信号，与验证结果不一致
-        if model == "lgb360" and label20 and not long_train:
-            print("[warn] 检测到 --daily --model lgb360 --label20 但未加 --long-train："
-                  "信号将来自 2021-2024 短训练模型（Rank IC 约 0.11 但未做长周期验证）。"
-                  "推荐使用 --best --daily 固化最优配置。")
-        if model in LGB_MODELS:
-            # LGB 系信号：CPU 容器，不挂 GPU
-            res = daily_signal_cpu.remote(
-                model=model, topk=topk, predict_date=predict_date, enhanced=enhanced, long_train=long_train, fund=fund, label20=label20, market=market, nd=nd
-            )
-        else:
-            check_gpu.remote()
-            res = daily_signal.remote(
-                model=model, topk=topk, predict_date=predict_date, enhanced=enhanced, long_train=long_train, fund=fund, label20=label20, market=market, nd=nd
-            )
-        print(res)
-        # 自动取回本地 + 提交推送 GitHub（paper trading 留痕）
+        # --best --daily → 自包含单容器：每次全量下载最新数据（必然最新，--force-data 不再需要），
+        # 训练终审候选 → 信号返回 → 本地入库+git 推送。Volume 仅供研究批（并行 map）使用。
+        res = daily_standalone.remote(topk=topk, nd=nd, market=market)
+        print(f"[daily] 数据日历至: {res['data_calendar_end']}  信号日期: {res['date']}")
         _save_and_commit_signal(res)
         return
+    prepare_data.remote(force=force_data)
     if model in LGB_MODELS:
         # LGB 系训练：CPU 容器，不挂 GPU
         res = train_cpu.remote(model=model, smoke=smoke, recent=recent, enhanced=enhanced, long_train=long_train, fund=fund, label20=label20, rolling=rolling, verify=verify, topk=topk, market=market, nd=nd)

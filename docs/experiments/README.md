@@ -31,9 +31,10 @@
 ## 快速命令（2026-09-18 终审版，全部经过验证）
 
 ```bash
-# 1. 每日信号（终审候选配置：csi1000 + top20 + nd2，默认即生效，无需任何参数）
+# 1. 每日信号（自包含单容器：自动下载当日最新数据 → 训练 csi1000+top20+nd2 →
+#    信号自动取回本地 results/signals/ 并 git 推送，无需任何参数、无需 Volume）
 modal run modal_qlib_cn_a10g.py --best --daily
-#    取回：modal volume get qlib-cn-data "signals/<日期>_top20_lgb158.csv" ./
+#    注意：不再需要 --force-data（每次运行必然使用最新数据）；Volume 仅供研究批并行使用
 
 # 2. 完整训练+回测（同配置）
 modal run modal_qlib_cn_a10g.py --best
