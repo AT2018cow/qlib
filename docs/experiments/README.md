@@ -28,14 +28,27 @@
 实验原始数据按批次归档于仓库根 `results/`：`p0/`、`p1/`（含 version_check）、`p2/`。
 每批含 summary.json 与明细 csv/pkl，关键数值均与云端运行日志双重核对过。
 
-## 快速命令
+## 快速命令（2026-09-18 终审版，全部经过验证）
 
 ```bash
-# 每日信号（固化最优配置，Alpha158）
-modal run modal_qlib_cn_a10g.py --best --daily --topk 50
+# 1. 每日信号（终审候选配置：csi1000 + top20 + nd2，默认即生效，无需任何参数）
+modal run modal_qlib_cn_a10g.py --best --daily
+#    取回：modal volume get qlib-cn-data "signals/<日期>_top20_lgb158.csv" ./
 
-# 完整训练+回测
+# 2. 完整训练+回测（同配置）
 modal run modal_qlib_cn_a10g.py --best
 
-# 诊断批（--p0 / --p1 / --p2 / --vcheck 分别复现各阶段实验）
+# 3. 实盘前审计（涨跌停口径）——建议建仓前跑
+modal run modal_qlib_cn_a10g.py::verify_integrity
+
+# 4. 复现各阶段实验（历史记录见 01/05 文档）
+modal run modal_qlib_cn_a10g.py --p0        # 分组单调性/IC衰减/分月/n_drop网格（csi500时代）
+modal run modal_qlib_cn_a10g.py --p1        # 特征融合/40日标签/组合构造（已被后续部分修正）
+modal run modal_qlib_cn_a10g.py --p2        # 7窗口滚动（被批次C的23窗口滚动取代）
+modal run modal_qlib_cn_a10g.py --vcheck    # 数据版本/特征/幸存者验证
+modal run modal_qlib_cn_a10g.py --batcha    # topk×nd 耦合 + 股票池粗筛
+modal run modal_qlib_cn_a10g.py --batchb    # 训练起点/窗口模式/LGB超参（csi1000）
+modal run modal_qlib_cn_a10g.py --batchc    # ⭐ 23窗口滚动终审（唯一裁判）
+modal run modal_qlib_cn_a10g.py::independent_recheck  # 独立端到端复算
+modal run modal_qlib_cn_a10g.py::bench_years          # 基准指数年度收益
 ```

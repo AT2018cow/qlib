@@ -185,7 +185,7 @@ def _latest_trading_day() -> str:
     return "2026-09-11"  # 兜底
 
 
-def _load_and_patch_cfg(yaml_path: str, smoke: bool, recent: bool = False, enhanced: bool = False, long_train: bool = False, fund: bool = False, label20: bool = False, label40: bool = False, label60: bool = False, rolling: bool = False, verify: bool = False, topk: int = None) -> dict:
+def _load_and_patch_cfg(yaml_path: str, smoke: bool, recent: bool = False, enhanced: bool = False, long_train: bool = False, fund: bool = False, label20: bool = False, label40: bool = False, label60: bool = False, rolling: bool = False, verify: bool = False, topk: int = None, market: str = None, nd: int = None) -> dict:
     """读 bundled yaml，打上 Modal 路径补丁。不改仓库原文件。
 
     recent=True 时把整套数据区间前移到 2026 年（训练 2021-2024 / 验证 2025 /
@@ -260,9 +260,15 @@ def _load_and_patch_cfg(yaml_path: str, smoke: bool, recent: bool = False, enhan
             segments["test"] = ["2025-01-01", END]
             bt["start_time"] = "2025-01-01"
             bt["end_time"] = END
-    # 自定义持仓数
+    # 自定义持仓数 / 换手 / 股票池（终审候选 csi1000 需要覆盖 yaml 默认的 csi500）
     if topk is not None:
         cfg["port_analysis_config"]["strategy"]["kwargs"]["topk"] = topk
+    if nd is not None:
+        cfg["port_analysis_config"]["strategy"]["kwargs"]["n_drop"] = nd
+    if market is not None:
+        dh = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
+        dh["instruments"] = market
+        cfg["port_analysis_config"]["backtest"]["benchmark"] = "SH000852" if market == "csi1000" else "SH000905"
     # 6) 增强模式：csi500 + 早停放宽
     if enhanced:
         dh = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
@@ -557,7 +563,7 @@ LGB_MODELS = {"lgb158", "lgb360"}
 
 
 def _train_impl(model: str, smoke: bool, recent: bool, enhanced: bool, long_train: bool, fund: bool,
-                label20: bool, rolling: bool, verify: bool, topk: int, experiment_name: str):
+                label20: bool, rolling: bool, verify: bool, topk: int, experiment_name: str, market: str = None, nd: int = None):
     """train 共享实现（CPU/GPU 两个 wrapper 调用）。LGB 系模型无需 GPU。"""
     import qlib
     from qlib.model.trainer import task_train
@@ -566,7 +572,7 @@ def _train_impl(model: str, smoke: bool, recent: bool, enhanced: bool, long_trai
     print(f"[train] {model} smoke={smoke} recent={recent} enhanced={enhanced} long_train={long_train} fund={fund} label20={label20} rolling={rolling} verify={verify} topk={topk}")
 
     _ensure_data()
-    cfg = _load_and_patch_cfg(MODEL_CFG[model], smoke=smoke, recent=recent, enhanced=enhanced, long_train=long_train, fund=fund, label20=label20, rolling=rolling, verify=verify, topk=topk)
+    cfg = _load_and_patch_cfg(MODEL_CFG[model], smoke=smoke, recent=recent, enhanced=enhanced, long_train=long_train, fund=fund, label20=label20, rolling=rolling, verify=verify, topk=topk, market=market, nd=nd)
     print(f"[train] provider_uri={cfg['qlib_init']['provider_uri']} region={cfg['qlib_init']['region']}")
 
     qlib.init(**cfg["qlib_init"])
@@ -584,12 +590,12 @@ def _train_impl(model: str, smoke: bool, recent: bool, enhanced: bool, long_trai
     gpu="A10G",
     timeout=4 * 3600,
 )
-def train(model: str = "gru", smoke: bool = True, recent: bool = False, enhanced: bool = False, long_train: bool = False, fund: bool = False, label20: bool = False, rolling: bool = False, verify: bool = False, topk: int = None, experiment_name: str = "qlib-cn-daily-a10g"):
+def train(model: str = "gru", smoke: bool = True, recent: bool = False, enhanced: bool = False, long_train: bool = False, fund: bool = False, label20: bool = False, rolling: bool = False, verify: bool = False, topk: int = None, experiment_name: str = "qlib-cn-daily-a10g", market: str = None, nd: int = None):
     """GPU 版训练（GRU/ALSTM 等 RNN 模型）。"""
     import torch
 
     assert torch.cuda.is_available(), "GPU 未生效，先跑 check_gpu 排查 Image"
-    return _train_impl(model, smoke, recent, enhanced, long_train, fund, label20, rolling, verify, topk, experiment_name)
+    return _train_impl(model, smoke, recent, enhanced, long_train, fund, label20, rolling, verify, topk, experiment_name, market, nd)
 
 
 @app.function(
@@ -598,10 +604,10 @@ def train(model: str = "gru", smoke: bool = True, recent: bool = False, enhanced
     memory=32768,
     timeout=12 * 3600,
 )
-def train_cpu(model: str = "lgb158", smoke: bool = True, recent: bool = False, enhanced: bool = False, long_train: bool = False, fund: bool = False, label20: bool = False, rolling: bool = False, verify: bool = False, topk: int = None, experiment_name: str = "qlib-cn-daily-a10g"):
+def train_cpu(model: str = "lgb158", smoke: bool = True, recent: bool = False, enhanced: bool = False, long_train: bool = False, fund: bool = False, label20: bool = False, rolling: bool = False, verify: bool = False, topk: int = None, experiment_name: str = "qlib-cn-daily-a10g", market: str = None, nd: int = None):
     """CPU 版训练（LGB/XGB/Linear 等非 GPU 模型），不挂载 GPU，避免浪费。"""
     assert model in LGB_MODELS, f"train_cpu 仅用于 CPU 模型 {LGB_MODELS}，{model} 请用 train"
-    return _train_impl(model, smoke, recent, enhanced, long_train, fund, label20, rolling, verify, topk, experiment_name)
+    return _train_impl(model, smoke, recent, enhanced, long_train, fund, label20, rolling, verify, topk, experiment_name, market, nd)
 
 
 @app.function(
@@ -735,7 +741,7 @@ def build_fund_factors(market: str = "csi500", start_year: int = 2021, max_stock
     return {"fields_dumped": dumped, "stocks": n_stocks}
 
 
-def _daily_impl(model: str, topk: int, predict_date: str, enhanced: bool, long_train: bool, fund: bool, label20: bool):
+def _daily_impl(model: str, topk: int, predict_date: str, enhanced: bool, long_train: bool, fund: bool, label20: bool, market: str = None, nd: int = None):
     """每日信号共享实现（CPU/GPU 两个 wrapper 调用）。LGB 系模型无需 GPU。"""
     import pandas as pd
 
@@ -746,7 +752,7 @@ def _daily_impl(model: str, topk: int, predict_date: str, enhanced: bool, long_t
 
     assert model in MODEL_CFG, f"model 须为 {list(MODEL_CFG)}"
     _ensure_data()
-    cfg = _load_and_patch_cfg(MODEL_CFG[model], smoke=False, recent=True, enhanced=enhanced, long_train=long_train, fund=fund, label20=label20)
+    cfg = _load_and_patch_cfg(MODEL_CFG[model], smoke=False, recent=True, enhanced=enhanced, long_train=long_train, fund=fund, label20=label20, market=market, nd=nd)
     qlib.init(**cfg["qlib_init"])
     task = cfg["task"]
 
@@ -805,12 +811,12 @@ def _daily_impl(model: str, topk: int, predict_date: str, enhanced: bool, long_t
     gpu="A10G",
     timeout=8 * 3600,
 )
-def daily_signal(model: str = "gru", topk: int = 50, predict_date: str = None, enhanced: bool = False, long_train: bool = False, fund: bool = False, label20: bool = False):
+def daily_signal(model: str = "gru", topk: int = 50, predict_date: str = None, enhanced: bool = False, long_train: bool = False, fund: bool = False, label20: bool = False, market: str = None, nd: int = None):
     """GPU 版每日信号（GRU/ALSTM 等 RNN 模型）。"""
     import torch
 
     assert torch.cuda.is_available(), "GPU 未生效，先跑 check_gpu 排查 Image"
-    return _daily_impl(model, topk, predict_date, enhanced, long_train, fund, label20)
+    return _daily_impl(model, topk, predict_date, enhanced, long_train, fund, label20, market, nd)
 
 
 @app.function(
@@ -819,10 +825,10 @@ def daily_signal(model: str = "gru", topk: int = 50, predict_date: str = None, e
     memory=32768,
     timeout=12 * 3600,
 )
-def daily_signal_cpu(model: str = "lgb158", topk: int = 50, predict_date: str = None, enhanced: bool = False, long_train: bool = False, fund: bool = False, label20: bool = False):
+def daily_signal_cpu(model: str = "lgb158", topk: int = 50, predict_date: str = None, enhanced: bool = False, long_train: bool = False, fund: bool = False, label20: bool = False, market: str = None, nd: int = None):
     """CPU 版每日信号（LGB 等非 GPU 模型），不挂载 GPU，避免浪费。"""
     assert model in LGB_MODELS, f"daily_signal_cpu 仅用于 CPU 模型 {LGB_MODELS}，{model} 请用 daily_signal"
-    return _daily_impl(model, topk, predict_date, enhanced, long_train, fund, label20)
+    return _daily_impl(model, topk, predict_date, enhanced, long_train, fund, label20, market, nd)
 
 
 @app.function(
@@ -2144,7 +2150,9 @@ def main(
     data_only: bool = False,
     force_data: bool = False,
     daily: bool = False,
-    topk: int = 50,
+    topk: int = 20,
+    nd: int = 2,
+    market: str = "csi1000",
     predict_date: str = None,
     enhanced: bool = False,
     long_train: bool = False,
@@ -2264,10 +2272,12 @@ def main(
                   f"09-16包={res_0916['matrix_0916'][k]['excess_with_cost_annual']}")
         return
     if best:
-        # 固化最优配置（见 docs/experiments/01-findings.md，2026-09-17 vcheck 特征终判后更新）：
-        # LGB + Alpha158 + 20日标签 + 2016-2024 训练；回测策略 n_drop=3（P0/vcheck 双重确认）
+        # 终审固化配置（2026-09-18，见 docs/experiments/05-final-audit.md）：
+        # LGB + Alpha158 + 20日标签 + 2016起 expanding + csi1000 + top20 + nd2（唯一实盘候选，滚动 +7.5%）
+        # 注意：--daily 时 topk/nd/market 生效；--best 单独跑完整训练+回测时回测参数同此
         model, recent, long_train, label20 = "lgb158", True, True, True
-        print("[best] 固化最优配置：lgb158(Alpha158) + recent + long_train + label20")
+        topk, nd, market = 20, 2, (market if market else "csi1000")
+        print(f"[best] 终审固化配置：lgb158 + Alpha158 + 20日标签 + {market} + top20 + nd2")
     if build_fund:
         res = build_fund_factors.remote(market=fund_market, max_stocks=fund_max_stocks)
         print(res)
@@ -2312,21 +2322,21 @@ def main(
         if model in LGB_MODELS:
             # LGB 系信号：CPU 容器，不挂 GPU
             res = daily_signal_cpu.remote(
-                model=model, topk=topk, predict_date=predict_date, enhanced=enhanced, long_train=long_train, fund=fund, label20=label20
+                model=model, topk=topk, predict_date=predict_date, enhanced=enhanced, long_train=long_train, fund=fund, label20=label20, market=market, nd=nd
             )
         else:
             check_gpu.remote()
             res = daily_signal.remote(
-                model=model, topk=topk, predict_date=predict_date, enhanced=enhanced, long_train=long_train, fund=fund, label20=label20
+                model=model, topk=topk, predict_date=predict_date, enhanced=enhanced, long_train=long_train, fund=fund, label20=label20, market=market, nd=nd
             )
         print(res)
         print(f"取回信号：modal volume get qlib-cn-data signals ./signals_out")
         return
     if model in LGB_MODELS:
         # LGB 系训练：CPU 容器，不挂 GPU
-        res = train_cpu.remote(model=model, smoke=smoke, recent=recent, enhanced=enhanced, long_train=long_train, fund=fund, label20=label20, rolling=rolling, verify=verify, topk=topk)
+        res = train_cpu.remote(model=model, smoke=smoke, recent=recent, enhanced=enhanced, long_train=long_train, fund=fund, label20=label20, rolling=rolling, verify=verify, topk=topk, market=market, nd=nd)
     else:
         check_gpu.remote()
-        res = train.remote(model=model, smoke=smoke, recent=recent, enhanced=enhanced, long_train=long_train, fund=fund, label20=label20, rolling=rolling, verify=verify, topk=topk)
+        res = train.remote(model=model, smoke=smoke, recent=recent, enhanced=enhanced, long_train=long_train, fund=fund, label20=label20, rolling=rolling, verify=verify, topk=topk, market=market, nd=nd)
     print(res)
     print("取回 mlruns：modal volume get qlib-cn-data /vol/mlruns ./mlruns_out")
