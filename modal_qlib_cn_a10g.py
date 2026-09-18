@@ -2274,6 +2274,59 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
 
 
 
+# ===================== 每日定时任务（Modal Cron，云端全自动） =====================
+# 部署：  modal secret create github-push GITHUB_TOKEN=<你的PAT>   # 一次性
+#         modal deploy modal_qlib_cn_a10g.py                        # 部署（含 cron）
+# 停止：  modal app stop <app名> 或 modal delete <app名>
+# 说明：  每个 A 股交易日收盘后（北京 20:30）云端自动：下载最新数据 → 训练终审候选
+#         → 生成 top20 信号 → 经 GitHub API 直接写入仓库（无需 git 二进制/本地机器）
+GITHUB_REPO = "AT2018cow/qlib"
+SIGNAL_BRANCH = "main"
+
+
+@app.function(
+    schedule=modal.Cron("30 20 * * 1-5", timezone="Asia/Shanghai"),
+    secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
+    timeout=2 * 3600,
+)
+def daily_cron():
+    """云端全自动每日信号：daily_standalone 训练 → GitHub API 提交（不依赖本地机器）。
+    需 Modal Secret `github-push`（含 GITHUB_TOKEN，对 fork 仓库 Contents 读写权限的 PAT）。"""
+    import base64
+    import os
+
+    import requests
+
+    res = daily_standalone.remote(topk=20, nd=2, market="csi1000")
+    print(f"[cron] 信号日期 {res['date']}（数据日历至 {res['data_calendar_end']}）")
+    if res["date"] != res["data_calendar_end"]:
+        print("[cron] 注：信号日期早于数据日历末日（节假日/数据延迟），照常入库留痕")
+
+    path = f"results/signals/{res['date']}_top20_lgb158.csv"
+    token = os.environ["GITHUB_TOKEN"]
+    headers = {"Authorization": f"Bearer {token}",
+               "Accept": "application/vnd.github+json"}
+    api = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{path}"
+
+    # 同日重跑 dedup：文件已存在且内容一致则跳过
+    exist = requests.get(api, headers=headers, timeout=30)
+    if exist.status_code == 200 and base64.b64decode(exist.json()["content"]).decode() == res["csv_content"]:
+        print(f"[cron] {path} 已存在且内容一致，跳过（同日重跑）")
+        return
+    sha = exist.json().get("sha") if exist.status_code == 200 else None
+
+    r = requests.put(api, headers=headers, timeout=30, json={
+        "message": f"chore(signal): paper-trading record {res['date']} top20 (cron)",
+        "content": base64.b64encode(res["csv_content"].encode()).decode(),
+        "branch": SIGNAL_BRANCH,
+        **({"sha": sha} if sha else {}),
+    })
+    if r.status_code in (200, 201):
+        print(f"[cron] ✅ 已推送到 GitHub: {path}")
+    else:
+        print(f"[cron] ❌ GitHub 推送失败: {r.status_code} {r.text[:200]}")
+
+
 @app.local_entrypoint()
 def main(
     model: str = "gru",
