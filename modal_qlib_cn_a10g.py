@@ -310,6 +310,32 @@ def _load_and_patch_cfg(yaml_path: str, smoke: bool, recent: bool = False, enhan
 
 
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=1800)
+def bench_years():
+    """拉基准指数年度收益（用于把滚动超额换算成绝对收益图景）。"""
+    import pandas as pd
+
+    import qlib
+    from qlib.data import D
+
+    qlib.init(provider_uri=str(DATA_DIR), region="cn")
+    df = D.features(["SH000905", "SH000852"], ["$close"], start_time="2021-01-01",
+                    end_time=_latest_trading_day(), freq="day")
+    out = {}
+    for inst in ["SH000905", "SH000852"]:
+        s = df.loc[:, "$close"].xs(inst, level=0 if df.index.names[0] == "instrument" else 1)
+        if s.index.nlevels > 1:
+            s = s.droplevel(-1)
+        rets = {}
+        for y in range(2021, 2027):
+            sy = s[s.index.year == y]
+            if len(sy) > 5:
+                rets[str(y)] = round(float(sy.iloc[-1] / sy.iloc[0] - 1), 4)
+        out[inst] = rets
+    print(f"[bench] {out}")
+    return out
+
+
+@app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=1800)
 def verify_integrity():
     """资金安全复核：
     1) chenditc $change 是否为"当日涨幅"（close/前收-1）——决定回测涨跌停模拟是否正确；
