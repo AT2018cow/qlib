@@ -741,6 +741,38 @@ def build_fund_factors(market: str = "csi500", start_year: int = 2021, max_stock
     return {"fields_dumped": dumped, "stocks": n_stocks}
 
 
+def _save_and_commit_signal(res: dict):
+    """每日信号落地本地 results/signals/ 并 git 提交推送（paper trading 留痕）。
+    容错：git 不可用/推送失败时仅警告，不阻断主流程。"""
+    import subprocess
+    from datetime import datetime
+
+    fname = Path(res["csv"]).name
+    local_dir = Path(__file__).resolve().parent / "results" / "signals"
+    local_dir.mkdir(parents=True, exist_ok=True)
+    local_path = local_dir / fname
+    local_path.write_text(res["csv_content"])
+    print(f"[signal] 已取回本地: {local_path}")
+
+    repo = Path(__file__).resolve().parent
+    if not (repo / ".git").exists():
+        print("[signal] 非 git 仓库，跳过提交")
+        return
+    try:
+        subprocess.run(["git", "add", str(local_path.relative_to(repo))], cwd=repo, check=True)
+        msg = f"signal: {fname.replace('_top20_lgb158.csv','')} daily top20 (csi1000)"
+        subprocess.run(["git", "commit", "-q", "-m",
+                        f"chore(signal): paper-trading record {fname} ({datetime.now():%Y-%m-%d %H:%M})"],
+                       cwd=repo, check=True)
+        r = subprocess.run(["git", "push", "fork", "main"], cwd=repo, capture_output=True, text=True, timeout=60)
+        if r.returncode == 0:
+            print(f"[signal] 已提交并推送 GitHub: {msg}")
+        else:
+            print(f"[signal] ⚠️ 推送失败（本地提交已保存）: {r.stderr.strip()[:120]}")
+    except Exception as e:
+        print(f"[signal] ⚠️ git 操作失败（信号文件已保存本地）: {e}")
+
+
 def _daily_impl(model: str, topk: int, predict_date: str, enhanced: bool, long_train: bool, fund: bool, label20: bool, market: str = None, nd: int = None):
     """每日信号共享实现（CPU/GPU 两个 wrapper 调用）。LGB 系模型无需 GPU。"""
     import pandas as pd
@@ -800,8 +832,10 @@ def _daily_impl(model: str, topk: int, predict_date: str, enhanced: bool, long_t
         {"rank": range(1, len(top) + 1), "instrument": top.index, "score": top.values}
     ).to_csv(csv, index=False)
     print(f"[signal] 已保存 {csv}")
+    csv_content = csv.read_text()
     vol.commit()
-    return {"date": str(predict_date), "topk": topk, "csv": str(csv), "n_stocks": len(top)}
+    return {"date": str(predict_date), "topk": topk, "csv": str(csv), "n_stocks": len(top),
+            "csv_content": csv_content}
 
 
 @app.function(
@@ -2330,7 +2364,8 @@ def main(
                 model=model, topk=topk, predict_date=predict_date, enhanced=enhanced, long_train=long_train, fund=fund, label20=label20, market=market, nd=nd
             )
         print(res)
-        print(f"取回信号：modal volume get qlib-cn-data signals ./signals_out")
+        # 自动取回本地 + 提交推送 GitHub（paper trading 留痕）
+        _save_and_commit_signal(res)
         return
     if model in LGB_MODELS:
         # LGB 系训练：CPU 容器，不挂 GPU
