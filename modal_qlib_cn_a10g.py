@@ -760,10 +760,16 @@ def _save_and_commit_signal(res: dict):
         return
     try:
         subprocess.run(["git", "add", str(local_path.relative_to(repo))], cwd=repo, check=True)
+        # 同日重跑（数据未更新）时信号无变化，git commit 会因 nothing-to-commit 失败——优雅跳过
+        diff = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=repo)
+        if diff.returncode != 0:
+            subprocess.run(["git", "commit", "-q", "-m",
+                            f"chore(signal): paper-trading record {fname} ({datetime.now():%Y-%m-%d %H:%M})"],
+                           cwd=repo, check=True)
+        else:
+            print("[signal] 信号与上次一致（同日重跑/数据未更新），无需重复提交")
+            return
         msg = f"signal: {fname.replace('_top20_lgb158.csv','')} daily top20 (csi1000)"
-        subprocess.run(["git", "commit", "-q", "-m",
-                        f"chore(signal): paper-trading record {fname} ({datetime.now():%Y-%m-%d %H:%M})"],
-                       cwd=repo, check=True)
         r = subprocess.run(["git", "push", "fork", "main"], cwd=repo, capture_output=True, text=True, timeout=60)
         if r.returncode == 0:
             print(f"[signal] 已提交并推送 GitHub: {msg}")
