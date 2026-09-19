@@ -24,6 +24,15 @@
 - `qlib/model/` + `examples/benchmarks/*/` — per-model code + yaml configs; `qlib/rl/` needs `pip install -e .[rl]` (`tianshou<=0.4.10, torch, numpy<2.0`).
 - `qlib/cli/run.py` (`qrun` entry, `fire`) and `scripts/get_data.py` (`fire.Fire(GetData)`).
 
+## This fork's extension layer (2026-09 quant research, actively maintained)
+- **Read `docs/experiments/HANDOVER.md` first** — full handover: final conclusions, methodology discipline, fixed-bug list, system state.
+- `modal_qlib_cn_a10g.py` — all Modal functions (production daily cron + research batches). Deployment: `modal deploy modal_qlib_cn_a10g.py` (at2018cow workspace; `github-push` secret required for cron push).
+- **Production is live**: `--best --daily` = csi1000+top20/nd2 candidate, cron at 20:30 CST weekdays, auto-pushes signals to `results/signals/` via GitHub API; `daily_standalone`/`daily_cron` are `nonpreemptible=True`.
+- `qlib_audit_fixes.py` / `qlib_live_retrain.py` — audited label-maturity/purge boundary math + 20-session retrain cache policy (both unit-tested in `tests/test_qlib_*.py`; do NOT modify without re-running them).
+- `freq_experiment.py` — standalone retraining-frequency experiment (no Secret deps, runs in any workspace).
+- **Data in this fork**: chenditc daily full release (append-only, no revisions, real historical constituents — all verified); Volume `qlib-cn-data`. Docker-style local data setup from upstream README section does NOT apply to the daily pipeline (it always downloads fresh).
+- **Critical bug-fix conventions** (hard-won, see 03-risks-and-audit.md): limit-up filter must use close/prev-close with correct MultiIndex alignment; train/valid/test boundaries must be purged via `purge_cfg_splits`; never trust a too-good backtest number before a look-ahead audit.
+
 ## Conventions / gotchas
 - Docstrings: Numpydoc style (`docs/developer/code_standard_and_dev_guide.rst`).
 - `make clean` deletes `*.so/*.cpp/mlruns/build/dist`; use it before rebuilds, not casually.
