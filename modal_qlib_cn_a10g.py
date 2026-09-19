@@ -546,8 +546,14 @@ def debug_data():
 
 
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=3600)
-def prepare_data(force: bool = False):
+def prepare_data(force: bool = False, skip_health: bool = False):
     _ensure_data(force=force)
+    if skip_health:
+        # 研究批路径：健康检查为 5-10 分钟的全市场扫描，在 preemptible 容器上
+        # 反复被平台抢占重启会耗尽 timeout；数据已就绪时训练回测不依赖它
+        print("[data] skip_health=True，跳过健康检查（研究批路径）")
+        vol.commit()
+        return
     # 校验数据健康（对应 scripts/check_data_health.py 的核心调用）
     import subprocess
 
@@ -2564,7 +2570,7 @@ def main(
         return
     if batcha:
         # 批次A 粗筛：topk×n_drop 耦合 + 股票池
-        prepare_data.remote(force=force_data)
+        prepare_data.remote(force=force_data, skip_health=True)
         res = batch_a.remote()
         import json as _json
 
@@ -2572,7 +2578,7 @@ def main(
         return
     if batchb:
         # 批次B：训练起点 + 窗口模式 + LGB 超参快搜
-        prepare_data.remote(force=force_data)
+        prepare_data.remote(force=force_data, skip_health=True)
         res = batch_b.remote()
         import json as _json
 
@@ -2580,7 +2586,7 @@ def main(
         return
     if batchc:
         # 批次C 终审：两个候选 × 5年滚动（2021-2026，23 窗口，8 并行）
-        prepare_data.remote(force=force_data)
+        prepare_data.remote(force=force_data, skip_health=True)
         res1 = batch_c.remote(market="csi1000", bench="SH000852", topk=20, nd=2, tag="c1000_nd2")
         res2 = batch_c.remote(market="csi500", bench="SH000905", topk=20, nd=3, tag="c500_nd3")
         import json as _json
@@ -2592,7 +2598,7 @@ def main(
         return
     if p2:
         # P2-13 滚动 walk-forward + 21个月分月归因
-        prepare_data.remote(force=force_data)
+        prepare_data.remote(force=force_data, skip_health=True)
         res = p2_rolling.remote()
         import json as _json
 
@@ -2600,7 +2606,7 @@ def main(
         return
     if vcheck:
         # 版本敏感性验证：数据diff + 2×2 特征矩阵（两数据包统一回测区间）
-        prepare_data.remote(force=force_data)
+        prepare_data.remote(force=force_data, skip_health=True)
         res_0911 = version_check_0911.remote()
         res_0916 = version_check_0916.remote()
         import json as _json
