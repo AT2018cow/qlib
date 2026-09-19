@@ -2491,6 +2491,139 @@ def daily_cron():
         raise RuntimeError(f"GitHub push failed: HTTP {r.status_code}: {r.text[:200]}")
 
 
+# ===================== 第六步：重训频率对比实验（freq 5/20/60） =====================
+
+@app.function(
+    volumes={str(VOL_ROOT): vol},
+    cpu=8,
+    memory=24576,
+    timeout=2 * 3600,
+    max_containers=8,
+)
+def freq_window(args: dict):
+    """频率实验窗口 worker：在重训日训练（purge 边界）→ 预测并回测执行区间。
+    时序与 cron 生产一致：重训日 T 收盘后训练，信号用于 [T+1, T'] 的交易（T'=下一重训日）。"""
+    from bisect import bisect_left
+
+    import numpy as np
+    import pandas as pd
+
+    import qlib
+    from qlib.backtest import backtest as normal_backtest
+    from qlib.data.dataset import Dataset
+    from qlib.model.base import Model
+    from qlib.utils import init_instance_by_config
+
+    from qlib_audit_fixes import last_matured_sample, purge_cfg_splits, read_trading_calendar
+
+    qlib.init(provider_uri=str(DATA_DIR), region="cn", skip_if_reg=True,
+              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
+                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-freq"}})
+    cal = read_trading_calendar(DATA_DIR)
+    horizon = args.get("horizon", 20)
+    asof_i = bisect_left(cal, args["retrain_asof"])
+    # —— 分割构造：configure_asof 的泛化（允许 asof 为历史重训日）——
+    valid_end_i = asof_i - horizon - 1                       # valid 末样本标签成熟于 T 前
+    valid_start_i = valid_end_i - args.get("valid_sessions", 252) + 1
+    if valid_start_i <= 0 or valid_end_i <= 0:
+        raise RuntimeError(f"insufficient history at {args['retrain_asof']}")
+    valid_start = cal[valid_start_i]
+    train_end = last_matured_sample(cal, valid_start, horizon)
+    cfg = _load_and_patch_cfg(MODEL_CFG["lgb158"], smoke=False, recent=True, long_train=True,
+                              label20=True, topk=args["topk"], nd=args["nd"], market=args["market"])
+    dk = cfg["task"]["dataset"]["kwargs"]
+    seg = dk["segments"]
+    handler = dk["handler"]["kwargs"]
+    seg["train"] = ["2016-01-01", train_end]
+    seg["valid"] = [valid_start, cal[valid_end_i]]
+    seg["test"] = [args["eval_start"], args["eval_end"]]
+    handler["start_time"] = "2015-01-01"
+    handler["end_time"] = args["eval_end"]                   # 特征必须覆盖整个执行区间
+    handler["fit_start_time"] = "2016-01-01"
+    handler["fit_end_time"] = train_end
+    purge_cfg_splits(cfg, cal, horizon=horizon)               # 硬断言所有跨段边界无泄漏
+    m = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
+    ds = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
+    m.fit(ds)
+    pred = m.predict(ds, segment="test")
+    if pred.empty:
+        raise RuntimeError(f"empty predictions {args['eval_start']}~{args['eval_end']}")
+    executor = {"class": "SimulatorExecutor", "module_path": "qlib.backtest.executor",
+                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
+    strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
+                "kwargs": {"signal": pred, "topk": args["topk"], "n_drop": args["nd"]}}
+    bench = "SH000852" if args["market"] == "csi1000" else "SH000905"
+    pm, _ = normal_backtest(strategy=strategy, executor=executor,
+                             start_time=args["eval_start"], end_time=args["eval_end"],
+                             account=100000000, benchmark=bench,
+                             exchange_kwargs={"limit_threshold": 0.095, "deal_price": "close",
+                                              "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
+    rep = pm["1day"][0]
+    excess = rep["return"] - rep["bench"] - rep["cost"]
+    if excess.empty:
+        raise RuntimeError("empty excess series")
+    return {"freq": args["freq"], "eval_start": args["eval_start"],
+            "daily": [round(float(v), 8) for v in excess.tolist()], "n_days": int(len(excess))}
+
+
+@app.function(
+    volumes={str(VOL_ROOT): vol},
+    cpu=4,
+    memory=8192,
+    timeout=8 * 3600,
+)
+def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20, nd=2):
+    """第六步主函数：重训频率对比。区间划分（日历索引，无缝衔接）：
+    重训点 i 执行区间 = [cal[i+1], cal[i+freq]]；相邻区间无重叠无遗漏。
+    结果存 /vol/freq_experiment/。"""
+    import json as _json
+    from bisect import bisect_left
+
+    import numpy as np
+
+    from qlib_audit_fixes import read_trading_calendar
+
+    _ensure_data(force=True)   # 确保最新数据（infi Volume 可能是旧版）
+    cal = read_trading_calendar(DATA_DIR)
+    start_i = bisect_left(cal, eval_from)
+    results = {}
+    for freq in [int(x) for x in freqs.split(",")]:
+        jobs = []
+        i = start_i
+        while i < len(cal) - 1:
+            eval_end = cal[min(i + freq, len(cal) - 1)]
+            jobs.append({"freq": freq, "retrain_asof": cal[i], "eval_start": cal[i + 1],
+                         "eval_end": eval_end, "market": market, "topk": topk, "nd": nd})
+            i += freq
+        print(f"[freq] freq={freq}: {len(jobs)} 个重训点（首重训日 {jobs[0]['retrain_asof']}）")
+        outs = list(freq_window.map(jobs))
+        daily, errs = [], 0
+        for o in outs:
+            if o.get("daily"):
+                daily.extend(o["daily"])
+            else:
+                errs += 1
+        x = np.array(daily)
+        cum = np.cumsum(x)
+        mdd = float((cum - np.maximum.accumulate(cum)).min())
+        results[str(freq)] = {
+            "n_retrains": len(jobs), "n_errors": errs, "n_days": len(x),
+            "ann_excess": round(float(x.mean() * 238), 4) if len(x) else None,
+            "ir": round(float(x.mean() / x.std(ddof=1) * np.sqrt(238)), 3) if len(x) > 1 else None,
+            "max_drawdown": round(mdd, 4),
+            "positive_days": int((x > 0).sum()), "positive_ratio": round(float((x > 0).mean()), 3) if len(x) else None,
+        }
+        print(f"[freq] freq={freq}: 年化={results[str(freq)]['ann_excess']} "
+              f"IR={results[str(freq)]['ir']} MDD={results[str(freq)]['max_drawdown']} "
+              f"正日比例={results[str(freq)]['positive_ratio']} 错误窗口={errs}")
+    out = VOL_ROOT / "freq_experiment"
+    out.mkdir(parents=True, exist_ok=True)
+    with (out / "results.json").open("w") as f:
+        _json.dump({"window": f"{eval_from}~{cal[-1]}", "market": market, "results": results}, f, indent=2)
+    vol.commit()
+    return results
+
+
 @app.local_entrypoint()
 def main(
     model: str = "gru",
