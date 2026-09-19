@@ -2269,7 +2269,7 @@ CHENDITC_LATEST_URL = "https://github.com/chenditc/investment_data/releases/late
     cpu=CPU_COUNT,
     memory=32768,
     timeout=4 * 3600,
-    non_preemptible=True,  # 每日信号是生产职责：抢占会导致当天无信号；3x 成本（~$0.3-0.8/日）可接受
+    nonpreemptible=True,  # 每日信号是生产职责：抢占会导致当天无信号；3x 成本（~$0.3-0.8/日）可接受
 )
 def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
     """每日信号（自包含单容器版，--best --daily 的实现）：
@@ -2443,7 +2443,7 @@ SIGNAL_BRANCH = "main"
     schedule=modal.Cron("30 20 * * 1-5", timezone="Asia/Shanghai"),
     secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
     timeout=2 * 3600,
-    non_preemptible=True,  # 调度入口：被抢占则当天任务丢失；自身运行时间短，3x 成本增量极小
+    nonpreemptible=True,  # 调度入口：被抢占则当天任务丢失；自身运行时间短，3x 成本增量极小
 )
 def daily_cron():
     """云端全自动每日信号：daily_standalone 训练 → GitHub API 提交（不依赖本地机器）。
