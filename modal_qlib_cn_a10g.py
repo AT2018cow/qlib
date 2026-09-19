@@ -89,6 +89,9 @@ image = (
     # （如 numpy）重新解析并升级到 2.x，导致按 1.26 头文件编译的 Cython 扩展在运行时
     # 报 "numpy.core.multiarray failed to import"。非 editable 安装避免 namespace 歧义。
     .run_commands("cd /root/qlib && pip install . --no-build-isolation --no-deps")
+    # 审计 PR 的 helper 模块随 add_local_dir 进了 /root/qlib/，但 Modal 入口脚本挂在
+    # /root/ 运行（sys.path 首位是 /root）——必须复制到 /root/ 否则 ModuleNotFoundError。
+    .run_commands("cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/")
 )
 
 app = modal.App(APP_NAME, image=image)
