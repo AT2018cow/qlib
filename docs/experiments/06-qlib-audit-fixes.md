@@ -1,16 +1,21 @@
 # Qlib 审计修复：实现状态与验收条件
 
-本分支基于 `main` 的 `f0f770965b0ca21522b9d0df65e3130912523d85`。**不要合并或部署，直到实际源码变更已提交且集成测试通过。** 补丁程序 `apply_qlib_audit_fixes.py` 在仓库根目录运行；`--check` 仅检查全部精确锚点和语法，`--apply` 修改两个源码文件，并创建本地 `.audit-prepatch.bak` 备份。不要把备份提交到 Git。
+本分支基于 `main` 的 `f0f770965b0ca21522b9d0df65e3130912523d85`。**两个源文件已在本分支实际修改；不可在这个分支再次运行 `--apply`。** 请先审核代码、在真实数据上测试后再考虑合并或部署。
+
+## 检查已修复的分支
 
 ```bash
 PYTHONPATH=. python -m unittest discover -s tests -p 'test_qlib_audit*.py' -v
-python apply_qlib_audit_fixes.py --check
-python apply_qlib_audit_fixes.py --apply
-git diff --check
-git diff -- modal_qlib_cn_a10g.py scripts/check_data_health.py
+python -m py_compile modal_qlib_cn_a10g.py scripts/check_data_health.py
+git diff main...HEAD --check
+git diff main...HEAD -- modal_qlib_cn_a10g.py scripts/check_data_health.py
 ```
 
-## 补丁内容
+2026-09-19 的临时 GitHub Actions [运行记录](https://github.com/AT2018cow/qlib/actions/runs/35410619320) 已在真实仓库 checkout 中验证：9 项单元/结构测试通过、补丁全部锚点匹配、修改后的两个 Python 文件编译及差异检查通过，随后提交源码变更。写权限临时工作流已从最终分支删除。
+
+`apply_qlib_audit_fixes.py` 留在仓库中用于复现从**未修改的上述基线**打补丁：仅在原始 checkout 执行 `--check`，通过后才能执行 `--apply`。补丁会创建本地 `.audit-prepatch.bak` 备份，不得将备份提交到 Git；重复应用将拒绝执行。
+
+## 已修改代码的范围
 
 - 对近期训练/验证/测试和 Batch C、P2 滚动窗口应用按交易日历计算的标签到期日 purge。训练标签必须在验证期开始前可观察，验证标签必须在测试期开始前可观察，LightGBM 早停不得读取使用测试期收盘价构建的验证标签。
 - Tune 选择只查看验证期 Rank IC，不再直接利用测试期评价选择超参数；但旧的历史测试数据已被使用过，不能据此消除此前的选择偏差。
