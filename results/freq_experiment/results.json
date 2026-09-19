@@ -1,0 +1,24 @@
+{
+  "window": "2021-01-04~2026-09-18",
+  "market": "csi1000",
+  "results": {
+    "60": {
+      "n_retrains": 24,
+      "n_errors": 0,
+      "n_days": 1385,
+      "ann_excess": 0.1045,
+      "ir": 0.649,
+      "max_drawdown": -0.2717,
+      "positive_ratio": 0.499
+    },
+    "20": {
+      "n_retrains": 70,
+      "n_errors": 0,
+      "n_days": 1385,
+      "ann_excess": 0.1272,
+      "ir": 0.737,
+      "max_drawdown": -0.328,
+      "positive_ratio": 0.504
+    }
+  }
+}
