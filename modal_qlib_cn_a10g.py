@@ -18,6 +18,8 @@
 import modal
 from pathlib import Path
 from qlib_audit_fixes import read_trading_calendar, purge_cfg_splits
+from qlib_live_retrain import (configure_asof, should_retrain, cache_signature,
+                               RETRAIN_EVERY_SESSIONS)
 
 APP_NAME = "qlib-cn-daily-a10g"
 VOL_NAME = "qlib-cn-data"
@@ -1025,11 +1027,12 @@ def tune_one(params: dict, horizon: int = 20):
     from qlib.model.base import Model
     from qlib.utils import init_instance_by_config
 
+    if horizon != 20:
+        raise ValueError("Production hyperparameter tuning is restricted to the 20-day Alpha158 target")
     _ensure_data()
-    label20 = horizon == 20
-    label60 = horizon == 60
     cfg = _load_and_patch_cfg(
-        MODEL_CFG["lgb360"], smoke=False, recent=True, long_train=True, label20=label20, label60=label60
+        MODEL_CFG["lgb158"], smoke=False, recent=True, long_train=True,
+        label20=True, market="csi1000", topk=20, nd=2
     )
     cfg["task"]["model"]["kwargs"].update(params)
     qlib.init(
@@ -1041,6 +1044,8 @@ def tune_one(params: dict, horizon: int = 20):
     dataset = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
     model.fit(dataset)
     pred = model.predict(dataset, segment="valid")
+    if pred.empty:
+        raise RuntimeError("Empty validation predictions in hyperparameter search")
     # 用 dataset.prepare 拿 label（与 LGB 训练同路径 DK_L，可靠）；不要用 D.features——
     # 容器 fork 后会触发 LocalDatasetProvider 的 inst_processors 参数冲突 TypeError
     from qlib.data.dataset.handler import DataHandlerLP
@@ -1056,9 +1061,29 @@ def tune_one(params: dict, horizon: int = 20):
     ic = df.groupby(level=0).apply(
         lambda g: g["pred"].rank().corr(g["label"].rank()) if len(g) > 10 else np.nan
     )
-    rank_ic = float(ic.dropna().mean())  # float 化，避免 Series 格式化报错
-    print(f"[tune] params={params} rank_ic={rank_ic:.4f}")
-    return {"rank_ic": rank_ic, "params": params}
+    rank_ic = float(ic.dropna().mean())
+    # Portfolio objective must match the actual daily strategy, not merely IC.
+    # Backtest ONLY on validation dates; test remains untouched for evaluation.
+    from qlib.backtest import backtest as normal_backtest
+    strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
+                "kwargs": {"signal": pred, "topk": 20, "n_drop": 2}}
+    executor = {"class": "SimulatorExecutor", "module_path": "qlib.backtest.executor",
+                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
+    valid_start, valid_end = cfg["task"]["dataset"]["kwargs"]["segments"]["valid"]
+    pm, _ = normal_backtest(
+        strategy=strategy, executor=executor, start_time=valid_start, end_time=valid_end,
+        account=100000000, benchmark="SH000852",
+        exchange_kwargs={"limit_threshold": 0.095, "deal_price": "close",
+                         "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
+    report = pm["1day"][0]
+    if report.empty:
+        raise RuntimeError("Empty validation portfolio report")
+    excess = report["return"] - report["bench"] - report["cost"]
+    if not bool(np.isfinite(excess.to_numpy()).all()):
+        raise RuntimeError("Non-finite validation net excess")
+    net_ann = float(excess.mean() * 238)
+    print(f"[tune] params={params} validation_net_annual={net_ann:.4f} rank_ic={rank_ic:.4f}")
+    return {"rank_ic": rank_ic, "excess_with_cost_annual": net_ann, "params": params}
 
 
 def _sample_params(rng):
@@ -1080,19 +1105,26 @@ def tune_driver(n_trials: int = 40, horizon: int = 20):
 
     _ensure_data()
     rng = __import__("random").Random(42)
-    params_list = [_sample_params(rng) for _ in range(n_trials)]
+    if n_trials < 1:
+        raise ValueError("n_trials must be positive")
+    params_list = [{}] + [_sample_params(rng) for _ in range(n_trials - 1)]
     print(f"[tune] 开始 {n_trials} 组搜索（{TUNE_WORKERS} 并发 CPU 容器，horizon={horizon}）...")
     results = list(tune_one.map([dict(p) for p in params_list], [horizon] * n_trials))
-    results.sort(key=lambda r: r["rank_ic"], reverse=True)
+    results.sort(key=lambda r: r["excess_with_cost_annual"], reverse=True)
     tuning_dir = VOL_ROOT / "tuning"
     tuning_dir.mkdir(parents=True, exist_ok=True)
     with (tuning_dir / f"top10_h{horizon}.json").open("w") as f:
         _json.dump(results[:10], f, indent=2)
     with (tuning_dir / f"best_params_h{horizon}.json").open("w") as f:
-        _json.dump({"rank_ic": results[0]["rank_ic"], "params": results[0]["params"], "horizon": horizon}, f, indent=2)
+        _json.dump({"rank_ic": results[0]["rank_ic"],
+                    "excess_with_cost_annual": results[0]["excess_with_cost_annual"],
+                    "params": results[0]["params"], "horizon": horizon,
+                    "model": "lgb158", "market": "csi1000", "topk": 20, "n_drop": 2,
+                    "warning": "validation-selected candidate; independent OOS required before adoption"}, f, indent=2)
     print(f"[tune] === Top 10（共 {n_trials} 组）===")
     for i, r in enumerate(results[:10], 1):
-        print(f"[tune] {i}. rank_ic={r['rank_ic']:.4f} {r['params']}")
+        print(f"[tune] {i}. net_annual={r['excess_with_cost_annual']:.4f} "
+              f"rank_ic={r['rank_ic']:.4f} {r['params']}")
     print(f"[tune] 结果已保存 {tuning_dir}")
     vol.commit()
     return results[:10]
@@ -2224,6 +2256,7 @@ CHENDITC_LATEST_URL = "https://github.com/chenditc/investment_data/releases/late
 
 
 @app.function(
+    volumes={str(VOL_ROOT): vol},
     cpu=CPU_COUNT,
     memory=32768,
     timeout=4 * 3600,
@@ -2236,6 +2269,10 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
     """
     import shutil
     import tarfile
+    import hashlib
+    import json
+    import os
+    import pickle
 
     import numpy as np
     import pandas as pd
@@ -2280,11 +2317,75 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
                            "kwargs": {"uri": "file:/tmp/mlruns", "default_exp_name": "qlib-cn-daily"}})
     cfg = _load_and_patch_cfg(MODEL_CFG["lgb158"], smoke=False, recent=True, long_train=True, label20=True,
                               topk=topk, nd=nd, market=market, provider_dir=str(data_dir))
-    model_obj = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
-    dataset = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
-    model_obj.fit(dataset)
-    pred = model_obj.predict(dataset)
+    calendar = read_trading_calendar(data_dir)
+    asof = calendar[-1]
+    # Today is a feature/prediction date, NEVER a training/validation label date.
+    live_split = configure_asof(cfg, calendar, asof, horizon=20)
+    signature = cache_signature(cfg, horizon=20)
+    cache_dir = VOL_ROOT / "live_models"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    model_file = cache_dir / f"{signature}.pkl"
+    meta_file = cache_dir / f"{signature}.json"
+    if model_file.exists() != meta_file.exists():
+        raise RuntimeError("Partial model cache; refusing to load an unverified model")
+    saved = json.loads(meta_file.read_text()) if meta_file.exists() else None
+    if saved is not None and saved.get("signature") != signature:
+        raise RuntimeError("Model cache signature mismatch")
+    train_now = should_retrain(calendar, asof, saved["fit_asof"] if saved else None,
+                               interval=RETRAIN_EVERY_SESSIONS)
+    if train_now:
+        model_obj = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
+        dataset = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
+        model_obj.fit(dataset)
+        snapshot = {
+            "signature": signature, "fit_asof": asof, "horizon": 20,
+            "train": list(cfg["task"]["dataset"]["kwargs"]["segments"]["train"]),
+            "valid": list(cfg["task"]["dataset"]["kwargs"]["segments"]["valid"]),
+            "fit_start": cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["fit_start_time"],
+            "fit_end": cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["fit_end_time"],
+        }
+        tmp_model = cache_dir / f".{signature}.{os.getpid()}.tmp"
+        tmp_meta = cache_dir / f".{signature}.{os.getpid()}.json.tmp"
+        try:
+            with tmp_model.open("wb") as f:
+                pickle.dump(model_obj, f, protocol=pickle.HIGHEST_PROTOCOL)
+            snapshot["model_sha256"] = hashlib.sha256(tmp_model.read_bytes()).hexdigest()
+            tmp_meta.write_text(json.dumps(snapshot, indent=2))
+            os.replace(tmp_model, model_file)
+            os.replace(tmp_meta, meta_file)
+            vol.commit()
+        finally:
+            tmp_model.unlink(missing_ok=True)
+            tmp_meta.unlink(missing_ok=True)
+        saved = snapshot
+        print(f"[daily] 模型已重训，训练结束={saved['train'][-1]} 验证结束={saved['valid'][-1]}")
+    else:
+        # Re-create the handler on fresh features but fit its processors ONLY on
+        # the original model's training window. Otherwise daily refitting of
+        # feature normalization changes the cached model's input distribution.
+        if (saved.get("horizon") != 20 or not saved.get("model_sha256") or
+                saved.get("fit_end") != saved.get("train", [None, None])[-1]):
+            raise RuntimeError("Invalid cached model split metadata")
+        if hashlib.sha256(model_file.read_bytes()).hexdigest() != saved["model_sha256"]:
+            raise RuntimeError("Corrupt cached model; refusing unsafe inference")
+        opts = cfg["task"]["dataset"]["kwargs"]
+        opts["segments"]["train"] = saved["train"]
+        opts["segments"]["valid"] = saved["valid"]
+        opts["handler"]["kwargs"]["fit_start_time"] = saved["fit_start"]
+        opts["handler"]["kwargs"]["fit_end_time"] = saved["fit_end"]
+        # Today's only test row has no matured label and is never used in fit.
+        opts["segments"]["test"] = [asof, asof]
+        opts["handler"]["kwargs"]["end_time"] = asof
+        dataset = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
+        with model_file.open("rb") as f:
+            model_obj = pickle.load(f)
+        print(f"[daily] 复用模型，训练日期={saved['fit_asof']}，距今未满 {RETRAIN_EVERY_SESSIONS} 交易日")
+    pred = model_obj.predict(dataset, segment="test")
+    if pred.empty:
+        raise RuntimeError(f"No inference predictions for {asof}")
     predict_date = pred.index.get_level_values(0).max()
+    if str(predict_date)[:10] != asof:
+        raise RuntimeError(f"Inference date {predict_date} != latest bar {asof}")
     day = pred.loc[predict_date].dropna()
     # Ranking only: n_drop requires current holdings and an execution-day order planner.
     print("[daily] RANKING ONLY: not executable orders; nd does not apply to ranking CSV")
@@ -2310,7 +2411,11 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
         print(f"  {rank:>2}. {inst}  score={score:.4f}")
     return {"date": str(predict_date)[:10], "topk": topk, "n_stocks": len(top),
             "csv_content": csv_content, "data_calendar_end": cal_lines[-1],
-            "ranking_only": True, "rebalance_applied": False}
+            "ranking_only": True, "rebalance_applied": False,
+            "model_fit_asof": saved["fit_asof"],
+            "train_end": saved["train"][-1],
+            "valid_end": saved["valid"][-1],
+            "retrained_today": train_now}
 
 
 
@@ -2522,13 +2627,16 @@ def main(
         # 结果打印在本地，持久化到 Volume 请用云端入口 tune_driver（本地无 /vol 路径）
         prepare_data.remote(force=force_data)
         rng = __import__("random").Random(42)
-        params_list = [_sample_params(rng) for _ in range(tune)]
+        params_list = [{}] + [_sample_params(rng) for _ in range(tune - 1)]
         results = list(tune_one.map([dict(p) for p in params_list], [tune_horizon] * tune))
-        results.sort(key=lambda r: r["rank_ic"], reverse=True)
+        results.sort(key=lambda r: r["excess_with_cost_annual"], reverse=True)
         print(f"[tune] === Top 10（共 {tune} 组）===")
         for i, r in enumerate(results[:10], 1):
-            print(f"[tune] {i}. rank_ic={r['rank_ic']:.4f} {r['params']}")
-        print(f"[tune] 最优参数（保存到 Volume 请用 tune_driver）: rank_ic={results[0]['rank_ic']:.4f} params={results[0]['params']}")
+            print(f"[tune] {i}. net_annual={r['excess_with_cost_annual']:.4f} "
+                  f"rank_ic={r['rank_ic']:.4f} {r['params']}")
+        print(f"[tune] 验证期候选（需独立样本外复验）: "
+              f"net_annual={results[0]['excess_with_cost_annual']:.4f} "
+              f"rank_ic={results[0]['rank_ic']:.4f} params={results[0]['params']}")
         return
     if dual:
         # 纯 LGB，CPU 容器
