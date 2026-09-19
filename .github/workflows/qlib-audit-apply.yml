@@ -1,0 +1,44 @@
+name: Apply Qlib audit patch (temporary)
+
+on:
+  push:
+    branches:
+      - fix/qlib-audit-20260919
+    paths:
+      - apply_qlib_audit_fixes.py
+      - qlib_audit_fixes.py
+      - tests/test_qlib_audit_fixes.py
+      - tests/test_qlib_audit_patcher.py
+      - docs/experiments/06-qlib-audit-fixes.md
+      - .github/workflows/qlib-audit-apply.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check pure unit tests and source anchors
+        run: |
+          PYTHONPATH=. python -m unittest discover -s tests -p 'test_qlib_audit*.py' -v
+          python apply_qlib_audit_fixes.py --check
+      - name: Apply patch, compile and validate diff
+        run: |
+          python apply_qlib_audit_fixes.py --apply
+          python -m py_compile modal_qlib_cn_a10g.py scripts/check_data_health.py
+          git diff --check
+          git add -- modal_qlib_cn_a10g.py scripts/check_data_health.py
+          git diff --cached --stat
+          git diff --cached --quiet && { echo 'No source changes were produced'; exit 1; } || status=$?
+          if [ "${status:-0}" -ne 1 ]; then exit "${status}"; fi
+      - name: Commit source changes only to audit branch
+        run: |
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'fix(audit): apply leakage and evaluation corrections to source'
+          git push origin HEAD:fix/qlib-audit-20260919
