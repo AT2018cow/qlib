@@ -25,6 +25,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Disambiguate original vs post-filter daily ranking
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('apply_qlib_audit_fixes.py')
+          text = path.read_text()
+          old = '    if count != 1:\n        raise RuntimeError('
+          new = ('    if name == "daily rank-only warning" and count == 2:\n'
+                 '        return text.replace(old, new, 1)\n'
+                 '    if count != 1:\n        raise RuntimeError(')
+          assert text.count(old) == 1
+          path.write_text(text.replace(old, new, 1))
+          PY
       - name: Check pure unit tests and source anchors
         run: |
           PYTHONPATH=. python -m unittest discover -s tests -p 'test_qlib_audit*.py' -v
@@ -34,10 +47,9 @@ jobs:
           python apply_qlib_audit_fixes.py --apply
           python -m py_compile modal_qlib_cn_a10g.py scripts/check_data_health.py
           git diff --check
-          git add -- modal_qlib_cn_a10g.py scripts/check_data_health.py
+          git add -- apply_qlib_audit_fixes.py modal_qlib_cn_a10g.py scripts/check_data_health.py
           git diff --cached --stat
-          git diff --cached --quiet && { echo 'No source changes were produced'; exit 1; } || status=$?
-          if [ "${status:-0}" -ne 1 ]; then exit "${status}"; fi
+          if git diff --cached --quiet; then echo 'No source changes were produced'; exit 1; fi
       - name: Commit source changes only to audit branch
         run: |
           git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'fix(audit): apply leakage and evaluation corrections to source'
