@@ -133,7 +133,7 @@ def freq_window(args: dict):
 
     from qlib_audit_fixes import last_matured_sample, purge_cfg_splits, read_trading_calendar
 
-    qlib.init(**_load_task(args["market"])["qlib_init"])
+    qlib.init(**{**_load_task(args["market"])["qlib_init"], "skip_if_reg": True})  # 容器复用时防重复初始化
     cal = read_trading_calendar(DATA_DIR)
     horizon = args.get("horizon", 20)
     asof_i = bisect_left(cal, args["retrain_asof"])
