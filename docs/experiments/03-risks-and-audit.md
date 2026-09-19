@@ -33,7 +33,7 @@
 - **不要 --detach**（本地断开后约 10 分钟输入被平台取消，已两次实证）；长任务用普通 modal run 保持本地连接
 - `.map()` 不接受并发参数——并发控制在 `@app.function(max_containers=N)`
 - 结果持久化到 Volume 后**必须 vol.commit()**，再 `modal volume get` 取回本地入库
-- **架构（2026-09-18 起）**：`--best --daily` 为单容器自包含（无 Volume、无 GPU、~25 分钟、~$0.2/次）——
-  每次自动下载最新数据，信号经函数返回值直接回传本地入库+git 推送；**换 Modal workspace 只需 `modal token new` 一步**
-- Volume `qlib-cn-data` 仅研究批（--batcha/b/c、--p2 等并行 map）使用：多容器共享一份数据，避免每容器重下 565MB；
-  研究批若需最新数据，运行时带 `--force-data`
+- **架构（2026-09-19 审计 PR 合并后修订）**：`--best --daily` 单容器运行（无 GPU），数据仍每次全量下载（必然最新），
+  但**重新依赖 Volume**：`/vol/live_models` 模型缓存（每 20 个交易日重训一次，其余日复用缓存模型，SHA-256 校验）；
+  换 workspace 需 `modal token new` + 重建 Volume（首次运行自动重训）
+- Volume `qlib-cn-data` 现承载两职：① 研究批（--batcha/b/c、--p2 等并行 map）共享数据；② daily 模型缓存
