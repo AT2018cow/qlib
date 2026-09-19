@@ -217,7 +217,7 @@ class DataHealthChecker:
         check_missing_factor_result = self.check_missing_factor()
         check_features_dir_case_result = self.check_features_dir_lowercase()
         if (
-            check_large_step_changes_result is not None
+            check_missing_data_result is not None
             or check_large_step_changes_result is not None
             or check_required_columns_result is not None
             or check_missing_factor_result is not None

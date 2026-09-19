@@ -17,6 +17,7 @@
 
 import modal
 from pathlib import Path
+from qlib_audit_fixes import read_trading_calendar, purge_cfg_splits
 
 APP_NAME = "qlib-cn-daily-a10g"
 VOL_NAME = "qlib-cn-data"
@@ -201,6 +202,10 @@ def _load_and_patch_cfg(yaml_path: str, smoke: bool, recent: bool = False, enhan
     验证 2024 / 回测 2025-01~最新交易日（约 1.7 年），验证信号稳健性。
     topk：自定义策略持仓数（默认取 yaml 的 50）。
     """
+    if sum(bool(x) for x in (label20, label40, label60)) > 1:
+        raise ValueError("Choose exactly one prediction horizon")
+    if (long_train or verify) and not recent:
+        raise ValueError("long_train and verify require recent=True")
     from ruamel.yaml import YAML
 
     yaml = YAML(typ="safe", pure=True)
@@ -281,6 +286,15 @@ def _load_and_patch_cfg(yaml_path: str, smoke: bool, recent: bool = False, enhan
             cfg["task"]["model"]["kwargs"]["early_stop"] = 30
         except KeyError:
             pass
+    # Explicit market selection must win over --enhanced and update both benchmarks.
+    if market is not None:
+        _indices = {"csi300": "SH000300", "csi500": "SH000905", "csi1000": "SH000852"}
+        if market not in _indices:
+            raise ValueError(f"Unsupported market: {market}")
+        cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["instruments"] = market
+        cfg["market"] = market
+        cfg["benchmark"] = _indices[market]
+        cfg["port_analysis_config"]["backtest"]["benchmark"] = _indices[market]
     # 7) 基本面因子模式：Alpha158 + $roe 等 6 字段
     if fund:
         handler_cfg = cfg["task"]["dataset"]["kwargs"]["handler"]
@@ -311,8 +325,17 @@ def _load_and_patch_cfg(yaml_path: str, smoke: bool, recent: bool = False, enhan
         cfg["port_analysis_config"]["strategy"] = {
             "class": "PeriodicTopkStrategy",
             "module_path": "rebalance_strategy",
-            "kwargs": {"signal": "<PRED>", "topk": 50, "n_drop": 2, "rebalance_days": 20},
+            "kwargs": {"signal": "<PRED>", "topk": topk if topk is not None else 50, "n_drop": nd if nd is not None else 2, "rebalance_days": 20},
         }
+    # A sample's Ref(...,-h) label must mature before the NEXT stage starts.
+    # This also purges the validation tail used by LightGBM early stopping.
+    if recent:
+        _cal = read_trading_calendar(provider_dir or DATA_DIR)
+        purge_cfg_splits(cfg, _cal)
+    if smoke and enhanced:
+        _model_kw = cfg['task']['model']['kwargs']
+        if 'early_stop' in _model_kw:
+            _model_kw['early_stop'] = 2
     return cfg
 
 
@@ -493,6 +516,7 @@ def verify_integrity():
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=1800)
 def debug_data():
     """诊断 chenditc features 存储格式 + 验证 QLib 能读出字段（动态取最新 5 个交易日）。"""
+    import pandas as pd
     import qlib
     from qlib.data import D
 
@@ -510,7 +534,6 @@ def debug_data():
     # 2) QLib 实际读取（用最新交易日动态验证；$roe 等因子仅在 --build-fund 后存在，不在此验证）
     end = _latest_trading_day()
     start = (pd.Timestamp(end) - pd.Timedelta(days=7)).strftime("%Y-%m-%d")
-    import pandas as pd
 
     df = D.features(["SH600000"], ["$close", "$volume"], start_time=start, end_time=end, freq="day")
     print(f"[debug] D.features shape={df.shape} columns={list(df.columns)}")
@@ -537,6 +560,8 @@ def prepare_data(force: bool = False):
     )
     print(r.stdout[-4000:])
     print(r.stderr[-2000:])
+    if r.returncode != 0:
+        raise RuntimeError(f"Data health subprocess failed: exit={r.returncode}")
     vol.commit()
 
 
@@ -1015,12 +1040,12 @@ def tune_one(params: dict, horizon: int = 20):
     model = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
     dataset = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
     model.fit(dataset)
-    pred = model.predict(dataset)
+    pred = model.predict(dataset, segment="valid")
     # 用 dataset.prepare 拿 label（与 LGB 训练同路径 DK_L，可靠）；不要用 D.features——
     # 容器 fork 后会触发 LocalDatasetProvider 的 inst_processors 参数冲突 TypeError
     from qlib.data.dataset.handler import DataHandlerLP
 
-    label_df = dataset.prepare("test", col_set=["feature", "label"], data_key=DataHandlerLP.DK_L)
+    label_df = dataset.prepare("valid", col_set=["feature", "label"], data_key=DataHandlerLP.DK_L)
     if isinstance(label_df, pd.DataFrame) and "label" in label_df.columns:
         label = label_df["label"]
         if isinstance(label, pd.DataFrame):
@@ -1409,7 +1434,7 @@ def p1_diagnostics():
             if len(top) < 10:
                 continue
             f = fwd20.reindex(pd.MultiIndex.from_arrays([[d] * len(top), top.index],
-                                                        names=["datetime", "instrument"])).dropna()
+                                                        names=["datetime", "instrument"])).droplevel("datetime").dropna()
             if len(f) < 10:
                 continue
             if mode == "equal":
@@ -1417,16 +1442,18 @@ def p1_diagnostics():
             else:  # score：分数线性加权，min 映射 0.5 防负/零权
                 s = (top - top.min()) / (top.max() - top.min() + 1e-9) + 0.5
                 w = (s / s.sum()).reindex(f.index)
+            w = w / w.sum()  # Re-normalize after excluding missing future prices
             gross = float((w * f).sum())
-            turnover = float((w.reindex(prev_w.index).fillna(0) - prev_w.reindex(w.index).fillna(0)).abs().sum()) \
-                if len(prev_w) else 1.0
+            universe = w.index.union(prev_w.index)
+            turnover = float((w.reindex(universe, fill_value=0) -
+                              prev_w.reindex(universe, fill_value=0)).abs().sum())
             fee = turnover * cost_one_side
             tot_ret += gross - fee
             tot_cost += fee
             n += 1
             prev_w = w
         ann = tot_ret / max(n, 1) * (238 / every)
-        return {"ann_excess_sim": round(ann, 4), "n_rebalance": n, "total_cost": round(tot_cost, 4)}
+        return {"ann_portfolio_sim": round(ann, 4), "n_rebalance": n, "total_cost": round(tot_cost, 4)}
 
     sim_eq = sim_weighted(p360_20, "equal")
     sim_sc = sim_weighted(p360_20, "score")
@@ -1757,6 +1784,8 @@ def batch_c_window(args: dict):
     seg["train"] = [tr_s, tr_e]
     seg["valid"] = [va_s, va_e]
     seg["test"] = [te_s, te_e]
+    # Validation targets near the boundary cannot use test-period closes.
+    purge_cfg_splits(cfg, read_trading_calendar(DATA_DIR), horizon=20)
     m = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
     ds = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
     m.fit(ds)
@@ -1860,7 +1889,12 @@ def p2_rolling():
                 "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
     quarterly = []
     report_parts = []
-    for w_idx, (tr_s, tr_e, va_s, va_e, te_s, te_e) in enumerate(ROLLING_WINDOWS, 1):
+    _latest = _latest_trading_day()
+    _windows = _gen_5y_windows()[-7:]
+    for w_idx, (tr_s, tr_e, va_s, va_e, te_s, te_e) in enumerate(_windows, 1):
+        if te_s > _latest:
+            continue
+        te_e = min(te_e, _latest)
         print(f"[p2] 窗口{w_idx}: train {tr_s}~{tr_e} valid {va_s}~{va_e} test {te_s}~{te_e}")
         cfg = _load_and_patch_cfg(MODEL_CFG["lgb158"], smoke=False, recent=False, long_train=False, label20=True)
         dh = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
@@ -1872,6 +1906,7 @@ def p2_rolling():
         seg["train"] = [tr_s, tr_e]
         seg["valid"] = [va_s, va_e]
         seg["test"] = [te_s, te_e]
+        purge_cfg_splits(cfg, read_trading_calendar(DATA_DIR), horizon=20)
         m = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
         ds = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
         m.fit(ds)
@@ -1898,6 +1933,8 @@ def p2_rolling():
         report_parts.append(rep[["return", "bench", "cost"]])
 
     # 拼接 21 个月收益序列 → 分月归因
+    if not report_parts:
+        raise RuntimeError("P2: no valid test windows")
     full = pd.concat(report_parts).sort_index()
     excess = full["return"] - full["bench"] - full["cost"]
     monthly = excess.groupby(excess.index.to_period("M")).agg(["mean", "sum", "count"])
@@ -2249,6 +2286,8 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
     pred = model_obj.predict(dataset)
     predict_date = pred.index.get_level_values(0).max()
     day = pred.loc[predict_date].dropna()
+    # Ranking only: n_drop requires current holdings and an execution-day order planner.
+    print("[daily] RANKING ONLY: not executable orders; nd does not apply to ranking CSV")
     top = day.sort_values(ascending=False).head(topk)
 
     # ---- 3) 涨跌停过滤（口径与 verify_integrity 审计一致：当日涨幅=close/前收-1，|涨幅|≥9.5% 剔除） ----
@@ -2270,7 +2309,8 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
     for rank, (inst, score) in enumerate(top.items(), 1):
         print(f"  {rank:>2}. {inst}  score={score:.4f}")
     return {"date": str(predict_date)[:10], "topk": topk, "n_stocks": len(top),
-            "csv_content": csv_content, "data_calendar_end": cal_lines[-1]}
+            "csv_content": csv_content, "data_calendar_end": cal_lines[-1],
+            "ranking_only": True, "rebalance_applied": False}
 
 
 
@@ -2300,7 +2340,13 @@ def daily_cron():
     res = daily_standalone.remote(topk=20, nd=2, market="csi1000")
     print(f"[cron] 信号日期 {res['date']}（数据日历至 {res['data_calendar_end']}）")
     if res["date"] != res["data_calendar_end"]:
-        print("[cron] 注：信号日期早于数据日历末日（节假日/数据延迟），照常入库留痕")
+        raise RuntimeError("Signal date does not match last data calendar date")
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
+    if res["date"] != today:
+        raise RuntimeError(f"Today={today} but latest dataset={res['date']}; "
+                           "possible exchange holiday or stale release; do not publish old ranking")
 
     path = f"results/signals/{res['date']}_top20_lgb158.csv"
     token = os.environ["GITHUB_TOKEN"]
@@ -2313,7 +2359,11 @@ def daily_cron():
     if exist.status_code == 200 and base64.b64decode(exist.json()["content"]).decode() == res["csv_content"]:
         print(f"[cron] {path} 已存在且内容一致，跳过（同日重跑）")
         return
-    sha = exist.json().get("sha") if exist.status_code == 200 else None
+    if exist.status_code == 200:
+        raise RuntimeError("Same-date signal changed: refusing to rewrite immutable paper-trading record")
+    if exist.status_code != 404:
+        raise RuntimeError(f"Cannot check existing signal: HTTP {exist.status_code}")
+    sha = None
 
     r = requests.put(api, headers=headers, timeout=30, json={
         "message": f"chore(signal): paper-trading record {res['date']} top20 (cron)",
@@ -2324,7 +2374,7 @@ def daily_cron():
     if r.status_code in (200, 201):
         print(f"[cron] ✅ 已推送到 GitHub: {path}")
     else:
-        print(f"[cron] ❌ GitHub 推送失败: {r.status_code} {r.text[:200]}")
+        raise RuntimeError(f"GitHub push failed: HTTP {r.status_code}: {r.text[:200]}")
 
 
 @app.local_entrypoint()
@@ -2454,7 +2504,7 @@ def main(
         print("2x2 矩阵（有成本年化超额，区间 2026-01-01~09-11，n_drop=3）：")
         for k in ["lgb158", "lgb360"]:
             print(f"  {k}: 09-11包={res_0911['matrix_0911'][k]['excess_with_cost_annual']}  "
-                  f"09-16包={res_0916['matrix_0916'][k]['excess_with_cost_annual']}")
+                  f"09-16包={res_0916['matrix_0916'][f'{k}_ndrop3']['excess_with_cost_annual']}")
         return
     if best:
         # 终审固化配置（2026-09-18，见 docs/experiments/05-final-audit.md）：
