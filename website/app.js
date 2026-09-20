@@ -9,6 +9,7 @@ const NAME_MAP_URL = `${CSV_BASE}/code_name_map.csv`;
 
 // ---------- 工具函数 ----------
 const qlibCode = inst => inst.replace(/^(SH|SZ|BJ)/, '');
+const sinaUrl = inst => `https://finance.sina.com.cn/realstock/company/${inst.toLowerCase()}/nc.shtml`;
 
 async function fetchText(url) {
     const r = await fetch(url);
@@ -92,7 +93,7 @@ function renderTable(dateInfo, nameMap, prev, chartData) {
         } else {
             spark = '<td class="spark muted">—</td>';
         }
-        return `<tr><td class="rank">${rank}</td><td><code>${r.instrument}</code></td><td class="name">${name}</td><td class="score red">+${score}%</td><td>${tag}</td>${spark}</tr>`;
+        return `<tr><td class="rank">${rank}</td><td><code><a href="${sinaUrl(r.instrument)}" target="_blank" rel="noopener">${r.instrument}</a></code></td><td class="name"><a href="${sinaUrl(r.instrument)}" target="_blank" rel="noopener">${name}</a></td><td class="score red">+${score}%</td><td>${tag}</td>${spark}</tr>`;
     }).join('');
 
     return { date, rows, tbody };
