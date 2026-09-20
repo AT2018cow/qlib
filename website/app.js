@@ -39,7 +39,7 @@ async function loadNameMap() {
 async function loadAvailableDates() {
     const now = new Date();
     const candidates = [];
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 30; i++) {  // 回溯 30 个自然日（≈20 交易日）
         const d = new Date(now - i * 86400000);
         if (d.getDay() === 0 || d.getDay() === 6) continue;
         candidates.push(d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'));
@@ -105,7 +105,7 @@ async function main() {
         <div class="history">
             <h3>历史榜单</h3>
             <div id="history-buttons" class="date-buttons">${
-                dates.map(d => `<button class="date-btn${d.date === latest.date ? ' current' : ''}" data-date="${d.date}">${d.date}</button>`).join('')
+                dates.slice(0, 20).map(d => `<button class="date-btn${d.date === latest.date ? ' current' : ''}" data-date="${d.date}">${d.date}</button>`).join('')
             }</div>
         </div>
         <footer>

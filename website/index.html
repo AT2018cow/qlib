@@ -66,7 +66,7 @@ code a:hover { text-decoration: underline; }
 
 .history { margin-top: 32px; }
 .history h3 { font-size: 16px; margin-bottom: 12px; }
-.date-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.date-buttons { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
 .date-btn {
     background: var(--card); border: 1px solid var(--border); color: var(--text);
     padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px;
@@ -83,6 +83,6 @@ footer a { color: var(--accent); text-decoration: none; }
 </head>
 <body>
 <div id="app"><p style="text-align:center;color:#8b949e">加载中…</p></div>
-<script src="app.js?v=10"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>
