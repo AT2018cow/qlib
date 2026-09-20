@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'results/signals/**'
+      - 'website/**'
   workflow_dispatch:
 
 permissions:

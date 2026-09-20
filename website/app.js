@@ -144,6 +144,22 @@ async function main() {
         </footer>
     `;
 
+    // "回到最新"按钮
+    const backBtn = document.createElement('button');
+    backBtn.className = 'date-btn back-btn';
+    backBtn.textContent = '← 回到最新';
+    backBtn.style.display = 'none';
+    backBtn.addEventListener('click', async () => {
+        const chartText2 = await fetchText(`${CSV_BASE}/${latest.date}_chart.json`);
+        let cd2 = null;
+        if (chartText2) { try { cd2 = JSON.parse(chartText2); } catch (e) {} }
+        const { tbody } = renderTable(latest, nameMap, prev, cd2);
+        document.querySelector('.signal-table tbody').innerHTML = tbody;
+        document.querySelector('.date').textContent = `📅 ${latest.date}`;
+        backBtn.style.display = 'none';
+    });
+    document.querySelector('.history').prepend(backBtn);
+
     document.getElementById('history-buttons').querySelectorAll('.date-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
             const d = dates.find(x => x.date === btn.dataset.date);
@@ -155,6 +171,7 @@ async function main() {
             const { tbody } = renderTable(d, nameMap, pd ? parseCSV(pd.text) : null, subChartData);
             document.querySelector('.signal-table tbody').innerHTML = tbody;
             document.querySelector('.date').textContent = `📅 ${d.date}`;
+            backBtn.style.display = 'inline-block';
         });
     });
 }
