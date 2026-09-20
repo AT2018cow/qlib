@@ -57,7 +57,8 @@ async function loadAvailableDates() {
     for (let i = 0; i < 30; i++) {
         const d = new Date(now - i * 86400000);
         if (d.getDay() === 0 || d.getDay() === 6) continue;
-        candidates.push(d.toISOString().slice(0, 10));
+        const ymd = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+        candidates.push(ymd);
     }
     const results = await Promise.all(candidates.map(async ymd => {
         const text = await fetchText(`${CSV_BASE}/${ymd}_top20_lgb158.csv`);
@@ -117,6 +118,7 @@ async function main() {
     let chartData = null;
     if (chartText) { try { chartData = JSON.parse(chartText); } catch (e) {} }
 
+    console.log('[debug] latest date:', latest.date, '| chartData stocks:', chartData ? Object.keys(chartData.stocks).length : 'null');
     const { date, tbody } = renderTable(latest, nameMap, prev, chartData);
 
     app.innerHTML = `
@@ -151,7 +153,7 @@ async function main() {
             let subChartData = null;
             if (subChart) { try { subChartData = JSON.parse(subChart); } catch (e) {} }
             const { tbody } = renderTable(d, nameMap, pd ? parseCSV(pd.text) : null, subChartData);
-            document.querySelector('#signal-rows').innerHTML = tbody;
+            document.querySelector('.signal-table tbody').innerHTML = tbody;
             document.querySelector('.date').textContent = `📅 ${d.date}`;
         });
     });
