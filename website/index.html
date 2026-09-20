@@ -8,7 +8,7 @@
 :root {
     --bg: #0d1117; --card: #161b22; --border: #30363d;
     --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff;
-    --green: #3fb950; --red: #f85149; --orange: #d29922;
+    --green: #3fb950; --red: #f85149;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -21,17 +21,21 @@ body {
 header { text-align: center; margin-bottom: 24px; }
 header h1 { font-size: 24px; margin-bottom: 4px; }
 .subtitle { color: var(--muted); font-size: 14px; }
-.date { color: var(--accent); font-size: 16px; margin-top: 8px; }
-.card {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 8px; padding: 14px 18px; margin-bottom: 20px;
-    font-size: 14px; line-height: 1.6; color: var(--muted);
+.date-row { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 8px; }
+.date { color: var(--accent); font-size: 16px; }
+.back-btn {
+    background: var(--card); border: 1px solid var(--accent); color: var(--accent);
+    padding: 4px 14px; border-radius: 6px; cursor: pointer; font-size: 13px;
+    font-weight: 500;
 }
-.card h3 { font-size: 15px; color: var(--text); margin-bottom: 6px; }
+.back-btn:hover { background: rgba(88,166,255,.1); }
+
+/* 桌面表格（>=680px 显示） */
+#table-wrap { display: block; }
+#cards { display: none; }
+
 .signal-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-.signal-table th, .signal-table td {
-    padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--border);
-}
+.signal-table th, .signal-table td { padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--border); }
 .signal-table th { font-size: 12px; text-transform: uppercase; color: var(--muted); letter-spacing: .5px; }
 .signal-table tbody tr:hover { background: rgba(88,166,255,.06); }
 .rank { font-weight: bold; color: var(--muted); width: 32px; }
@@ -41,12 +45,30 @@ code a:hover { text-decoration: underline; }
 .name { font-weight: 500; }
 .score { font-family: monospace; }
 .score.red { color: var(--red); }
-.tag-hold { color: var(--muted); font-size: 11px; }
 .muted { color: var(--muted); font-size: 12px; }
+.spark { text-align: right; }
 .tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
-.tag-new { background: rgba(88,166,255,.15); color: var(--accent); }   /* 新进=蓝色(与代码一致) */
-.tag-up  { background: rgba(248,81,73,.15); color: var(--red); }           /* ↑=红色(涨) */
-.tag-dn  { background: rgba(63,185,80,.15); color: var(--green); }        /* ↓=绿色(跌) */
+.tag-new { background: rgba(88,166,255,.15); color: var(--accent); }
+.tag-up  { background: rgba(248,81,73,.15); color: var(--red); }
+.tag-dn  { background: rgba(63,185,80,.15); color: var(--green); }
+.tag-hold { color: var(--muted); font-size: 11px; }
+
+/* 移动卡片（<680px 显示） */
+@media (max-width: 679px) {
+    #table-wrap { display: none; }
+    #cards { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+    .stock-card {
+        background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+        padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .card-top { display: flex; align-items: center; gap: 8px; }
+    .card-top .rank { font-weight: bold; color: var(--muted); width: 24px; font-size: 14px; }
+    .card-top code { font-size: 13px; }
+    .card-top .name { font-weight: 500; font-size: 14px; }
+    .card-bottom { display: flex; justify-content: space-between; align-items: center; padding-left: 32px; }
+    .card-bottom .score { font-size: 15px; font-weight: bold; }
+}
+
 .history { margin-top: 32px; }
 .history h3 { font-size: 16px; margin-bottom: 12px; }
 .date-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -55,7 +77,7 @@ code a:hover { text-decoration: underline; }
     padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px;
 }
 .date-btn:hover { border-color: var(--accent); color: var(--accent); }
-.back-btn { border-color: var(--accent); color: var(--accent); font-weight: 500; }
+
 footer {
     margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border);
     font-size: 12px; color: var(--muted); line-height: 1.8; text-align: center;
@@ -65,6 +87,6 @@ footer a { color: var(--accent); text-decoration: none; }
 </head>
 <body>
 <div id="app"><p style="text-align:center;color:#8b949e">加载中…</p></div>
-<script src="app.js?v=8"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>
