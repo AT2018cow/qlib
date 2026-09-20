@@ -55,3 +55,6 @@ tags
 ./pretrain
 .idea/
 .aider*
+
+# spike_rdagent.py 预留不跟踪
+spike_rdagent.py
