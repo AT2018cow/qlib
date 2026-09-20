@@ -84,6 +84,7 @@ function renderTable(dateInfo, nameMap, prev, chartData) {
         if (!prevCodes.has(r.instrument)) tag = '<span class="tag tag-new">新进</span>';
         else if (rank < prevRank[r.instrument]) tag = '<span class="tag tag-up">↑</span>';
         else if (rank > prevRank[r.instrument]) tag = '<span class="tag tag-dn">↓</span>';
+        else tag = '<span class="tag tag-hold">—</span>';
 
         let spark = '';
         if (chartData && chartData.stocks[r.instrument] && chartData.stocks[r.instrument].length >= 2) {
@@ -91,7 +92,7 @@ function renderTable(dateInfo, nameMap, prev, chartData) {
         } else {
             spark = '<td class="spark muted">—</td>';
         }
-        return `<tr><td class="rank">${rank}</td><td><code>${r.instrument}</code></td><td class="name">${name}</td><td class="score">+${score}%</td><td>${tag}</td>${spark}</tr>`;
+        return `<tr><td class="rank">${rank}</td><td><code>${r.instrument}</code></td><td class="name">${name}</td><td class="score red">+${score}%</td><td>${tag}</td>${spark}</tr>`;
     }).join('');
 
     return { date, rows, tbody };

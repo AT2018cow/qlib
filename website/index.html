@@ -37,7 +37,9 @@ header h1 { font-size: 24px; margin-bottom: 4px; }
 .rank { font-weight: bold; color: var(--muted); width: 32px; }
 code { color: var(--accent); font-family: monospace; font-size: 13px; }
 .name { font-weight: 500; }
-.score { color: var(--green); font-family: monospace; }
+.score { font-family: monospace; }
+.score.red { color: var(--red); }
+.tag-hold { color: var(--muted); font-size: 11px; }
 .muted { color: var(--muted); font-size: 12px; }
 .tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
 .tag-new { background: rgba(63,185,80,.15); color: var(--green); }
@@ -61,6 +63,6 @@ footer a { color: var(--accent); text-decoration: none; }
 </head>
 <body>
 <div id="app"><p style="text-align:center;color:#8b949e">加载中…</p></div>
-<script src="app.js?v=2"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>
