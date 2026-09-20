@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>策略方法论 — A 股每日选股信号</title>
+<style>
+:root {
+    --bg: #0d1117; --card: #161b22; --border: #30363d;
+    --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --red: #f85149;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; min-height: 100vh;
+    padding: 24px 16px;
+}
+#app { width: 100%; max-width: 720px; }
+header { text-align: center; margin-bottom: 28px; }
+header h1 { font-size: 22px; margin-bottom: 4px; }
+.subtitle { color: var(--muted); font-size: 14px; }
+.section {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 18px 20px; margin-bottom: 16px;
+}
+.section h2 { font-size: 17px; margin-bottom: 10px; color: var(--accent); }
+.section p, .section li { font-size: 14px; line-height: 1.7; color: var(--text); }
+.section ul { padding-left: 20px; margin-top: 6px; }
+.section li { margin-bottom: 4px; }
+.section .note { color: var(--muted); font-size: 13px; margin-top: 8px; }
+table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+th, td { padding: 8px; font-size: 13px; text-align: left; border-bottom: 1px solid var(--border); }
+th { color: var(--muted); font-size: 12px; }
+code { color: var(--accent); font-family: monospace; font-size: 13px; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.back-row { text-align: center; margin-top: 28px; }
+footer {
+    margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border);
+    font-size: 12px; color: var(--muted); text-align: center; line-height: 1.8;
+}
+</style>
+</head>
+<body>
+<div id="app">
+    <header>
+        <h1>策略方法论</h1>
+        <p class="subtitle">Alpha Generation Framework & Execution Protocol</p>
+    </header>
+
+    <div class="section">
+        <h2>一、Alpha 模型</h2>
+        <p><strong>LightGBM（梯度提升树）</strong> · 158 维量价特征 · 20 日收益预测标签</p>
+        <ul>
+            <li>特征集 Alpha158：K 线形态（9）、动量与均线（15）、波动率（5）、趋势拟合（15）、位置分位（15）、量能结构（26）等，全部由 OHLCV 衍生</li>
+            <li>标签：<code>Ref($close, -20) / $close - 1</code>（未来 20 个交易日收益率）</li>
+            <li>训练集：2016 年至今 expanding 窗口，每 20 个交易日滚动重训</li>
+            <li>样本边界严格 point-in-time purge，无跨段标签泄漏</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>二、股票池与组合构造</h2>
+        <ul>
+            <li><strong>Universe</strong>：中证 1000 成分股（含历史真实成分，无幸存者偏差）</li>
+            <li><strong>选股</strong>：每日模型打分排序，取预测收益率最高的 <strong>top 20</strong> 等权持有</li>
+            <li><strong>调仓</strong>：每日微调（daily rebalance），换掉跌出榜单最差的 2 只</li>
+            <li><strong>流动性过滤</strong>：剔除当日已涨/跌停 ≥9.5% 的标的（不可成交风险）</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>三、执行协议</h2>
+        <ul>
+            <li>信号发布：每个交易日 20:30（北京时间），基于当日收盘数据生成</li>
+            <li>执行时点：T+1 开盘/收盘按榜单操作</li>
+            <li>执行日保护：跳过 T+1 高开 >5%（排队无意义）和 T+1 停牌股</li>
+            <li>风控三件套：
+                <ol style="padding-left:20px;margin-top:4px;">
+                    <li>单票止损 -8% ~ -10%（硬止损）</li>
+                    <li>中证 1000 MA20 大盘门控（跌破减半仓或空仓）</li>
+                    <li>Size 风格门控（中证 1000/沪深 300 相对强弱转负时降仓）</li>
+                </ol>
+            </li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>四、历史回测基准</h2>
+        <p>5.5 年滚动 Walk-Forward（2021Q1 ~ 2026Q3，23 个季度窗口，严格无前视）：</p>
+        <table>
+            <tr><th>指标</th><th>数值</th></tr>
+            <tr><td>年化有成本超额</td><td>+11.6%（点估计）</td></tr>
+            <tr><td>t 统计量</td><td>1.44（p≈0.08，不显著）</td></tr>
+            <tr><td>正窗口比例</td><td>14/23（61%）</td></tr>
+            <tr><td>最差单季</td><td>-20.0%</td></tr>
+            <tr><td>最差年份</td><td>2025 年 -12%</td></tr>
+        </table>
+        <p class="note">⚠️ 统计上该信号"未证伪但未确立"（p > 0.05）——仓位必须按"信号可能无效"定价（卫星仓 ≤ 10~20% 总资金）。</p>
+    </div>
+
+    <div class="section">
+        <h2>五、已知风险</h2>
+        <ul>
+            <li><strong>小盘风格暴露</strong>：超额与中证 1000 小盘行情高度相关，2024 型风格反转年曾录得 -16%（旧口径）</li>
+            <li><strong>指数 Beta 全自担</strong>：绝对收益 = 指数涨跌 + 选股超额；2022 年中证 1000 跌 21%，组合约亏 10%</li>
+            <li><strong>小盘股流动性约束</strong>：组合规模上限约 100~400 万元</li>
+            <li><strong>交易成本敏感</strong>：费率从万一到 0.2% 变化，期望从 +2.2% 摆到 -2.4%</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>六、数据管道</h2>
+        <ul>
+            <li>数据源：chenditc/investment_data A 股日频全量包（append-only，已实证零修订）</li>
+            <li>计算：Modal serverless（非抢占容器），每交易日 20:30 自动运行</li>
+            <li>信号存证：GitHub 不可变提交（paper trading 审计留痕）</li>
+        </ul>
+    </div>
+
+    <div class="back-row">
+        <a href="./" class="back-link">← 返回信号列表</a>
+    </div>
+
+    <footer>
+        <p>⚠️ <b>免责声明</b>：本页仅为学术研究与实验性工程验证（research-only），不构成任何投资建议（not investment advice）。据此操作风险自负。</p>
+        <p><a href="https://github.com/AT2018cow/qlib" target="_blank">GitHub 仓库</a> · 完整实验记录见 docs/experiments/</p>
+    </footer>
+</div>
+</body>
+</html>

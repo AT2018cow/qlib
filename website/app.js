@@ -92,7 +92,7 @@ async function main() {
     app.innerHTML = `
         <header>
             <h1>A 股每日选股信号</h1>
-            <p class="subtitle">csi1000 · top20 · 预测未来 20 日收益</p>
+            <p class="subtitle">csi1000 · top20 · 预测未来 20 日收益 · <a href="methodology.html" style="color:inherit;text-decoration:underline;">策略方法论</a></p>
             <p class="date">📅 ${latest.date}</p>
         </header>
         <div id="table-wrap">

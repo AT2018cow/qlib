@@ -27,7 +27,7 @@ jobs:
       - name: Build site
         run: |
           mkdir -p _site/signals
-          cp website/index.html website/app.js _site/
+          cp website/index.html website/app.js website/methodology.html _site/
           cp results/signals/*.csv results/signals/*.json _site/signals/
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
