@@ -2440,6 +2440,39 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
 
 
 
+
+
+def _load_latest_to_local():
+    """下载最新 chenditc 包并解压到 /tmp/cn_data（daily_standalone 和 backfill 共用）。"""
+    import shutil
+    import tarfile
+
+    import requests
+
+    data_dir = Path("/tmp/cn_data")
+    if data_dir.exists():
+        shutil.rmtree(data_dir)
+    zip_path = Path("/tmp/chenditc_latest.tar.gz")
+    extract = Path("/tmp/chenditc_extract")
+    with requests.get(CHENDITC_LATEST_URL, stream=True, timeout=600) as r:
+        r.raise_for_status()
+        with zip_path.open("wb") as f:
+            for chunk in r.iter_content(chunk_size=1 << 20):
+                f.write(chunk)
+    if extract.exists():
+        shutil.rmtree(extract)
+    extract.mkdir(parents=True)
+    with tarfile.open(zip_path, "r:gz") as tf:
+        tf.extractall(extract)
+    base = extract
+    if not (base / "features").exists():
+        for sub in base.iterdir():
+            if sub.is_dir() and (sub / "features").exists():
+                base = sub
+                break
+    shutil.move(str(base), str(data_dir))
+    return data_dir
+
 # ===================== 每日定时任务（Modal Cron，云端全自动） =====================
 # 部署：  modal secret create github-push GITHUB_TOKEN=<你的PAT>   # 一次性
 #         modal deploy modal_qlib_cn_a10g.py                        # 部署（含 cron）
@@ -2679,6 +2712,105 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
     out.mkdir(parents=True, exist_ok=True)
     with (out / "results.json").open("w") as f:
         _json.dump({"window": f"{eval_from}~{cal[-1]}", "market": market, "results": results}, f, indent=2)
+    vol.commit()
+    return results
+
+
+@app.function(
+    volumes={str(VOL_ROOT): vol},
+    cpu=CPU_COUNT,
+    memory=32768,
+    timeout=4 * 3600,
+    nonpreemptible=True,
+)
+def backfill_signals(dates: str = "2026-09-16,2026-09-17", topk: int = 20, nd: int = 2, market: str = "csi1000"):
+    """补算历史日期的信号（用于网站历史榜单验证）。数据来自最新全量包（append-only，
+    历史部分不变），模型用 configure_asof 以目标日期为 asof 训练（严格无前视）。
+    返回 {date: {csv_content, chart_json}}。"""
+    import hashlib
+    import json as _json
+    import pickle
+    from bisect import bisect_left
+
+    import numpy as np
+    import pandas as pd
+
+    import qlib
+    from qlib.data.dataset import Dataset
+    from qlib.model.base import Model
+    from qlib.utils import init_instance_by_config
+
+    from qlib_audit_fixes import last_matured_sample, purge_cfg_splits, read_trading_calendar
+    from qlib_live_retrain import configure_asof
+
+    data_dir = _load_latest_to_local()
+    cal = read_trading_calendar(data_dir)
+    qlib.init(provider_uri=str(data_dir), region="cn",
+              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
+                           "kwargs": {"uri": "file:/tmp/mlruns", "default_exp_name": "qlib-cn-backfill"}})
+
+    results = {}
+    for asof in [d.strip() for d in dates.split(",")]:
+        asof_i = bisect_left(cal, asof)
+        if asof_i >= len(cal) or cal[asof_i] != asof:
+            raise RuntimeError(f"{asof} not in calendar")
+        horizon = 20
+        valid_end_i = asof_i - horizon - 1
+        valid_start_i = valid_end_i - 252 + 1
+        valid_start = cal[valid_start_i]
+        train_end = last_matured_sample(cal, valid_start, horizon)
+        cfg = _load_and_patch_cfg(MODEL_CFG["lgb158"], smoke=False, recent=True, long_train=True,
+                                  label20=True, topk=topk, nd=nd, market=market)
+        dk = cfg["task"]["dataset"]["kwargs"]
+        seg = dk["segments"]
+        handler = dk["handler"]["kwargs"]
+        seg["train"] = ["2016-01-01", train_end]
+        seg["valid"] = [valid_start, cal[valid_end_i]]
+        seg["test"] = [asof, asof]
+        handler["start_time"] = "2015-01-01"
+        handler["end_time"] = asof
+        handler["fit_start_time"] = "2016-01-01"
+        handler["fit_end_time"] = train_end
+        purge_cfg_splits(cfg, cal, horizon=horizon)
+
+        m = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
+        ds = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
+        m.fit(ds)
+        pred = m.predict(ds, segment="test")
+        if pred.empty:
+            raise RuntimeError(f"empty predictions for {asof}")
+        day = pred.loc[asof].dropna()
+
+        # 涨跌停过滤（与 daily_standalone 相同口径）
+        from qlib.data import D
+        day_df = D.features([str(x) for x in day.index], ["$close", "Ref($close,1)"],
+                            start_time=asof, end_time=asof, freq="day")
+        if len(day_df) > 0 and ("Ref($close,1)" in day_df.columns):
+            day_ret = (day_df["$close"] / day_df["Ref($close,1)"] - 1).dropna()
+            limited = day_ret[(day_ret >= 0.095) | (day_ret <= -0.095)].index.get_level_values(0)
+            day = day.loc[day.index[~day.index.isin(limited)]]
+        top = day.sort_values(ascending=False).head(topk)
+
+        csv_content = "rank,instrument,score\n" + "\n".join(
+            f"{i},{inst},{score}" for i, (inst, score) in enumerate(top.items(), 1))
+
+        # 走势 JSON
+        chart = {"dates": cal[max(0,asof_i-60):asof_i+1][-60:], "stocks": {}}
+        for inst in top.index:
+            close_bin = data_dir / "features" / str(inst).lower() / "close.day.bin"
+            if close_bin.exists():
+                _, values = _read_bin(close_bin)
+                chart["stocks"][str(inst)] = [round(float(v), 4) for v in values[-60:]]
+        chart_json = _json.dumps(chart, ensure_ascii=False)
+
+        results[asof] = {"csv_content": csv_content, "chart_json": chart_json, "topk": topk,
+                         "n_stocks": len(top)}
+        print(f"[backfill] {asof}: {len(top)} 只股票已生成")
+        # 保存到 Volume 供后续使用
+        out = VOL_ROOT / "signals"
+        out.mkdir(parents=True, exist_ok=True)
+        (out / f"{asof}_top{topk}_lgb158.csv").write_text(csv_content)
+        (out / f"{asof}_chart.json").write_text(chart_json)
     vol.commit()
     return results
 
