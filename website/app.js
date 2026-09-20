@@ -93,10 +93,7 @@ async function main() {
         <header>
             <h1>A 股每日选股信号</h1>
             <p class="subtitle">csi1000 · top20 · 预测未来 20 日收益</p>
-            <div class="date-row">
-                <p class="date">📅 ${latest.date}</p>
-                <button id="back-btn" class="back-btn" style="display:none">← 回到最新</button>
-            </div>
+            <p class="date">📅 ${latest.date}</p>
         </header>
         <div id="table-wrap">
             <table class="signal-table">
@@ -108,7 +105,7 @@ async function main() {
         <div class="history">
             <h3>历史榜单</h3>
             <div id="history-buttons" class="date-buttons">${
-                dates.slice(1).map(d => `<button class="date-btn" data-date="${d.date}">${d.date}</button>`).join('') || '<p class="muted">暂无更早数据</p>'
+                dates.map(d => `<button class="date-btn${d.date === latest.date ? ' current' : ''}" data-date="${d.date}">${d.date}</button>`).join('')
             }</div>
         </div>
         <footer>
@@ -136,27 +133,23 @@ async function main() {
     };
 
     render(buildRows(latest, nameMap, prev, chartData));
-    const backBtn = document.getElementById('back-btn');
+    const switchDate = async (d) => {
+        const pd = dates.find(x => x.date < d.date);
+        let sc = null;
+        const sct = await fetchText(`${CSV_BASE}/${d.date}_chart.json`);
+        if (sct) { try { sc = JSON.parse(sct); } catch(e) {} }
+        render(buildRows(d, nameMap, pd ? parseCSV(pd.text) : null, sc));
+        document.querySelector('.date').textContent = `📅 ${d.date}`;
+        // 高亮当前选中的日期按钮
+        document.querySelectorAll('.date-btn').forEach(b =>
+            b.classList.toggle('current', b.dataset.date === d.date));
+    };
 
     document.getElementById('history-buttons').querySelectorAll('.date-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
+        btn.addEventListener('click', () => {
             const d = dates.find(x => x.date === btn.dataset.date);
-            if (!d) return;
-            const pd = dates.find(x => x.date < btn.dataset.date);
-            const pdText = pd ? pd.text : null;
-            let sc = null;
-            const sct = await fetchText(`${CSV_BASE}/${d.date}_chart.json`);
-            if (sct) { try { sc = JSON.parse(sct); } catch(e) {} }
-            render(buildRows(d, nameMap, pdText ? parseCSV(pdText) : null, sc));
-            document.querySelector('.date').textContent = `📅 ${d.date}`;
-            backBtn.style.display = 'inline-block';
+            if (d) switchDate(d);
         });
-    });
-
-    backBtn.addEventListener('click', async () => {
-        render(buildRows(latest, nameMap, prev, chartData));
-        document.querySelector('.date').textContent = `📅 ${latest.date}`;
-        backBtn.style.display = 'none';
     });
 }
 main();
