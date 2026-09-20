@@ -93,7 +93,7 @@ function renderTable(dateInfo, nameMap, prev, chartData) {
         } else {
             spark = '<td class="spark muted">—</td>';
         }
-        return `<tr><td class="rank">${rank}</td><td><code><a href="${sinaUrl(r.instrument)}" target="_blank" rel="noopener">${r.instrument}</a></code></td><td class="name"><a href="${sinaUrl(r.instrument)}" target="_blank" rel="noopener">${name}</a></td><td class="score red">+${score}%</td><td>${tag}</td>${spark}</tr>`;
+        return `<tr><td class="rank">${rank}</td><td><code><a href="${sinaUrl(r.instrument)}" target="_blank" rel="noopener">${r.instrument}</a></code></td><td class="name">${name}</td><td class="score red">+${score}%</td><td>${tag}</td>${spark}</tr>`;
     }).join('');
 
     return { date, rows, tbody };
