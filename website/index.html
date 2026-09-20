@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A 股每日选股信号</title>
+<style>
+:root {
+    --bg: #0d1117; --card: #161b22; --border: #30363d;
+    --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --red: #f85149; --orange: #d29922;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; min-height: 100vh;
+    padding: 24px 16px;
+}
+#app { width: 100%; max-width: 720px; }
+header { text-align: center; margin-bottom: 24px; }
+header h1 { font-size: 24px; margin-bottom: 4px; }
+.subtitle { color: var(--muted); font-size: 14px; }
+.date { color: var(--accent); font-size: 16px; margin-top: 8px; }
+.card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px 18px; margin-bottom: 20px;
+    font-size: 14px; line-height: 1.6; color: var(--muted);
+}
+.card h3 { font-size: 15px; color: var(--text); margin-bottom: 6px; }
+.signal-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+.signal-table th, .signal-table td {
+    padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--border);
+}
+.signal-table th { font-size: 12px; text-transform: uppercase; color: var(--muted); letter-spacing: .5px; }
+.signal-table tbody tr:hover { background: rgba(88,166,255,.06); }
+.rank { font-weight: bold; color: var(--muted); width: 32px; }
+code { color: var(--accent); font-family: monospace; font-size: 13px; }
+.name { font-weight: 500; }
+.score { color: var(--green); font-family: monospace; }
+.tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+.tag-new { background: rgba(63,185,80,.15); color: var(--green); }
+.tag-in  { background: rgba(88,166,255,.15); color: var(--accent); }
+.tag-dn  { background: rgba(210,153,34,.15); color: var(--orange); }
+.tag-out { background: rgba(248,81,73,.15); color: var(--red); }
+.history { margin-top: 32px; }
+.history h3 { font-size: 16px; margin-bottom: 12px; }
+.date-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.date-btn {
+    background: var(--card); border: 1px solid var(--border); color: var(--text);
+    padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px;
+}
+.date-btn:hover { border-color: var(--accent); color: var(--accent); }
+footer {
+    margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border);
+    font-size: 12px; color: var(--muted); line-height: 1.8; text-align: center;
+}
+footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+<div id="app"><p style="text-align:center;color:#8b949e">加载中…</p></div>
+<script src="app.js"></script>
+</body>
+</html>
