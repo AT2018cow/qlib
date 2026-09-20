@@ -103,6 +103,18 @@ function render(dateInfo, nameMap) {
     document.getElementById('signal-rows').innerHTML = rows.map(r => stockRow(r)).join('');
 }
 
+// ---------- Sparkline ----------
+function makeSparkline(values, w, h) {
+    const min = Math.min(...values), max = Math.max(...values);
+    const range = max - min || 1;
+    const pts = values.map((v, i) =>
+        `${(i / (values.length - 1) * w).toFixed(1)},${(h - (v - min) / range * h).toFixed(1)}`
+    ).join(' ');
+    const up = values[values.length - 1] >= values[0];
+    const color = up ? '#3fb950' : '#f85149';
+    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5" /></svg>`;
+}
+
 // ---------- 变化对比 ----------
 function diffRows(today, prev, nameMap) {
     const todayCodes = new Set(today.map(r => r.instrument));
@@ -143,6 +155,23 @@ async function main() {
                         : '';
         return `<tr><td class="rank">${r.rank}</td><td><code>${r.instrument}</code></td><td class="name">${name}</td><td class="score">+${score}%</td><td>${changeTag}</td></tr>`;
     }).join('');
+
+    // ---- 走势 sparkline ----
+    const chartText = await fetchText(`${CSV_BASE}/${latest.date}_chart.json`);
+    if (chartText) {
+        try {
+            const chart = JSON.parse(chartText);
+            const rows = document.querySelectorAll('#signal-rows tr');
+            rows.forEach((tr, i) => {
+                const inst = today[i].instrument;
+                const closes = chart.stocks[inst];
+                if (!closes || closes.length < 2) return;
+                const svg = makeSparkline(closes, 80, 24);
+                tr.insertAdjacentHTML('beforeend', `<td class="spark">${svg}</td>`);
+            });
+            document.querySelector('.signal-table thead tr').insertAdjacentHTML('beforeend', '<th>近 60 日</th>');
+        } catch (e) { console.warn('chart parse failed', e); }
+    }
 
     // 历史日期按钮
     const historyDiv = document.getElementById('history-buttons');

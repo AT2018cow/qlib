@@ -2419,13 +2419,24 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
     print(f"[daily] {predict_date} top{topk}（{market}，未来20日收益预测）:")
     for rank, (inst, score) in enumerate(top.items(), 1):
         print(f"  {rank:>2}. {inst}  score={score:.4f}")
+
+    # ---- 4b) 走势 JSON：每只入选股近 60 个交易日收盘价（网站 K 线数据源）----
+    chart = {"dates": cal_lines[-60:], "stocks": {}}
+    for inst in top.index:
+        close_bin = data_dir / "features" / str(inst).lower() / "close.day.bin"
+        if close_bin.exists():
+            _, values = _read_bin(close_bin)
+            chart["stocks"][str(inst)] = [round(float(v), 4) for v in values[-60:]]
+    chart_json = json.dumps(chart, ensure_ascii=False)
+
     return {"date": str(predict_date)[:10], "topk": topk, "n_stocks": len(top),
             "csv_content": csv_content, "data_calendar_end": cal_lines[-1],
             "ranking_only": True, "rebalance_applied": False,
             "model_fit_asof": saved["fit_asof"],
             "train_end": saved["train"][-1],
             "valid_end": saved["valid"][-1],
-            "retrained_today": train_now}
+            "retrained_today": train_now,
+            "chart_json": chart_json}
 
 
 
@@ -2491,6 +2502,52 @@ def daily_cron():
         print(f"[cron] ✅ 已推送到 GitHub: {path}")
     else:
         raise RuntimeError(f"GitHub push failed: HTTP {r.status_code}: {r.text[:200]}")
+
+    # ---- 走势 JSON 推送（网站 K 线数据源；同日不可变，同 CSV 语义）----
+    chart_path = f"results/signals/{res['date']}_chart.json"
+    chart_api = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{chart_path}"
+    chart_exist = requests.get(chart_api, headers=headers, timeout=30)
+    if chart_exist.status_code == 404:
+        rc = requests.put(chart_api, headers=headers, timeout=30, json={
+            "message": f"chore(signal): chart data {res['date']} (cron)",
+            "content": base64.b64encode(res["chart_json"].encode()).decode(),
+            "branch": SIGNAL_BRANCH,
+        })
+        if rc.status_code in (200, 201):
+            print(f"[cron] ✅ 已推送到 GitHub: {chart_path}")
+        else:
+            raise RuntimeError(f"Chart push failed: HTTP {rc.status_code}: {rc.text[:200]}")
+    else:
+        print(f"[cron] {chart_path} 已存在，跳过（不可变）")
+
+    # ---- 名称映射每日自动更新（akshare 全量拉取，有变化才推送；失败不影响信号）----
+    try:
+        import akshare as ak
+        name_df = ak.stock_info_a_code_name()
+        name_csv = name_df.to_csv(index=False)
+        name_path = "results/signals/code_name_map.csv"
+        name_api = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{name_path}"
+        name_exist = requests.get(name_api, headers=headers, timeout=30)
+        if name_exist.status_code == 200:
+            old_csv = base64.b64decode(name_exist.json()["content"]).decode()
+            old_sha = name_exist.json()["sha"]
+        else:
+            old_csv, old_sha = None, None
+        if old_csv != name_csv:
+            rn = requests.put(name_api, headers=headers, timeout=30, json={
+                "message": "chore(signal): update code->name mapping (cron)",
+                "content": base64.b64encode(name_csv.encode()).decode(),
+                "branch": SIGNAL_BRANCH,
+                **({"sha": old_sha} if old_sha else {}),
+            })
+            if rn.status_code in (200, 201):
+                print(f"[cron] ✅ 名称映射已更新（{len(name_df)} 只）")
+            else:
+                print(f"[cron] ⚠️ 名称映射推送失败: HTTP {rn.status_code}")
+        else:
+            print("[cron] 名称映射无变化，跳过")
+    except Exception as e:
+        print(f"[cron] ⚠️ 名称映射更新失败（不影响信号推送）: {e}")
 
 
 # ===================== 第六步：重训频率对比实验（freq 5/20/60） =====================
