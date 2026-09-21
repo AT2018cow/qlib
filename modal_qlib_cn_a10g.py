@@ -2477,14 +2477,14 @@ def _load_latest_to_local():
 # 部署：  modal secret create github-push GITHUB_TOKEN=<你的PAT>   # 一次性
 #         modal deploy modal_qlib_cn_a10g.py                        # 部署（含 cron）
 # 停止：  modal app stop <app名> 或 modal delete <app名>
-# 说明：  每个 A 股交易日收盘后（北京 20:30）云端自动：下载最新数据 → 训练终审候选
+# 说明：  每个交易日次日早上（北京 07:00）云端自动：下载最新数据 → 训练终审候选
 #         → 生成 top20 信号 → 经 GitHub API 直接写入仓库（无需 git 二进制/本地机器）
 GITHUB_REPO = "AT2018cow/qlib"
 SIGNAL_BRANCH = "main"
 
 
 @app.function(
-    schedule=modal.Cron("30 20 * * 1-5", timezone="Asia/Shanghai"),
+    schedule=modal.Cron("0 7 * * 2-6", timezone="Asia/Shanghai"),  # 周二~周六 07:00（前一日收盘数据已发布，开盘前输出）
     secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
     timeout=2 * 3600,
     nonpreemptible=True,  # 调度入口：被抢占则当天任务丢失；自身运行时间短，3x 成本增量极小
