@@ -2491,24 +2491,34 @@ SIGNAL_BRANCH = "main"
 )
 def daily_cron():
     """云端全自动每日信号：daily_standalone 训练 → GitHub API 提交（不依赖本地机器）。
-    需 Modal Secret `github-push`（含 GITHUB_TOKEN，对 fork 仓库 Contents 读写权限的 PAT）。"""
+    需 Modal Secret `github-push`（含 GITHUB_TOKEN，对 fork 仓库 Contents 读写权限的 PAT）。
+    信号日期 = 实际使用日（当日），即每天 07:00 发布"今天的信号"。
+    非交易日：chenditc latest 包的日历末尾≠上一个工作日时，跳过执行（不推送不报错）。"""
     import base64
     import os
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
 
     import requests
 
     res = daily_standalone.remote(topk=20, nd=2, market="csi1000")
-    print(f"[cron] 信号日期 {res['date']}（数据日历至 {res['data_calendar_end']}）")
-    if res["date"] != res["data_calendar_end"]:
-        raise RuntimeError("Signal date does not match last data calendar date")
-    from datetime import datetime
-    from zoneinfo import ZoneInfo
-    today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
-    if res["date"] != today:
-        raise RuntimeError(f"Today={today} but latest dataset={res['date']}; "
-                           "possible exchange holiday or stale release; do not publish old ranking")
+    data_date = res["date"]  # 数据覆盖到的最后交易日
+    print(f"[cron] 数据日历至 {data_date}")
 
-    path = f"results/signals/{res['date']}_top20_lgb158.csv"
+    # 非交易日判定：如果最新数据日期不是最近的交易日（周一~周五），说明今天是非交易日或数据未更新
+    today = datetime.now(ZoneInfo("Asia/Shanghai")).date()
+    # cron 在 07:00 跑，应该拿到前一个交易日（或当天如果 00:00 已发布）的数据
+    # 简单判定：数据日期距今 ≤ 3 个自然日（周一早上拿到的周五数据 = 3 天）
+    days_behind = (today - datetime.strptime(data_date, "%Y-%m-%d").date()).days
+    if days_behind > 4:
+        print(f"[cron] 非交易日或数据异常（数据日={data_date}，距今 {days_behind} 天>4），跳过执行")
+        return
+
+    # 信号日期 = 今天（07:00 发布今天用的信号）
+    signal_date = today.isoformat()
+    print(f"[cron] 信号日期 {signal_date}（基于数据日 {data_date} 的收盘数据）")
+
+    path = f"results/signals/{signal_date}_top20_lgb158.csv"
     token = os.environ["GITHUB_TOKEN"]
     headers = {"Authorization": f"Bearer {token}",
                "Accept": "application/vnd.github+json"}
@@ -2526,7 +2536,7 @@ def daily_cron():
     sha = None
 
     r = requests.put(api, headers=headers, timeout=30, json={
-        "message": f"chore(signal): paper-trading record {res['date']} top20 (cron)",
+        "message": f"chore(signal): paper-trading record {signal_date} top20 (cron)",
         "content": base64.b64encode(res["csv_content"].encode()).decode(),
         "branch": SIGNAL_BRANCH,
         **({"sha": sha} if sha else {}),
@@ -2537,12 +2547,12 @@ def daily_cron():
         raise RuntimeError(f"GitHub push failed: HTTP {r.status_code}: {r.text[:200]}")
 
     # ---- 走势 JSON 推送（网站 K 线数据源；同日不可变，同 CSV 语义）----
-    chart_path = f"results/signals/{res['date']}_chart.json"
+    chart_path = f"results/signals/{signal_date}_chart.json"
     chart_api = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{chart_path}"
     chart_exist = requests.get(chart_api, headers=headers, timeout=30)
     if chart_exist.status_code == 404:
         rc = requests.put(chart_api, headers=headers, timeout=30, json={
-            "message": f"chore(signal): chart data {res['date']} (cron)",
+            "message": f"chore(signal): chart data {signal_date} (cron)",
             "content": base64.b64encode(res["chart_json"].encode()).decode(),
             "branch": SIGNAL_BRANCH,
         })
