@@ -2535,33 +2535,20 @@ def daily_cron():
         raise RuntimeError(f"Cannot check existing signal: HTTP {exist.status_code}")
     sha = None
 
-    r = requests.put(api, headers=headers, timeout=30, json={
-        "message": f"chore(signal): paper-trading record {signal_date} top20 (cron)",
-        "content": base64.b64encode(res["csv_content"].encode()).decode(),
-        "branch": SIGNAL_BRANCH,
-        **({"sha": sha} if sha else {}),
-    })
-    if r.status_code in (200, 201):
-        print(f"[cron] ✅ 已推送到 GitHub: {path}")
-    else:
-        raise RuntimeError(f"GitHub push failed: HTTP {r.status_code}: {r.text[:200]}")
-
-    # ---- 走势 JSON 推送（网站 K 线数据源；同日不可变，同 CSV 语义）----
-    chart_path = f"results/signals/{signal_date}_chart.json"
-    chart_api = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{chart_path}"
-    chart_exist = requests.get(chart_api, headers=headers, timeout=30)
-    if chart_exist.status_code == 404:
-        rc = requests.put(chart_api, headers=headers, timeout=30, json={
-            "message": f"chore(signal): chart data {signal_date} (cron)",
-            "content": base64.b64encode(res["chart_json"].encode()).decode(),
-            "branch": SIGNAL_BRANCH,
-        })
-        if rc.status_code in (200, 201):
-            print(f"[cron] ✅ 已推送到 GitHub: {chart_path}")
-        else:
-            raise RuntimeError(f"Chart push failed: HTTP {rc.status_code}: {rc.text[:200]}")
-    else:
-        print(f"[cron] {chart_path} 已存在，跳过（不可变）")
+    # 使用 Git Data API 一次 commit 同时写入 CSV + chart JSON
+    # （避免两次独立的 Contents API push 触发两次 Actions → concurrency cancel 导致 chart 部署丢失）
+    from github_commit import push_files
+    push_files(
+        token=os.environ["GITHUB"],
+        repo=GITHUB_REPO,
+        branch=SIGNAL_BRANCH,
+        files={
+            path: res["csv_content"],
+            f"results/signals/{signal_date}_chart.json": res["chart_json"],
+        },
+        message=f"chore(signal): {signal_date} top20 + chart (cron)",
+    )
+    print(f"[cron] ✅ 已推送 CSV + chart JSON: {signal_date}")
 
     # ---- 名称映射每日自动更新（akshare 全量拉取，有变化才推送；失败不影响信号）----
     try:
