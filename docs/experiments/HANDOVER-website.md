@@ -13,7 +13,7 @@ https://at2018cow.github.io/qlib/
 ### 自动化全链路（零人工维护）
 
 ```
-每个交易日 20:30（北京时间，Modal Cron nonpreemptible）
+每个交易日 07:00（北京时间，Modal Cron nonpreemptible）
   → 下载 chenditc 最新数据（566MB 全量包）
   → 训练/复用缓存模型（每 20 个交易日重训一次）
   → csi1000 top20 排名 CSV（ranking_only，涨跌停过滤）

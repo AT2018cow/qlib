@@ -13,7 +13,7 @@
 ### 生产系统（at2018cow workspace，已部署且稳定）
 
 ```
-Modal Cron：每个 A 股交易日 20:30（北京时间）
+Modal Cron：每个 A 股交易日 07:00（北京时间）
   → daily_standalone（nonpreemptible=True，8核32G CPU 容器，无 GPU）
     1. 下载 chenditc/investment_data 最新全量包（565MB，数据必最新，无陈旧问题）
     2. 训练/推理：
