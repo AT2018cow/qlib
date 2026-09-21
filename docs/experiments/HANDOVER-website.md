@@ -1,128 +1,119 @@
-# 网站交接文档——每日选股结果展示站
+# 网站交接文档——每日选股展示站（后续优化/扩展用）
 
-> 面向新对话：本文档说明做"每日选股结果展示网站"的全部工作基础。数据管道已全自动化运行，网站只需读取其产物。
+> 面向新对话：网站已上线且全自动运行。本文档说明当前架构、已实现功能、已知设计决策、以及后续优化的起点。
 
-## 一、需求
+## 一、当前系统状态（2026-09-20 已上线）
 
-展示每日选股结果，要求：
-1. **股票代码 + 公司名称**对照（当前 CSV 只有代码）
-2. **每日清单变化**（今日 vs 昨日：新进/退出/留存的标记）
-3. **近期走势**（个股 K 线或近期收益，加分项）
-
-## 二、数据基础（最重要）
-
-### 2.1 每日信号文件（已自动生成并推送 GitHub）
+### 访问地址
 
 ```
-位置:  results/signals/<YYYY-MM-DD>_top20_lgb158.csv
-格式:  rank,instrument,score
-       1,SH600064,0.11886...
-       2,SH601528,0.11380...
+https://at2018cow.github.io/qlib/
 ```
 
-- **生成规则**：每个 A 股交易日 20:30（北京时间）Modal Cron 自动运行（at2018cow workspace，nonpreemptible）
-- **推送规则**：GitHub API 写入 main 分支（不可变——同日不重复，代码在 `modal_qlib_cn_a10g.py` 的 `daily_cron` 函数）
-- **信号语义**：`score` = 模型预测的"未来 20 个交易日收益率"（越高越看好）；`ranking_only=True`（排名非可执行订单）
-- **目前存量**：`results/signals/` 已有 2026-09-16 和 2026-09-18 两个文件；**以后每个交易日自动新增一个**
-- **股票池**：csi1000 成分股（含历史成分，真实 point-in-time 成分——无幸存者偏差）
+### 自动化全链路（零人工维护）
 
-### 2.2 股票代码 → 公司名称映射（网站需自行解决）
+```
+每个交易日 20:30（北京时间，Modal Cron nonpreemptible）
+  → 下载 chenditc 最新数据（566MB 全量包）
+  → 训练/复用缓存模型（每 20 个交易日重训一次）
+  → csi1000 top20 排名 CSV（ranking_only，涨跌停过滤）
+  → 60 日走势 JSON（每只入选股收盘序列）
+  → akshare 名称映射（有变化才推送）
+  → GitHub API 推送 → Actions 自动重建 → Pages 自动发布
+```
 
-**信号文件不含名称**，需要建立映射。已验证的获取途径：
+### 触发规则（`.github/workflows/website-deploy.yml`）
 
-| 方案 | 接口 | 状况 |
+```yaml
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'results/signals/**'    # 数据变化（cron 推送）
+      - 'website/**'            # 代码变化（开发推送）
+```
+
+两类变更都自动部署，无手动操作。
+
+## 二、文件结构
+
+```
+website/
+├── index.html          # 主页面（桌面表格 + 移动卡片 CSS + 版本号 v=12）
+├── app.js              # 全部 JS 逻辑（无框架，原生 fetch + DOM）
+└── methodology.html    # 策略方法论页（独立静态页，同主题风格）
+
+results/signals/
+├── <日期>_top20_lgb158.csv   # 信号（rank, instrument, score）
+├── <日期>_chart.json          # 走势（{dates: [], stocks: {code: [closes]}}）
+└── code_name_map.csv          # 代码映射（code, name）
+
+.github/workflows/website-deploy.yml  # Pages 部署
+.github/disabled/                     # 已禁用的上游 CI（6 个）
+```
+
+## 三、已实现功能清单
+
+| 功能 | 实现 |
+|---|---|
+| 代码+名称+新浪链接 | `sinaUrl()` 函数，仅代码列有链接 |
+| 每日变化标签 | 新进（蓝色）/ ↑（红色）/ ↓（绿色）/ —（灰色） |
+| 走势 sparkline | 60 日收盘价 SVG 折线，红涨绿跌 |
+| 响应式布局 | ≥680px 表格 / <680px 卡片式 |
+| 历史日期切换 | 水平滚动条，最近 20 个交易日，当前日期高亮 |
+| 策略方法论页 | 6 个板块：Alpha 模型 / Universe / 执行协议 / 回测基准 / 风险 / 管道 |
+| 免责声明 | 每页页脚 |
+| 名称映射自动更新 | cron 每日拉 akshare，有变化才推送 |
+
+## 四、关键设计决策（后续开发不要违反）
+
+| 决策 | 理由 |
+|---|---|
+| **纯静态架构** | 数据全在 GitHub，无后端、无服务器、零运维 |
+| **无前端框架** | 原生 JS，无 build step——改完即推即部署 |
+| **同日信号不可变** | cron 逻辑拒绝改写已存在的同日文件（paper trading 留痕纪律） |
+| **Sparkline 颜色 = 红涨绿跌** | A 股惯例（不是国际绿涨红跌） |
+| **历史榜单含最新日期** | 无独立"回最新"按钮——当前日期在滚动条中高亮 |
+| **CSV_BASE = 'signals'** | app.js 相对路径，Pages 部署时 Actions 把 `results/signals/*` 拷到 `_site/signals/` |
+| **cache-busting 版本号** | `app.js?v=N`——每次改 JS 必须递增 N（index.html 里的 `?v=`），否则 CDN/浏览器缓存 10 分钟 |
+| **已禁用上游 CI** | 6 个 workflow 移到 `.github/disabled/`（fork 仅研究用，不维护 qlib 代码） |
+
+## 五、已知问题与优化方向
+
+| 优先级 | 事项 | 说明 |
 |---|---|---|
-| **akshare 静态对照表** | `ak.stock_info_a_code_name()` | 返回全部 A 股代码-名称（~5000只），**本地测试时网络断连**（东财接口 ConnectionReset），需重试或在云端测试 |
-| akshare 新浪快照 | `ak.stock_zh_a_spot()` | 本地成功过一次（70 页分页、约 30 秒），列名 `['代码','名称',...]`，但网络间歇断连 |
-| **最可靠**：一次性静态 CSV | 生成一份 `code_name_map.csv` 提交到仓库 | 之后网站直接读，无需运行时依赖 |
+| 低 | 历史榜单 >20 天后 | 当前硬编码 `slice(0, 20)`；更久后考虑按月分组折叠 |
+| 低 | 名称映射网络依赖 | akshare 接口间歇断连（已 try/except 不影响信号）；长期可改为季度手动更新 |
+| 低 | 涨跌停口径标注 | 页面未显示"T 日过滤、T+1 需人工保护"——methodology 已写但首页表头可加 tooltip |
+| 可选 | 批量历史回填工具 | `backfill_signals` 函数已有（可对任意历史日期生成信号+chart JSON），如需更多历史数据可用 |
+| 可选 | 实时净值曲线 | 需要 cron 推送每日模拟组合净值——当前未实现 |
 
-**推荐做法**：新对话中先尝试 `ak.stock_info_a_code_name()` 生成静态映射文件（代码格式：6 位数字 → qlib 格式转换规则：`SH`/`SZ`/`BJ` 前缀 = 沪/深/北交所；qlib instrument 如 `SH600064` → 纯代码 `600064`）。映射相对稳定（改名/新股少量变化），建议每季度更新一次即可。
-
-### 2.3 走势数据（近期 K 线）
-
-| 方案 | 说明 |
-|---|---|
-| **chenditc qlib bin**（已有管道） | Modal Volume `qlib-cn-data` 的 `/vol/cn_data/features/<股票代码>/close.day.bin` —— 全部 A 股日线 close 数据。云端 Modal 容器可直接读取；已有现成的 `_read_bin` 函数（`modal_qlib_cn_a10g.py` 搜索 `_read_bin`） |
-| akshare 日线 | `ak.stock_zh_a_daily(symbol="sz000001")` —— 返回 OHLCV 日线，含日期索引 |
-| 前端图表库自拉 | 如果前端直接用 ECharts/TradingView，可用 akshare 或 tushare 的公开接口（需测试网络稳定性） |
-
-**推荐**：走势数据由网站后端（或构建时的静态 JSON）从 chenditc bin 文件预计算——信号对应的 20 只股票近 60 日的 close 序列——每次发榜时一起生成一份 `signals/<date>_chart.json`。
-
-## 三、网站架构建议
-
-### 3.1 最简方案（纯静态，无后端）
-
-```
-GitHub Actions（每个交易日 20:35 触发，即 cron 推送信号后 5 分钟）:
-  1. 拉 main 分支
-  2. 读取 results/signals/ 全部 CSV
-  3. 合并静态 code_name_map.csv
-  4. 计算每日变化（新进/退出/留存）
-  5. 从预计算的走势 JSON 拼装数据
-  6. 生成静态 HTML（或直接用 GitHub Pages + 前端框架）
-  7. 推送到 gh-pages 分支
-```
-
-优点：零服务器成本、GitHub Pages 免费托管、天然与现有 cron 自动化衔接。
-缺点：走势数据需要 cron 端多输出一份文件（见 3.3）。
-
-### 3.2 进阶方案（Modal Web Endpoint）
-
-如果需要实时性/交互查询，可加一个 Modal `@modal.web_server` 函数：
-- 读取 Volume 中的信号文件 + bin 数据
-- 提供 `/api/signals/<date>` 和 `/api/chart/<code>` 接口
-- 前端（Vue/React）部署在 GitHub Pages 或任意静态托管
-
-### 3.3 建议的信号端改动（最小化）
-
-当前 `daily_cron` 只推送 CSV。可加一行（约 10 行代码）同时推送走势 JSON：
-
-```python
-# daily_cron 里追加：
-chart_data = {}  # {instrument: [近60日收盘价序列]}
-# 从 /vol/cn_data/features/<code>/close.day.bin 读最后 60 个值
-# 写入 results/signals/<date>_chart.json 一并 GitHub API 推送
-```
-
-这样网站端无需访问 Modal/Volume——纯读 GitHub 仓库即可。**建议新对话先做这一步**。
-
-## 四、技术栈参考
-
-| 层 | 建议 |
-|---|---|
-| 静态站生成 | 任意（纯 HTML/JS、VitePress、Next.js SSG 均可） |
-| 图表 | ECharts（K 线/折线）或 lightweight-charts（TradingView 出品，轻量 K 线专用） |
-| 托管 | GitHub Pages（fork 已是 public） |
-| 触发 | GitHub Actions cron（`on: schedule`）或直接依赖推送事件的 `on: push: paths: results/signals/` |
-
-**免责声明别忘了**：网站每页标注"仅供研究参考，不构成投资建议"（仓库 README 已有先例）。
-
-## 五、复现 / 开发环境速查
+## 六、开发环境速查
 
 ```bash
-# 本地环境
 source .venv/bin/activate
-modal profile current          # at2018cow（生产）/ infi（实验）
-pip install akshare           # 已装在 .venv
+modal profile current          # at2018cow（生产）
 
-# 信号文件样例
-cat results/signals/2026-09-18_top20_lgb158.csv
+# 本地测试网站（无需部署）
+cd /tmp && python -m http.server 8899
+# 浏览器打开 http://localhost:8899（需先把 website/ + results/signals/ 拷到同目录）
 
-# 代码格式转换
-#   qlib: SH600064 → 纯代码 600064（前缀 SH/SZ/BJ 表示沪/深/北交所）
-#   akshare: 600064 直接匹配
+# 手动触发部署（一般不需要——push 即自动）
+# 到 GitHub Actions → "Deploy signal website" → Run workflow
 
-# chenditc bin 读取（已在 modal_qlib_cn_a10g.py 中有 _read_bin）
-#   文件: /vol/cn_data/features/sh600064/close.day.bin
-#   格式: [起始索引(float32), 后续每日close(float32)]
+# 修改 JS 后必做
+# 1. 修改 website/app.js
+# 2. index.html 版本号 +1（如 v=12 → v=13）
+# 3. git add + commit + push → 自动部署
 
-# Modal Volume 数据（走势源）
-#   workspace: at2018cow → Volume: qlib-cn-data → cn_data/
+# 生成额外历史数据
+modal run modal_qlib_cn_a10g.py::backfill_signals --dates "2026-09-14,2026-09-15"
+# 然后从 Volume 取回并 git push（这些文件也会触发网站自动更新）
 ```
 
-## 六、关联文档
+## 七、关联文档
 
-- 系统总交接：`docs/experiments/HANDOVER.md`（推荐给新对话先读）
-- 终审结论：`docs/experiments/05-final-audit.md`（+11.6% 基线、统计不显著等——网站展示数字时须引用这些口径）
-- 操作手册：`docs/experiments/04-playbook.md`（信号语义、执行日保护规则——网站的"免责+执行提示"可引用）
-- 免责声明先例：仓库根 `README.md` 顶部（research-only, not investment advice）
+- 系统总交接：`docs/experiments/HANDOVER.md`
+- 终审结论：`docs/experiments/05-final-audit.md`（+11.6% 基线）
+- 新增股票池交接：`docs/experiments/HANDOVER-universe-expansion.md`
+- 上游 fork 说明：`AGENTS.md`（本 fork 扩展层段落）
