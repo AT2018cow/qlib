@@ -2484,7 +2484,7 @@ SIGNAL_BRANCH = "main"
 
 
 @app.function(
-    schedule=modal.Cron("0 7 * * 2-6", timezone="Asia/Shanghai"),  # 周二~周六 07:00（前一日收盘数据已发布，开盘前输出）
+    schedule=modal.Cron("0 7 * * 1-5", timezone="Asia/Shanghai"),  # 周一~周五 07:00（周一算上周五数据，周二~周五算前一交易日）
     secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
     timeout=2 * 3600,
     nonpreemptible=True,  # 调度入口：被抢占则当天任务丢失；自身运行时间短，3x 成本增量极小
