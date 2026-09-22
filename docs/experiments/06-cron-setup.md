@@ -54,3 +54,13 @@ modal app logs <app名>
 ## 多余依赖说明（已知且接受）
 
 镜像为全功能共享（含 torch/CUDA 库 ~2GB，为 GPU 路径预留）。Modal 仅对运行容器计费、镜像存储免费，对 cron 费用无影响，故不做拆分。如需精简可拆 cron 专用 slim 镜像（无 torch），当前收益为零。
+
+## 陷阱备忘（实战踩坑记录）
+
+| 陷阱 | 后果 | 规则 |
+|---|---|---|
+| **新增 helper .py 模块** | 容器内 `import` ModuleNotFoundError——函数运行在 `/root/`，仓库在镜像的 `/root/qlib/` 下 | 必须加进镜像 cp 步骤（`modal_qlib_cn_a10g.py` 中 `.run_commands("cp ... /root/")`），当前已有 `qlib_audit_fixes.py` / `qlib_live_retrain.py` / `github_commit.py` |
+| **Secret 环境变量名** | `os.environ` KeyError → 当天信号丢失 | 只有 `GITHUB_TOKEN` 一个变量（见 Secret 定义） |
+| **多次 Contents API 逐个推文件** | 多个 commit 几乎同时触发 Actions → concurrency `cancel-in-progress` 取消后到的 run → 部署产物缺文件（09-22 迷你走势 404 事故） | 多文件必须走 `github_commit.push_files`（Git Data API 单 commit 原子推送） |
+| **chenditc 发布时间** | 晚间 cron 拿到旧包 → 严格日期检查失败（09-21 20:30 事故） | cron 必须在次日早上（07:00）跑，等包发布后再取 |
+| **Modal 告警邮件可能延迟/重复** | 看似"再次失败"，实际日志无新失败记录 | 收到告警先 `modal app logs` 核对时间戳，再下结论 |

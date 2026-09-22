@@ -91,7 +91,7 @@ image = (
     .run_commands("cd /root/qlib && pip install . --no-build-isolation --no-deps")
     # 审计 PR 的 helper 模块随 add_local_dir 进了 /root/qlib/，但 Modal 入口脚本挂在
     # /root/ 运行（sys.path 首位是 /root）——必须复制到 /root/ 否则 ModuleNotFoundError。
-    .run_commands("cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/")
+    .run_commands("cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/qlib/github_commit.py /root/")
 )
 
 app = modal.App(APP_NAME, image=image)
@@ -2477,7 +2477,7 @@ def _load_latest_to_local():
 # 部署：  modal secret create github-push GITHUB_TOKEN=<你的PAT>   # 一次性
 #         modal deploy modal_qlib_cn_a10g.py                        # 部署（含 cron）
 # 停止：  modal app stop <app名> 或 modal delete <app名>
-# 说明：  每个交易日次日早上（北京 07:00）云端自动：下载最新数据 → 训练终审候选
+# 说明：  每个交易日早上 07:00（北京，周一~周五）云端自动：下载最新数据 → 训练终审候选
 #         → 生成 top20 信号 → 经 GitHub API 直接写入仓库（无需 git 二进制/本地机器）
 GITHUB_REPO = "AT2018cow/qlib"
 SIGNAL_BRANCH = "main"
@@ -2496,7 +2496,7 @@ def daily_cron():
     非交易日：chenditc latest 包的日历末尾≠上一个工作日时，跳过执行（不推送不报错）。"""
     import base64
     import os
-    from datetime import datetime, timedelta
+    from datetime import datetime
     from zoneinfo import ZoneInfo
 
     import requests
@@ -2539,7 +2539,7 @@ def daily_cron():
     # （避免两次独立的 Contents API push 触发两次 Actions → concurrency cancel 导致 chart 部署丢失）
     from github_commit import push_files
     push_files(
-        token=os.environ["GITHUB"],
+        token=token,
         repo=GITHUB_REPO,
         branch=SIGNAL_BRANCH,
         files={
