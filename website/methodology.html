@@ -74,7 +74,7 @@ footer {
     <div class="section">
         <h2>三、执行协议</h2>
         <ul>
-            <li>信号发布：每个交易日 20:30（北京时间），基于当日收盘数据生成</li>
+            <li>信号发布：每个交易日 07:00（北京时间），基于前一交易日收盘数据生成</li>
             <li>执行时点：T+1 开盘/收盘按榜单操作</li>
             <li>执行日保护：跳过 T+1 高开 >5%（排队无意义）和 T+1 停牌股</li>
             <li>风控三件套：
@@ -115,7 +115,7 @@ footer {
         <h2>六、数据管道</h2>
         <ul>
             <li>数据源：chenditc/investment_data A 股日频全量包（append-only，已实证零修订）</li>
-            <li>计算：Modal serverless（非抢占容器），每交易日 20:30 自动运行</li>
+            <li>计算：Modal serverless（非抢占容器），每交易日 07:00 自动运行</li>
             <li>信号存证：GitHub 不可变提交（paper trading 审计留痕）</li>
         </ul>
     </div>
