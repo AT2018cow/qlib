@@ -110,7 +110,7 @@ async function main() {
         </div>
         <footer>
             <p>⚠️ 仅供研究参考，不构成投资建议 · 据此操作风险自负</p>
-            <p>每个交易日 21:00 自动更新</p>
+            <p>每个交易日 7:30 自动更新</p>
         </footer>`;
 
     const render = (rows) => {
