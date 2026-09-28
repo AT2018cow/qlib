@@ -32,7 +32,7 @@ modal deploy modal_qlib_cn_a10g.py
 | 项 | 说明 |
 |---|---|
 | 每次运行成本 | ~$0.2（容器只在触发的那 ~25 分钟计费；deployed 待命状态免费） |
-| 节假日/周末 | 不在 cron（周一~周五），无触发无费用；非交易日触发自动去重 |
+| 节假日/周末 | 周末不在 cron；工作日触发但经 akshare 交易日历 gate 判定为假日 → 不发布榜单（日历拉取失败 fail-open 照常发布） |
 | 暂停 | `modal app stop <app名>` |
 | 删除 | Modal dashboard 或 CLI（`modal app stop` 为永久停止） |
 | 更新代码后生效 | 重新 `modal deploy modal_qlib_cn_a10g.py` |
@@ -64,3 +64,4 @@ modal app logs <app名>
 | **多次 Contents API 逐个推文件** | 多个 commit 几乎同时触发 Actions → concurrency `cancel-in-progress` 取消后到的 run → 部署产物缺文件（09-22 迷你走势 404 事故） | 多文件必须走 `github_commit.push_files`（Git Data API 单 commit 原子推送） |
 | **chenditc 发布时间** | 晚间 cron 拿到旧包 → 严格日期检查失败（09-21 20:30 事故） | cron 必须在次日早上（07:00）跑，等包发布后再取 |
 | **Modal 告警邮件可能延迟/重复** | 看似"再次失败"，实际日志无新失败记录 | 收到告警先 `modal app logs` 核对时间戳，再下结论 |
+| **假日后首个交易日"数据滞后"** | 09-28（周一）榜单数据止于 09-24（周四）——中秋 09-25 休市，chart 与假日前那份逐字节相同 | **属预期**：数据止于最近交易日 = 正确的前一交易日窗口；模型 20 日缓存未到期同样复用。勿当故障处理 |

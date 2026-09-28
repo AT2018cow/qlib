@@ -2483,8 +2483,25 @@ GITHUB_REPO = "AT2018cow/qlib"
 SIGNAL_BRANCH = "main"
 
 
+def _cn_trading_calendar():
+    """akshare 全年 A 股交易日历（含未来日期，到年末）。返回 {"YYYY-MM-DD"} 集合，失败抛异常。
+
+    数据自带的 day.txt 日历只含已发生的交易日，无法判断"今天是否交易日"；
+    本函数用 akshare 的 Sina 交易日历（含未来）补足。已对照 2026-09 实况验证：
+    09-25（中秋）不在、09-28/09-24 在、国庆 10-01~10-07 不在、10-08 复市。
+    """
+    import akshare as ak
+    cal_df = ak.tool_trade_date_hist_sina()
+    cal = set()
+    for d in cal_df.iloc[:, 0]:
+        try:
+            cal.add(d.strftime("%Y-%m-%d"))
+        except AttributeError:
+            cal.add(str(d)[:10])
+    return cal
+
+
 @app.function(
-    schedule=modal.Cron("0 7 * * 1-5", timezone="Asia/Shanghai"),  # 周一~周五 07:00（周一算上周五数据，周二~周五算前一交易日）
     secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
     timeout=2 * 3600,
     nonpreemptible=True,  # 调度入口：被抢占则当天任务丢失；自身运行时间短，3x 成本增量极小
@@ -2493,7 +2510,8 @@ def daily_cron():
     """云端全自动每日信号：daily_standalone 训练 → GitHub API 提交（不依赖本地机器）。
     需 Modal Secret `github-push`（含 GITHUB_TOKEN，对 fork 仓库 Contents 读写权限的 PAT）。
     信号日期 = 实际使用日（当日），即每天 07:00 发布"今天的信号"。
-    非交易日：chenditc latest 包的日历末尾≠上一个工作日时，跳过执行（不推送不报错）。"""
+    非交易日 gate：akshare 全年日历判定今天非交易日 → 不发布（fail-open）；
+    数据 >4 天旧（数据源长期未更新）→ 跳过执行（不推送不报错）。"""
     import base64
     import os
     from datetime import datetime
@@ -2517,6 +2535,22 @@ def daily_cron():
     # 信号日期 = 今天（07:00 发布今天用的信号）
     signal_date = today.isoformat()
     print(f"[cron] 信号日期 {signal_date}（基于数据日 {data_date} 的收盘数据）")
+
+    # 交易日 gate：法定假日不发布榜单（数据未更新时榜单与最近一份已发布信号相同，
+    # 发布只会造成网站重复条目；假日榜单当天无人可执行）。
+    # 数据自带日历不含未来日期 → 用 akshare 全年日历判断"今天"。
+    # 日历源异常时 fail-open 照常发布：假日多发一份只是观感问题，漏发交易日榜单才是真损失。
+    try:
+        cal = _cn_trading_calendar()
+        if data_date not in cal:
+            print(f"[cron] ⚠️ 交易日历不含数据日 {data_date}，日历源可疑，fail-open 照常发布")
+        elif signal_date not in cal:
+            print(f"[cron] {signal_date} 非 A 股交易日（假日），不发布榜单；最近排名见最近一份已发布信号")
+            return
+        else:
+            print(f"[cron] {signal_date} 是交易日，继续发布")
+    except Exception as e:
+        print(f"[cron] ⚠️ 交易日历获取失败，fail-open 照常发布: {e}")
 
     path = f"results/signals/{signal_date}_top20_lgb158.csv"
     token = os.environ["GITHUB_TOKEN"]
@@ -2552,8 +2586,20 @@ def daily_cron():
 
     # ---- 名称映射每日自动更新（akshare 全量拉取，有变化才推送；失败不影响信号）----
     try:
+        import time
+
         import akshare as ak
-        name_df = ak.stock_info_a_code_name()
+        name_df = None
+        for attempt in (1, 2):
+            try:
+                name_df = ak.stock_info_a_code_name()
+                break
+            except Exception as e1:
+                if attempt == 1:
+                    print(f"[cron] 名称映射拉取失败（第 1 次），10 秒后重试: {e1}")
+                    time.sleep(10)
+                else:
+                    raise
         name_csv = name_df.to_csv(index=False)
         name_path = "results/signals/code_name_map.csv"
         name_api = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{name_path}"
