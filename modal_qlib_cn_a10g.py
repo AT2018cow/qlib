@@ -2501,6 +2501,53 @@ def _cn_trading_calendar():
     return cal
 
 
+def _publication_decision(cal, data_date: str, signal_date: str, fallback_days: int = 0):
+    """发布判定：合并"今天是否交易日"gate 与"数据新鲜度"检查，统一交易日口径。
+
+    取代旧的 ">4 自然日跳过" 机械规则——两者会在长假后复市日冲突：
+    2026 国庆后 10-08 复市，数据止于 09-30（差 8 个自然日 >4，旧规则会静默漏发），
+    而交易日口径下 lag=0，正常发布。
+
+    Args:
+        cal: 交易日历集合（{"YYYY-MM-DD"}，含未来日期）；None = 日历获取失败（降级模式）
+        data_date: 数据覆盖到的最后交易日（YYYY-MM-DD）
+        signal_date: 信号使用日 = 今天（YYYY-MM-DD）
+        fallback_days: 降级模式用的自然日差（today - data_date）
+
+    Returns:
+        (action, detail)：action ∈ {"publish", "skip", "raise"}
+        - publish: 正常发布（detail 为日志信息）
+        - skip: 今天非交易日，不发布（detail 为日志信息）
+        - raise: 数据源疑似故障，抛 RuntimeError(detail) 触发 Modal 告警
+
+    逻辑：
+        日历可用时：
+          - 今天非交易日 → skip（假日榜单无人可执行，且与最近已发布信号内容相同）
+          - 数据日不在日历（口径差异）→ publish + 警告（fail-open）
+          - lag = (data_date, signal_date) 之间的交易日数：
+              0 → publish（数据即前一交易日收盘）
+              1 → publish + 警告（数据源漏发一轮，以最近可得数据发布）
+              ≥2 → raise（疑似数据源故障，连续 ≥2 轮未更新）
+        日历不可用时（fail-open 降级）：
+          - fallback_days ≤ 12 → publish（保留极端兜底：12 自然日 ≈ 春节级长假上限之外）
+          - > 12 → raise（日历与数据源同时故障且数据极端陈旧）
+    """
+    if cal is not None:
+        if signal_date not in cal:
+            return ("skip", f"{signal_date} 非 A 股交易日（假日），不发布榜单；最近排名见最近一份已发布信号")
+        if data_date not in cal:
+            return ("publish", f"⚠️ 交易日历不含数据日 {data_date}，日历源口径差异，fail-open 照常发布")
+        lag = sum(1 for c in cal if data_date < c < signal_date)
+        if lag >= 2:
+            return ("raise", f"数据滞后 {lag} 个交易日（{data_date} → {signal_date}），疑似数据源故障；不发布陈旧榜单")
+        if lag == 1:
+            return ("publish", f"⚠️ 数据滞后 1 个交易日（{data_date} → {signal_date}，数据源漏发一轮），以最近可得数据发布")
+        return ("publish", f"{signal_date} 是交易日，数据为前一交易日收盘（lag=0），正常发布")
+    if fallback_days > 12:
+        return ("raise", f"交易日历获取失败且数据滞后 {fallback_days} 自然日>12，不发布")
+    return ("publish", f"⚠️ 交易日历获取失败，fail-open 降级（数据距今 {fallback_days} 自然日 ≤12），照常发布")
+
+
 @app.function(
     secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
     timeout=2 * 3600,
@@ -2510,8 +2557,9 @@ def daily_cron():
     """云端全自动每日信号：daily_standalone 训练 → GitHub API 提交（不依赖本地机器）。
     需 Modal Secret `github-push`（含 GITHUB_TOKEN，对 fork 仓库 Contents 读写权限的 PAT）。
     信号日期 = 实际使用日（当日），即每天 07:00 发布"今天的信号"。
-    非交易日 gate：akshare 全年日历判定今天非交易日 → 不发布（fail-open）；
-    数据 >4 天旧（数据源长期未更新）→ 跳过执行（不推送不报错）。"""
+    发布判定（_publication_decision，交易日口径）：
+    今天非交易日 → skip；数据滞后 ≥2 交易日 → raise（告警）；lag 0/1 → 发布。
+    日历拉取失败 → fail-open 降级（>12 自然日兜底）。"""
     import base64
     import os
     from datetime import datetime
@@ -2523,34 +2571,28 @@ def daily_cron():
     data_date = res["date"]  # 数据覆盖到的最后交易日
     print(f"[cron] 数据日历至 {data_date}")
 
-    # 非交易日判定：如果最新数据日期不是最近的交易日（周一~周五），说明今天是非交易日或数据未更新
     today = datetime.now(ZoneInfo("Asia/Shanghai")).date()
-    # cron 在 07:00 跑，应该拿到前一个交易日（或当天如果 00:00 已发布）的数据
-    # 简单判定：数据日期距今 ≤ 3 个自然日（周一早上拿到的周五数据 = 3 天）
-    days_behind = (today - datetime.strptime(data_date, "%Y-%m-%d").date()).days
-    if days_behind > 4:
-        print(f"[cron] 非交易日或数据异常（数据日={data_date}，距今 {days_behind} 天>4），跳过执行")
-        return
-
-    # 信号日期 = 今天（07:00 发布今天用的信号）
-    signal_date = today.isoformat()
+    signal_date = today.isoformat()  # 信号日期 = 使用日（07:00 发布今天用的信号）
     print(f"[cron] 信号日期 {signal_date}（基于数据日 {data_date} 的收盘数据）")
 
-    # 交易日 gate：法定假日不发布榜单（数据未更新时榜单与最近一份已发布信号相同，
-    # 发布只会造成网站重复条目；假日榜单当天无人可执行）。
-    # 数据自带日历不含未来日期 → 用 akshare 全年日历判断"今天"。
-    # 日历源异常时 fail-open 照常发布：假日多发一份只是观感问题，漏发交易日榜单才是真损失。
+    # 发布判定（交易日 gate + 数据新鲜度，交易日口径，见 _publication_decision docstring）
     try:
         cal = _cn_trading_calendar()
-        if data_date not in cal:
-            print(f"[cron] ⚠️ 交易日历不含数据日 {data_date}，日历源可疑，fail-open 照常发布")
-        elif signal_date not in cal:
-            print(f"[cron] {signal_date} 非 A 股交易日（假日），不发布榜单；最近排名见最近一份已发布信号")
-            return
-        else:
-            print(f"[cron] {signal_date} 是交易日，继续发布")
     except Exception as e:
-        print(f"[cron] ⚠️ 交易日历获取失败，fail-open 照常发布: {e}")
+        cal = None
+        print(f"[cron] ⚠️ 交易日历获取失败，进入 fail-open 降级: {e}")
+        cal_err = str(e)
+    else:
+        cal_err = None
+    fallback_days = (today - datetime.strptime(data_date, "%Y-%m-%d").date()).days
+    action, detail = _publication_decision(cal, data_date, signal_date, fallback_days)
+    print(f"[cron] {detail}")
+    if action == "skip":
+        return
+    if action == "raise":
+        raise RuntimeError(detail)
+    if cal_err:
+        print(f"[cron] ⚠️ 降级原因: {cal_err}")
 
     path = f"results/signals/{signal_date}_top20_lgb158.csv"
     token = os.environ["GITHUB_TOKEN"]

@@ -33,6 +33,7 @@ modal deploy modal_qlib_cn_a10g.py
 |---|---|
 | 每次运行成本 | ~$0.2（容器只在触发的那 ~25 分钟计费；deployed 待命状态免费） |
 | 节假日/周末 | 周末不在 cron；工作日触发但经 akshare 交易日历 gate 判定为假日 → 不发布榜单（日历拉取失败 fail-open 照常发布） |
+| 数据新鲜度 | 交易日口径 lag（数据日→今天之间的交易日数）：0=正常，1=数据源漏发一轮仍发布（警告），≥2=疑似数据源故障 → raise 触发 Modal 告警。日历不可用时 fail-open 降级（>12 自然日兜底）。旧 ">4 自然日跳过" 规则已移除——它会在长假后复市日（如 10-08 数据止于 09-30，差 8 自然日）错杀正常发布 |
 | 暂停 | `modal app stop <app名>` |
 | 删除 | Modal dashboard 或 CLI（`modal app stop` 为永久停止） |
 | 更新代码后生效 | 重新 `modal deploy modal_qlib_cn_a10g.py` |
