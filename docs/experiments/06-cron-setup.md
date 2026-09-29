@@ -64,5 +64,6 @@ modal app logs <app名>
 | **Secret 环境变量名** | `os.environ` KeyError → 当天信号丢失 | 只有 `GITHUB_TOKEN` 一个变量（见 Secret 定义） |
 | **多次 Contents API 逐个推文件** | 多个 commit 几乎同时触发 Actions → concurrency `cancel-in-progress` 取消后到的 run → 部署产物缺文件（09-22 迷你走势 404 事故） | 多文件必须走 `github_commit.push_files`（Git Data API 单 commit 原子推送） |
 | **chenditc 发布时间** | 晚间 cron 拿到旧包 → 严格日期检查失败（09-21 20:30 事故） | cron 必须在次日早上（07:00）跑，等包发布后再取 |
+| **装饰器编辑意外吞掉 schedule 行** | 09-29 静默无调度：gate 重构编辑在 `@app.function` 前插入辅助函数，oldString 含 `schedule=modal.Cron(...)` 行而 newString 未带 → 调度被删，后续两次 deploy 均为无调度版本；py_compile 无法发现 | 回归守护测试 `tests/test_cron_gate.py::test_cron_schedule_registered`；触碰装饰器的编辑后必跑测试。注意："no changes detected" 的跳过式 deploy **不会**修复调度缺失（内容哈希比对，不做核对） |
 | **Modal 告警邮件可能延迟/重复** | 看似"再次失败"，实际日志无新失败记录 | 收到告警先 `modal app logs` 核对时间戳，再下结论 |
 | **假日后首个交易日"数据滞后"** | 09-28（周一）榜单数据止于 09-24（周四）——中秋 09-25 休市，chart 与假日前那份逐字节相同 | **属预期**：数据止于最近交易日 = 正确的前一交易日窗口；模型 20 日缓存未到期同样复用。勿当故障处理。gate 上线后（2026-09-28）假日不再产生榜单，历史残留的 09-25 假日条目已按新语义删除（内容留存于 09-28 与 git 历史 c1ac6396） |
