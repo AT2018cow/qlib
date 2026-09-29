@@ -2549,6 +2549,9 @@ def _publication_decision(cal, data_date: str, signal_date: str, fallback_days: 
 
 
 @app.function(
+    schedule=modal.Cron("0 7 * * 1-5", timezone="Asia/Shanghai"),  # 周一~周五 07:00（周一算上周五数据，周二~周五算前一交易日）
+    # ⚠️ 此 schedule 行曾被重构编辑意外吞掉（2026-09-28 gate 上线时），导致 09-29 静默无调度——
+    #    任何触碰此装饰器的编辑后必须运行 tests/test_cron_gate.py 的守护测试。
     secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
     timeout=2 * 3600,
     nonpreemptible=True,  # 调度入口：被抢占则当天任务丢失；自身运行时间短，3x 成本增量极小

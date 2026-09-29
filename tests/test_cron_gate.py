@@ -12,6 +12,22 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from modal_qlib_cn_a10g import _publication_decision
 
 
+def test_cron_schedule_registered():
+    """Guard: the daily_cron decorator must still carry the cron schedule.
+
+    2026-09-29 incident: a refactor edit inserted a helper function before
+    @app.function and its oldString included the `schedule=modal.Cron(...)`
+    line while the newString omitted it — silently deleting the schedule.
+    py_compile passes without a schedule; nothing else would notice, and the
+    next morning's cron simply never fires. This test pins the line."""
+    src = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                            "modal_qlib_cn_a10g.py")).read()
+    assert 'schedule=modal.Cron("0 7 * * 1-5", timezone="Asia/Shanghai")' in src, \
+        "daily_cron schedule line missing — cron would silently never fire!"
+    assert "nonpreemptible=True" in src
+    assert 'modal.Secret.from_name(_GH_SECRET_NAME := "github-push")' in src
+
+
 def _cal(dates):
     return set(dates)
 
