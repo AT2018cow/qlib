@@ -1,8 +1,16 @@
 // ============================================================
 // 每日选股结果展示 — 纯静态单页应用（响应式：桌面表格 / 移动卡片）
+// 双池：csi1000（中证1000）+ chinext（创业板）——文件按后缀区分
 // ============================================================
 const CSV_BASE = 'signals';
 const NAME_MAP_URL = `${CSV_BASE}/code_name_map.csv`;
+
+// 池定义：suffix 决定信号/走势文件名（csi1000 无后缀=网站历史兼容；chinext 带 _chinext）
+const POOLS = {
+    csi1000: { label: '中证1000', suffix: '', desc: 'top20 · 预测未来 20 日收益 · nd2 执行口径' },
+    chinext: { label: '创业板', suffix: '_chinext', desc: 'top20 · 预测未来 20 日收益 · nd3 执行口径（等权基准）' },
+};
+const DEFAULT_POOL = 'csi1000';
 
 const qlibCode = inst => inst.replace(/^(SH|SZ|BJ)/, '');
 const sinaUrl = inst => `https://finance.sina.com.cn/realstock/company/${inst.toLowerCase()}/nc.shtml`;
@@ -36,7 +44,8 @@ async function loadNameMap() {
     return map;
 }
 
-async function loadAvailableDates() {
+async function loadAvailableDates(pool) {
+    const suffix = POOLS[pool].suffix;
     const now = new Date();
     const candidates = [];
     for (let i = 0; i < 30; i++) {  // 回溯 30 个自然日（≈20 交易日）
@@ -45,7 +54,7 @@ async function loadAvailableDates() {
         candidates.push(d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'));
     }
     const results = await Promise.all(candidates.map(async ymd => {
-        const text = await fetchText(`${CSV_BASE}/${ymd}_top20_lgb158.csv`);
+        const text = await fetchText(`${CSV_BASE}/${ymd}_top20_lgb158${suffix}.csv`);
         return text ? { date: ymd, text } : null;
     }));
     return results.filter(Boolean).sort((a, b) => b.date.localeCompare(a.date));
@@ -77,22 +86,28 @@ function buildRows(dateInfo, nameMap, prev, chartData) {
     });
 }
 
-async function main() {
-    const [nameMap, dates] = await Promise.all([loadNameMap(), loadAvailableDates()]);
+async function main(pool) {
+    pool = POOLS[pool] ? pool : DEFAULT_POOL;
+    const suffix = POOLS[pool].suffix;
+    const [nameMap, dates] = await Promise.all([loadNameMap(), loadAvailableDates(pool)]);
     const app = document.getElementById('app');
     if (!dates.length) { app.innerHTML = '<p style="text-align:center;color:#8b949e">暂无信号数据</p>'; return; }
 
     const latest = dates[0];
     const prev = dates.length > 1 ? parseCSV(dates[1].text) : null;
     let chartData = null;
-    const ct = await fetchText(`${CSV_BASE}/${latest.date}_chart.json`);
+    const ct = await fetchText(`${CSV_BASE}/${latest.date}_chart${suffix}.json`);
     if (ct) { try { chartData = JSON.parse(ct); } catch(e) {} }
 
     // --- 骨架 ---
+    const poolTabs = Object.keys(POOLS).map(p =>
+        `<button class="date-btn pool-btn${p === pool ? ' current' : ''}" data-pool="${p}">${POOLS[p].label}</button>`
+    ).join('<span class="muted">·</span>');
     app.innerHTML = `
         <header>
             <h1>A 股每日选股信号</h1>
-            <p class="subtitle">csi1000 · top20 · 预测未来 20 日收益 · <a href="methodology.html" style="color:inherit;text-decoration:underline;">策略方法论</a></p>
+            <p class="pool-tabs">${poolTabs}</p>
+            <p class="subtitle">${POOLS[pool].label} · ${POOLS[pool].desc} · <a href="methodology.html" style="color:inherit;text-decoration:underline;">策略方法论</a></p>
             <p class="date">📅 ${latest.date}</p>
         </header>
         <div id="table-wrap">
@@ -110,7 +125,7 @@ async function main() {
         </div>
         <footer>
             <p>⚠️ 仅供研究参考，不构成投资建议 · 据此操作风险自负</p>
-            <p>每个交易日 7:30 自动更新</p>
+            <p>每个交易日 7:30 自动更新${pool === 'chinext' ? ' · 创业板为独立卫星池（5.5年滚动终审 +11.5%，见方法论）' : ''}</p>
         </footer>`;
 
     const render = (rows) => {
@@ -136,12 +151,12 @@ async function main() {
     const switchDate = async (d) => {
         const pd = dates.find(x => x.date < d.date);
         let sc = null;
-        const sct = await fetchText(`${CSV_BASE}/${d.date}_chart.json`);
+        const sct = await fetchText(`${CSV_BASE}/${d.date}_chart${suffix}.json`);
         if (sct) { try { sc = JSON.parse(sct); } catch(e) {} }
         render(buildRows(d, nameMap, pd ? parseCSV(pd.text) : null, sc));
         document.querySelector('.date').textContent = `📅 ${d.date}`;
         // 高亮当前选中的日期按钮
-        document.querySelectorAll('.date-btn').forEach(b =>
+        document.querySelectorAll('.date-btn:not(.pool-btn)').forEach(b =>
             b.classList.toggle('current', b.dataset.date === d.date));
     };
 
@@ -151,5 +166,16 @@ async function main() {
             if (d) switchDate(d);
         });
     });
+    // 池切换：URL 带 pool 参数（可分享/收藏），重新渲染整页
+    document.querySelectorAll('.pool-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (btn.dataset.pool === pool) return;
+            const u = new URL(location.href);
+            u.searchParams.set('pool', btn.dataset.pool);
+            location.href = u.toString();
+        });
+    });
 }
-main();
+
+// 入口：?pool=chinext 支持（默认 csi1000）
+main(new URLSearchParams(location.search).get('pool') || 'csi1000');
