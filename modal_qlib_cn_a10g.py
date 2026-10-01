@@ -3254,6 +3254,121 @@ def backfill_signals(dates: str = "2026-09-16,2026-09-17", topk: int = 20, nd: i
     return results
 
 
+@app.function(
+    volumes={str(VOL_ROOT): vol},
+    cpu=CPU_COUNT,
+    memory=32768,
+    timeout=4 * 3600,
+    nonpreemptible=True,
+)
+def backfill_signals_lineage(dates: str = "2026-09-16,2026-09-17", topk: int = 20, nd: int = 2, market: str = "csi1000"):
+    """生产同源回放（推荐的历史信号生成方式）：
+
+    与 daily_standalone 的 20-session 缓存策略同一套数学（qlib_live_retrain.configure_asof
+    + should_retrain + fit 窗口锁定），回放整段历史得到"假如 cron 从首日起就运行"的信号序列：
+    - lineage 起点 = 请求的首个使用日：以该日前一交易日为 asof 训练（严格无前视）
+    - 之后每 20 个交易日在 lineage 内重训，其余日复用同一模型逐日预测
+    - 每日榜单 = 模型在该日数据 bar（=使用日前一收）上的排名 + 板块感知涨跌停过滤
+    与 per-date 版 backfill_signals 的区别：模型谱系与生产一致（9 日 < 20 session →
+    只训 1 次而非 9 次），信号不因每日换模型而抖动。结果写 /vol/signals/（池后缀命名）。
+    """
+    import json as _json
+    from bisect import bisect_left
+
+    import qlib
+    import pandas as pd
+    from qlib.data import D
+    from qlib.data.dataset import Dataset
+    from qlib.model.base import Model
+    from qlib.utils import init_instance_by_config
+
+    from qlib_audit_fixes import read_trading_calendar
+    from qlib_live_retrain import configure_asof, should_retrain, RETRAIN_EVERY_SESSIONS
+    from board_rules import board_aware_limited
+
+    data_dir = _load_latest_to_local()
+    if market in EW_BENCH:
+        from board_rules import build_ew_bench_files
+
+        rep = build_ew_bench_files(data_dir, market)
+        print(f"[lineage] 合成基准 {rep['bench']} 已构建: {rep['n_symbols']} 只成分，最新 {rep['latest']:.4f}")
+    cal = read_trading_calendar(data_dir)
+    qlib.init(provider_uri=str(data_dir), region="cn",
+              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
+                           "kwargs": {"uri": "file:/tmp/mlruns", "default_exp_name": "qlib-cn-lineage"}})
+
+    want = sorted(d.strip() for d in dates.split(","))
+    for d in want:
+        if bisect_left(cal, d) >= len(cal) or cal[bisect_left(cal, d)] != d:
+            raise RuntimeError(f"{d} not in calendar")
+    first_i, last_i = bisect_left(cal, want[0]), bisect_left(cal, want[-1])
+
+    suffix = "" if market == "csi1000" else f"_{market}"
+    out = VOL_ROOT / "signals"
+    out.mkdir(parents=True, exist_ok=True)
+
+    model_obj, snapshot, prev_fit_bar = None, None, None
+    results = {}
+    for i in range(first_i, last_i + 1):
+        usage_day, data_bar = cal[i], cal[i - 1]
+        need_train = prev_fit_bar is None or should_retrain(cal, data_bar, prev_fit_bar,
+                                                            interval=RETRAIN_EVERY_SESSIONS)
+        if need_train:
+            cfg = _load_and_patch_cfg(MODEL_CFG["lgb158"], smoke=False, recent=True, long_train=True,
+                                      label20=True, topk=topk, nd=nd, market=market, provider_dir=str(data_dir))
+            # 截断日历使 asof=末位：configure_asof 的生产守卫（asof==latest bar）对回放同样成立
+            configure_asof(cfg, cal[:i], data_bar, horizon=20)
+            snapshot = {
+                "train": list(cfg["task"]["dataset"]["kwargs"]["segments"]["train"]),
+                "valid": list(cfg["task"]["dataset"]["kwargs"]["segments"]["valid"]),
+                "fit_start": cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["fit_start_time"],
+                "fit_end": cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["fit_end_time"],
+            }
+            m = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
+            ds = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
+            m.fit(ds)
+            model_obj, prev_fit_bar = m, data_bar
+            print(f"[lineage] {usage_day}: 重训（数据截至 {data_bar}，train 止 {snapshot['train'][-1]}）")
+        else:
+            # 复用模型：处理器拟合窗口锁定在重训日快照（与 daily_standalone 缓存路径一致）
+            opts = cfg["task"]["dataset"]["kwargs"]
+            opts["segments"]["train"] = snapshot["train"]
+            opts["segments"]["valid"] = snapshot["valid"]
+            opts["segments"]["test"] = [data_bar, data_bar]
+            opts["handler"]["kwargs"]["fit_start_time"] = snapshot["fit_start"]
+            opts["handler"]["kwargs"]["fit_end_time"] = snapshot["fit_end"]
+            opts["handler"]["kwargs"]["end_time"] = data_bar
+            ds = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
+
+        pred = model_obj.predict(ds, segment="test")
+        if pred.empty:
+            raise RuntimeError(f"empty predictions for {usage_day}")
+        day = pred.loc[data_bar].dropna()
+        day_df = D.features([str(x) for x in day.index], ["$close", "Ref($close,1)"],
+                            start_time=data_bar, end_time=data_bar, freq="day")
+        if len(day_df) > 0 and ("Ref($close,1)" in day_df.columns):
+            day_ret = (day_df["$close"] / day_df["Ref($close,1)"] - 1).dropna()
+            listing = _board_listing_dates(data_dir, day.index)
+            limited = board_aware_limited(day_ret, str(data_bar)[:10], listing_dates=listing)
+            day = day.loc[day.index[~day.index.isin(limited)]]
+        top = day.sort_values(ascending=False).head(topk)
+        csv_content = "rank,instrument,score\n" + "\n".join(
+            f"{k_},{inst},{score}" for k_, (inst, score) in enumerate(top.items(), 1))
+        chart = {"dates": cal[max(0, i - 59):i + 1][-60:], "stocks": {}}
+        for inst in top.index:
+            close_bin = data_dir / "features" / str(inst).lower() / "close.day.bin"
+            if close_bin.exists():
+                _, values = _read_bin(close_bin)
+                chart["stocks"][str(inst)] = [None if v != v else round(float(v), 4) for v in values[-60:]]
+        chart_json = _json.dumps(chart, ensure_ascii=False)
+        (out / f"{usage_day}_top{topk}_lgb158{suffix}.csv").write_text(csv_content)
+        (out / f"{usage_day}_chart{suffix}.json").write_text(chart_json)
+        results[usage_day] = {"csv_content": csv_content, "chart_json": chart_json, "topk": topk, "n_stocks": len(top)}
+        print(f"[lineage] {usage_day}: top{topk} {len(top)} 只已生成")
+    vol.commit()
+    return results
+
+
 @app.local_entrypoint()
 def main(
     model: str = "gru",
