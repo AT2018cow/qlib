@@ -108,19 +108,24 @@ LightGBM + Alpha158 + 20日收益标签 + 2016起 expanding 训练
 
 ## 七、下一步工作（新对话的起点）
 
-### 7.1 P3 选项与优先级
+### 7.1 P3 选项与优先级（2026-10-02 用户更新：universe expansion > RD-Agent）
 
-**选项 A：RD-Agent（Azure）**——LLM 自动因子挖掘
+**优先级 1：Universe expansion（创业板池 chinext）**——批次A/B/C 已完成终审（见 `HANDOVER-universe-expansion.md` §8）
+- 结论：chinext 滚动 +11.5%（t=1.12，78% 正窗）≈ csi1000 基线 +11.6%（t=1.44）——统计不可区分、尾部更肥（单季 -30.8%）、基建更复杂
+- 按纪律**不切生产池**；star/合并池已关；待选后续：top50/nd3 批次C、dual-seed 量化 csi1000 运行方差（批次B 发现同配置复现差 23pp）
+- 前向观察 ≥3 个月后重新评估
+
+**优先级 2：RD-Agent（Azure）**——LLM 自动因子挖掘
 - **价值修正已做**：原判"量价层面帮助有限"**已被撤回**（论文 NeurIPS 2025 样本外数据强：CSI500 2024-25 测试 IR 2.17 vs Alpha158 0.25）
 - **正确用法**：RD-Agent 挖新因子 → **用本项目的滚动验证框架复验** → 通过者进入实盘候选池
 - 前置条件：Azure VM（用户有 credits）+ Azure OpenAI（用户已确认有）+ Docker
 - 部署方案：见 `02-roadmap.md` P3-19 条目与 `05-final-audit.md` 4.3 节
 
-**选项 B：消息面因子**——A 股特有资金流 alpha（akshare 免费接口）
+**优先级 3：消息面因子**——A 股特有资金流 alpha（akshare 免费接口）
 - 北向资金 / 融资融券 / 龙虎榜
 - 可复用 `build_fund_factors` 模式（akshare → QLib bin → 接入训练）
 
-**建议**：先 RD-Agent——样本外证据等级最高，且用户已有 Azure credits。
+**建议**：universe expansion 收尾后（可选后续实验跑完/关池），再启动 RD-Agent——样本外证据等级最高，且用户已有 Azure credits。
 
 ### 7.2 前向 paper trading（无需操作，在后台自动进行）
 

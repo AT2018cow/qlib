@@ -18,8 +18,16 @@
 import modal
 from pathlib import Path
 from qlib_audit_fixes import read_trading_calendar, purge_cfg_splits
-from qlib_live_retrain import (configure_asof, should_retrain, cache_signature,
-                               RETRAIN_EVERY_SESSIONS)
+from qlib_live_retrain import configure_asof, should_retrain, cache_signature, RETRAIN_EVERY_SESSIONS
+from board_rules import (
+    CHINEXT_REFORM,
+    BENCH_CANDIDATES,
+    POOL_BOARDS,
+    EW_BENCH,
+    board_aware_limited,
+    build_custom_instruments,
+    star_chn_backtest_guard,
+)
 
 APP_NAME = "qlib-cn-daily-a10g"
 VOL_NAME = "qlib-cn-data"
@@ -91,7 +99,9 @@ image = (
     .run_commands("cd /root/qlib && pip install . --no-build-isolation --no-deps")
     # 审计 PR 的 helper 模块随 add_local_dir 进了 /root/qlib/，但 Modal 入口脚本挂在
     # /root/ 运行（sys.path 首位是 /root）——必须复制到 /root/ 否则 ModuleNotFoundError。
-    .run_commands("cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/qlib/github_commit.py /root/")
+    .run_commands(
+        "cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/qlib/board_rules.py /root/qlib/github_commit.py /root/"
+    )
 )
 
 app = modal.App(APP_NAME, image=image)
@@ -293,13 +303,41 @@ def _load_and_patch_cfg(yaml_path: str, smoke: bool, recent: bool = False, enhan
             pass
     # Explicit market selection must win over --enhanced and update both benchmarks.
     if market is not None:
-        _indices = {"csi300": "SH000300", "csi500": "SH000905", "csi1000": "SH000852"}
-        if market not in _indices:
-            raise ValueError(f"Unsupported market: {market}")
-        cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["instruments"] = market
-        cfg["market"] = market
-        cfg["benchmark"] = _indices[market]
-        cfg["port_analysis_config"]["backtest"]["benchmark"] = _indices[market]
+        if market in EW_BENCH:
+            # 自定义池（star_chn 合并 / chinext / star 单板）：从 all.txt 前缀过滤生成 instruments 文件。
+            # 训练用池文件、基准与回测阈值全部 fail-closed（数据缺失显式报错而非静默退化）。
+            provider_root = Path(provider_dir) if provider_dir else DATA_DIR
+            all_txt = provider_root / "instruments" / "all.txt"
+            pool_txt = provider_root / "instruments" / f"{market}.txt"
+            stats = build_custom_instruments(all_txt, pool_txt, boards=POOL_BOARDS[market])
+            print(f"[cfg] 自定义池 {market} 已生成: {stats}")
+            _bench = EW_BENCH[market]
+            features_dir = provider_root / "features"
+            if not features_dir.is_dir():
+                raise FileNotFoundError(f"{market} 数据不完整：features 目录缺失 {features_dir}")
+            bench_bin = features_dir / _bench.lower() / "close.day.bin"
+            if not bench_bin.is_file():
+                raise FileNotFoundError(
+                    f"{market} 基准 {_bench} 无数据（找不到 {bench_bin}）；"
+                    "先跑 modal run modal_qlib_cn_a10g.py::build_star_chn_bench 构造等权合成基准"
+                )
+            dh = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
+            dh["instruments"] = market
+            cfg["market"] = market
+            cfg["benchmark"] = _bench
+            cfg["port_analysis_config"]["backtest"]["benchmark"] = _bench
+            # 池内全部为 ±20% 板块（见 board_rules），回测窗口必须不跨创业板改革日
+            bt_start = cfg["port_analysis_config"]["backtest"]["start_time"]
+            star_chn_backtest_guard(bt_start)
+            cfg["port_analysis_config"]["backtest"]["exchange_kwargs"]["limit_threshold"] = 0.195
+        else:
+            _indices = {"csi300": "SH000300", "csi500": "SH000905", "csi1000": "SH000852"}
+            if market not in _indices:
+                raise ValueError(f"Unsupported market: {market}")
+            cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["instruments"] = market
+            cfg["market"] = market
+            cfg["benchmark"] = _indices[market]
+            cfg["port_analysis_config"]["backtest"]["benchmark"] = _indices[market]
     # 7) 基本面因子模式：Alpha158 + $roe 等 6 字段
     if fund:
         handler_cfg = cfg["task"]["dataset"]["kwargs"]["handler"]
@@ -466,25 +504,27 @@ def independent_recheck():
 
 
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=1800)
-def verify_integrity():
-    """资金安全复核：
+def verify_integrity(market: str = "csi500"):
+    """资金安全复核（按池参数化；csi500 保持历史口径）：
     1) chenditc $change 是否为"当日涨幅"（close/前收-1）——决定回测涨跌停模拟是否正确；
     2) daily_signal 修复后的涨跌停过滤（Ref($close,1)）是否与 $change 口径一致；
-    3) 最近 5 个交易日 csi500 内 |涨幅|≥9.5% 的股票数（验证过滤非空转）。"""
+    3) 最近 10 个交易日 {market} 内 |涨幅|≥阈值的股票数（验证过滤非空转）。
+    新池（chinext/star）阈值 0.195（板块感知，board_rules.EW_BENCH）；csi 池 0.095。"""
     import numpy as np
     import pandas as pd
 
     import qlib
     from qlib.data import D
 
+    limit_th = 0.195 if market in EW_BENCH else 0.095
     _ensure_data()
     qlib.init(provider_uri=str(DATA_DIR), region="cn")
     end = _latest_trading_day()
     start = (pd.Timestamp(end) - pd.Timedelta(days=10)).strftime("%Y-%m-%d")
 
-    insts = D.instruments("csi500")
+    insts = D.instruments(market)
     inst_list = D.list_instruments(insts, start_time=start, end_time=end, as_list=True)
-    print(f"[verify] csi500 区间内 {len(inst_list)} 只")
+    print(f"[verify] {market} 区间内 {len(inst_list)} 只")
 
     df = D.features(inst_list, ["$close", "Ref($close,1)", "$change", "$open"],
                     start_time=start, end_time=end, freq="day")
@@ -502,17 +542,17 @@ def verify_integrity():
         print("[verify] ❌ $change 与当日涨幅不一致！回测涨跌停口径存疑，需人工检查")
 
     # 2) 修复后的过滤口径 vs $change 口径（D.features index 为 (instrument, datetime)，按日期需 groupby level=1）
-    limit_cnt_ref = (chg_calc.abs() >= 0.095).groupby(level=1).sum()
-    limit_cnt_chg = (df["$change"].abs() >= 0.095).groupby(level=1).sum()
+    limit_cnt_ref = (chg_calc.abs() >= limit_th).groupby(level=1).sum()
+    limit_cnt_chg = (df["$change"].abs() >= limit_th).groupby(level=1).sum()
     cmp = pd.concat([limit_cnt_ref.rename("ref"), limit_cnt_chg.rename("change")], axis=1).fillna(0)
-    print("[verify] 每日 |涨幅|≥9.5% 股票数（Ref口径 vs $change口径）：")
+    print(f"[verify] 每日 |涨幅|≥{limit_th} 股票数（Ref口径 vs $change口径）：")
     print(cmp.to_string())
     agree = (cmp["ref"] == cmp["change"]).mean()
     print(f"[verify] 两口径逐日计数一致率={agree:.1%}")
 
     # 3) 另外验证日内振幅口径（旧错误逻辑）的误报规模
     amp = (df["$close"] / df["$open"] - 1).abs()
-    amp_cnt = (amp >= 0.095).groupby(level=1).sum()
+    amp_cnt = (amp >= limit_th).groupby(level=1).sum()
     cmp2 = pd.concat([cmp["change"], amp_cnt.rename("close_open误报")], axis=1).fillna(0)
     print("[verify] 正确口径 vs 旧错误口径（close/open 会误剔除日内大幅震荡但未涨停的股票）：")
     print(cmp2.to_string())
@@ -543,6 +583,116 @@ def debug_data():
     df = D.features(["SH600000"], ["$close", "$volume"], start_time=start, end_time=end, freq="day")
     print(f"[debug] D.features shape={df.shape} columns={list(df.columns)}")
     print(df.head().to_string())
+
+
+@app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=1800)
+def verify_universe(star: bool = True, chinext: bool = True, force: bool = False):
+    """科创板+创业板自定义池验证（universe expansion 第一步，纯读不训练）：
+
+    1. 从 Volume 数据的 instruments/all.txt 前缀过滤生成 star_chn.txt（fail-closed）
+    2. 分板块报告池内股票数、上市区间、最新数据日
+    3. 基准指数存在性扫描（SZ399006 创业板指 / SH000688 科创50 / SZ399102 创业板综）
+    4. qlib 端到端读数验证（D.list_instruments + D.features 两条 688/300 样本）
+    缺什么、少什么都会显式报告——这决定后续 batcha/b/c 能否在新池上跑。
+    force=True 强制重下最新 chenditc 包（研究批 Volume 数据陈旧时用）。
+    """
+    import pandas as pd
+
+    import qlib
+    from qlib.data import D
+
+    boards = tuple(b for b, on in (("star", star), ("chinext", chinext)) if on)
+    if not boards:
+        raise ValueError("至少选择一个板块")
+    _ensure_data(force=force)
+    all_txt = DATA_DIR / "instruments" / "all.txt"
+    combined = "star_chn"  # 合并池（POOL_BOARDS 顺序的第一个；拆池文件仅用于判别实验）
+    pool_txt = DATA_DIR / "instruments" / f"{combined}.txt"
+    stats = build_custom_instruments(all_txt, pool_txt, boards=POOL_BOARDS[combined])
+    print(f"[universe] 池文件已生成 {pool_txt}: {stats}")
+    for pool_name, pool_boards in POOL_BOARDS.items():
+        if pool_name == combined:
+            continue
+        p_txt = DATA_DIR / "instruments" / f"{pool_name}.txt"
+        p_stats = build_custom_instruments(all_txt, p_txt, boards=pool_boards)
+        print(f"[universe] 拆池文件 {p_txt}: {p_stats}")
+
+    inst = pd.read_csv(pool_txt, sep="\t", header=None, names=["symbol", "start", "end"])
+    cal_lines = (DATA_DIR / "calendars" / "day.txt").read_text().strip().splitlines()
+    by_board: dict = {}
+    for sym in inst["symbol"].unique():
+        by_board.setdefault(sym[:2], []).append(sym)
+    for sym, lst in sorted(by_board.items()):
+        rows = inst[inst["symbol"].isin(lst)]
+        print(f"[universe] {sym}* 共 {len(lst)} 只，最早上市 {rows['start'].min()}，"
+              f"最新 span 止于 {rows['end'].max()}（数据日历止于 {cal_lines[-1]}）")
+    sample = inst["symbol"].drop_duplicates().tolist()
+    print(f"[universe] 样本: {sample[:10]}")
+
+    print("[universe] 基准指数存在性（features/<指数小写>/close.day.bin）:")
+    for b in BENCH_CANDIDATES:
+        p = DATA_DIR / "features" / b.lower() / "close.day.bin"
+        values = None
+        if p.is_file():
+            try:
+                values = _read_bin(p)[1]
+            except Exception as e:  # pylint: disable=W0703
+                print(f"[universe]   {b}: ⚠️ bin 不可读（{e}）")
+        ok = values is not None and len(values) > 0
+        print(f"[universe]   {b}: {'✅' if ok else '❌ 缺失/空'}")
+        if ok:
+            print(f"[universe]     最新 {values[-1]:.2f}，bar 数 {len(values)}")
+
+    qlib.init(provider_uri=str(DATA_DIR), region="cn",
+              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
+                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-universe"}})
+    for pool_name in POOL_BOARDS:
+        pool_inst = D.instruments(pool_name)
+        listed = D.list_instruments(pool_inst, start_time="2024-01-01", end_time=cal_lines[-1], as_list=True)
+        print(f"[universe] qlib D.list_instruments({pool_name}, 2024-01-01~{cal_lines[-1]}): {len(listed)} 只可交易")
+        for sym in listed[:3]:
+            df = D.features([sym], ["$close", "$volume"], start_time=cal_lines[-10], end_time=cal_lines[-1], freq="day")
+            print(f"[universe]   {sym} 近10日读数: shape={df.shape}, 最新收盘 {df['$close'].iloc[-1] if len(df) else 'N/A'}")
+        if not listed:
+            raise RuntimeError(f"{pool_name} 池在 2024 后无可交易记录——前缀过滤或数据范围有问题")
+    for pool_name, bench in EW_BENCH.items():
+        bp = DATA_DIR / "features" / bench.lower() / "close.day.bin"
+        if bp.is_file():
+            _, values = _read_bin(bp)
+            print(f"[universe] 等权合成基准 {bench}({pool_name}) 已就绪: bar 数 {len(values)}，最新 {values[-1]:.4f}")
+            if values[-1] <= 1.0:
+                print(f"[universe] ⚠️ {bench} 收盘 ≤1（等权指数应随累积增长）——建议重跑 ::build_star_chn_bench")
+        else:
+            print(f"[universe] 等权合成基准 {bench}({pool_name}) 未构造——跑 ::build_star_chn_bench")
+    vol.commit()
+    return {"stats": stats, "n_listed_2024": len(listed), "calendar_end": cal_lines[-1]}
+
+
+@app.function(volumes={str(VOL_ROOT): vol}, cpu=8, memory=32768, timeout=2 * 3600)
+def build_star_chn_bench(which: str = "all"):
+    """构造等权合成基准（写入 Volume，幂等覆盖）。
+
+    动机：chenditc 只含中证系指数，无创业板指 SZ399006/科创50 SH000688——
+    跨池基准（中证1000 等）会污染新池实验的超额归因。
+    which: "all" = 三个池全建（默认）；或 "star_chn"/"chinext"/"star" 单池。
+    口径与实现单一真源 = board_rules.build_ew_bench_files（生产 daily 路径复用同一函数，
+    两侧不允许漂移）；数学核心 = board_rules.ew_index_matrix（有单测）。
+    """
+    from board_rules import build_ew_bench_files
+
+    pools = tuple(EW_BENCH) if which == "all" else (which,)
+    if any(p not in EW_BENCH for p in pools):
+        raise ValueError(f"which 须为 all/{'/'.join(EW_BENCH)}: {which}")
+    _ensure_data()
+    out = {}
+    for pool_name in pools:
+        rep = build_ew_bench_files(DATA_DIR, pool_name)
+        out[pool_name] = rep
+        print(f"[bench] 合成等权基准 {rep['bench']}({pool_name}) 已写入: {rep['n_symbols']} 只成分"
+              f"（缺 bin {rep['n_bins_missing']}），{rep['n_days_with_mean']}/{rep['n_cal']} 日有均值收益，"
+              f"最新 {rep['latest']:.4f}")
+    vol.commit()
+    return out
 
 
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=3600)
@@ -784,7 +934,10 @@ def _save_and_commit_signal(res: dict):
     import subprocess
     from datetime import datetime
 
-    fname = Path(res.get("csv", f"signals/{res['date']}_top{res['topk']}_lgb158.csv")).name
+    market = res.get("market", "csi1000")
+    fallback = f"signals/{res['date']}_top{res['topk']}_lgb158.csv" if market == "csi1000" else \
+        f"signals/{res['date']}_top{res['topk']}_lgb158_{market}.csv"
+    fname = Path(res.get("csv", fallback)).name
     local_dir = Path(__file__).resolve().parent / "results" / "signals"
     local_dir.mkdir(parents=True, exist_ok=True)
     local_path = local_dir / fname
@@ -806,7 +959,7 @@ def _save_and_commit_signal(res: dict):
         else:
             print("[signal] 信号与上次一致（同日重跑/数据未更新），无需重复提交")
             return
-        msg = f"signal: {fname.replace('_top20_lgb158.csv','')} daily top20 (csi1000)"
+        msg = f"signal: {fname.replace('_top20_lgb158.csv','')} daily top20 ({market})"
         r = subprocess.run(["git", "push", "fork", "main"], cwd=repo, capture_output=True, text=True, timeout=60)
         if r.returncode == 0:
             print(f"[signal] 已提交并推送 GitHub: {msg}")
@@ -814,6 +967,29 @@ def _save_and_commit_signal(res: dict):
             print(f"[signal] ⚠️ 推送失败（本地提交已保存）: {r.stderr.strip()[:120]}")
     except Exception as e:
         print(f"[signal] ⚠️ git 操作失败（信号文件已保存本地）: {e}")
+
+
+def _board_listing_dates(provider_uri, symbols) -> dict:
+    """从 instruments/all.txt 取各 symbol 的上市日（首个 span 的 start），仅取需要的行。
+
+    用于"新股前 5 交易日无涨跌停"豁免。all.txt 不可读时返回空 dict 并告警——
+    缺 listing 只会让豁免失效（保守方向：可能多剔除，不会放行不可交易信号），
+    不得让每日信号崩溃。
+    """
+    import pandas as pd
+
+    try:
+        inst = pd.read_csv(Path(provider_uri) / "instruments" / "all.txt", sep="\t",
+                           header=None, names=["symbol", "start", "end"], usecols=[0, 1])
+    except Exception as e:  # pylint: disable=W0703
+        print(f"[signal] ⚠️ all.txt 不可读，新股无涨跌停豁免失效（仅保守阈值剔除）: {e}")
+        return {}
+    inst["symbol"] = inst["symbol"].str.upper()
+    wanted = {str(s).upper() for s in symbols}
+    sub = inst[inst["symbol"].isin(wanted)]
+    if sub.empty:
+        return {}
+    return sub.groupby("symbol")["start"].min().to_dict()
 
 
 def _daily_impl(model: str, topk: int, predict_date: str, enhanced: bool, long_train: bool, fund: bool, label20: bool, market: str = None, nd: int = None):
@@ -841,8 +1017,9 @@ def _daily_impl(model: str, topk: int, predict_date: str, enhanced: bool, long_t
     day = pred.loc[predict_date].dropna()
     top = day.sort_values(ascending=False).head(topk)
 
-    # 过滤当日已涨/跌停（|当日涨幅|≥9.5%，涨幅= close/前收-1）：
-    # 涨停买不进、跌停卖不出，剔除避免给不可交易信号
+    # 过滤当日已涨/跌停（板块感知阈值，涨幅= close/前收-1，口径与 verify_integrity 审计一致）：
+    # 主板/改革前创业板 ±10%、科创板/改革后创业板 ±20%（阈值边际 0.095/0.195）、
+    # 新股前 5 交易日无涨跌停（不剔除）；涨停买不进、跌停卖不出，剔除避免给不可交易信号
     from qlib.data import D
 
     day_df = D.features(
@@ -854,9 +1031,10 @@ def _daily_impl(model: str, topk: int, predict_date: str, enhanced: bool, long_t
     )
     if len(day_df) > 0 and ("Ref($close,1)" in day_df.columns):
         day_ret = (day_df["$close"] / day_df["Ref($close,1)"] - 1).dropna()
+        listing_dates = _board_listing_dates(cfg["qlib_init"]["provider_uri"], day.index)
+        limited = board_aware_limited(day_ret, str(predict_date)[:10], listing_dates=listing_dates)
         # D.features 返回 (instrument, datetime) 双层 index，day.index 是 instrument 单层：
-        # 必须先取 instrument 层再 isin，否则永远匹配不上（过滤静默失效）
-        limited = day_ret[(day_ret >= 0.095) | (day_ret <= -0.095)].index.get_level_values(0)
+        # board_aware_limited 返回 instrument 层集合；否则永远匹配不上（过滤静默失效）
         tradable = day.index[~day.index.isin(limited)]
         n_removed = len(day) - len(tradable)
         day = day.loc[tradable]
@@ -870,7 +1048,9 @@ def _daily_impl(model: str, topk: int, predict_date: str, enhanced: bool, long_t
 
     out = VOL_ROOT / "signals"
     out.mkdir(parents=True, exist_ok=True)
-    csv = out / f"{str(predict_date)[:10]}_top{topk}_{model}.csv"
+    # 池名进文件名，避免多池研究信号（csi300/500/1000/star_chn）互相覆盖
+    pool_tag = f"_{market}" if market else ""
+    csv = out / f"{str(predict_date)[:10]}_top{topk}_{model}{pool_tag}.csv"
     pd.DataFrame(
         {"rank": range(1, len(top) + 1), "instrument": top.index, "score": top.values}
     ).to_csv(csv, index=False)
@@ -1794,7 +1974,7 @@ def _gen_5y_windows():
     cpu=8,
     memory=24576,
     timeout=2 * 3600,
-    max_containers=8,
+    max_containers=12,  # 22 窗口 ÷ 12 并发 = 两轮（新池训练更小，单窗口 ~6-10min）
 )
 def batch_c_window(args: dict):
     """批次C 窗口级 worker：单窗口 训练+回测（严格无前视）。"""
@@ -1837,10 +2017,12 @@ def batch_c_window(args: dict):
                 "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
     strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
                 "kwargs": {"signal": pred, "topk": args["topk"], "n_drop": args["nd"]}}
+    # 新池（star/chinext 板块）为 ±20% 口径；csi 池保持 0.095
+    limit_th = 0.195 if args["market"] in EW_BENCH else 0.095
     pm, _ = normal_backtest(strategy=strategy, executor=executor,
                              start_time=te_s, end_time=te_e, account=100000000,
                              benchmark=args["bench"],
-                             exchange_kwargs={"limit_threshold": 0.095, "deal_price": "close",
+                             exchange_kwargs={"limit_threshold": limit_th, "deal_price": "close",
                                               "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
     rep = pm["1day"][0]
     excess = rep["return"] - rep["bench"] - rep["cost"]
@@ -1858,12 +2040,23 @@ def batch_c_window(args: dict):
     timeout=12 * 3600,
 )
 def batch_c(market: str = "csi1000", bench: str = "SH000852", topk: int = 20, nd: int = 2, tag: str = "c1000"):
-    """批次C：候选配置 × 5 年滚动（2021Q1~2026Q3，22 个季度窗口，8 并行）。
-    这是多重检验纪律下的唯一终审裁判。结果存 /vol/batch_c/。"""
+    """批次C：候选配置 × 5 年滚动（2021Q1~2026Q3，22 个季度窗口，12 并行）。
+    这是多重检验纪律下的唯一终审裁判。结果存 /vol/batch_c/。
+    新池（chinext/star）用各自等权基准 + 0.195 阈 + 改革日 guard（窗口起点 < 2020-08-24 拒绝）。"""
     import json
 
+    if market in EW_BENCH:
+        pool_txt = DATA_DIR / "instruments" / f"{market}.txt"
+        if not pool_txt.is_file():
+            build_custom_instruments(DATA_DIR / "instruments" / "all.txt", pool_txt, boards=POOL_BOARDS[market])
+        bench = EW_BENCH[market]
+        if not (DATA_DIR / "features" / bench.lower() / "close.day.bin").is_file():
+            raise FileNotFoundError(f"等权基准 {bench} 不在 Volume——先跑 modal run modal_qlib_cn_a10g.py::build_star_chn_bench")
     _ensure_data()
     wins = _gen_5y_windows()
+    if market in EW_BENCH:
+        # guard 的是执行（test）区间起点——训练区间含改革前创业板数据没有交易约束问题
+        star_chn_backtest_guard(wins[0][4])
     print(f"[batchC] {tag}: {market} top{topk}/nd{nd}，{len(wins)} 个窗口")
     latest = _latest_trading_day()
     jobs = []
@@ -2159,14 +2352,17 @@ def batch_a():
     memory=32768,
     timeout=8 * 3600,
 )
-def batch_b(lgb_trials: int = 12, market: str = "csi1000", bench: str = "SH000852"):
-    """批次B（削减版）：
-    B1. 训练起点 {2011, 2013, 2016}（2018 砍掉：训练窗太短先验差），top20/nd2（默认在批次A胜出池 csi1000 上跑）
-    B2. expanding vs sliding（6 年滑窗）在起点结论上做
-    B3. LGB 超参 12 组快搜（随机种子固定；从 360 搜索的空间邻近采样）
-    统一区间 2026-01-01~09-11。结果存 /vol/batch_b/。"""
+def batch_a_star_chn(market: str = "star_chn"):
+    """批次A-新池粗筛（多重检验纪律：记录全部结果；差异<3pp视为噪声）：
+
+    market: star_chn（合并池） / chinext / star（拆池判别实验：合并稀释 vs 真没 α）。
+    一次训练（终审候选口径：LightGBM+Alpha158+20日标签+2016起 recent+long_train），
+    固定窗口 2026-01-01~2026-09-11 上跑 top{10,20,50}×nd{1,2,3} 网格（9 组全记录）。
+    基准 = 对应池等权合成指数（board_rules.EW_BENCH），涨跌停阈 0.195（板块感知，改革后口径）。
+    前置：Volume 已有 <market>.txt 池 + 对应等权基准（::build_star_chn_bench 一次建全）。
+    对照行：csi1000+top20/nd2 单窗口批次A = +26.2%（等权口径不同，仅作池风格参考）。
+    结果存 /vol/batch_a_<market>/。"""
     import json
-    import random
 
     import qlib
     from qlib.backtest import backtest as normal_backtest
@@ -2175,85 +2371,189 @@ def batch_b(lgb_trials: int = 12, market: str = "csi1000", bench: str = "SH00085
     from qlib.model.base import Model
     from qlib.utils import init_instance_by_config
 
+    if market not in EW_BENCH:
+        raise ValueError(f"market 须为 {'/'.join(EW_BENCH)}: {market}")
+    WINDOW = ("2026-01-01", "2026-09-11")
+    BENCH = EW_BENCH[market]
     _ensure_data()
+    all_txt = DATA_DIR / "instruments" / "all.txt"
+    pool_txt = DATA_DIR / "instruments" / f"{market}.txt"
+    if not pool_txt.is_file():
+        build_custom_instruments(all_txt, pool_txt, boards=POOL_BOARDS[market])
+    if not (DATA_DIR / "features" / BENCH.lower() / "close.day.bin").is_file():
+        raise FileNotFoundError(
+            f"等权基准 {BENCH} 不在 Volume——先跑 modal run modal_qlib_cn_a10g.py::build_star_chn_bench"
+        )
     qlib.init(provider_uri=str(DATA_DIR), region="cn",
               exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
-                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-batchB"}})
+                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-batchA-star"}})
+
     executor = {"class": "SimulatorExecutor", "module_path": "qlib.backtest.executor",
                 "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
 
-    def run_bt(cfg, topk=20, nd=2):
-        dh_ = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
-        dh_["instruments"] = market
-        m = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
-        ds = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
-        m.fit(ds)
-        pred = m.predict(ds)
+    def bt(signal, topk, nd):
         strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
-                    "kwargs": {"signal": pred, "topk": topk, "n_drop": nd}}
+                    "kwargs": {"signal": signal, "topk": topk, "n_drop": nd}}
         pm, _ = normal_backtest(strategy=strategy, executor=executor,
-                                 start_time="2026-01-01", end_time="2026-09-11", account=100000000,
-                                 benchmark=bench,
-                                 exchange_kwargs={"limit_threshold": 0.095, "deal_price": "close",
+                                 start_time=WINDOW[0], end_time=WINDOW[1], account=100000000,
+                                 benchmark=BENCH,
+                                 exchange_kwargs={"limit_threshold": 0.195, "deal_price": "close",
                                                   "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
         rep = pm["1day"][0]
+        if rep.empty:
+            raise RuntimeError(f"empty report top{topk}/nd{nd}")
         ra = risk_analysis(rep["return"] - rep["bench"] - rep["cost"])
         return {"excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
                 "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
                 "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4)}
 
-    results = {"window": "2026-01-01~2026-09-11", "market": market, "note": "粗筛：终审以批次C滚动为准"}
+    print(f"[batchA*] 训练 {market}（{WINDOW[0]}~{WINDOW[1]} 窗口执行）...")
+    cfg = _load_and_patch_cfg(MODEL_CFG["lgb158"], smoke=False, recent=True, long_train=True,
+                              label20=True, topk=20, nd=2, market=market)
+    model = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
+    dataset = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
+    model.fit(dataset)
+    pred = model.predict(dataset)
+    n_day = pred.loc[WINDOW[0]:WINDOW[1]].index.get_level_values(0).nunique()
+    n_inst = pred.loc[WINDOW[0]:WINDOW[1]].index.get_level_values(1).nunique()
+    print(f"[batchA*] 预测覆盖 {n_day} 个交易日 / {n_inst} 只（窗口内）")
 
-    # B1: 训练起点
-    b1 = {}
-    for start in ["2011", "2013", "2016"]:
-        cfg = _load_and_patch_cfg(MODEL_CFG["lgb158"], smoke=False, recent=True, long_train=True, label20=True)
-        dh = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
-        dh["start_time"] = f"{int(start)-1}-01-01"
-        dh["fit_start_time"] = f"{start}-01-01"
-        seg = cfg["task"]["dataset"]["kwargs"]["segments"]
-        seg["train"] = [f"{start}-01-01", "2024-12-31"]
-        b1[start] = run_bt(cfg)
-        print(f"[batchB] B1 起点{start}: {b1[start]}")
-    results["b1_train_start"] = b1
+    results = {"window": f"{WINDOW[0]}~{WINDOW[1]}", "market": market, "bench": BENCH, "limit_th": 0.195,
+               "note": "粗筛：差异<3pp视为噪声；只记 top3 候选；终审以批次C滚动为准",
+               "universe": {"n_days": n_day, "n_instruments": n_inst}}
+    grid = {}
+    for tk in (10, 20, 50):
+        for nd in (1, 2, 3):
+            grid[f"top{tk}_nd{nd}"] = bt(pred, tk, nd)
+            print(f"[batchA*] top{tk}/nd{nd}: {grid[f'top{tk}_nd{nd}']}")
+    results["topk_nd_grid"] = grid
+    ranked = sorted(grid.items(), key=lambda kv: kv[1]["excess_with_cost_annual"], reverse=True)
+    results["top3"] = [k for k, _ in ranked[:3]]
+    print(f"[batchA*] top3 候选: {results['top3']}")
 
-    # B2: expanding vs sliding（6年滑窗，起点用 B1 最优；先以 2013 中值做，若 B1 结论反转在 C 里修正）
-    best_start = max(b1, key=lambda k: b1[k]["excess_with_cost_annual"])
-    b2 = {}
+    out = VOL_ROOT / f"batch_a_{market}"
+    out.mkdir(parents=True, exist_ok=True)
+    with (out / "results.json").open("w") as f:
+        json.dump(results, f, indent=2, ensure_ascii=False)
+    vol.commit()
+    return results
+
+
+@app.function(
+    volumes={str(VOL_ROOT): vol},
+    cpu=CPU_COUNT,
+    memory=32768,
+    timeout=4 * 3600,
+    max_containers=8,  # 批次B 16 个独立任务 ÷ 8 并发 = 两轮 wall time（串行 ~1.5h → 并行 ~25min）
+)
+def batch_b_one(spec: dict):
+    """批次B worker：一个（起点/滑窗/超参）配置 = 一次训练 + 一次回测，16 任务全独立。
+
+    注意：worker 内不经过 _load_and_patch_cfg(market=...)——那会并发重写池文件（Volume 竞态）；
+    池文件与基准由 driver 预建，worker 只手动指定 handler instruments。
+    """
+    import qlib
+    from qlib.backtest import backtest as normal_backtest
+    from qlib.contrib.evaluate import risk_analysis
+    from qlib.data.dataset import Dataset
+    from qlib.model.base import Model
+    from qlib.utils import init_instance_by_config
+
+    market, bench, tag = spec["market"], spec["bench"], spec["tag"]
+    _ensure_data()
+    qlib.init(provider_uri=str(DATA_DIR), region="cn", skip_if_reg=True,
+              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
+                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-batchB"}})
     cfg = _load_and_patch_cfg(MODEL_CFG["lgb158"], smoke=False, recent=True, long_train=True, label20=True)
     dh = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
-    dh["start_time"] = f"{int(best_start)-1}-01-01"
-    dh["fit_start_time"] = f"{best_start}-01-01"
+    dh["instruments"] = market
     seg = cfg["task"]["dataset"]["kwargs"]["segments"]
-    seg["train"] = [f"{best_start}-01-01", "2024-12-31"]
-    b2["expanding"] = b1[best_start]
-    # sliding：只用最近6年
-    cfg_s = _load_and_patch_cfg(MODEL_CFG["lgb158"], smoke=False, recent=True, long_train=True, label20=True)
-    dh_s = cfg_s["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
-    dh_s["start_time"] = "2017-01-01"
-    dh_s["fit_start_time"] = "2018-01-01"
-    seg_s = cfg_s["task"]["dataset"]["kwargs"]["segments"]
-    seg_s["train"] = ["2018-01-01", "2024-12-31"]
-    b2["sliding_6y"] = run_bt(cfg_s)
-    print(f"[batchB] B2 sliding_6y: {b2['sliding_6y']}")
-    results["b2_window_mode"] = b2
-    results["b2_note"] = f"expanding 即 B1 起点{best_start}的结果；sliding 固定 6 年窗"
+    if spec.get("train_start"):  # B1/B2 expanding：自定义起点
+        dh["start_time"] = f"{int(spec['train_start'])-1}-01-01"
+        dh["fit_start_time"] = f"{spec['train_start']}-01-01"
+        seg["train"] = [f"{spec['train_start']}-01-01", "2024-12-31"]
+    elif spec.get("sliding"):  # B2 sliding：固定 6 年窗
+        dh["start_time"] = "2017-01-01"
+        dh["fit_start_time"] = "2018-01-01"
+        seg["train"] = ["2018-01-01", "2024-12-31"]
+    if spec.get("params"):  # B3 超参（默认 2016 起点，与串行版一致）
+        cfg["task"]["model"]["kwargs"].update(spec["params"])
+    m = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
+    ds = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
+    m.fit(ds)
+    pred = m.predict(ds)
+    strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
+                "kwargs": {"signal": pred, "topk": 20, "n_drop": 2}}
+    # 新池（star/chinext 板块）为 ±20% 口径；csi 池保持 0.095
+    limit_th = 0.195 if market in EW_BENCH else 0.095
+    pm, _ = normal_backtest(
+        strategy=strategy,
+        executor={"class": "SimulatorExecutor", "module_path": "qlib.backtest.executor",
+                  "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}},
+        start_time="2026-01-01", end_time="2026-09-11", account=100000000,
+        benchmark=bench,
+        exchange_kwargs={"limit_threshold": limit_th, "deal_price": "close",
+                         "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
+    rep = pm["1day"][0]
+    if rep.empty:
+        raise RuntimeError(f"[batchB-one] empty report {tag}")
+    ra = risk_analysis(rep["return"] - rep["bench"] - rep["cost"])
+    r = {"excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
+         "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
+         "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4)}
+    print(f"[batchB-one] {tag}: {r}")
+    return {"tag": tag, **r}
 
-    # B3: LGB 超参 12 组（158+20日标签上；固定 top20/nd2）
-    rng = random.Random(7)
-    b3 = {}
+
+@app.function(
+    volumes={str(VOL_ROOT): vol},
+    cpu=CPU_COUNT,
+    memory=32768,
+    timeout=8 * 3600,
+)
+def batch_b(lgb_trials: int = 12, market: str = "csi1000", bench: str = "SH000852"):
+    """批次B（并行版，结果结构与串行版一致）：
+    B1. 训练起点 {2011, 2013, 2016}；B2. expanding vs sliding（6 年滑窗）；
+    B3. LGB 超参 12 组快搜（随机种子固定；默认 2016 起点，与串行版一致）。
+    16 个任务相互独立（B2 expanding 即 B1 最优复用）→ 单次 .map() 8 并发。
+    统一窗口 2026-01-01~2026-09-11。新池用各自等权基准 + 0.195 阈。
+    结果存 /vol/batch_b_<market>/（csi1000 保持 /vol/batch_b/，不覆盖旧结果）。"""
+    import json
+    import random
+
+    if market in EW_BENCH:
+        # driver 预建池文件（worker 不并发写，见 batch_b_one docstring）+ 基准存在性检查
+        pool_txt = DATA_DIR / "instruments" / f"{market}.txt"
+        if not pool_txt.is_file():
+            build_custom_instruments(DATA_DIR / "instruments" / "all.txt", pool_txt, boards=POOL_BOARDS[market])
+        bench = EW_BENCH[market]
+        if not (DATA_DIR / "features" / bench.lower() / "close.day.bin").is_file():
+            raise FileNotFoundError(f"等权基准 {bench} 不在 Volume——先跑 modal run modal_qlib_cn_a10g.py::build_star_chn_bench")
+
+    jobs = [{"market": market, "bench": bench, "tag": f"b1_{s}", "train_start": s} for s in ("2011", "2013", "2016")]
+    jobs.append({"market": market, "bench": bench, "tag": "b2_sliding_6y", "sliding": True})
+    rng = random.Random(7)  # 采样顺序与串行版一致
     for i in range(lgb_trials):
-        params = _sample_params(rng)
-        cfg = _load_and_patch_cfg(MODEL_CFG["lgb158"], smoke=False, recent=True, long_train=True, label20=True)
-        cfg["task"]["model"]["kwargs"].update(params)
-        r = run_bt(cfg)
-        b3[str(params)] = r
-        print(f"[batchB] B3 trial{i}: {r}")
-    # 记录全部 trials + 默认参数基线（b1['2016'] 即默认超参 top20/nd2 版本）
-    results["b3_lgb_trials"] = b3
-    results["b3_baseline_default_params"] = b1["2016"]
+        jobs.append({"market": market, "bench": bench, "tag": f"b3_trial{i}", "params": dict(_sample_params(rng))})
+    outs = list(batch_b_one.map(jobs))
+    by_tag = {o["tag"]: {k: v for k, v in o.items() if k != "tag"} for o in outs}
 
-    out = VOL_ROOT / "batch_b"
+    b1 = {s: by_tag[f"b1_{s}"] for s in ("2011", "2013", "2016")}
+    best_start = max(b1, key=lambda k: b1[k]["excess_with_cost_annual"])
+    b2 = {"expanding": b1[best_start], "sliding_6y": by_tag["b2_sliding_6y"]}
+    b3 = {}
+    for i, j in enumerate(jobs[4:]):
+        b3[str(j["params"])] = by_tag[f"b3_trial{i}"]
+
+    results = {"window": "2026-01-01~2026-09-11", "market": market, "bench": bench,
+               "note": "粗筛：终审以批次C滚动为准", "parallel": {"n_jobs": len(jobs), "max_containers": 8},
+               "b1_train_start": b1,
+               "b2_window_mode": b2,
+               "b2_note": f"expanding 即 B1 起点{best_start}的结果；sliding 固定 6 年窗",
+               "b3_lgb_trials": b3,
+               "b3_baseline_default_params": b1["2016"]}
+
+    out = VOL_ROOT / ("batch_b" if market == "csi1000" else f"batch_b_{market}")
     out.mkdir(parents=True, exist_ok=True)
     with (out / "results.json").open("w") as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
@@ -2320,6 +2620,15 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
     shutil.move(str(base), str(data_dir))
     cal_lines = (data_dir / "calendars" / "day.txt").read_text().strip().splitlines()
     print(f"[daily] 数据就绪：日历 {cal_lines[0]} ~ {cal_lines[-1]}（{len(cal_lines)} 个交易日）")
+
+    # ---- 1b) 新池（chinext/star）：容器本地数据没有合成等权基准（chenditc 包不含），
+    # 训练前必须用 board_rules.build_ew_bench_files 构建并与 Volume 研究路径共用同一实现 ----
+    if market in EW_BENCH:
+        from board_rules import build_ew_bench_files
+
+        rep = build_ew_bench_files(data_dir, market)
+        print(f"[daily] 合成基准 {rep['bench']} 已构建: {rep['n_symbols']} 只成分"
+              f"（缺 bin {rep['n_bins_missing']}），最新 {rep['latest']:.4f}")
 
     # ---- 2) 训练终审候选 ----
     qlib.init(provider_uri=str(data_dir), region="cn",
@@ -2401,12 +2710,13 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
     print("[daily] RANKING ONLY: not executable orders; nd does not apply to ranking CSV")
     top = day.sort_values(ascending=False).head(topk)
 
-    # ---- 3) 涨跌停过滤（口径与 verify_integrity 审计一致：当日涨幅=close/前收-1，|涨幅|≥9.5% 剔除） ----
+    # ---- 3) 涨跌停过滤（板块感知阈值：主板/改革前创业板±10%、科创板/改革后创业板±20%、新股前5交易日豁免；涨幅=close/前收-1） ----
     day_df = D.features([str(x) for x in day.index], ["$close", "Ref($close,1)"],
                         start_time=predict_date, end_time=predict_date, freq="day")
     if len(day_df) > 0 and ("Ref($close,1)" in day_df.columns):
         day_ret = (day_df["$close"] / day_df["Ref($close,1)"] - 1).dropna()
-        limited = day_ret[(day_ret >= 0.095) | (day_ret <= -0.095)].index.get_level_values(0)
+        listing_dates = _board_listing_dates(data_dir, day.index)
+        limited = board_aware_limited(day_ret, str(predict_date)[:10], listing_dates=listing_dates)
         n_removed = len(day) - len(day.index[~day.index.isin(limited)])
         day = day.loc[day.index[~day.index.isin(limited)]]
         top = day.sort_values(ascending=False).head(topk)
@@ -2432,6 +2742,7 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
     return {"date": str(predict_date)[:10], "topk": topk, "n_stocks": len(top),
             "csv_content": csv_content, "data_calendar_end": cal_lines[-1],
             "ranking_only": True, "rebalance_applied": False,
+            "market": market,
             "model_fit_asof": saved["fit_asof"],
             "train_end": saved["train"][-1],
             "valid_end": saved["valid"][-1],
@@ -2553,16 +2864,20 @@ def _publication_decision(cal, data_date: str, signal_date: str, fallback_days: 
     # ⚠️ 此 schedule 行曾被重构编辑意外吞掉（2026-09-28 gate 上线时），导致 09-29 静默无调度——
     #    任何触碰此装饰器的编辑后必须运行 tests/test_cron_gate.py 的守护测试。
     secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
+    # infi 等研究 workspace 需一次性建空占位（modal secret create github-push）解锁 modal run；
+    # 空 secret 只过 spec 校验，cron 真实推送仍需 GITHUB_TOKEN（生产部署只在 at2018cow）
     timeout=2 * 3600,
     nonpreemptible=True,  # 调度入口：被抢占则当天任务丢失；自身运行时间短，3x 成本增量极小
 )
 def daily_cron():
-    """云端全自动每日信号：daily_standalone 训练 → GitHub API 提交（不依赖本地机器）。
-    需 Modal Secret `github-push`（含 GITHUB_TOKEN，对 fork 仓库 Contents 读写权限的 PAT）。
-    信号日期 = 实际使用日（当日），即每天 07:00 发布"今天的信号"。
-    发布判定（_publication_decision，交易日口径）：
-    今天非交易日 → skip；数据滞后 ≥2 交易日 → raise（告警）；lag 0/1 → 发布。
-    日历拉取失败 → fail-open 降级（>12 自然日兜底）。"""
+    """云端全自动每日信号（双池并行选股）：daily_standalone 训练 → GitHub API 提交。
+    csi1000（生产基线）与 chinext（卫星池，等权基准）各自出榜，文件互相独立：
+      - results/signals/<date>_top20_lgb158.csv            （csi1000，网站兼容不变）
+      - results/signals/<date>_top20_lgb158_chinext.csv    （chinext）
+      - results/signals/<date>_chart.json / <date>_chart_chinext.json
+    发布判定（交易日 gate）两池共享（同一数据日）；单池失败不影响另一池发布，
+    双池同时失败才 raise（触发 Modal 告警）。
+    需 Modal Secret `github-push`（含 GITHUB_TOKEN，对 fork 仓库 Contents 读写权限的 PAT）。"""
     import base64
     import os
     from datetime import datetime
@@ -2571,6 +2886,14 @@ def daily_cron():
     import requests
 
     res = daily_standalone.remote(topk=20, nd=2, market="csi1000")
+    try:
+        # nd=3 = chinext 批次A 网格胜出值 + 批次C 终审口径（低换手形态）
+        # nd 不改变 RANKING-ONLY 榜单内容，仅保证配置元数据与已终审参数一致
+        res_chi = daily_standalone.remote(topk=20, nd=3, market="chinext")
+    except Exception as chi_err:  # pylint: disable=W0703
+        res_chi = None
+        chi_err_msg = f"{type(chi_err).__name__}: {str(chi_err)[:300]}"
+        print(f"[cron] ⚠️ chinext 池失败（不影响 csi1000 发布）: {chi_err_msg}")
     data_date = res["date"]  # 数据覆盖到的最后交易日
     print(f"[cron] 数据日历至 {data_date}")
 
@@ -2593,41 +2916,53 @@ def daily_cron():
     if action == "skip":
         return
     if action == "raise":
+        if res_chi is not None:
+            print("[cron] ⚠️ 数据源疑似故障——双池本可发布仍拒绝发布（fail-closed）")
         raise RuntimeError(detail)
     if cal_err:
         print(f"[cron] ⚠️ 降级原因: {cal_err}")
 
-    path = f"results/signals/{signal_date}_top20_lgb158.csv"
+    # 两池数据日必须一致（同一份下载/同一 gate 口径）；不一致拒绝发布 chinext 并告警
+    if res_chi is not None and res_chi["date"] != data_date:
+        print(f"[cron] ⚠️ chinext 数据日 {res_chi['date']} != csi1000 {data_date}，本次跳过 chinext 发布")
+        res_chi = None
+
+    files = {
+        f"results/signals/{signal_date}_top20_lgb158.csv": res["csv_content"],
+        f"results/signals/{signal_date}_chart.json": res["chart_json"],
+    }
+    if res_chi is not None:
+        files[f"results/signals/{signal_date}_top20_lgb158_chinext.csv"] = res_chi["csv_content"]
+        files[f"results/signals/{signal_date}_chart_chinext.json"] = res_chi["chart_json"]
+
     token = os.environ["GITHUB_TOKEN"]
     headers = {"Authorization": f"Bearer {token}",
                "Accept": "application/vnd.github+json"}
-    api = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{path}"
-
-    # 同日重跑 dedup：文件已存在且内容一致则跳过
-    exist = requests.get(api, headers=headers, timeout=30)
+    # 同日重跑 dedup：csi1000 CSV 已存在且内容一致则跳过（两池同 commit，一起跳过）
+    files_key0 = f"results/signals/{signal_date}_top20_lgb158.csv"
+    csi_api = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{files_key0}"
+    exist = requests.get(csi_api, headers=headers, timeout=30)
     if exist.status_code == 200 and base64.b64decode(exist.json()["content"]).decode() == res["csv_content"]:
-        print(f"[cron] {path} 已存在且内容一致，跳过（同日重跑）")
+        print(f"[cron] {files_key0} 已存在且内容一致，跳过（同日重跑）")
         return
     if exist.status_code == 200:
         raise RuntimeError("Same-date signal changed: refusing to rewrite immutable paper-trading record")
     if exist.status_code != 404:
         raise RuntimeError(f"Cannot check existing signal: HTTP {exist.status_code}")
-    sha = None
 
-    # 使用 Git Data API 一次 commit 同时写入 CSV + chart JSON
-    # （避免两次独立的 Contents API push 触发两次 Actions → concurrency cancel 导致 chart 部署丢失）
+    # 使用 Git Data API 一次 commit 同时写入两池 CSV + chart JSON
+    # （避免多次独立的 Contents API push 触发两次 Actions → concurrency cancel 导致 chart 部署丢失）
     from github_commit import push_files
     push_files(
         token=token,
         repo=GITHUB_REPO,
         branch=SIGNAL_BRANCH,
-        files={
-            path: res["csv_content"],
-            f"results/signals/{signal_date}_chart.json": res["chart_json"],
-        },
-        message=f"chore(signal): {signal_date} top20 + chart (cron)",
+        files=files,
+        message=f"chore(signal): {signal_date} top20 + chart (cron"
+                + (f", {len(files)} files incl. chinext)" if res_chi is not None else ")"),
     )
-    print(f"[cron] ✅ 已推送 CSV + chart JSON: {signal_date}")
+    n_pool = 2 if res_chi is not None else 1
+    print(f"[cron] ✅ 已推送 {n_pool} 池 CSV + chart JSON: {signal_date}")
 
     # ---- 名称映射每日自动更新（akshare 全量拉取，有变化才推送；失败不影响信号）----
     try:
@@ -2832,6 +3167,12 @@ def backfill_signals(dates: str = "2026-09-16,2026-09-17", topk: int = 20, nd: i
     from qlib_live_retrain import configure_asof
 
     data_dir = _load_latest_to_local()
+    # 新池（chinext/star）：chenditc 包不含合成等权基准，容器内先构建（与生产 daily 同一实现）
+    if market in EW_BENCH:
+        from board_rules import build_ew_bench_files
+
+        rep = build_ew_bench_files(data_dir, market)
+        print(f"[backfill] 合成基准 {rep['bench']} 已构建: {rep['n_symbols']} 只成分，最新 {rep['latest']:.4f}")
     cal = read_trading_calendar(data_dir)
     qlib.init(provider_uri=str(data_dir), region="cn",
               exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
@@ -2848,7 +3189,7 @@ def backfill_signals(dates: str = "2026-09-16,2026-09-17", topk: int = 20, nd: i
         valid_start = cal[valid_start_i]
         train_end = last_matured_sample(cal, valid_start, horizon)
         cfg = _load_and_patch_cfg(MODEL_CFG["lgb158"], smoke=False, recent=True, long_train=True,
-                                  label20=True, topk=topk, nd=nd, market=market)
+                                  label20=True, topk=topk, nd=nd, market=market, provider_dir=str(data_dir))
         dk = cfg["task"]["dataset"]["kwargs"]
         seg = dk["segments"]
         handler = dk["handler"]["kwargs"]
@@ -2869,13 +3210,16 @@ def backfill_signals(dates: str = "2026-09-16,2026-09-17", topk: int = 20, nd: i
             raise RuntimeError(f"empty predictions for {asof}")
         day = pred.loc[asof].dropna()
 
-        # 涨跌停过滤（与 daily_standalone 相同口径）
+        # 涨跌停过滤（板块感知阈值，与 daily_standalone 同口径；listing 从 all.txt 取）
         from qlib.data import D
+        from board_rules import board_aware_limited
+
         day_df = D.features([str(x) for x in day.index], ["$close", "Ref($close,1)"],
                             start_time=asof, end_time=asof, freq="day")
         if len(day_df) > 0 and ("Ref($close,1)" in day_df.columns):
             day_ret = (day_df["$close"] / day_df["Ref($close,1)"] - 1).dropna()
-            limited = day_ret[(day_ret >= 0.095) | (day_ret <= -0.095)].index.get_level_values(0)
+            listing = _board_listing_dates(data_dir, day.index)
+            limited = board_aware_limited(day_ret, str(asof)[:10], listing_dates=listing)
             day = day.loc[day.index[~day.index.isin(limited)]]
         top = day.sort_values(ascending=False).head(topk)
 
@@ -2894,11 +3238,12 @@ def backfill_signals(dates: str = "2026-09-16,2026-09-17", topk: int = 20, nd: i
         results[asof] = {"csv_content": csv_content, "chart_json": chart_json, "topk": topk,
                          "n_stocks": len(top)}
         print(f"[backfill] {asof}: {len(top)} 只股票已生成")
-        # 保存到 Volume 供后续使用
+        # 保存到 Volume 供后续使用（池后缀防覆盖 csi1000 的研究/生产文件）
+        suffix = "" if market == "csi1000" else f"_{market}"
         out = VOL_ROOT / "signals"
         out.mkdir(parents=True, exist_ok=True)
-        (out / f"{asof}_top{topk}_lgb158.csv").write_text(csv_content)
-        (out / f"{asof}_chart.json").write_text(chart_json)
+        (out / f"{asof}_top{topk}_lgb158{suffix}.csv").write_text(csv_content)
+        (out / f"{asof}_chart{suffix}.json").write_text(chart_json)
     vol.commit()
     return results
 

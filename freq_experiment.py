@@ -42,20 +42,46 @@ image = (
     )
     .run_commands(
         "cd /root/qlib && pip install . --no-build-isolation --no-deps",
-        "cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/",
+        "cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/qlib/board_rules.py /root/",
     )
 )
 
 app = modal.App(APP_NAME, image=image)
 
 YAML_PATH = "/root/qlib/examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158_csi500.yaml"
+
+
+def _ensure_custom_pool(market: str) -> None:
+    """新池（star_chn/chinext/star）池文件不存在则从 all.txt 生成（幂等，fail-closed）。"""
+    from board_rules import EW_BENCH, POOL_BOARDS, build_custom_instruments
+
+    if market not in EW_BENCH:
+        return
+    all_txt = DATA_DIR / "instruments" / "all.txt"
+    pool_txt = DATA_DIR / "instruments" / f"{market}.txt"
+    build_custom_instruments(all_txt, pool_txt, boards=POOL_BOARDS[market])
+    bench = EW_BENCH[market]
+    if not (DATA_DIR / "features" / bench.lower() / "close.day.bin").is_file():
+        raise FileNotFoundError(f"{market} 基准 {bench} 无数据；先跑主管道 ::build_star_chn_bench")
+
+
 BENCH_BY_MARKET = {"csi1000": "SH000852", "csi500": "SH000905", "csi300": "SH000300"}
+
+
+def _bench_of(market: str) -> str:
+    """新池用各自等权合成基准（board_rules.EW_BENCH，需先构造）；csi 池用中证系。"""
+    if market in ("star_chn", "chinext", "star"):
+        from board_rules import EW_BENCH
+
+        return EW_BENCH[market]
+    return BENCH_BY_MARKET[market]
 
 
 def _load_task(market: str) -> dict:
     """读官方 yaml 并打实验补丁（独立于主管道的 _load_and_patch_cfg）。"""
     from ruamel.yaml import YAML
 
+    _ensure_custom_pool(market)
     with open(YAML_PATH) as f:
         cfg = YAML(typ="safe", pure=True).load(f)
     dk = cfg["task"]["dataset"]["kwargs"]
@@ -164,10 +190,16 @@ def freq_window(args: dict):
                 "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
     strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
                 "kwargs": {"signal": pred, "topk": args["topk"], "n_drop": args["nd"]}}
+    # 新池（star/chinext 板块）为 ±20% 口径：阈值 0.195；回测窗口不得早于创业板改革日（board_rules guard）
+    if args["market"] in ("star_chn", "chinext", "star"):
+        from board_rules import star_chn_backtest_guard
+
+        star_chn_backtest_guard(args["eval_start"])
+    limit_th = 0.195 if args["market"] in ("star_chn", "chinext", "star") else 0.095
     pm, _ = normal_backtest(strategy=strategy, executor=executor,
                              start_time=args["eval_start"], end_time=args["eval_end"],
-                             account=100000000, benchmark=BENCH_BY_MARKET[args["market"]],
-                             exchange_kwargs={"limit_threshold": 0.095, "deal_price": "close",
+                             account=100000000, benchmark=_bench_of(args["market"]),
+                             exchange_kwargs={"limit_threshold": limit_th, "deal_price": "close",
                                               "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
     rep = pm["1day"][0]
     excess = rep["return"] - rep["bench"] - rep["cost"]
