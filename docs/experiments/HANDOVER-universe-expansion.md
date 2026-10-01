@@ -250,6 +250,19 @@ _indices = {"csi300": "SH000300", "csi500": "SH000905", "csi1000": "SH000852",
 
 **已知限制（诚实清单，同 §8.3）**：ST ±5% 未接线；科创板 200 股手数未修（chinext 池无此问题）；运行方差 ~23pp 未量化到 csi1000（可选 dual-seed 实验）。
 
+### 8.5d 科创板批次C 终审（2026-10-02 实跑，infi，top50/nd2=批次A孤点配置，23窗口 12 并行）
+
+| 统计 | star top50/nd2 | chinext top20/nd3（对照） |
+|---|---|---|
+| 年化超额 | **≈+1.6%** | +11.5% |
+| t 值 | **0.37（彻底不显著）** | 1.12 |
+| 正窗口 | **10/23（43%）** | 18/23（78%） |
+| 中位季度超额 | **-0.9%**（中位为负！） | +5.1% |
+| 最差/最好季 | -5.4% / +18.0% | -30.8% / +24.9% |
+
+**终审结论（star 板块）**：批次A 孤点（top50/nd2 单窗口 +7.2%）在 5.5 年滚动下**彻底消解**——均值≈0（+1.6% 年化）、中位为负、43% 正窗、t=0.37。**科创板方向关闭升级为终审级证据**（此前是批次A单窗口的暂时关闭）。窗口明细中唯一的 +18% 季度（w17=2025Q1）进一步印证"孤点本质"：正贡献集中于个别窗口，其余 22 窗基本围绕零。
+本地存档：`results/batch_c/rolling5y_star_t50nd2.json`（0 误差）。
+
 ### 8.8 下一步 runbook
 
 ```
@@ -258,7 +271,8 @@ _indices = {"csi300": "SH000300", "csi500": "SH000905", "csi1000": "SH000852",
 # ✅ 批次C-chinext 终审完成（§8.5c）：+11.5%/t=1.12/78%正窗 vs csi1000 +11.6%/t=1.44——统计不可区分
 # ✅ 双池生产化代码完成（§8.7）：daily_cron 双榜发布+失败隔离，daily_standalone chinext 全路径冒烟通过
 # 待用户确认：modal deploy（at2018cow，成本 ~$7.1→~$14/月）后 cron 每日双榜
-# 可选后续：top50/nd3 批次C（~$3）；dual-seed 复跑 csi1000 终审量化运行方差（~$1）；前向观察 ≥3 个月再评估
+# ✅ star 批次C 终审完成（§8.5d）：+1.6%/t=0.37/43%正窗/中位负——孤点消解，科创板终审级关闭
+# 可选后续：dual-seed 复跑 csi1000 终审量化运行方差（~$1）；前向观察 ≥3 个月再评估
 ```
 
 冒烟口径参考：star_chn 池内创业板成员涨跌停过滤从 0.095 放宽到 0.195（改革后真实规则），单日剔除数与 csi1000 口径量级一致；显著变化（±3pp 以上）需先查 `board_aware_limited` 掩码。**注意：`prepare_data --force` 会清空 Volume 上的合成基准与池文件（features/instruments 全删重建）——force 后必须重跑 `::build_star_chn_bench`**（生产 daily 路径不受影响，容器内自动重建）。Volume 数据止于 09-30（已 force 刷新）；生产 daily_standalone 每次全量下载无需此步。**infi workspace 已验证可用**：`::verify_universe`/`::build_star_chn_bench`/`::batch_a_star_chn`/`::batch_b --market chinext`/`::batch_c --market chinext`/`::daily_standalone --market chinext` 全跑通；唯一前置 = 一次性 `modal secret create github-push GITHUB_TOKEN=...`（占位值即可，只解锁 modal run 的 spec 校验，研究入口不推送）。
