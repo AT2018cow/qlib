@@ -16,13 +16,17 @@
 Modal Cron：每个 A 股交易日 07:00（北京时间）
   → daily_standalone（nonpreemptible=True，8核32G CPU 容器，无 GPU）
     1. 下载 chenditc/investment_data 最新全量包（565MB，数据必最新，无陈旧问题）
-    2. 训练/推理：
-       - 每 20 个交易日重训一次终审候选模型
+    2. 训练/推理（双池顺序执行，各约 15-30 分钟）：
+       - csi1000（主池）：每 20 个交易日重训一次终审候选模型
+       - chinext（卫星池，2026-10-02 上线）：同协议 + 容器内自动构建等权合成基准
        - 其余日复用 /vol/live_models/ 缓存模型（SHA-256 校验，处理器拟合窗口锁定）
-    3. 生成 csi1000 top20 排名 CSV（ranking_only，非可执行订单，涨跌停已过滤）
+    3. 生成两池 top20 排名 CSV（ranking_only，非可执行订单，板块感知涨跌停过滤）
   → daily_cron（nonpreemptible=True）
     4. 严格日期检查（节假日/数据滞后显式失败）
-    5. GitHub API 推送到 results/signals/<日期>_top20_lgb158.csv（同日记录不可变）
+    5. GitHub API 一次 commit 推送 4 文件（两池 CSV+chart；同日记录不可变）
+       - results/signals/<日期>_top20_lgb158.csv            （csi1000，网站兼容）
+       - results/signals/<日期>_top20_lgb158_chinext.csv    （chinext）
+       - results/signals/<日期>_chart{,_chinext}.json
 ```
 
 - **成本**：月约 $7.1（nonpreemptible 3x 价）

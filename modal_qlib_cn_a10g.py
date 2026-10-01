@@ -2731,12 +2731,16 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
         print(f"  {rank:>2}. {inst}  score={score:.4f}")
 
     # ---- 4b) 走势 JSON：每只入选股近 60 个交易日收盘价（网站 K 线数据源）----
+    # ⚠️ 停牌日值为 NaN：json.dumps 默认输出裸 NaN 是非法 JSON，浏览器 JSON.parse 会整体失败
+    # （2026-10-02 实证：创业板 chart 全灭）——必须 sanitize 成 null
     chart = {"dates": cal_lines[-60:], "stocks": {}}
     for inst in top.index:
         close_bin = data_dir / "features" / str(inst).lower() / "close.day.bin"
         if close_bin.exists():
             _, values = _read_bin(close_bin)
-            chart["stocks"][str(inst)] = [round(float(v), 4) for v in values[-60:]]
+            chart["stocks"][str(inst)] = [
+                None if v != v else round(float(v), 4) for v in values[-60:]
+            ]
     chart_json = json.dumps(chart, ensure_ascii=False)
 
     return {"date": str(predict_date)[:10], "topk": topk, "n_stocks": len(top),
@@ -3226,13 +3230,15 @@ def backfill_signals(dates: str = "2026-09-16,2026-09-17", topk: int = 20, nd: i
         csv_content = "rank,instrument,score\n" + "\n".join(
             f"{i},{inst},{score}" for i, (inst, score) in enumerate(top.items(), 1))
 
-        # 走势 JSON
+        # 走势 JSON（NaN→null sanitize，同 daily_standalone——裸 NaN 会让浏览器 JSON.parse 整体失败）
         chart = {"dates": cal[max(0,asof_i-60):asof_i+1][-60:], "stocks": {}}
         for inst in top.index:
             close_bin = data_dir / "features" / str(inst).lower() / "close.day.bin"
             if close_bin.exists():
                 _, values = _read_bin(close_bin)
-                chart["stocks"][str(inst)] = [round(float(v), 4) for v in values[-60:]]
+                chart["stocks"][str(inst)] = [
+                    None if v != v else round(float(v), 4) for v in values[-60:]
+                ]
         chart_json = _json.dumps(chart, ensure_ascii=False)
 
         results[asof] = {"csv_content": csv_content, "chart_json": chart_json, "topk": topk,

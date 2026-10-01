@@ -29,11 +29,17 @@ function parseCSV(text) {
     });
 }
 
+// 宽松 JSON 解析：历史文件可能含 Python json.dumps 输出的裸 NaN（非法 JSON，JSON.parse 整体失败）——NaN→null
+function parseJSONLoose(text) { try { return JSON.parse(String(text).replace(/\bNaN\b/g, 'null')); } catch (e) { return null; } }
+
 function makeSparkline(values, w, h) {
-    const min = Math.min(...values), max = Math.max(...values);
+    // 过滤 null/NaN（停牌日）：至少保留 2 个有效点才画
+    const vs = values.filter(v => v !== null && v !== undefined && !Number.isNaN(v)).map(Number);
+    if (vs.length < 2) return '<span class="muted">—</span>';
+    const min = Math.min(...vs), max = Math.max(...vs);
     const range = max - min || 1;
-    const pts = values.map((v, i) => `${(i/(values.length-1)*w).toFixed(1)},${(h-(v-min)/range*h).toFixed(1)}`).join(' ');
-    const color = values[values.length-1] >= values[0] ? '#f85149' : '#3fb950';
+    const pts = vs.map((v, i) => `${(i/(vs.length-1)*w).toFixed(1)},${(h-(v-min)/range*h).toFixed(1)}`).join(' ');
+    const color = vs[vs.length-1] >= vs[0] ? '#f85149' : '#3fb950';
     return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5"/></svg>`;
 }
 
@@ -97,7 +103,7 @@ async function main(pool) {
     const prev = dates.length > 1 ? parseCSV(dates[1].text) : null;
     let chartData = null;
     const ct = await fetchText(`${CSV_BASE}/${latest.date}_chart${suffix}.json`);
-    if (ct) { try { chartData = JSON.parse(ct); } catch(e) {} }
+    if (ct) { try { chartData = parseJSONLoose(ct); } catch(e) {} }
 
     // --- 骨架 ---
     const poolTabs = Object.keys(POOLS).map(p =>
@@ -125,7 +131,7 @@ async function main(pool) {
         </div>
         <footer>
             <p>⚠️ 仅供研究参考，不构成投资建议 · 据此操作风险自负</p>
-            <p>每个交易日 7:30 自动更新${pool === 'chinext' ? ' · 创业板为独立卫星池（5.5年滚动终审 +11.5%，见方法论）' : ''}</p>
+            <p>每个交易日 07:00 自动更新${pool === 'chinext' ? ' · 创业板为独立卫星池（5.5年滚动终审 +11.5%，见方法论）' : ''}</p>
         </footer>`;
 
     const render = (rows) => {
@@ -152,7 +158,7 @@ async function main(pool) {
         const pd = dates.find(x => x.date < d.date);
         let sc = null;
         const sct = await fetchText(`${CSV_BASE}/${d.date}_chart${suffix}.json`);
-        if (sct) { try { sc = JSON.parse(sct); } catch(e) {} }
+        if (sct) { try { sc = parseJSONLoose(sct); } catch(e) {} }
         render(buildRows(d, nameMap, pd ? parseCSV(pd.text) : null, sc));
         document.querySelector('.date').textContent = `📅 ${d.date}`;
         // 高亮当前选中的日期按钮
