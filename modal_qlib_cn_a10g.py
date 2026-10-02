@@ -3209,11 +3209,13 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
     if saved is not None and saved.get("signature") != signature:
         raise RuntimeError("Model cache signature mismatch")
     # 重训节律（两池同步）：①无缓存 → bootstrap；②全局锚定时钟 due（origin=2026-09-18 bar，
-    # 每 20 个交易日两池同日重训、fit 窗口完全一致）；③自 20-session 自愈兜底（错过 due 日时
-    # 各池按自身节律恢复，下一个全局 due 日重新对齐相位）
+    # 每 20 个交易日两池同日重训、fit 窗口完全一致）——若本 bar 已 fit（同日重跑）则跳过，
+    # 避免无谓重训（review 2026-10-02：due 不看已 fit bar 会让 due 日重跑必重训 ~15 分钟）；
+    # ③自 20-session 自愈兜底（错过 due 日时各池按自身节律恢复，下一全局 due 日重新对齐）
     train_now = (
         saved is None
-        or retrain_due_calendar(calendar, asof, interval=RETRAIN_EVERY_SESSIONS)
+        or (retrain_due_calendar(calendar, asof, interval=RETRAIN_EVERY_SESSIONS)
+            and saved["fit_asof"] != asof)
         or should_retrain(calendar, asof, saved["fit_asof"], interval=RETRAIN_EVERY_SESSIONS)
     )
     if train_now:
@@ -3940,12 +3942,26 @@ def backfill_signals(dates: str = "2026-09-16,2026-09-17", topk: int = 20, nd: i
         csv_content = "rank,instrument,score\n" + "\n".join(
             f"{k_},{inst},{score}" for k_, (inst, score) in enumerate(top.items(), 1)
         )
-        chart = {"dates": cal[max(0, i - 59) : i + 1][-60:], "stocks": {}}
+        # 走势 JSON：与生产语义一致——dates 与 values 都以数据 bar（=使用日前一交易日）结尾。
+        # ⚠️ 不能用 values[-60:]：那是数据集末尾（09-30）的 60 个 bar，对历史回放日会
+        #    日期错位 + 前视泄露（2026-10-02 review 实锤：09-17 榜 chart 末值 = 09-30 收盘）。
+        #    生产 daily_standalone 无此问题（数据包末 bar == asof 天然对齐）；回放必须按
+        #    日历索引切片。NaN→null sanitize（裸 NaN 会让浏览器 JSON.parse 整体失败）。
+        lo = max(0, i - 60)
+        chart = {"dates": cal[lo:i][-60:], "stocks": {}}
         for inst in top.index:
             close_bin = data_dir / "features" / str(inst).lower() / "close.day.bin"
             if close_bin.exists():
-                _, values = _read_bin(close_bin)
-                chart["stocks"][str(inst)] = [None if v != v else round(float(v), 4) for v in values[-60:]]
+                start, values = _read_bin(close_bin)
+                series = []
+                for j in range(lo, i):  # 日历索引 j < i = 数据 bar（使用日前一交易日）
+                    v = None
+                    k_ = j - start
+                    if 0 <= k_ < len(values):
+                        raw = float(values[k_])
+                        v = None if raw != raw else round(raw, 4)
+                    series.append(v)
+                chart["stocks"][str(inst)] = series
         chart_json = _json.dumps(chart, ensure_ascii=False)
         (out / f"{usage_day}_top{topk}_lgb158{suffix}.csv").write_text(csv_content)
         (out / f"{usage_day}_chart{suffix}.json").write_text(chart_json)
