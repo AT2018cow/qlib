@@ -1,7 +1,8 @@
 import copy
 import unittest
 
-from qlib_live_retrain import configure_asof, should_retrain, cache_signature
+from qlib_live_retrain import (configure_asof, should_retrain, cache_signature,
+                               retrain_due_calendar, RETRAIN_ORIGIN)
 
 
 class LiveRetrainTests(unittest.TestCase):
@@ -41,6 +42,20 @@ class LiveRetrainTests(unittest.TestCase):
         self.assertFalse(should_retrain(self.cal, self.cal[-1], self.cal[-20]))
         self.assertTrue(should_retrain(self.cal, self.cal[-1], self.cal[-21]))
         self.assertRaises(ValueError, should_retrain, self.cal, self.cal[-1], '2099-01-01')
+
+    def test_global_due_anchor_and_cadence(self):
+        # origin 自身 → due；+20 session → due；+10 → 非 due
+        i0 = self.cal.index(RETRAIN_ORIGIN)
+        self.assertTrue(retrain_due_calendar(self.cal, RETRAIN_ORIGIN))
+        self.assertTrue(retrain_due_calendar(self.cal, self.cal[i0 + 20]))
+        self.assertFalse(retrain_due_calendar(self.cal, self.cal[i0 + 10]))
+        # 锚点之前的谱系不由全局时钟管（回放期自行 bootstrap）
+        self.assertFalse(retrain_due_calendar(self.cal, self.cal[i0 - 5]))
+        # 两池同历 → 同 due 日（本函数纯日历推导，无池参数——这就是同步机制本身）
+        self.assertTrue(retrain_due_calendar(self.cal, self.cal[i0 + 40]))
+        # fail-closed：bar / origin 不在日历
+        self.assertRaises(ValueError, retrain_due_calendar, self.cal, "2099-01-01")
+        self.assertRaises(ValueError, retrain_due_calendar, self.cal, self.cal[-1], origin="2099-01-01")
 
     def test_cache_signature_stable_dates_not_parameters(self):
         configure_asof(self.cfg, self.cal, self.cal[-1])

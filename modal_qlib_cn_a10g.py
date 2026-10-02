@@ -18,7 +18,13 @@
 import modal
 from pathlib import Path
 from qlib_audit_fixes import read_trading_calendar, purge_cfg_splits
-from qlib_live_retrain import configure_asof, should_retrain, cache_signature, RETRAIN_EVERY_SESSIONS
+from qlib_live_retrain import (
+    configure_asof,
+    should_retrain,
+    cache_signature,
+    retrain_due_calendar,
+    RETRAIN_EVERY_SESSIONS,
+)
 from board_rules import (
     CHINEXT_REFORM,
     BENCH_CANDIDATES,
@@ -147,7 +153,10 @@ def _ensure_data(force: bool = False):
                 f.write(chunk)
                 downloaded += len(chunk)
                 if total:
-                    print(f"\r[data] {downloaded / total * 100:.1f}% ({downloaded / 1e6:.0f}/{total / 1e6:.0f} MB)", end="")
+                    print(
+                        f"\r[data] {downloaded / total * 100:.1f}% ({downloaded / 1e6:.0f}/{total / 1e6:.0f} MB)",
+                        end="",
+                    )
     print(f"\n[data] 下载完成: {zip_path.stat().st_size / 1e6:.0f} MB")
 
     if extract_dir.exists():
@@ -202,7 +211,23 @@ def _latest_trading_day(data_dir=None) -> str:
     return "2026-09-11"  # 兜底（仅当数据目录不可读时）
 
 
-def _load_and_patch_cfg(yaml_path: str, smoke: bool, recent: bool = False, enhanced: bool = False, long_train: bool = False, fund: bool = False, label20: bool = False, label40: bool = False, label60: bool = False, rolling: bool = False, verify: bool = False, topk: int = None, market: str = None, nd: int = None, provider_dir: str = None) -> dict:
+def _load_and_patch_cfg(
+    yaml_path: str,
+    smoke: bool,
+    recent: bool = False,
+    enhanced: bool = False,
+    long_train: bool = False,
+    fund: bool = False,
+    label20: bool = False,
+    label40: bool = False,
+    label60: bool = False,
+    rolling: bool = False,
+    verify: bool = False,
+    topk: int = None,
+    market: str = None,
+    nd: int = None,
+    provider_dir: str = None,
+) -> dict:
     """读 bundled yaml，打上 Modal 路径补丁。不改仓库原文件。
 
     recent=True 时把整套数据区间前移到 2026 年（训练 2021-2024 / 验证 2025 /
@@ -368,7 +393,12 @@ def _load_and_patch_cfg(yaml_path: str, smoke: bool, recent: bool = False, enhan
         cfg["port_analysis_config"]["strategy"] = {
             "class": "PeriodicTopkStrategy",
             "module_path": "rebalance_strategy",
-            "kwargs": {"signal": "<PRED>", "topk": topk if topk is not None else 50, "n_drop": nd if nd is not None else 2, "rebalance_days": 20},
+            "kwargs": {
+                "signal": "<PRED>",
+                "topk": topk if topk is not None else 50,
+                "n_drop": nd if nd is not None else 2,
+                "rebalance_days": 20,
+            },
         }
     # A sample's Ref(...,-h) label must mature before the NEXT stage starts.
     # This also purges the validation tail used by LightGBM early stopping.
@@ -376,9 +406,9 @@ def _load_and_patch_cfg(yaml_path: str, smoke: bool, recent: bool = False, enhan
         _cal = read_trading_calendar(provider_dir or DATA_DIR)
         purge_cfg_splits(cfg, _cal)
     if smoke and enhanced:
-        _model_kw = cfg['task']['model']['kwargs']
-        if 'early_stop' in _model_kw:
-            _model_kw['early_stop'] = 2
+        _model_kw = cfg["task"]["model"]["kwargs"]
+        if "early_stop" in _model_kw:
+            _model_kw["early_stop"] = 2
     return cfg
 
 
@@ -391,8 +421,9 @@ def bench_years():
     from qlib.data import D
 
     qlib.init(provider_uri=str(DATA_DIR), region="cn")
-    df = D.features(["SH000905", "SH000852"], ["$close"], start_time="2021-01-01",
-                    end_time=_latest_trading_day(), freq="day")
+    df = D.features(
+        ["SH000905", "SH000852"], ["$close"], start_time="2021-01-01", end_time=_latest_trading_day(), freq="day"
+    )
     out = {}
     for inst in ["SH000905", "SH000852"]:
         s = df.loc[:, "$close"].xs(inst, level=0 if df.index.names[0] == "instrument" else 1)
@@ -423,9 +454,15 @@ def independent_recheck():
     from qlib.utils import init_instance_by_config
 
     _ensure_data()
-    qlib.init(provider_uri=str(DATA_DIR), region="cn",
-              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
-                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-recheck"}})
+    qlib.init(
+        provider_uri=str(DATA_DIR),
+        region="cn",
+        exp_manager={
+            "class": "MLflowExpManager",
+            "module_path": "qlib.workflow.expm",
+            "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-recheck"},
+        },
+    )
 
     # ---- 手写 task 配置（对照 lgb158 yaml + 修复后批次C窗口 w09 的语义）----
     task = {
@@ -481,21 +518,39 @@ def independent_recheck():
     model.fit(dataset)
     pred = model.predict(dataset)
 
-    executor = {"class": "SimulatorExecutor", "module_path": "qlib.backtest.executor",
-                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
-    strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
-                "kwargs": {"signal": pred, "topk": 20, "n_drop": 2}}
-    pm, _ = normal_backtest(strategy=strategy, executor=executor,
-                             start_time="2023-01-01", end_time="2023-03-31", account=100000000,
-                             benchmark="SH000852",
-                             exchange_kwargs={"limit_threshold": 0.095, "deal_price": "close",
-                                              "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
+    executor = {
+        "class": "SimulatorExecutor",
+        "module_path": "qlib.backtest.executor",
+        "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
+    }
+    strategy = {
+        "class": "TopkDropoutStrategy",
+        "module_path": "qlib.contrib.strategy",
+        "kwargs": {"signal": pred, "topk": 20, "n_drop": 2},
+    }
+    pm, _ = normal_backtest(
+        strategy=strategy,
+        executor=executor,
+        start_time="2023-01-01",
+        end_time="2023-03-31",
+        account=100000000,
+        benchmark="SH000852",
+        exchange_kwargs={
+            "limit_threshold": 0.095,
+            "deal_price": "close",
+            "open_cost": 0.0005,
+            "close_cost": 0.0015,
+            "min_cost": 5,
+        },
+    )
     rep = pm["1day"][0]
     # 手动计算有成本超额（不用 risk_analysis）
     excess = rep["return"] - rep["bench"] - rep["cost"]
-    result = {"excess_total": round(float(excess.sum()), 4),
-              "daily_mean": round(float(excess.mean()), 6),
-              "n_days": int(len(excess))}
+    result = {
+        "excess_total": round(float(excess.sum()), 4),
+        "daily_mean": round(float(excess.mean()), 6),
+        "n_days": int(len(excess)),
+    }
     print(f"[recheck] 独立实现: {result}")
     print(f"[recheck] 管道报告: {{'excess_total': -0.0163, 'daily_mean': -0.000277, 'n_days': 59}}")
     diff = abs(result["excess_total"] - (-0.0163))
@@ -526,15 +581,18 @@ def verify_integrity(market: str = "csi500"):
     inst_list = D.list_instruments(insts, start_time=start, end_time=end, as_list=True)
     print(f"[verify] {market} 区间内 {len(inst_list)} 只")
 
-    df = D.features(inst_list, ["$close", "Ref($close,1)", "$change", "$open"],
-                    start_time=start, end_time=end, freq="day")
+    df = D.features(
+        inst_list, ["$close", "Ref($close,1)", "$change", "$open"], start_time=start, end_time=end, freq="day"
+    )
     print(f"[verify] D.features 返回列: {list(df.columns)}")
     # 1) $change 定义验证
     chg_calc = df["$close"] / df["Ref($close,1)"] - 1
     merged = pd.concat([df["$change"], chg_calc.rename("calc")], axis=1).dropna()
     diff = (merged["$change"] - merged["calc"]).abs()
-    print(f"[verify] $change vs close/prev_close-1：中位偏差={diff.median():.2e} "
-          f"95分位={diff.quantile(0.95):.2e} 样本={len(merged)}")
+    print(
+        f"[verify] $change vs close/prev_close-1：中位偏差={diff.median():.2e} "
+        f"95分位={diff.quantile(0.95):.2e} 样本={len(merged)}"
+    )
     if diff.quantile(0.95) < 1e-3:
         # 实测中位偏差 2.4e-5（复权/舍入噪声级别）；关键判据是下方逐日涨跌停计数 100% 一致
         print("[verify] ✅ $change 即当日涨幅（偏差为复权舍入噪声），QLib 回测涨跌停模拟口径正确")
@@ -624,8 +682,10 @@ def verify_universe(star: bool = True, chinext: bool = True, force: bool = False
         by_board.setdefault(sym[:2], []).append(sym)
     for sym, lst in sorted(by_board.items()):
         rows = inst[inst["symbol"].isin(lst)]
-        print(f"[universe] {sym}* 共 {len(lst)} 只，最早上市 {rows['start'].min()}，"
-              f"最新 span 止于 {rows['end'].max()}（数据日历止于 {cal_lines[-1]}）")
+        print(
+            f"[universe] {sym}* 共 {len(lst)} 只，最早上市 {rows['start'].min()}，"
+            f"最新 span 止于 {rows['end'].max()}（数据日历止于 {cal_lines[-1]}）"
+        )
     sample = inst["symbol"].drop_duplicates().tolist()
     print(f"[universe] 样本: {sample[:10]}")
 
@@ -643,9 +703,15 @@ def verify_universe(star: bool = True, chinext: bool = True, force: bool = False
         if ok:
             print(f"[universe]     最新 {values[-1]:.2f}，bar 数 {len(values)}")
 
-    qlib.init(provider_uri=str(DATA_DIR), region="cn",
-              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
-                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-universe"}})
+    qlib.init(
+        provider_uri=str(DATA_DIR),
+        region="cn",
+        exp_manager={
+            "class": "MLflowExpManager",
+            "module_path": "qlib.workflow.expm",
+            "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-universe"},
+        },
+    )
     for pool_name in POOL_BOARDS:
         pool_inst = D.instruments(pool_name)
         listed = D.list_instruments(pool_inst, start_time="2024-01-01", end_time=cal_lines[-1], as_list=True)
@@ -688,9 +754,11 @@ def build_star_chn_bench(which: str = "all"):
     for pool_name in pools:
         rep = build_ew_bench_files(DATA_DIR, pool_name)
         out[pool_name] = rep
-        print(f"[bench] 合成等权基准 {rep['bench']}({pool_name}) 已写入: {rep['n_symbols']} 只成分"
-              f"（缺 bin {rep['n_bins_missing']}），{rep['n_days_with_mean']}/{rep['n_cal']} 日有均值收益，"
-              f"最新 {rep['latest']:.4f}")
+        print(
+            f"[bench] 合成等权基准 {rep['bench']}({pool_name}) 已写入: {rep['n_symbols']} 只成分"
+            f"（缺 bin {rep['n_bins_missing']}），{rep['n_days_with_mean']}/{rep['n_cal']} 日有均值收益，"
+            f"最新 {rep['latest']:.4f}"
+        )
     vol.commit()
     return out
 
@@ -749,17 +817,45 @@ def check_gpu():
 LGB_MODELS = {"lgb158", "lgb360"}
 
 
-def _train_impl(model: str, smoke: bool, recent: bool, enhanced: bool, long_train: bool, fund: bool,
-                label20: bool, rolling: bool, verify: bool, topk: int, experiment_name: str, market: str = None, nd: int = None):
+def _train_impl(
+    model: str,
+    smoke: bool,
+    recent: bool,
+    enhanced: bool,
+    long_train: bool,
+    fund: bool,
+    label20: bool,
+    rolling: bool,
+    verify: bool,
+    topk: int,
+    experiment_name: str,
+    market: str = None,
+    nd: int = None,
+):
     """train 共享实现（CPU/GPU 两个 wrapper 调用）。LGB 系模型无需 GPU。"""
     import qlib
     from qlib.model.trainer import task_train
 
     assert model in MODEL_CFG, f"model 须为 {list(MODEL_CFG)}"
-    print(f"[train] {model} smoke={smoke} recent={recent} enhanced={enhanced} long_train={long_train} fund={fund} label20={label20} rolling={rolling} verify={verify} topk={topk}")
+    print(
+        f"[train] {model} smoke={smoke} recent={recent} enhanced={enhanced} long_train={long_train} fund={fund} label20={label20} rolling={rolling} verify={verify} topk={topk}"
+    )
 
     _ensure_data()
-    cfg = _load_and_patch_cfg(MODEL_CFG[model], smoke=smoke, recent=recent, enhanced=enhanced, long_train=long_train, fund=fund, label20=label20, rolling=rolling, verify=verify, topk=topk, market=market, nd=nd)
+    cfg = _load_and_patch_cfg(
+        MODEL_CFG[model],
+        smoke=smoke,
+        recent=recent,
+        enhanced=enhanced,
+        long_train=long_train,
+        fund=fund,
+        label20=label20,
+        rolling=rolling,
+        verify=verify,
+        topk=topk,
+        market=market,
+        nd=nd,
+    )
     print(f"[train] provider_uri={cfg['qlib_init']['provider_uri']} region={cfg['qlib_init']['region']}")
 
     qlib.init(**cfg["qlib_init"])
@@ -777,12 +873,28 @@ def _train_impl(model: str, smoke: bool, recent: bool, enhanced: bool, long_trai
     gpu="A10G",
     timeout=4 * 3600,
 )
-def train(model: str = "gru", smoke: bool = True, recent: bool = False, enhanced: bool = False, long_train: bool = False, fund: bool = False, label20: bool = False, rolling: bool = False, verify: bool = False, topk: int = None, experiment_name: str = "qlib-cn-daily-a10g", market: str = None, nd: int = None):
+def train(
+    model: str = "gru",
+    smoke: bool = True,
+    recent: bool = False,
+    enhanced: bool = False,
+    long_train: bool = False,
+    fund: bool = False,
+    label20: bool = False,
+    rolling: bool = False,
+    verify: bool = False,
+    topk: int = None,
+    experiment_name: str = "qlib-cn-daily-a10g",
+    market: str = None,
+    nd: int = None,
+):
     """GPU 版训练（GRU/ALSTM 等 RNN 模型）。"""
     import torch
 
     assert torch.cuda.is_available(), "GPU 未生效，先跑 check_gpu 排查 Image"
-    return _train_impl(model, smoke, recent, enhanced, long_train, fund, label20, rolling, verify, topk, experiment_name, market, nd)
+    return _train_impl(
+        model, smoke, recent, enhanced, long_train, fund, label20, rolling, verify, topk, experiment_name, market, nd
+    )
 
 
 @app.function(
@@ -791,10 +903,26 @@ def train(model: str = "gru", smoke: bool = True, recent: bool = False, enhanced
     memory=32768,
     timeout=12 * 3600,
 )
-def train_cpu(model: str = "lgb158", smoke: bool = True, recent: bool = False, enhanced: bool = False, long_train: bool = False, fund: bool = False, label20: bool = False, rolling: bool = False, verify: bool = False, topk: int = None, experiment_name: str = "qlib-cn-daily-a10g", market: str = None, nd: int = None):
+def train_cpu(
+    model: str = "lgb158",
+    smoke: bool = True,
+    recent: bool = False,
+    enhanced: bool = False,
+    long_train: bool = False,
+    fund: bool = False,
+    label20: bool = False,
+    rolling: bool = False,
+    verify: bool = False,
+    topk: int = None,
+    experiment_name: str = "qlib-cn-daily-a10g",
+    market: str = None,
+    nd: int = None,
+):
     """CPU 版训练（LGB/XGB/Linear 等非 GPU 模型），不挂载 GPU，避免浪费。"""
     assert model in LGB_MODELS, f"train_cpu 仅用于 CPU 模型 {LGB_MODELS}，{model} 请用 train"
-    return _train_impl(model, smoke, recent, enhanced, long_train, fund, label20, rolling, verify, topk, experiment_name, market, nd)
+    return _train_impl(
+        model, smoke, recent, enhanced, long_train, fund, label20, rolling, verify, topk, experiment_name, market, nd
+    )
 
 
 @app.function(
@@ -838,9 +966,7 @@ def build_fund_factors(market: str = "csi500", start_year: int = 2021, max_stock
         try:
             # start_year 必须传字符串（akshare 内部会 .isdigit()）
             fin = ak.stock_financial_analysis_indicator(symbol=code, start_year=str(start_year))
-            fin = fin[
-                ["日期", "净资产收益率(%)", "销售毛利率(%)", "主营业务收入增长率(%)", "净利润增长率(%)"]
-            ].rename(
+            fin = fin[["日期", "净资产收益率(%)", "销售毛利率(%)", "主营业务收入增长率(%)", "净利润增长率(%)"]].rename(
                 columns={
                     "日期": "date",
                     "净资产收益率(%)": "roe",
@@ -935,8 +1061,11 @@ def _save_and_commit_signal(res: dict):
     from datetime import datetime
 
     market = res.get("market", "csi1000")
-    fallback = f"signals/{res['date']}_top{res['topk']}_lgb158.csv" if market == "csi1000" else \
-        f"signals/{res['date']}_top{res['topk']}_lgb158_{market}.csv"
+    fallback = (
+        f"signals/{res['date']}_top{res['topk']}_lgb158.csv"
+        if market == "csi1000"
+        else f"signals/{res['date']}_top{res['topk']}_lgb158_{market}.csv"
+    )
     fname = Path(res.get("csv", fallback)).name
     local_dir = Path(__file__).resolve().parent / "results" / "signals"
     local_dir.mkdir(parents=True, exist_ok=True)
@@ -953,9 +1082,17 @@ def _save_and_commit_signal(res: dict):
         # 同日重跑（数据未更新）时信号无变化，git commit 会因 nothing-to-commit 失败——优雅跳过
         diff = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=repo)
         if diff.returncode != 0:
-            subprocess.run(["git", "commit", "-q", "-m",
-                            f"chore(signal): paper-trading record {fname} ({datetime.now():%Y-%m-%d %H:%M})"],
-                           cwd=repo, check=True)
+            subprocess.run(
+                [
+                    "git",
+                    "commit",
+                    "-q",
+                    "-m",
+                    f"chore(signal): paper-trading record {fname} ({datetime.now():%Y-%m-%d %H:%M})",
+                ],
+                cwd=repo,
+                check=True,
+            )
         else:
             print("[signal] 信号与上次一致（同日重跑/数据未更新），无需重复提交")
             return
@@ -979,8 +1116,13 @@ def _board_listing_dates(provider_uri, symbols) -> dict:
     import pandas as pd
 
     try:
-        inst = pd.read_csv(Path(provider_uri) / "instruments" / "all.txt", sep="\t",
-                           header=None, names=["symbol", "start", "end"], usecols=[0, 1])
+        inst = pd.read_csv(
+            Path(provider_uri) / "instruments" / "all.txt",
+            sep="\t",
+            header=None,
+            names=["symbol", "start", "end"],
+            usecols=[0, 1],
+        )
     except Exception as e:  # pylint: disable=W0703
         print(f"[signal] ⚠️ all.txt 不可读，新股无涨跌停豁免失效（仅保守阈值剔除）: {e}")
         return {}
@@ -992,7 +1134,17 @@ def _board_listing_dates(provider_uri, symbols) -> dict:
     return sub.groupby("symbol")["start"].min().to_dict()
 
 
-def _daily_impl(model: str, topk: int, predict_date: str, enhanced: bool, long_train: bool, fund: bool, label20: bool, market: str = None, nd: int = None):
+def _daily_impl(
+    model: str,
+    topk: int,
+    predict_date: str,
+    enhanced: bool,
+    long_train: bool,
+    fund: bool,
+    label20: bool,
+    market: str = None,
+    nd: int = None,
+):
     """每日信号共享实现（CPU/GPU 两个 wrapper 调用）。LGB 系模型无需 GPU。"""
     import pandas as pd
 
@@ -1003,7 +1155,17 @@ def _daily_impl(model: str, topk: int, predict_date: str, enhanced: bool, long_t
 
     assert model in MODEL_CFG, f"model 须为 {list(MODEL_CFG)}"
     _ensure_data()
-    cfg = _load_and_patch_cfg(MODEL_CFG[model], smoke=False, recent=True, enhanced=enhanced, long_train=long_train, fund=fund, label20=label20, market=market, nd=nd)
+    cfg = _load_and_patch_cfg(
+        MODEL_CFG[model],
+        smoke=False,
+        recent=True,
+        enhanced=enhanced,
+        long_train=long_train,
+        fund=fund,
+        label20=label20,
+        market=market,
+        nd=nd,
+    )
     qlib.init(**cfg["qlib_init"])
     task = cfg["task"]
 
@@ -1051,14 +1213,13 @@ def _daily_impl(model: str, topk: int, predict_date: str, enhanced: bool, long_t
     # 池名进文件名，避免多池研究信号（csi300/500/1000/star_chn）互相覆盖
     pool_tag = f"_{market}" if market else ""
     csv = out / f"{str(predict_date)[:10]}_top{topk}_{model}{pool_tag}.csv"
-    pd.DataFrame(
-        {"rank": range(1, len(top) + 1), "instrument": top.index, "score": top.values}
-    ).to_csv(csv, index=False)
+    pd.DataFrame({"rank": range(1, len(top) + 1), "instrument": top.index, "score": top.values}).to_csv(
+        csv, index=False
+    )
     print(f"[signal] 已保存 {csv}")
     csv_content = csv.read_text()
     vol.commit()
-    return {"date": str(predict_date), "topk": topk, "csv": str(csv), "n_stocks": len(top),
-            "csv_content": csv_content}
+    return {"date": str(predict_date), "topk": topk, "csv": str(csv), "n_stocks": len(top), "csv_content": csv_content}
 
 
 @app.function(
@@ -1068,7 +1229,17 @@ def _daily_impl(model: str, topk: int, predict_date: str, enhanced: bool, long_t
     gpu="A10G",
     timeout=8 * 3600,
 )
-def daily_signal(model: str = "gru", topk: int = 50, predict_date: str = None, enhanced: bool = False, long_train: bool = False, fund: bool = False, label20: bool = False, market: str = None, nd: int = None):
+def daily_signal(
+    model: str = "gru",
+    topk: int = 50,
+    predict_date: str = None,
+    enhanced: bool = False,
+    long_train: bool = False,
+    fund: bool = False,
+    label20: bool = False,
+    market: str = None,
+    nd: int = None,
+):
     """GPU 版每日信号（GRU/ALSTM 等 RNN 模型）。"""
     import torch
 
@@ -1082,7 +1253,17 @@ def daily_signal(model: str = "gru", topk: int = 50, predict_date: str = None, e
     memory=32768,
     timeout=12 * 3600,
 )
-def daily_signal_cpu(model: str = "lgb158", topk: int = 50, predict_date: str = None, enhanced: bool = False, long_train: bool = False, fund: bool = False, label20: bool = False, market: str = None, nd: int = None):
+def daily_signal_cpu(
+    model: str = "lgb158",
+    topk: int = 50,
+    predict_date: str = None,
+    enhanced: bool = False,
+    long_train: bool = False,
+    fund: bool = False,
+    label20: bool = False,
+    market: str = None,
+    nd: int = None,
+):
     """CPU 版每日信号（LGB 等非 GPU 模型），不挂载 GPU，避免浪费。"""
     assert model in LGB_MODELS, f"daily_signal_cpu 仅用于 CPU 模型 {LGB_MODELS}，{model} 请用 daily_signal"
     return _daily_impl(model, topk, predict_date, enhanced, long_train, fund, label20, market, nd)
@@ -1111,14 +1292,22 @@ def train_ensemble(topk: int = 50, n_drop: int = 2):
 
     assert torch.cuda.is_available(), "GPU 未生效"
     _ensure_data()
-    qlib.init(provider_uri=str(DATA_DIR), region="cn",
-              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
-                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-ensemble"}})
+    qlib.init(
+        provider_uri=str(DATA_DIR),
+        region="cn",
+        exp_manager={
+            "class": "MLflowExpManager",
+            "module_path": "qlib.workflow.expm",
+            "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-ensemble"},
+        },
+    )
 
     preds = {}
     for name, yaml_key in [("lgb", "lgb158"), ("gru", "gru"), ("alstm", "alstm")]:
         # enhanced=True 统一 csi500 股票池（GRU/ALSTM yaml 默认 csi300）
-        cfg = _load_and_patch_cfg(MODEL_CFG[yaml_key], smoke=False, recent=True, long_train=True, label20=True, enhanced=True)
+        cfg = _load_and_patch_cfg(
+            MODEL_CFG[yaml_key], smoke=False, recent=True, long_train=True, label20=True, enhanced=True
+        )
         print(f"[ens] 训练 {name} (market=csi500) ...")
         model = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
         dataset = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
@@ -1130,7 +1319,9 @@ def train_ensemble(topk: int = 50, n_drop: int = 2):
         p.index = p.index.set_names(["datetime", "instrument"])
         p = (p - p.mean()) / p.std()
         preds[name] = p
-        print(f"[ens] {name} pred 覆盖 {p.index.get_level_values(0).min()} ~ {p.index.get_level_values(0).max()} 共 {len(p)} 行")
+        print(
+            f"[ens] {name} pred 覆盖 {p.index.get_level_values(0).min()} ~ {p.index.get_level_values(0).max()} 共 {len(p)} 行"
+        )
 
     # 对齐到共同 index（取三个 pred 的交集日期），分数平均
     common_idx = preds["lgb"].index
@@ -1146,7 +1337,13 @@ def train_ensemble(topk: int = 50, n_drop: int = 2):
         "end_time": _latest_trading_day(),
         "account": 100000000,
         "benchmark": "SH000905",
-        "exchange_kwargs": {"limit_threshold": 0.095, "deal_price": "close", "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5},
+        "exchange_kwargs": {
+            "limit_threshold": 0.095,
+            "deal_price": "close",
+            "open_cost": 0.0005,
+            "close_cost": 0.0015,
+            "min_cost": 5,
+        },
     }
     strategy = {
         "class": "TopkDropoutStrategy",
@@ -1158,9 +1355,7 @@ def train_ensemble(topk: int = 50, n_drop: int = 2):
         "module_path": "qlib.backtest.executor",
         "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
     }
-    portfolio_metric_dict, indicator_dict = normal_backtest(
-        strategy=strategy, executor=executor, **bt
-    )
+    portfolio_metric_dict, indicator_dict = normal_backtest(strategy=strategy, executor=executor, **bt)
     for _freq, (report, _pos) in portfolio_metric_dict.items():
         print(f"[ens] === {_freq} 回测结果 ===")
         print(f"[ens] 策略收益:\n{risk_analysis(report['return']).to_string()}")
@@ -1220,14 +1415,18 @@ def tune_one(params: dict, horizon: int = 20):
         raise ValueError("Production hyperparameter tuning is restricted to the 20-day Alpha158 target")
     _ensure_data()
     cfg = _load_and_patch_cfg(
-        MODEL_CFG["lgb158"], smoke=False, recent=True, long_train=True,
-        label20=True, market="csi1000", topk=20, nd=2
+        MODEL_CFG["lgb158"], smoke=False, recent=True, long_train=True, label20=True, market="csi1000", topk=20, nd=2
     )
     cfg["task"]["model"]["kwargs"].update(params)
     qlib.init(
-        provider_uri=str(DATA_DIR), region="cn", skip_if_reg=True,
-        exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
-                     "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-tune"}},
+        provider_uri=str(DATA_DIR),
+        region="cn",
+        skip_if_reg=True,
+        exp_manager={
+            "class": "MLflowExpManager",
+            "module_path": "qlib.workflow.expm",
+            "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-tune"},
+        },
     )
     model = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
     dataset = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
@@ -1247,23 +1446,38 @@ def tune_one(params: dict, horizon: int = 20):
     else:
         label = label_df.iloc[:, -1]
     df = pd.concat([pred.rename("pred"), label.rename("label")], axis=1).dropna()
-    ic = df.groupby(level=0).apply(
-        lambda g: g["pred"].rank().corr(g["label"].rank()) if len(g) > 10 else np.nan
-    )
+    ic = df.groupby(level=0).apply(lambda g: g["pred"].rank().corr(g["label"].rank()) if len(g) > 10 else np.nan)
     rank_ic = float(ic.dropna().mean())
     # Portfolio objective must match the actual daily strategy, not merely IC.
     # Backtest ONLY on validation dates; test remains untouched for evaluation.
     from qlib.backtest import backtest as normal_backtest
-    strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
-                "kwargs": {"signal": pred, "topk": 20, "n_drop": 2}}
-    executor = {"class": "SimulatorExecutor", "module_path": "qlib.backtest.executor",
-                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
+
+    strategy = {
+        "class": "TopkDropoutStrategy",
+        "module_path": "qlib.contrib.strategy",
+        "kwargs": {"signal": pred, "topk": 20, "n_drop": 2},
+    }
+    executor = {
+        "class": "SimulatorExecutor",
+        "module_path": "qlib.backtest.executor",
+        "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
+    }
     valid_start, valid_end = cfg["task"]["dataset"]["kwargs"]["segments"]["valid"]
     pm, _ = normal_backtest(
-        strategy=strategy, executor=executor, start_time=valid_start, end_time=valid_end,
-        account=100000000, benchmark="SH000852",
-        exchange_kwargs={"limit_threshold": 0.095, "deal_price": "close",
-                         "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
+        strategy=strategy,
+        executor=executor,
+        start_time=valid_start,
+        end_time=valid_end,
+        account=100000000,
+        benchmark="SH000852",
+        exchange_kwargs={
+            "limit_threshold": 0.095,
+            "deal_price": "close",
+            "open_cost": 0.0005,
+            "close_cost": 0.0015,
+            "min_cost": 5,
+        },
+    )
     report = pm["1day"][0]
     if report.empty:
         raise RuntimeError("Empty validation portfolio report")
@@ -1305,15 +1519,24 @@ def tune_driver(n_trials: int = 40, horizon: int = 20):
     with (tuning_dir / f"top10_h{horizon}.json").open("w") as f:
         _json.dump(results[:10], f, indent=2)
     with (tuning_dir / f"best_params_h{horizon}.json").open("w") as f:
-        _json.dump({"rank_ic": results[0]["rank_ic"],
-                    "excess_with_cost_annual": results[0]["excess_with_cost_annual"],
-                    "params": results[0]["params"], "horizon": horizon,
-                    "model": "lgb158", "market": "csi1000", "topk": 20, "n_drop": 2,
-                    "warning": "validation-selected candidate; independent OOS required before adoption"}, f, indent=2)
+        _json.dump(
+            {
+                "rank_ic": results[0]["rank_ic"],
+                "excess_with_cost_annual": results[0]["excess_with_cost_annual"],
+                "params": results[0]["params"],
+                "horizon": horizon,
+                "model": "lgb158",
+                "market": "csi1000",
+                "topk": 20,
+                "n_drop": 2,
+                "warning": "validation-selected candidate; independent OOS required before adoption",
+            },
+            f,
+            indent=2,
+        )
     print(f"[tune] === Top 10（共 {n_trials} 组）===")
     for i, r in enumerate(results[:10], 1):
-        print(f"[tune] {i}. net_annual={r['excess_with_cost_annual']:.4f} "
-              f"rank_ic={r['rank_ic']:.4f} {r['params']}")
+        print(f"[tune] {i}. net_annual={r['excess_with_cost_annual']:.4f} " f"rank_ic={r['rank_ic']:.4f} {r['params']}")
     print(f"[tune] 结果已保存 {tuning_dir}")
     vol.commit()
     return results[:10]
@@ -1339,15 +1562,25 @@ def dual_horizon(topk: int = 50, n_drop: int = 2, best_params: dict = None):
     from qlib.utils import init_instance_by_config
 
     _ensure_data()
-    qlib.init(provider_uri=str(DATA_DIR), region="cn",
-              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
-                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-dual"}})
+    qlib.init(
+        provider_uri=str(DATA_DIR),
+        region="cn",
+        exp_manager={
+            "class": "MLflowExpManager",
+            "module_path": "qlib.workflow.expm",
+            "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-dual"},
+        },
+    )
 
     preds = {}
     for name, horizon in [("h20", 20), ("h60", 60)]:
         cfg = _load_and_patch_cfg(
-            MODEL_CFG["lgb360"], smoke=False, recent=True, long_train=True,
-            label20=horizon == 20, label60=horizon == 60,
+            MODEL_CFG["lgb360"],
+            smoke=False,
+            recent=True,
+            long_train=True,
+            label20=horizon == 20,
+            label60=horizon == 60,
         )
         if best_params:
             cfg["task"]["model"]["kwargs"].update(best_params)
@@ -1370,7 +1603,13 @@ def dual_horizon(topk: int = 50, n_drop: int = 2, best_params: dict = None):
         "end_time": _latest_trading_day(),
         "account": 100000000,
         "benchmark": "SH000905",
-        "exchange_kwargs": {"limit_threshold": 0.095, "deal_price": "close", "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5},
+        "exchange_kwargs": {
+            "limit_threshold": 0.095,
+            "deal_price": "close",
+            "open_cost": 0.0005,
+            "close_cost": 0.0015,
+            "min_cost": 5,
+        },
     }
     strategy = {
         "class": "TopkDropoutStrategy",
@@ -1432,9 +1671,15 @@ def p0_diagnostics():
     _ensure_data()
     END = _latest_trading_day()
     cfg = _load_and_patch_cfg(MODEL_CFG["lgb360"], smoke=False, recent=True, long_train=True, label20=True)
-    qlib.init(provider_uri=str(DATA_DIR), region="cn",
-              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
-                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-p0"}})
+    qlib.init(
+        provider_uri=str(DATA_DIR),
+        region="cn",
+        exp_manager={
+            "class": "MLflowExpManager",
+            "module_path": "qlib.workflow.expm",
+            "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-p0"},
+        },
+    )
 
     # ---------- 训练一次，取全 test 段预测 ----------
     model = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
@@ -1445,8 +1690,9 @@ def p0_diagnostics():
 
     # ---------- 拉收盘价，计算多周期前向收益（P0-3/5 共用） ----------
     insts = sorted(set(pred.index.get_level_values(1)))
-    close = D.features(insts, ["$close"], start_time=pred.index.get_level_values(0).min(),
-                       end_time=END, freq="day")["$close"]
+    close = D.features(insts, ["$close"], start_time=pred.index.get_level_values(0).min(), end_time=END, freq="day")[
+        "$close"
+    ]
     # D.features 返回 (instrument, datetime)；换到与 pred 一致的 (datetime, instrument)
     close = close.swaplevel().sort_index()
     assert not close.reindex(pred.index).isna().all(), "close 与 pred 索引对齐失败"
@@ -1462,12 +1708,16 @@ def p0_diagnostics():
         if df.empty or df.index.get_level_values(0).nunique() < 30:
             ic_rows[h] = None
             continue
-        ic = df.groupby(level=0).apply(
-            lambda g: g["pred"].rank().corr(g["fwd"].rank()) if len(g) > 10 else np.nan
-        ).dropna()
-        ic_rows[h] = {"rank_ic": round(float(ic.mean()), 4),
-                      "icir": round(float(ic.mean() / ic.std() * np.sqrt(len(ic))), 3) if ic.std() > 0 else None,
-                      "n_days": int(len(ic))}
+        ic = (
+            df.groupby(level=0)
+            .apply(lambda g: g["pred"].rank().corr(g["fwd"].rank()) if len(g) > 10 else np.nan)
+            .dropna()
+        )
+        ic_rows[h] = {
+            "rank_ic": round(float(ic.mean()), 4),
+            "icir": round(float(ic.mean() / ic.std() * np.sqrt(len(ic))), 3) if ic.std() > 0 else None,
+            "n_days": int(len(ic)),
+        }
     results["ic_decay"] = ic_rows
     print(f"[p0] P0-5 IC 衰减: {ic_rows}")
 
@@ -1475,9 +1725,7 @@ def p0_diagnostics():
     fwd20 = close.groupby(level=1).shift(-20) / close - 1
     df = pd.concat([pred.rename("pred"), fwd20.reindex(pred.index).rename("fwd")], axis=1).dropna()
     # 逐日按预测分 10 组（rank(method='first') 保证并列分数均匀分配）
-    df["group"] = df.groupby(level=0)["pred"].transform(
-        lambda x: pd.qcut(x.rank(method="first"), 10, labels=False)
-    )
+    df["group"] = df.groupby(level=0)["pred"].transform(lambda x: pd.qcut(x.rank(method="first"), 10, labels=False))
     grp_mean = df.groupby("group")["fwd"].mean()  # 组号 0=最差 ~ 9=最好
     grp_std = df.groupby("group")["fwd"].std()
     # 分组序号即 rank，Pearson=Spearman；>0.9 视为单调
@@ -1494,26 +1742,44 @@ def p0_diagnostics():
     print(f"[p0] P0-3 单调性 spearman={mono:.4f} 判定={results['group_monotonicity']['verdict']}")
 
     # ---------- 回测设置（P0-1/4 共用） ----------
-    bt_kwargs = dict(start_time="2026-01-01", end_time=END, account=100000000, benchmark="SH000905",
-                     exchange_kwargs={"limit_threshold": 0.095, "deal_price": "close",
-                                      "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
-    executor = {"class": "SimulatorExecutor", "module_path": "qlib.backtest.executor",
-                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
+    bt_kwargs = dict(
+        start_time="2026-01-01",
+        end_time=END,
+        account=100000000,
+        benchmark="SH000905",
+        exchange_kwargs={
+            "limit_threshold": 0.095,
+            "deal_price": "close",
+            "open_cost": 0.0005,
+            "close_cost": 0.0015,
+            "min_cost": 5,
+        },
+    )
+    executor = {
+        "class": "SimulatorExecutor",
+        "module_path": "qlib.backtest.executor",
+        "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
+    }
 
     # ---------- P0-1 n_drop 网格 ----------
     ndrop_rows = {}
     report_nd2 = None
     for nd in [1, 2, 3, 5]:
-        strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
-                    "kwargs": {"signal": pred, "topk": 50, "n_drop": nd}}
+        strategy = {
+            "class": "TopkDropoutStrategy",
+            "module_path": "qlib.contrib.strategy",
+            "kwargs": {"signal": pred, "topk": 50, "n_drop": nd},
+        }
         pm, _ = normal_backtest(strategy=strategy, executor=executor, **bt_kwargs)
         rep = pm["1day"][0]
         if nd == 2:
             report_nd2 = rep  # 留给 P0-4 分月归因
         ra = risk_analysis(rep["return"] - rep["bench"] - rep["cost"])
-        ndrop_rows[nd] = {"excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
-                          "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
-                          "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4)}
+        ndrop_rows[nd] = {
+            "excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
+            "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
+            "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4),
+        }
         print(f"[p0] P0-1 n_drop={nd}: {ndrop_rows[nd]}")
     results["ndrop_grid"] = ndrop_rows
 
@@ -1521,14 +1787,20 @@ def p0_diagnostics():
     excess = report_nd2["return"] - report_nd2["bench"] - report_nd2["cost"]
     monthly = excess.groupby(excess.index.to_period("M")).agg(["mean", "sum", "count"])
     monthly.columns = ["daily_mean_excess", "cum_excess", "n_days"]
-    results["monthly_attribution"] = {str(k): {c: round(v, 5) for c, v in row.items()}
-                                      for k, row in monthly.iterrows()}
+    results["monthly_attribution"] = {str(k): {c: round(v, 5) for c, v in row.items()} for k, row in monthly.iterrows()}
     pos_months = int((monthly["cum_excess"] > 0).sum())
     results["monthly_attribution_summary"] = {
-        "n_months": len(monthly), "positive_months": pos_months,
-        "best_month": str(monthly["cum_excess"].idxmax()), "worst_month": str(monthly["cum_excess"].idxmin()),
-        "concentration_top2_share": round(float(monthly["cum_excess"].nlargest(2).clip(lower=0).sum()
-                                          / max(monthly["cum_excess"].clip(lower=0).sum(), 1e-9)), 3),
+        "n_months": len(monthly),
+        "positive_months": pos_months,
+        "best_month": str(monthly["cum_excess"].idxmax()),
+        "worst_month": str(monthly["cum_excess"].idxmin()),
+        "concentration_top2_share": round(
+            float(
+                monthly["cum_excess"].nlargest(2).clip(lower=0).sum()
+                / max(monthly["cum_excess"].clip(lower=0).sum(), 1e-9)
+            ),
+            3,
+        ),
     }
     print(f"[p0] P0-4 分月超额: {results['monthly_attribution']}")
     print(f"[p0] P0-4 集中度(前2月占正超额比例)={results['monthly_attribution_summary']['concentration_top2_share']}")
@@ -1575,13 +1847,20 @@ def p1_diagnostics():
 
     _ensure_data()
     END = _latest_trading_day()
-    qlib.init(provider_uri=str(DATA_DIR), region="cn",
-              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
-                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-p1"}})
+    qlib.init(
+        provider_uri=str(DATA_DIR),
+        region="cn",
+        exp_manager={
+            "class": "MLflowExpManager",
+            "module_path": "qlib.workflow.expm",
+            "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-p1"},
+        },
+    )
 
     def train_predict(model_key, label40=False):
-        cfg = _load_and_patch_cfg(MODEL_CFG[model_key], smoke=False, recent=True, long_train=True,
-                                  label20=not label40, label40=label40)
+        cfg = _load_and_patch_cfg(
+            MODEL_CFG[model_key], smoke=False, recent=True, long_train=True, label20=not label40, label40=label40
+        )
         m = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
         ds = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
         m.fit(ds)
@@ -1600,34 +1879,56 @@ def p1_diagnostics():
     p_blend = ((p360_20.reindex(common) + p158_20.reindex(common)) / 2).sort_index()
 
     # ---------- QLib 回测（等权 TopkDropout，n_drop=3） ----------
-    bt_kwargs = dict(start_time="2026-01-01", end_time=END, account=100000000, benchmark="SH000905",
-                     exchange_kwargs={"limit_threshold": 0.095, "deal_price": "close",
-                                      "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
-    executor = {"class": "SimulatorExecutor", "module_path": "qlib.backtest.executor",
-                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
+    bt_kwargs = dict(
+        start_time="2026-01-01",
+        end_time=END,
+        account=100000000,
+        benchmark="SH000905",
+        exchange_kwargs={
+            "limit_threshold": 0.095,
+            "deal_price": "close",
+            "open_cost": 0.0005,
+            "close_cost": 0.0015,
+            "min_cost": 5,
+        },
+    )
+    executor = {
+        "class": "SimulatorExecutor",
+        "module_path": "qlib.backtest.executor",
+        "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
+    }
 
     def bt(signal, topk=50, n_drop=3):
-        strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
-                    "kwargs": {"signal": signal, "topk": topk, "n_drop": n_drop}}
+        strategy = {
+            "class": "TopkDropoutStrategy",
+            "module_path": "qlib.contrib.strategy",
+            "kwargs": {"signal": signal, "topk": topk, "n_drop": n_drop},
+        }
         pm, _ = normal_backtest(strategy=strategy, executor=executor, **bt_kwargs)
         rep = pm["1day"][0]
         ra = risk_analysis(rep["return"] - rep["bench"] - rep["cost"])
-        return {"excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
-                "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
-                "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4)}, rep
+        return {
+            "excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
+            "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
+            "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4),
+        }, rep
 
     results = {"data_package": END, "n_drop": 3}
 
     # P1-7b 信号对比（top50 等权）
     r, rep_blend = bt(p_blend)
-    results["blend_20d"] = r; print(f"[p1] 7b 融合(158+360, 20日): {r}")
+    results["blend_20d"] = r
+    print(f"[p1] 7b 融合(158+360, 20日): {r}")
     r, _ = bt(p360_20)
-    results["single_360_20d"] = r; print(f"[p1] 7b 单360(20日): {r}")
+    results["single_360_20d"] = r
+    print(f"[p1] 7b 单360(20日): {r}")
     r, _ = bt(p158_20)
-    results["single_158_20d"] = r; print(f"[p1] 7b 单158(20日): {r}")
+    results["single_158_20d"] = r
+    print(f"[p1] 7b 单158(20日): {r}")
     # 40 日标签
     r, rep_40 = bt(p360_40)
-    results["single_360_40d"] = r; print(f"[p1] 40日标签: {r}")
+    results["single_360_40d"] = r
+    print(f"[p1] 40日标签: {r}")
 
     # P1-7c topk 网格（用最优信号；先以 360-20d 为基准网格，融合信号跑 top50 已有）
     topk_grid = {}
@@ -1639,8 +1940,9 @@ def p1_diagnostics():
 
     # P1-7c 分数加权 vs 等权（手动模拟：每 20 交易日调仓，无涨跌停约束，仅内部对比）
     insts = sorted(set(p360_20.index.get_level_values(1)))
-    close = D.features(insts, ["$close"], start_time=p360_20.index.get_level_values(0).min(),
-                       end_time=END, freq="day")["$close"]
+    close = D.features(insts, ["$close"], start_time=p360_20.index.get_level_values(0).min(), end_time=END, freq="day")[
+        "$close"
+    ]
     close = close.swaplevel().sort_index()  # (datetime, instrument)
     fwd20 = close.groupby(level=1).shift(-20) / close - 1
 
@@ -1654,8 +1956,11 @@ def p1_diagnostics():
             top = day.sort_values(ascending=False).head(topk)
             if len(top) < 10:
                 continue
-            f = fwd20.reindex(pd.MultiIndex.from_arrays([[d] * len(top), top.index],
-                                                        names=["datetime", "instrument"])).droplevel("datetime").dropna()
+            f = (
+                fwd20.reindex(pd.MultiIndex.from_arrays([[d] * len(top), top.index], names=["datetime", "instrument"]))
+                .droplevel("datetime")
+                .dropna()
+            )
             if len(f) < 10:
                 continue
             if mode == "equal":
@@ -1666,8 +1971,7 @@ def p1_diagnostics():
             w = w / w.sum()  # Re-normalize after excluding missing future prices
             gross = float((w * f).sum())
             universe = w.index.union(prev_w.index)
-            turnover = float((w.reindex(universe, fill_value=0) -
-                              prev_w.reindex(universe, fill_value=0)).abs().sum())
+            turnover = float((w.reindex(universe, fill_value=0) - prev_w.reindex(universe, fill_value=0)).abs().sum())
             fee = turnover * cost_one_side
             tot_ret += gross - fee
             tot_cost += fee
@@ -1678,8 +1982,7 @@ def p1_diagnostics():
 
     sim_eq = sim_weighted(p360_20, "equal")
     sim_sc = sim_weighted(p360_20, "score")
-    results["sim_equal_vs_score"] = {"equal": sim_eq, "score": sim_sc,
-                                      "note": "手动模拟（每20日调仓、无涨跌停约束），仅内部对比可信"}
+    results["sim_equal_vs_score"] = {"equal": sim_eq, "score": sim_sc, "note": "手动模拟（每20日调仓、无涨跌停约束），仅内部对比可信"}
     print(f"[p1] 7c 手动模拟: 等权={sim_eq} 分数加权={sim_sc}")
 
     # ---------- 持久化 ----------
@@ -1780,8 +2083,8 @@ def version_check_0911():
         n = min(len(v11), len(v16))
         # 对齐：各自起始索引不同，取日期重叠部分（简化：比较相同日历偏移的重叠窗）
         off = max(s11, s16)
-        a11 = v11[off - s11: off - s11 + min(n, overlap_end_idx - off)]
-        a16 = v16[off - s16: off - s16 + min(n, overlap_end_idx - off)]
+        a11 = v11[off - s11 : off - s11 + min(n, overlap_end_idx - off)]
+        a16 = v16[off - s16 : off - s16 + min(n, overlap_end_idx - off)]
         m = min(len(a11), len(a16))
         if m <= 0:
             continue
@@ -1802,8 +2105,8 @@ def version_check_0911():
             s11c, v11c = _read_bin(f11 / "close.day.bin")
             s16c, v16c = _read_bin(f16 / "close.day.bin")
             offc = max(s11c, s16c)
-            c11 = v11c[offc - s11c: offc - s11c + 300]
-            c16 = v16c[offc - s16c: offc - s16c + 300]
+            c11 = v11c[offc - s11c : offc - s11c + 300]
+            c16 = v16c[offc - s16c : offc - s16c + 300]
             mc = min(len(c11), len(c16))
             if mc > 0:
                 rel = np.abs((c11[:mc] - c16[:mc]) / np.where(c16[:mc] != 0, c16[:mc], 1))
@@ -1833,15 +2136,34 @@ def version_check_0911():
     from qlib.model.base import Model
     from qlib.utils import init_instance_by_config
 
-    qlib.init(provider_uri=str(v0911), region="cn",
-              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
-                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-vcheck"}})
+    qlib.init(
+        provider_uri=str(v0911),
+        region="cn",
+        exp_manager={
+            "class": "MLflowExpManager",
+            "module_path": "qlib.workflow.expm",
+            "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-vcheck"},
+        },
+    )
 
-    bt_kwargs = dict(start_time="2026-01-01", end_time="2026-09-11", account=100000000, benchmark="SH000905",
-                     exchange_kwargs={"limit_threshold": 0.095, "deal_price": "close",
-                                      "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
-    executor = {"class": "SimulatorExecutor", "module_path": "qlib.backtest.executor",
-                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
+    bt_kwargs = dict(
+        start_time="2026-01-01",
+        end_time="2026-09-11",
+        account=100000000,
+        benchmark="SH000905",
+        exchange_kwargs={
+            "limit_threshold": 0.095,
+            "deal_price": "close",
+            "open_cost": 0.0005,
+            "close_cost": 0.0015,
+            "min_cost": 5,
+        },
+    )
+    executor = {
+        "class": "SimulatorExecutor",
+        "module_path": "qlib.backtest.executor",
+        "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
+    }
 
     matrix_0911 = {}
     for key in ["lgb158", "lgb360"]:
@@ -1854,13 +2176,18 @@ def version_check_0911():
         ds = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
         m.fit(ds)
         pred = m.predict(ds)
-        strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
-                    "kwargs": {"signal": pred, "topk": 50, "n_drop": 3}}
+        strategy = {
+            "class": "TopkDropoutStrategy",
+            "module_path": "qlib.contrib.strategy",
+            "kwargs": {"signal": pred, "topk": 50, "n_drop": 3},
+        }
         pm, _ = normal_backtest(strategy=strategy, executor=executor, **bt_kwargs)
         ra = risk_analysis(pm["1day"][0]["return"] - pm["1day"][0]["bench"] - pm["1day"][0]["cost"])
-        matrix_0911[key] = {"excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
-                             "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
-                             "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4)}
+        matrix_0911[key] = {
+            "excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
+            "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
+            "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4),
+        }
         print(f"[vcheck] 09-11包 {key}: {matrix_0911[key]}")
 
     out = VOL_ROOT / "p1_results" / "version_check"
@@ -1890,15 +2217,34 @@ def version_check_0916():
     from qlib.utils import init_instance_by_config
 
     _ensure_data()
-    qlib.init(provider_uri=str(DATA_DIR), region="cn",
-              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
-                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-vcheck"}})
+    qlib.init(
+        provider_uri=str(DATA_DIR),
+        region="cn",
+        exp_manager={
+            "class": "MLflowExpManager",
+            "module_path": "qlib.workflow.expm",
+            "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-vcheck"},
+        },
+    )
 
-    bt_kwargs = dict(start_time="2026-01-01", end_time="2026-09-11", account=100000000, benchmark="SH000905",
-                     exchange_kwargs={"limit_threshold": 0.095, "deal_price": "close",
-                                      "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
-    executor = {"class": "SimulatorExecutor", "module_path": "qlib.backtest.executor",
-                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
+    bt_kwargs = dict(
+        start_time="2026-01-01",
+        end_time="2026-09-11",
+        account=100000000,
+        benchmark="SH000905",
+        exchange_kwargs={
+            "limit_threshold": 0.095,
+            "deal_price": "close",
+            "open_cost": 0.0005,
+            "close_cost": 0.0015,
+            "min_cost": 5,
+        },
+    )
+    executor = {
+        "class": "SimulatorExecutor",
+        "module_path": "qlib.backtest.executor",
+        "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
+    }
 
     matrix_0916 = {}
     preds = {}
@@ -1910,22 +2256,32 @@ def version_check_0916():
         preds[key] = m.predict(ds)
     # 158 特征下 n_drop 网格（P0 的网格是在 Alpha360 上做的，特征终判为 158 后需重测）
     for nd in [1, 2, 3, 5]:
-        strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
-                    "kwargs": {"signal": preds["lgb158"], "topk": 50, "n_drop": nd}}
+        strategy = {
+            "class": "TopkDropoutStrategy",
+            "module_path": "qlib.contrib.strategy",
+            "kwargs": {"signal": preds["lgb158"], "topk": 50, "n_drop": nd},
+        }
         pm, _ = normal_backtest(strategy=strategy, executor=executor, **bt_kwargs)
         ra = risk_analysis(pm["1day"][0]["return"] - pm["1day"][0]["bench"] - pm["1day"][0]["cost"])
-        matrix_0916[f"lgb158_ndrop{nd}"] = {"excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
-                                             "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
-                                             "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4)}
+        matrix_0916[f"lgb158_ndrop{nd}"] = {
+            "excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
+            "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
+            "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4),
+        }
         print(f"[vcheck] 09-16包 lgb158 n_drop={nd}: {matrix_0916[f'lgb158_ndrop{nd}']}")
     # 360 对照（n_drop=3）
-    strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
-                "kwargs": {"signal": preds["lgb360"], "topk": 50, "n_drop": 3}}
+    strategy = {
+        "class": "TopkDropoutStrategy",
+        "module_path": "qlib.contrib.strategy",
+        "kwargs": {"signal": preds["lgb360"], "topk": 50, "n_drop": 3},
+    }
     pm, _ = normal_backtest(strategy=strategy, executor=executor, **bt_kwargs)
     ra = risk_analysis(pm["1day"][0]["return"] - pm["1day"][0]["bench"] - pm["1day"][0]["cost"])
-    matrix_0916["lgb360_ndrop3"] = {"excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
-                                     "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
-                                     "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4)}
+    matrix_0916["lgb360_ndrop3"] = {
+        "excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
+        "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
+        "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4),
+    }
     print(f"[vcheck] 09-16包 lgb360 n_drop=3: {matrix_0916['lgb360_ndrop3']}")
 
     out = VOL_ROOT / "p1_results" / "version_check"
@@ -1939,7 +2295,8 @@ def version_check_0916():
 
 ROLLING5Y_WINDOWS = [
     # 2021Q1 ~ 2026Q3 共 22 个季度窗口；train 固定 2016 起（expanding），valid=前一季度
-    (f"{y}-{q}", f"{y}-{q}-{d}") for y, q, d in []
+    (f"{y}-{q}", f"{y}-{q}-{d}")
+    for y, q, d in []
 ]
 
 
@@ -1959,13 +2316,20 @@ def _gen_5y_windows():
     quarters = [(y, m) for (y, m) in quarters if not (y >= 2026 and m >= 10)]  # 截至 2026Q3
     wins = []
     for y, m in quarters:
-        py, pm = (y, m - 3) if m > 1 else (y - 1, 10)      # T-1 季度 = valid
+        py, pm = (y, m - 3) if m > 1 else (y - 1, 10)  # T-1 季度 = valid
         ppy, ppm = (py, pm - 3) if pm > 1 else (py - 1, 10)  # T-2 季度
         # train_end = T-2Q末（与 P2 一致）：train 末样本的 20 日标签只落到 valid 期，
         # 不会泄露 test 头部。此前版本的 train_end=valid_end 会让标签直接 peek test —— 真前视。
-        wins.append(("2016-01-01", str(qtr_end(ppy, ppm)),
-                    str(qtr_start(py, pm)), str(qtr_end(py, pm)),
-                    str(qtr_start(y, m)), str(qtr_end(y, m))))
+        wins.append(
+            (
+                "2016-01-01",
+                str(qtr_end(ppy, ppm)),
+                str(qtr_start(py, pm)),
+                str(qtr_end(py, pm)),
+                str(qtr_start(y, m)),
+                str(qtr_end(y, m)),
+            )
+        )
     return wins
 
 
@@ -1989,9 +2353,16 @@ def batch_c_window(args: dict):
     from qlib.utils import init_instance_by_config
 
     _ensure_data()
-    qlib.init(provider_uri=str(DATA_DIR), region="cn", skip_if_reg=True,
-              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
-                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-batchC"}})
+    qlib.init(
+        provider_uri=str(DATA_DIR),
+        region="cn",
+        skip_if_reg=True,
+        exp_manager={
+            "class": "MLflowExpManager",
+            "module_path": "qlib.workflow.expm",
+            "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-batchC"},
+        },
+    )
 
     tr_s, tr_e, va_s, va_e, te_s, te_e = args["segments"]
     cfg = _load_and_patch_cfg(MODEL_CFG["lgb158"], smoke=False, recent=False, long_train=False, label20=True)
@@ -2013,24 +2384,43 @@ def batch_c_window(args: dict):
     pred = m.predict(ds)
     if len(pred) == 0 or pred.index.get_level_values(0).nunique() < 20:
         return {"window": args["name"], "error": "insufficient predictions"}
-    executor = {"class": "SimulatorExecutor", "module_path": "qlib.backtest.executor",
-                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
-    strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
-                "kwargs": {"signal": pred, "topk": args["topk"], "n_drop": args["nd"]}}
+    executor = {
+        "class": "SimulatorExecutor",
+        "module_path": "qlib.backtest.executor",
+        "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
+    }
+    strategy = {
+        "class": "TopkDropoutStrategy",
+        "module_path": "qlib.contrib.strategy",
+        "kwargs": {"signal": pred, "topk": args["topk"], "n_drop": args["nd"]},
+    }
     # 新池（star/chinext 板块）为 ±20% 口径；csi 池保持 0.095
     limit_th = 0.195 if args["market"] in EW_BENCH else 0.095
-    pm, _ = normal_backtest(strategy=strategy, executor=executor,
-                             start_time=te_s, end_time=te_e, account=100000000,
-                             benchmark=args["bench"],
-                             exchange_kwargs={"limit_threshold": limit_th, "deal_price": "close",
-                                              "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
+    pm, _ = normal_backtest(
+        strategy=strategy,
+        executor=executor,
+        start_time=te_s,
+        end_time=te_e,
+        account=100000000,
+        benchmark=args["bench"],
+        exchange_kwargs={
+            "limit_threshold": limit_th,
+            "deal_price": "close",
+            "open_cost": 0.0005,
+            "close_cost": 0.0015,
+            "min_cost": 5,
+        },
+    )
     rep = pm["1day"][0]
     excess = rep["return"] - rep["bench"] - rep["cost"]
-    return {"window": args["name"], "test": f"{te_s}~{te_e}",
-            "excess_total": round(float(excess.sum()), 4),
-            "daily_mean": round(float(excess.mean()), 6),
-            "max_drawdown": round(float((excess.cumsum() - excess.cumsum().cummax()).min()), 4),
-            "n_days": int(len(excess))}
+    return {
+        "window": args["name"],
+        "test": f"{te_s}~{te_e}",
+        "excess_total": round(float(excess.sum()), 4),
+        "daily_mean": round(float(excess.mean()), 6),
+        "max_drawdown": round(float((excess.cumsum() - excess.cumsum().cummax()).min()), 4),
+        "n_days": int(len(excess)),
+    }
 
 
 @app.function(
@@ -2063,8 +2453,16 @@ def batch_c(market: str = "csi1000", bench: str = "SH000852", topk: int = 20, nd
     for i, (tr_s, tr_e, va_s, va_e, te_s, te_e) in enumerate(wins):
         if te_e > latest:  # 最后一窗口可能越过数据末日
             te_e = latest
-        jobs.append({"name": f"w{i+1:02d}", "segments": [tr_s, tr_e, va_s, va_e, te_s, te_e],
-                     "market": market, "bench": bench, "topk": topk, "nd": nd})
+        jobs.append(
+            {
+                "name": f"w{i+1:02d}",
+                "segments": [tr_s, tr_e, va_s, va_e, te_s, te_e],
+                "market": market,
+                "bench": bench,
+                "topk": topk,
+                "nd": nd,
+            }
+        )
     results = list(batch_c_window.map(jobs))
     ok = [r for r in results if "error" not in r]
     errs = [r for r in results if "error" in r]
@@ -2073,16 +2471,22 @@ def batch_c(market: str = "csi1000", bench: str = "SH000852", topk: int = 20, nd
 
     pos = sum(1 for e in excess_all if e > 0)
     summary = {
-        "config": f"{market} top{topk}/nd{nd} bench={bench}", "n_windows": len(ok), "n_errors": len(errs),
+        "config": f"{market} top{topk}/nd{nd} bench={bench}",
+        "n_windows": len(ok),
+        "n_errors": len(errs),
         "mean_q_excess": round(float(np.mean(excess_all)), 4),
         "median_q_excess": round(float(np.median(excess_all)), 4),
-        "best_q": round(max(excess_all), 4), "worst_q": round(min(excess_all), 4),
-        "positive_windows": pos, "ann_excess_approx": round(float(np.mean(excess_all)) * 4, 4),
+        "best_q": round(max(excess_all), 4),
+        "worst_q": round(min(excess_all), 4),
+        "positive_windows": pos,
+        "ann_excess_approx": round(float(np.mean(excess_all)) * 4, 4),
         "note": "季度超额均值×4≈年化（expanding训练，窗口自相关未校正）",
         "windows": results,
     }
-    print(f"[batchC] {tag} 汇总: 均值季度超额={summary['mean_q_excess']} 正窗口={pos}/{len(ok)} "
-          f"年化≈{summary['ann_excess_approx']} 最差季={summary['worst_q']}")
+    print(
+        f"[batchC] {tag} 汇总: 均值季度超额={summary['mean_q_excess']} 正窗口={pos}/{len(ok)} "
+        f"年化≈{summary['ann_excess_approx']} 最差季={summary['worst_q']}"
+    )
     out = VOL_ROOT / "batch_c"
     out.mkdir(parents=True, exist_ok=True)
     with (out / f"rolling5y_{tag}.json").open("w") as f:
@@ -2115,12 +2519,21 @@ def p2_rolling():
     from qlib.utils import init_instance_by_config
 
     _ensure_data()
-    qlib.init(provider_uri=str(DATA_DIR), region="cn",
-              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
-                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-p2"}})
+    qlib.init(
+        provider_uri=str(DATA_DIR),
+        region="cn",
+        exp_manager={
+            "class": "MLflowExpManager",
+            "module_path": "qlib.workflow.expm",
+            "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-p2"},
+        },
+    )
 
-    executor = {"class": "SimulatorExecutor", "module_path": "qlib.backtest.executor",
-                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
+    executor = {
+        "class": "SimulatorExecutor",
+        "module_path": "qlib.backtest.executor",
+        "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
+    }
     quarterly = []
     report_parts = []
     _latest = _latest_trading_day()
@@ -2148,21 +2561,38 @@ def p2_rolling():
         if len(pred) == 0 or pred.index.get_level_values(0).nunique() < 20:
             print(f"[p2] 窗口{w_idx} 预测样本不足，跳过")
             continue
-        strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
-                    "kwargs": {"signal": pred, "topk": 50, "n_drop": 3}}
-        pm, _ = normal_backtest(strategy=strategy, executor=executor,
-                                start_time=te_s, end_time=te_e, account=100000000, benchmark="SH000905",
-                                exchange_kwargs={"limit_threshold": 0.095, "deal_price": "close",
-                                                 "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
+        strategy = {
+            "class": "TopkDropoutStrategy",
+            "module_path": "qlib.contrib.strategy",
+            "kwargs": {"signal": pred, "topk": 50, "n_drop": 3},
+        }
+        pm, _ = normal_backtest(
+            strategy=strategy,
+            executor=executor,
+            start_time=te_s,
+            end_time=te_e,
+            account=100000000,
+            benchmark="SH000905",
+            exchange_kwargs={
+                "limit_threshold": 0.095,
+                "deal_price": "close",
+                "open_cost": 0.0005,
+                "close_cost": 0.0015,
+                "min_cost": 5,
+            },
+        )
         rep = pm["1day"][0]
         ra = risk_analysis(rep["return"] - rep["bench"] - rep["cost"])
-        quarterly.append({
-            "window": f"w{w_idx}", "test": f"{te_s}~{te_e}",
-            "excess_with_cost_total": round(float((rep["return"] - rep["bench"] - rep["cost"]).sum()), 4),
-            "excess_daily_mean": round(float((rep["return"] - rep["bench"] - rep["cost"]).mean()), 6),
-            "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
-            "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4),
-        })
+        quarterly.append(
+            {
+                "window": f"w{w_idx}",
+                "test": f"{te_s}~{te_e}",
+                "excess_with_cost_total": round(float((rep["return"] - rep["bench"] - rep["cost"]).sum()), 4),
+                "excess_daily_mean": round(float((rep["return"] - rep["bench"] - rep["cost"]).mean()), 6),
+                "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
+                "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4),
+            }
+        )
         print(f"[p2] 窗口{w_idx} 季度超额(累计)={quarterly[-1]['excess_with_cost_total']}")
         report_parts.append(rep[["return", "bench", "cost"]])
 
@@ -2180,15 +2610,22 @@ def p2_rolling():
     neg_streak = int((monthly["cum_excess"] < 0).astype(int).rolling(3).sum().fillna(0).max())
     results = {
         "config": "Alpha158 + 20d label + long-rolling train + top50 + n_drop=3",
-        "n_windows": len(quarterly), "n_days": int(len(excess)),
-        "overall": {"ann_excess_with_cost": round(ann, 4), "daily_mean": round(total_mean, 6),
-                     "positive_months": pos_months, "total_months": len(monthly),
-                     "worst_3m_streak_neg": neg_streak},
+        "n_windows": len(quarterly),
+        "n_days": int(len(excess)),
+        "overall": {
+            "ann_excess_with_cost": round(ann, 4),
+            "daily_mean": round(total_mean, 6),
+            "positive_months": pos_months,
+            "total_months": len(monthly),
+            "worst_3m_streak_neg": neg_streak,
+        },
         "quarterly": quarterly,
         "monthly": {str(k): {c: round(v, 5) for c, v in row.items()} for k, row in monthly.iterrows()},
     }
-    print(f"[p2] 滚动总览: 年化超额={results['overall']['ann_excess_with_cost']} "
-          f"正超额月份={pos_months}/{len(monthly)} 最差连续负月数={neg_streak}")
+    print(
+        f"[p2] 滚动总览: 年化超额={results['overall']['ann_excess_with_cost']} "
+        f"正超额月份={pos_months}/{len(monthly)} 最差连续负月数={neg_streak}"
+    )
     out = VOL_ROOT / "p2_results"
     out.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(quarterly).to_csv(out / "rolling_quarterly.csv", index=False)
@@ -2222,31 +2659,55 @@ def topk_grid(topks="10,20,30,50", n_drop: int = 3):
     from qlib.utils import init_instance_by_config
 
     _ensure_data()
-    qlib.init(provider_uri=str(DATA_DIR), region="cn",
-              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
-                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-topk"}})
+    qlib.init(
+        provider_uri=str(DATA_DIR),
+        region="cn",
+        exp_manager={
+            "class": "MLflowExpManager",
+            "module_path": "qlib.workflow.expm",
+            "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-topk"},
+        },
+    )
     cfg = _load_and_patch_cfg(MODEL_CFG["lgb158"], smoke=False, recent=True, long_train=True, label20=True)
     m = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
     ds = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
     m.fit(ds)
     pred = m.predict(ds)
 
-    executor = {"class": "SimulatorExecutor", "module_path": "qlib.backtest.executor",
-                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
+    executor = {
+        "class": "SimulatorExecutor",
+        "module_path": "qlib.backtest.executor",
+        "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
+    }
     grid = {}
     for tk in [int(x) for x in topks.split(",")]:
-        strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
-                    "kwargs": {"signal": pred, "topk": tk, "n_drop": n_drop}}
-        pm, _ = normal_backtest(strategy=strategy, executor=executor,
-                                 start_time="2026-01-01", end_time="2026-09-11", account=100000000,
-                                 benchmark="SH000905",
-                                 exchange_kwargs={"limit_threshold": 0.095, "deal_price": "close",
-                                                  "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
+        strategy = {
+            "class": "TopkDropoutStrategy",
+            "module_path": "qlib.contrib.strategy",
+            "kwargs": {"signal": pred, "topk": tk, "n_drop": n_drop},
+        }
+        pm, _ = normal_backtest(
+            strategy=strategy,
+            executor=executor,
+            start_time="2026-01-01",
+            end_time="2026-09-11",
+            account=100000000,
+            benchmark="SH000905",
+            exchange_kwargs={
+                "limit_threshold": 0.095,
+                "deal_price": "close",
+                "open_cost": 0.0005,
+                "close_cost": 0.0015,
+                "min_cost": 5,
+            },
+        )
         rep = pm["1day"][0]
         ra = risk_analysis(rep["return"] - rep["bench"] - rep["cost"])
-        grid[tk] = {"excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
-                    "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
-                    "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4)}
+        grid[tk] = {
+            "excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
+            "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
+            "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4),
+        }
         print(f"[topk] {tk}: {grid[tk]}")
 
     out = VOL_ROOT / "p1_results"
@@ -2280,29 +2741,53 @@ def batch_a():
     from qlib.utils import init_instance_by_config
 
     _ensure_data()
-    qlib.init(provider_uri=str(DATA_DIR), region="cn",
-              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
-                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-batchA"}})
+    qlib.init(
+        provider_uri=str(DATA_DIR),
+        region="cn",
+        exp_manager={
+            "class": "MLflowExpManager",
+            "module_path": "qlib.workflow.expm",
+            "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-batchA"},
+        },
+    )
 
-    executor = {"class": "SimulatorExecutor", "module_path": "qlib.backtest.executor",
-                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
+    executor = {
+        "class": "SimulatorExecutor",
+        "module_path": "qlib.backtest.executor",
+        "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
+    }
     # csi1000 基准存在性检查
     bench1000 = D.features(["SH000852"], ["$close"], start_time="2026-01-01", end_time="2026-01-10", freq="day")
     print(f"[batchA] SH000852 数据存在: {len(bench1000) > 0}")
 
     def bt(signal, topk, nd, bench="SH000905"):
-        strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
-                    "kwargs": {"signal": signal, "topk": topk, "n_drop": nd}}
-        pm, _ = normal_backtest(strategy=strategy, executor=executor,
-                                 start_time="2026-01-01", end_time="2026-09-11", account=100000000,
-                                 benchmark=bench,
-                                 exchange_kwargs={"limit_threshold": 0.095, "deal_price": "close",
-                                                  "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
+        strategy = {
+            "class": "TopkDropoutStrategy",
+            "module_path": "qlib.contrib.strategy",
+            "kwargs": {"signal": signal, "topk": topk, "n_drop": nd},
+        }
+        pm, _ = normal_backtest(
+            strategy=strategy,
+            executor=executor,
+            start_time="2026-01-01",
+            end_time="2026-09-11",
+            account=100000000,
+            benchmark=bench,
+            exchange_kwargs={
+                "limit_threshold": 0.095,
+                "deal_price": "close",
+                "open_cost": 0.0005,
+                "close_cost": 0.0015,
+                "min_cost": 5,
+            },
+        )
         rep = pm["1day"][0]
         ra = risk_analysis(rep["return"] - rep["bench"] - rep["cost"])
-        return {"excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
-                "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
-                "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4)}
+        return {
+            "excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
+            "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
+            "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4),
+        }
 
     def train_predict(market="csi500", bench=None):
         cfg = _load_and_patch_cfg(MODEL_CFG["lgb158"], smoke=False, recent=True, long_train=True, label20=True)
@@ -2381,46 +2866,74 @@ def batch_a_star_chn(market: str = "star_chn"):
     if not pool_txt.is_file():
         build_custom_instruments(all_txt, pool_txt, boards=POOL_BOARDS[market])
     if not (DATA_DIR / "features" / BENCH.lower() / "close.day.bin").is_file():
-        raise FileNotFoundError(
-            f"等权基准 {BENCH} 不在 Volume——先跑 modal run modal_qlib_cn_a10g.py::build_star_chn_bench"
-        )
-    qlib.init(provider_uri=str(DATA_DIR), region="cn",
-              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
-                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-batchA-star"}})
+        raise FileNotFoundError(f"等权基准 {BENCH} 不在 Volume——先跑 modal run modal_qlib_cn_a10g.py::build_star_chn_bench")
+    qlib.init(
+        provider_uri=str(DATA_DIR),
+        region="cn",
+        exp_manager={
+            "class": "MLflowExpManager",
+            "module_path": "qlib.workflow.expm",
+            "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-batchA-star"},
+        },
+    )
 
-    executor = {"class": "SimulatorExecutor", "module_path": "qlib.backtest.executor",
-                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
+    executor = {
+        "class": "SimulatorExecutor",
+        "module_path": "qlib.backtest.executor",
+        "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
+    }
 
     def bt(signal, topk, nd):
-        strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
-                    "kwargs": {"signal": signal, "topk": topk, "n_drop": nd}}
-        pm, _ = normal_backtest(strategy=strategy, executor=executor,
-                                 start_time=WINDOW[0], end_time=WINDOW[1], account=100000000,
-                                 benchmark=BENCH,
-                                 exchange_kwargs={"limit_threshold": 0.195, "deal_price": "close",
-                                                  "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
+        strategy = {
+            "class": "TopkDropoutStrategy",
+            "module_path": "qlib.contrib.strategy",
+            "kwargs": {"signal": signal, "topk": topk, "n_drop": nd},
+        }
+        pm, _ = normal_backtest(
+            strategy=strategy,
+            executor=executor,
+            start_time=WINDOW[0],
+            end_time=WINDOW[1],
+            account=100000000,
+            benchmark=BENCH,
+            exchange_kwargs={
+                "limit_threshold": 0.195,
+                "deal_price": "close",
+                "open_cost": 0.0005,
+                "close_cost": 0.0015,
+                "min_cost": 5,
+            },
+        )
         rep = pm["1day"][0]
         if rep.empty:
             raise RuntimeError(f"empty report top{topk}/nd{nd}")
         ra = risk_analysis(rep["return"] - rep["bench"] - rep["cost"])
-        return {"excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
-                "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
-                "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4)}
+        return {
+            "excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
+            "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
+            "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4),
+        }
 
     print(f"[batchA*] 训练 {market}（{WINDOW[0]}~{WINDOW[1]} 窗口执行）...")
-    cfg = _load_and_patch_cfg(MODEL_CFG["lgb158"], smoke=False, recent=True, long_train=True,
-                              label20=True, topk=20, nd=2, market=market)
+    cfg = _load_and_patch_cfg(
+        MODEL_CFG["lgb158"], smoke=False, recent=True, long_train=True, label20=True, topk=20, nd=2, market=market
+    )
     model = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
     dataset = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
     model.fit(dataset)
     pred = model.predict(dataset)
-    n_day = pred.loc[WINDOW[0]:WINDOW[1]].index.get_level_values(0).nunique()
-    n_inst = pred.loc[WINDOW[0]:WINDOW[1]].index.get_level_values(1).nunique()
+    n_day = pred.loc[WINDOW[0] : WINDOW[1]].index.get_level_values(0).nunique()
+    n_inst = pred.loc[WINDOW[0] : WINDOW[1]].index.get_level_values(1).nunique()
     print(f"[batchA*] 预测覆盖 {n_day} 个交易日 / {n_inst} 只（窗口内）")
 
-    results = {"window": f"{WINDOW[0]}~{WINDOW[1]}", "market": market, "bench": BENCH, "limit_th": 0.195,
-               "note": "粗筛：差异<3pp视为噪声；只记 top3 候选；终审以批次C滚动为准",
-               "universe": {"n_days": n_day, "n_instruments": n_inst}}
+    results = {
+        "window": f"{WINDOW[0]}~{WINDOW[1]}",
+        "market": market,
+        "bench": BENCH,
+        "limit_th": 0.195,
+        "note": "粗筛：差异<3pp视为噪声；只记 top3 候选；终审以批次C滚动为准",
+        "universe": {"n_days": n_day, "n_instruments": n_inst},
+    }
     grid = {}
     for tk in (10, 20, 50):
         for nd in (1, 2, 3):
@@ -2461,9 +2974,16 @@ def batch_b_one(spec: dict):
 
     market, bench, tag = spec["market"], spec["bench"], spec["tag"]
     _ensure_data()
-    qlib.init(provider_uri=str(DATA_DIR), region="cn", skip_if_reg=True,
-              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
-                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-batchB"}})
+    qlib.init(
+        provider_uri=str(DATA_DIR),
+        region="cn",
+        skip_if_reg=True,
+        exp_manager={
+            "class": "MLflowExpManager",
+            "module_path": "qlib.workflow.expm",
+            "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-batchB"},
+        },
+    )
     cfg = _load_and_patch_cfg(MODEL_CFG["lgb158"], smoke=False, recent=True, long_train=True, label20=True)
     dh = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
     dh["instruments"] = market
@@ -2482,25 +3002,41 @@ def batch_b_one(spec: dict):
     ds = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
     m.fit(ds)
     pred = m.predict(ds)
-    strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
-                "kwargs": {"signal": pred, "topk": 20, "n_drop": 2}}
+    strategy = {
+        "class": "TopkDropoutStrategy",
+        "module_path": "qlib.contrib.strategy",
+        "kwargs": {"signal": pred, "topk": 20, "n_drop": 2},
+    }
     # 新池（star/chinext 板块）为 ±20% 口径；csi 池保持 0.095
     limit_th = 0.195 if market in EW_BENCH else 0.095
     pm, _ = normal_backtest(
         strategy=strategy,
-        executor={"class": "SimulatorExecutor", "module_path": "qlib.backtest.executor",
-                  "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}},
-        start_time="2026-01-01", end_time="2026-09-11", account=100000000,
+        executor={
+            "class": "SimulatorExecutor",
+            "module_path": "qlib.backtest.executor",
+            "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
+        },
+        start_time="2026-01-01",
+        end_time="2026-09-11",
+        account=100000000,
         benchmark=bench,
-        exchange_kwargs={"limit_threshold": limit_th, "deal_price": "close",
-                         "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
+        exchange_kwargs={
+            "limit_threshold": limit_th,
+            "deal_price": "close",
+            "open_cost": 0.0005,
+            "close_cost": 0.0015,
+            "min_cost": 5,
+        },
+    )
     rep = pm["1day"][0]
     if rep.empty:
         raise RuntimeError(f"[batchB-one] empty report {tag}")
     ra = risk_analysis(rep["return"] - rep["bench"] - rep["cost"])
-    r = {"excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
-         "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
-         "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4)}
+    r = {
+        "excess_with_cost_annual": round(float(ra.loc["annualized_return", "risk"]), 4),
+        "ir": round(float(ra.loc["information_ratio", "risk"]), 3),
+        "max_drawdown": round(float(ra.loc["max_drawdown", "risk"]), 4),
+    }
     print(f"[batchB-one] {tag}: {r}")
     return {"tag": tag, **r}
 
@@ -2545,13 +3081,18 @@ def batch_b(lgb_trials: int = 12, market: str = "csi1000", bench: str = "SH00085
     for i, j in enumerate(jobs[4:]):
         b3[str(j["params"])] = by_tag[f"b3_trial{i}"]
 
-    results = {"window": "2026-01-01~2026-09-11", "market": market, "bench": bench,
-               "note": "粗筛：终审以批次C滚动为准", "parallel": {"n_jobs": len(jobs), "max_containers": 8},
-               "b1_train_start": b1,
-               "b2_window_mode": b2,
-               "b2_note": f"expanding 即 B1 起点{best_start}的结果；sliding 固定 6 年窗",
-               "b3_lgb_trials": b3,
-               "b3_baseline_default_params": b1["2016"]}
+    results = {
+        "window": "2026-01-01~2026-09-11",
+        "market": market,
+        "bench": bench,
+        "note": "粗筛：终审以批次C滚动为准",
+        "parallel": {"n_jobs": len(jobs), "max_containers": 8},
+        "b1_train_start": b1,
+        "b2_window_mode": b2,
+        "b2_note": f"expanding 即 B1 起点{best_start}的结果；sliding 固定 6 年窗",
+        "b3_lgb_trials": b3,
+        "b3_baseline_default_params": b1["2016"],
+    }
 
     out = VOL_ROOT / ("batch_b" if market == "csi1000" else f"batch_b_{market}")
     out.mkdir(parents=True, exist_ok=True)
@@ -2627,15 +3168,32 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
         from board_rules import build_ew_bench_files
 
         rep = build_ew_bench_files(data_dir, market)
-        print(f"[daily] 合成基准 {rep['bench']} 已构建: {rep['n_symbols']} 只成分"
-              f"（缺 bin {rep['n_bins_missing']}），最新 {rep['latest']:.4f}")
+        print(
+            f"[daily] 合成基准 {rep['bench']} 已构建: {rep['n_symbols']} 只成分"
+            f"（缺 bin {rep['n_bins_missing']}），最新 {rep['latest']:.4f}"
+        )
 
     # ---- 2) 训练终审候选 ----
-    qlib.init(provider_uri=str(data_dir), region="cn",
-              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
-                           "kwargs": {"uri": "file:/tmp/mlruns", "default_exp_name": "qlib-cn-daily"}})
-    cfg = _load_and_patch_cfg(MODEL_CFG["lgb158"], smoke=False, recent=True, long_train=True, label20=True,
-                              topk=topk, nd=nd, market=market, provider_dir=str(data_dir))
+    qlib.init(
+        provider_uri=str(data_dir),
+        region="cn",
+        exp_manager={
+            "class": "MLflowExpManager",
+            "module_path": "qlib.workflow.expm",
+            "kwargs": {"uri": "file:/tmp/mlruns", "default_exp_name": "qlib-cn-daily"},
+        },
+    )
+    cfg = _load_and_patch_cfg(
+        MODEL_CFG["lgb158"],
+        smoke=False,
+        recent=True,
+        long_train=True,
+        label20=True,
+        topk=topk,
+        nd=nd,
+        market=market,
+        provider_dir=str(data_dir),
+    )
     calendar = read_trading_calendar(data_dir)
     asof = calendar[-1]
     # Today is a feature/prediction date, NEVER a training/validation label date.
@@ -2650,14 +3208,22 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
     saved = json.loads(meta_file.read_text()) if meta_file.exists() else None
     if saved is not None and saved.get("signature") != signature:
         raise RuntimeError("Model cache signature mismatch")
-    train_now = should_retrain(calendar, asof, saved["fit_asof"] if saved else None,
-                               interval=RETRAIN_EVERY_SESSIONS)
+    # 重训节律（两池同步）：①无缓存 → bootstrap；②全局锚定时钟 due（origin=2026-09-18 bar，
+    # 每 20 个交易日两池同日重训、fit 窗口完全一致）；③自 20-session 自愈兜底（错过 due 日时
+    # 各池按自身节律恢复，下一个全局 due 日重新对齐相位）
+    train_now = (
+        saved is None
+        or retrain_due_calendar(calendar, asof, interval=RETRAIN_EVERY_SESSIONS)
+        or should_retrain(calendar, asof, saved["fit_asof"], interval=RETRAIN_EVERY_SESSIONS)
+    )
     if train_now:
         model_obj = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
         dataset = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
         model_obj.fit(dataset)
         snapshot = {
-            "signature": signature, "fit_asof": asof, "horizon": 20,
+            "signature": signature,
+            "fit_asof": asof,
+            "horizon": 20,
             "train": list(cfg["task"]["dataset"]["kwargs"]["segments"]["train"]),
             "valid": list(cfg["task"]["dataset"]["kwargs"]["segments"]["valid"]),
             "fit_start": cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["fit_start_time"],
@@ -2682,8 +3248,11 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
         # Re-create the handler on fresh features but fit its processors ONLY on
         # the original model's training window. Otherwise daily refitting of
         # feature normalization changes the cached model's input distribution.
-        if (saved.get("horizon") != 20 or not saved.get("model_sha256") or
-                saved.get("fit_end") != saved.get("train", [None, None])[-1]):
+        if (
+            saved.get("horizon") != 20
+            or not saved.get("model_sha256")
+            or saved.get("fit_end") != saved.get("train", [None, None])[-1]
+        ):
             raise RuntimeError("Invalid cached model split metadata")
         if hashlib.sha256(model_file.read_bytes()).hexdigest() != saved["model_sha256"]:
             raise RuntimeError("Corrupt cached model; refusing unsafe inference")
@@ -2711,8 +3280,13 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
     top = day.sort_values(ascending=False).head(topk)
 
     # ---- 3) 涨跌停过滤（板块感知阈值：主板/改革前创业板±10%、科创板/改革后创业板±20%、新股前5交易日豁免；涨幅=close/前收-1） ----
-    day_df = D.features([str(x) for x in day.index], ["$close", "Ref($close,1)"],
-                        start_time=predict_date, end_time=predict_date, freq="day")
+    day_df = D.features(
+        [str(x) for x in day.index],
+        ["$close", "Ref($close,1)"],
+        start_time=predict_date,
+        end_time=predict_date,
+        freq="day",
+    )
     if len(day_df) > 0 and ("Ref($close,1)" in day_df.columns):
         day_ret = (day_df["$close"] / day_df["Ref($close,1)"] - 1).dropna()
         listing_dates = _board_listing_dates(data_dir, day.index)
@@ -2738,23 +3312,24 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
         close_bin = data_dir / "features" / str(inst).lower() / "close.day.bin"
         if close_bin.exists():
             _, values = _read_bin(close_bin)
-            chart["stocks"][str(inst)] = [
-                None if v != v else round(float(v), 4) for v in values[-60:]
-            ]
+            chart["stocks"][str(inst)] = [None if v != v else round(float(v), 4) for v in values[-60:]]
     chart_json = json.dumps(chart, ensure_ascii=False)
 
-    return {"date": str(predict_date)[:10], "topk": topk, "n_stocks": len(top),
-            "csv_content": csv_content, "data_calendar_end": cal_lines[-1],
-            "ranking_only": True, "rebalance_applied": False,
-            "market": market,
-            "model_fit_asof": saved["fit_asof"],
-            "train_end": saved["train"][-1],
-            "valid_end": saved["valid"][-1],
-            "retrained_today": train_now,
-            "chart_json": chart_json}
-
-
-
+    return {
+        "date": str(predict_date)[:10],
+        "topk": topk,
+        "n_stocks": len(top),
+        "csv_content": csv_content,
+        "data_calendar_end": cal_lines[-1],
+        "ranking_only": True,
+        "rebalance_applied": False,
+        "market": market,
+        "model_fit_asof": saved["fit_asof"],
+        "train_end": saved["train"][-1],
+        "valid_end": saved["valid"][-1],
+        "retrained_today": train_now,
+        "chart_json": chart_json,
+    }
 
 
 def _load_latest_to_local():
@@ -2788,6 +3363,7 @@ def _load_latest_to_local():
     shutil.move(str(base), str(data_dir))
     return data_dir
 
+
 # ===================== 每日定时任务（Modal Cron，云端全自动） =====================
 # 部署：  modal secret create github-push GITHUB_TOKEN=<你的PAT>   # 一次性
 #         modal deploy modal_qlib_cn_a10g.py                        # 部署（含 cron）
@@ -2806,6 +3382,7 @@ def _cn_trading_calendar():
     09-25（中秋）不在、09-28/09-24 在、国庆 10-01~10-07 不在、10-08 复市。
     """
     import akshare as ak
+
     cal_df = ak.tool_trade_date_hist_sina()
     cal = set()
     for d in cal_df.iloc[:, 0]:
@@ -2940,8 +3517,7 @@ def daily_cron():
         files[f"results/signals/{signal_date}_chart_chinext.json"] = res_chi["chart_json"]
 
     token = os.environ["GITHUB_TOKEN"]
-    headers = {"Authorization": f"Bearer {token}",
-               "Accept": "application/vnd.github+json"}
+    headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
     # 同日重跑 dedup：csi1000 CSV 已存在且内容一致则跳过（两池同 commit，一起跳过）
     files_key0 = f"results/signals/{signal_date}_top20_lgb158.csv"
     csi_api = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{files_key0}"
@@ -2957,13 +3533,14 @@ def daily_cron():
     # 使用 Git Data API 一次 commit 同时写入两池 CSV + chart JSON
     # （避免多次独立的 Contents API push 触发两次 Actions → concurrency cancel 导致 chart 部署丢失）
     from github_commit import push_files
+
     push_files(
         token=token,
         repo=GITHUB_REPO,
         branch=SIGNAL_BRANCH,
         files=files,
         message=f"chore(signal): {signal_date} top20 + chart (cron"
-                + (f", {len(files)} files incl. chinext)" if res_chi is not None else ")"),
+        + (f", {len(files)} files incl. chinext)" if res_chi is not None else ")"),
     )
     n_pool = 2 if res_chi is not None else 1
     print(f"[cron] ✅ 已推送 {n_pool} 池 CSV + chart JSON: {signal_date}")
@@ -2973,6 +3550,7 @@ def daily_cron():
         import time
 
         import akshare as ak
+
         name_df = None
         for attempt in (1, 2):
             try:
@@ -2994,12 +3572,17 @@ def daily_cron():
         else:
             old_csv, old_sha = None, None
         if old_csv != name_csv:
-            rn = requests.put(name_api, headers=headers, timeout=30, json={
-                "message": "chore(signal): update code->name mapping (cron)",
-                "content": base64.b64encode(name_csv.encode()).decode(),
-                "branch": SIGNAL_BRANCH,
-                **({"sha": old_sha} if old_sha else {}),
-            })
+            rn = requests.put(
+                name_api,
+                headers=headers,
+                timeout=30,
+                json={
+                    "message": "chore(signal): update code->name mapping (cron)",
+                    "content": base64.b64encode(name_csv.encode()).decode(),
+                    "branch": SIGNAL_BRANCH,
+                    **({"sha": old_sha} if old_sha else {}),
+                },
+            )
             if rn.status_code in (200, 201):
                 print(f"[cron] ✅ 名称映射已更新（{len(name_df)} 只）")
             else:
@@ -3011,6 +3594,7 @@ def daily_cron():
 
 
 # ===================== 第六步：重训频率对比实验（freq 5/20/60） =====================
+
 
 @app.function(
     volumes={str(VOL_ROOT): vol},
@@ -3035,21 +3619,36 @@ def freq_window(args: dict):
 
     from qlib_audit_fixes import last_matured_sample, purge_cfg_splits, read_trading_calendar
 
-    qlib.init(provider_uri=str(DATA_DIR), region="cn", skip_if_reg=True,
-              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
-                           "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-freq"}})
+    qlib.init(
+        provider_uri=str(DATA_DIR),
+        region="cn",
+        skip_if_reg=True,
+        exp_manager={
+            "class": "MLflowExpManager",
+            "module_path": "qlib.workflow.expm",
+            "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-freq"},
+        },
+    )
     cal = read_trading_calendar(DATA_DIR)
     horizon = args.get("horizon", 20)
     asof_i = bisect_left(cal, args["retrain_asof"])
     # —— 分割构造：configure_asof 的泛化（允许 asof 为历史重训日）——
-    valid_end_i = asof_i - horizon - 1                       # valid 末样本标签成熟于 T 前
+    valid_end_i = asof_i - horizon - 1  # valid 末样本标签成熟于 T 前
     valid_start_i = valid_end_i - args.get("valid_sessions", 252) + 1
     if valid_start_i <= 0 or valid_end_i <= 0:
         raise RuntimeError(f"insufficient history at {args['retrain_asof']}")
     valid_start = cal[valid_start_i]
     train_end = last_matured_sample(cal, valid_start, horizon)
-    cfg = _load_and_patch_cfg(MODEL_CFG["lgb158"], smoke=False, recent=True, long_train=True,
-                              label20=True, topk=args["topk"], nd=args["nd"], market=args["market"])
+    cfg = _load_and_patch_cfg(
+        MODEL_CFG["lgb158"],
+        smoke=False,
+        recent=True,
+        long_train=True,
+        label20=True,
+        topk=args["topk"],
+        nd=args["nd"],
+        market=args["market"],
+    )
     dk = cfg["task"]["dataset"]["kwargs"]
     seg = dk["segments"]
     handler = dk["handler"]["kwargs"]
@@ -3057,32 +3656,52 @@ def freq_window(args: dict):
     seg["valid"] = [valid_start, cal[valid_end_i]]
     seg["test"] = [args["eval_start"], args["eval_end"]]
     handler["start_time"] = "2015-01-01"
-    handler["end_time"] = args["eval_end"]                   # 特征必须覆盖整个执行区间
+    handler["end_time"] = args["eval_end"]  # 特征必须覆盖整个执行区间
     handler["fit_start_time"] = "2016-01-01"
     handler["fit_end_time"] = train_end
-    purge_cfg_splits(cfg, cal, horizon=horizon)               # 硬断言所有跨段边界无泄漏
+    purge_cfg_splits(cfg, cal, horizon=horizon)  # 硬断言所有跨段边界无泄漏
     m = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
     ds = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
     m.fit(ds)
     pred = m.predict(ds, segment="test")
     if pred.empty:
         raise RuntimeError(f"empty predictions {args['eval_start']}~{args['eval_end']}")
-    executor = {"class": "SimulatorExecutor", "module_path": "qlib.backtest.executor",
-                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
-    strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
-                "kwargs": {"signal": pred, "topk": args["topk"], "n_drop": args["nd"]}}
+    executor = {
+        "class": "SimulatorExecutor",
+        "module_path": "qlib.backtest.executor",
+        "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
+    }
+    strategy = {
+        "class": "TopkDropoutStrategy",
+        "module_path": "qlib.contrib.strategy",
+        "kwargs": {"signal": pred, "topk": args["topk"], "n_drop": args["nd"]},
+    }
     bench = "SH000852" if args["market"] == "csi1000" else "SH000905"
-    pm, _ = normal_backtest(strategy=strategy, executor=executor,
-                             start_time=args["eval_start"], end_time=args["eval_end"],
-                             account=100000000, benchmark=bench,
-                             exchange_kwargs={"limit_threshold": 0.095, "deal_price": "close",
-                                              "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
+    pm, _ = normal_backtest(
+        strategy=strategy,
+        executor=executor,
+        start_time=args["eval_start"],
+        end_time=args["eval_end"],
+        account=100000000,
+        benchmark=bench,
+        exchange_kwargs={
+            "limit_threshold": 0.095,
+            "deal_price": "close",
+            "open_cost": 0.0005,
+            "close_cost": 0.0015,
+            "min_cost": 5,
+        },
+    )
     rep = pm["1day"][0]
     excess = rep["return"] - rep["bench"] - rep["cost"]
     if excess.empty:
         raise RuntimeError("empty excess series")
-    return {"freq": args["freq"], "eval_start": args["eval_start"],
-            "daily": [round(float(v), 8) for v in excess.tolist()], "n_days": int(len(excess))}
+    return {
+        "freq": args["freq"],
+        "eval_start": args["eval_start"],
+        "daily": [round(float(v), 8) for v in excess.tolist()],
+        "n_days": int(len(excess)),
+    }
 
 
 @app.function(
@@ -3102,7 +3721,7 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
 
     from qlib_audit_fixes import read_trading_calendar
 
-    _ensure_data(force=True)   # 确保最新数据（infi Volume 可能是旧版）
+    _ensure_data(force=True)  # 确保最新数据（infi Volume 可能是旧版）
     cal = read_trading_calendar(DATA_DIR)
     start_i = bisect_left(cal, eval_from)
     results = {}
@@ -3111,8 +3730,17 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
         i = start_i
         while i < len(cal) - 1:
             eval_end = cal[min(i + freq, len(cal) - 1)]
-            jobs.append({"freq": freq, "retrain_asof": cal[i], "eval_start": cal[i + 1],
-                         "eval_end": eval_end, "market": market, "topk": topk, "nd": nd})
+            jobs.append(
+                {
+                    "freq": freq,
+                    "retrain_asof": cal[i],
+                    "eval_start": cal[i + 1],
+                    "eval_end": eval_end,
+                    "market": market,
+                    "topk": topk,
+                    "nd": nd,
+                }
+            )
             i += freq
         print(f"[freq] freq={freq}: {len(jobs)} 个重训点（首重训日 {jobs[0]['retrain_asof']}）")
         outs = list(freq_window.map(jobs))
@@ -3126,15 +3754,20 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
         cum = np.cumsum(x)
         mdd = float((cum - np.maximum.accumulate(cum)).min())
         results[str(freq)] = {
-            "n_retrains": len(jobs), "n_errors": errs, "n_days": len(x),
+            "n_retrains": len(jobs),
+            "n_errors": errs,
+            "n_days": len(x),
             "ann_excess": round(float(x.mean() * 238), 4) if len(x) else None,
             "ir": round(float(x.mean() / x.std(ddof=1) * np.sqrt(238)), 3) if len(x) > 1 else None,
             "max_drawdown": round(mdd, 4),
-            "positive_days": int((x > 0).sum()), "positive_ratio": round(float((x > 0).mean()), 3) if len(x) else None,
+            "positive_days": int((x > 0).sum()),
+            "positive_ratio": round(float((x > 0).mean()), 3) if len(x) else None,
         }
-        print(f"[freq] freq={freq}: 年化={results[str(freq)]['ann_excess']} "
-              f"IR={results[str(freq)]['ir']} MDD={results[str(freq)]['max_drawdown']} "
-              f"正日比例={results[str(freq)]['positive_ratio']} 错误窗口={errs}")
+        print(
+            f"[freq] freq={freq}: 年化={results[str(freq)]['ann_excess']} "
+            f"IR={results[str(freq)]['ir']} MDD={results[str(freq)]['max_drawdown']} "
+            f"正日比例={results[str(freq)]['positive_ratio']} 错误窗口={errs}"
+        )
     out = VOL_ROOT / "freq_experiment"
     out.mkdir(parents=True, exist_ok=True)
     with (out / "results.json").open("w") as f:
@@ -3151,117 +3784,6 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
     nonpreemptible=True,
 )
 def backfill_signals(dates: str = "2026-09-16,2026-09-17", topk: int = 20, nd: int = 2, market: str = "csi1000"):
-    """补算历史日期的信号（用于网站历史榜单验证）。数据来自最新全量包（append-only，
-    历史部分不变），模型用 configure_asof 以目标日期为 asof 训练（严格无前视）。
-    返回 {date: {csv_content, chart_json}}。"""
-    import hashlib
-    import json as _json
-    import pickle
-    from bisect import bisect_left
-
-    import numpy as np
-    import pandas as pd
-
-    import qlib
-    from qlib.data.dataset import Dataset
-    from qlib.model.base import Model
-    from qlib.utils import init_instance_by_config
-
-    from qlib_audit_fixes import last_matured_sample, purge_cfg_splits, read_trading_calendar
-    from qlib_live_retrain import configure_asof
-
-    data_dir = _load_latest_to_local()
-    # 新池（chinext/star）：chenditc 包不含合成等权基准，容器内先构建（与生产 daily 同一实现）
-    if market in EW_BENCH:
-        from board_rules import build_ew_bench_files
-
-        rep = build_ew_bench_files(data_dir, market)
-        print(f"[backfill] 合成基准 {rep['bench']} 已构建: {rep['n_symbols']} 只成分，最新 {rep['latest']:.4f}")
-    cal = read_trading_calendar(data_dir)
-    qlib.init(provider_uri=str(data_dir), region="cn",
-              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
-                           "kwargs": {"uri": "file:/tmp/mlruns", "default_exp_name": "qlib-cn-backfill"}})
-
-    results = {}
-    for asof in [d.strip() for d in dates.split(",")]:
-        asof_i = bisect_left(cal, asof)
-        if asof_i >= len(cal) or cal[asof_i] != asof:
-            raise RuntimeError(f"{asof} not in calendar")
-        horizon = 20
-        valid_end_i = asof_i - horizon - 1
-        valid_start_i = valid_end_i - 252 + 1
-        valid_start = cal[valid_start_i]
-        train_end = last_matured_sample(cal, valid_start, horizon)
-        cfg = _load_and_patch_cfg(MODEL_CFG["lgb158"], smoke=False, recent=True, long_train=True,
-                                  label20=True, topk=topk, nd=nd, market=market, provider_dir=str(data_dir))
-        dk = cfg["task"]["dataset"]["kwargs"]
-        seg = dk["segments"]
-        handler = dk["handler"]["kwargs"]
-        seg["train"] = ["2016-01-01", train_end]
-        seg["valid"] = [valid_start, cal[valid_end_i]]
-        seg["test"] = [asof, asof]
-        handler["start_time"] = "2015-01-01"
-        handler["end_time"] = asof
-        handler["fit_start_time"] = "2016-01-01"
-        handler["fit_end_time"] = train_end
-        purge_cfg_splits(cfg, cal, horizon=horizon)
-
-        m = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
-        ds = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
-        m.fit(ds)
-        pred = m.predict(ds, segment="test")
-        if pred.empty:
-            raise RuntimeError(f"empty predictions for {asof}")
-        day = pred.loc[asof].dropna()
-
-        # 涨跌停过滤（板块感知阈值，与 daily_standalone 同口径；listing 从 all.txt 取）
-        from qlib.data import D
-        from board_rules import board_aware_limited
-
-        day_df = D.features([str(x) for x in day.index], ["$close", "Ref($close,1)"],
-                            start_time=asof, end_time=asof, freq="day")
-        if len(day_df) > 0 and ("Ref($close,1)" in day_df.columns):
-            day_ret = (day_df["$close"] / day_df["Ref($close,1)"] - 1).dropna()
-            listing = _board_listing_dates(data_dir, day.index)
-            limited = board_aware_limited(day_ret, str(asof)[:10], listing_dates=listing)
-            day = day.loc[day.index[~day.index.isin(limited)]]
-        top = day.sort_values(ascending=False).head(topk)
-
-        csv_content = "rank,instrument,score\n" + "\n".join(
-            f"{i},{inst},{score}" for i, (inst, score) in enumerate(top.items(), 1))
-
-        # 走势 JSON（NaN→null sanitize，同 daily_standalone——裸 NaN 会让浏览器 JSON.parse 整体失败）
-        chart = {"dates": cal[max(0,asof_i-60):asof_i+1][-60:], "stocks": {}}
-        for inst in top.index:
-            close_bin = data_dir / "features" / str(inst).lower() / "close.day.bin"
-            if close_bin.exists():
-                _, values = _read_bin(close_bin)
-                chart["stocks"][str(inst)] = [
-                    None if v != v else round(float(v), 4) for v in values[-60:]
-                ]
-        chart_json = _json.dumps(chart, ensure_ascii=False)
-
-        results[asof] = {"csv_content": csv_content, "chart_json": chart_json, "topk": topk,
-                         "n_stocks": len(top)}
-        print(f"[backfill] {asof}: {len(top)} 只股票已生成")
-        # 保存到 Volume 供后续使用（池后缀防覆盖 csi1000 的研究/生产文件）
-        suffix = "" if market == "csi1000" else f"_{market}"
-        out = VOL_ROOT / "signals"
-        out.mkdir(parents=True, exist_ok=True)
-        (out / f"{asof}_top{topk}_lgb158{suffix}.csv").write_text(csv_content)
-        (out / f"{asof}_chart{suffix}.json").write_text(chart_json)
-    vol.commit()
-    return results
-
-
-@app.function(
-    volumes={str(VOL_ROOT): vol},
-    cpu=CPU_COUNT,
-    memory=32768,
-    timeout=4 * 3600,
-    nonpreemptible=True,
-)
-def backfill_signals_lineage(dates: str = "2026-09-16,2026-09-17", topk: int = 20, nd: int = 2, market: str = "csi1000"):
     """生产同源回放（推荐的历史信号生成方式）：
 
     与 daily_standalone 的 20-session 缓存策略同一套数学（qlib_live_retrain.configure_asof
@@ -3283,7 +3805,7 @@ def backfill_signals_lineage(dates: str = "2026-09-16,2026-09-17", topk: int = 2
     from qlib.utils import init_instance_by_config
 
     from qlib_audit_fixes import read_trading_calendar
-    from qlib_live_retrain import configure_asof, should_retrain, RETRAIN_EVERY_SESSIONS
+    from qlib_live_retrain import configure_asof, should_retrain, retrain_due_calendar, RETRAIN_EVERY_SESSIONS
     from board_rules import board_aware_limited
 
     data_dir = _load_latest_to_local()
@@ -3293,9 +3815,15 @@ def backfill_signals_lineage(dates: str = "2026-09-16,2026-09-17", topk: int = 2
         rep = build_ew_bench_files(data_dir, market)
         print(f"[lineage] 合成基准 {rep['bench']} 已构建: {rep['n_symbols']} 只成分，最新 {rep['latest']:.4f}")
     cal = read_trading_calendar(data_dir)
-    qlib.init(provider_uri=str(data_dir), region="cn",
-              exp_manager={"class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
-                           "kwargs": {"uri": "file:/tmp/mlruns", "default_exp_name": "qlib-cn-lineage"}})
+    qlib.init(
+        provider_uri=str(data_dir),
+        region="cn",
+        exp_manager={
+            "class": "MLflowExpManager",
+            "module_path": "qlib.workflow.expm",
+            "kwargs": {"uri": "file:/tmp/mlruns", "default_exp_name": "qlib-cn-backfill"},
+        },
+    )
 
     want = sorted(d.strip() for d in dates.split(","))
     for d in want:
@@ -3311,11 +3839,25 @@ def backfill_signals_lineage(dates: str = "2026-09-16,2026-09-17", topk: int = 2
     results = {}
     for i in range(first_i, last_i + 1):
         usage_day, data_bar = cal[i], cal[i - 1]
-        need_train = prev_fit_bar is None or should_retrain(cal, data_bar, prev_fit_bar,
-                                                            interval=RETRAIN_EVERY_SESSIONS)
+        # 同源节律（与 daily_standalone 完全一致）：无模型 → bootstrap；全局锚定 due
+        # （origin=2026-09-18 bar，两池同相位）；20-session 自愈兜底
+        need_train = (
+            prev_fit_bar is None
+            or retrain_due_calendar(cal, data_bar, interval=RETRAIN_EVERY_SESSIONS)
+            or should_retrain(cal, data_bar, prev_fit_bar, interval=RETRAIN_EVERY_SESSIONS)
+        )
         if need_train:
-            cfg = _load_and_patch_cfg(MODEL_CFG["lgb158"], smoke=False, recent=True, long_train=True,
-                                      label20=True, topk=topk, nd=nd, market=market, provider_dir=str(data_dir))
+            cfg = _load_and_patch_cfg(
+                MODEL_CFG["lgb158"],
+                smoke=False,
+                recent=True,
+                long_train=True,
+                label20=True,
+                topk=topk,
+                nd=nd,
+                market=market,
+                provider_dir=str(data_dir),
+            )
             # 截断日历使 asof=末位：configure_asof 的生产守卫（asof==latest bar）对回放同样成立
             configure_asof(cfg, cal[:i], data_bar, horizon=20)
             snapshot = {
@@ -3344,8 +3886,9 @@ def backfill_signals_lineage(dates: str = "2026-09-16,2026-09-17", topk: int = 2
         if pred.empty:
             raise RuntimeError(f"empty predictions for {usage_day}")
         day = pred.loc[data_bar].dropna()
-        day_df = D.features([str(x) for x in day.index], ["$close", "Ref($close,1)"],
-                            start_time=data_bar, end_time=data_bar, freq="day")
+        day_df = D.features(
+            [str(x) for x in day.index], ["$close", "Ref($close,1)"], start_time=data_bar, end_time=data_bar, freq="day"
+        )
         if len(day_df) > 0 and ("Ref($close,1)" in day_df.columns):
             day_ret = (day_df["$close"] / day_df["Ref($close,1)"] - 1).dropna()
             listing = _board_listing_dates(data_dir, day.index)
@@ -3353,8 +3896,9 @@ def backfill_signals_lineage(dates: str = "2026-09-16,2026-09-17", topk: int = 2
             day = day.loc[day.index[~day.index.isin(limited)]]
         top = day.sort_values(ascending=False).head(topk)
         csv_content = "rank,instrument,score\n" + "\n".join(
-            f"{k_},{inst},{score}" for k_, (inst, score) in enumerate(top.items(), 1))
-        chart = {"dates": cal[max(0, i - 59):i + 1][-60:], "stocks": {}}
+            f"{k_},{inst},{score}" for k_, (inst, score) in enumerate(top.items(), 1)
+        )
+        chart = {"dates": cal[max(0, i - 59) : i + 1][-60:], "stocks": {}}
         for inst in top.index:
             close_bin = data_dir / "features" / str(inst).lower() / "close.day.bin"
             if close_bin.exists():
@@ -3495,8 +4039,10 @@ def main(
         print(_json.dumps(res_0916, indent=2, ensure_ascii=False))
         print("2x2 矩阵（有成本年化超额，区间 2026-01-01~09-11，n_drop=3）：")
         for k in ["lgb158", "lgb360"]:
-            print(f"  {k}: 09-11包={res_0911['matrix_0911'][k]['excess_with_cost_annual']}  "
-                  f"09-16包={res_0916['matrix_0916'][f'{k}_ndrop3']['excess_with_cost_annual']}")
+            print(
+                f"  {k}: 09-11包={res_0911['matrix_0911'][k]['excess_with_cost_annual']}  "
+                f"09-16包={res_0916['matrix_0916'][f'{k}_ndrop3']['excess_with_cost_annual']}"
+            )
         return
     if best:
         # 终审固化配置（2026-09-18，见 docs/experiments/05-final-audit.md）：
@@ -3519,11 +4065,15 @@ def main(
         results.sort(key=lambda r: r["excess_with_cost_annual"], reverse=True)
         print(f"[tune] === Top 10（共 {tune} 组）===")
         for i, r in enumerate(results[:10], 1):
-            print(f"[tune] {i}. net_annual={r['excess_with_cost_annual']:.4f} "
-                  f"rank_ic={r['rank_ic']:.4f} {r['params']}")
-        print(f"[tune] 验证期候选（需独立样本外复验）: "
-              f"net_annual={results[0]['excess_with_cost_annual']:.4f} "
-              f"rank_ic={results[0]['rank_ic']:.4f} params={results[0]['params']}")
+            print(
+                f"[tune] {i}. net_annual={r['excess_with_cost_annual']:.4f} "
+                f"rank_ic={r['rank_ic']:.4f} {r['params']}"
+            )
+        print(
+            f"[tune] 验证期候选（需独立样本外复验）: "
+            f"net_annual={results[0]['excess_with_cost_annual']:.4f} "
+            f"rank_ic={results[0]['rank_ic']:.4f} params={results[0]['params']}"
+        )
         return
     if dual:
         # 纯 LGB，CPU 容器
@@ -3551,9 +4101,35 @@ def main(
     prepare_data.remote(force=force_data)
     if model in LGB_MODELS:
         # LGB 系训练：CPU 容器，不挂 GPU
-        res = train_cpu.remote(model=model, smoke=smoke, recent=recent, enhanced=enhanced, long_train=long_train, fund=fund, label20=label20, rolling=rolling, verify=verify, topk=topk, market=market, nd=nd)
+        res = train_cpu.remote(
+            model=model,
+            smoke=smoke,
+            recent=recent,
+            enhanced=enhanced,
+            long_train=long_train,
+            fund=fund,
+            label20=label20,
+            rolling=rolling,
+            verify=verify,
+            topk=topk,
+            market=market,
+            nd=nd,
+        )
     else:
         check_gpu.remote()
-        res = train.remote(model=model, smoke=smoke, recent=recent, enhanced=enhanced, long_train=long_train, fund=fund, label20=label20, rolling=rolling, verify=verify, topk=topk, market=market, nd=nd)
+        res = train.remote(
+            model=model,
+            smoke=smoke,
+            recent=recent,
+            enhanced=enhanced,
+            long_train=long_train,
+            fund=fund,
+            label20=label20,
+            rolling=rolling,
+            verify=verify,
+            topk=topk,
+            market=market,
+            nd=nd,
+        )
     print(res)
     print("取回 mlruns：modal volume get qlib-cn-data /vol/mlruns ./mlruns_out")

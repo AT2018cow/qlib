@@ -13,6 +13,34 @@ from qlib_audit_fixes import last_matured_sample, purge_cfg_splits
 RETRAIN_EVERY_SESSIONS = 20
 VALIDATION_SESSIONS = 252
 MODEL_CACHE_VERSION = 1
+# 全局重训锚点（bar 日期）：两池共用同一重训时钟的相位原点。
+# 选 2026-09-18 = csi1000 现役谱系的真实 fit bar（09-21 使用日 bootstrap 重训），
+# 使创业板谱系回放与生产既有节律同相位；此后每 20 个交易日两池同日重训。
+# 写死于代码（版本可审计），不放进配置——改相位是一次显式的代码变更。
+RETRAIN_ORIGIN = "2026-09-18"
+
+
+def retrain_due_calendar(calendar: list[str], data_bar: str,
+                         interval: int = RETRAIN_EVERY_SESSIONS,
+                         origin: str = RETRAIN_ORIGIN) -> bool:
+    """Calendar-anchored global retrain schedule shared by ALL pools.
+
+    Due when (idx(data_bar) - idx(origin)) is a nonnegative multiple of `interval`.
+    Both pools derive from the same trading calendar, so they retrain on the
+    identical session forever (fit windows then coincide exactly). A pool that
+    misses a due day self-heals via its own 20-session rule; the next due day
+    re-aligns both phases.
+    """
+    if interval < 1 or not calendar or calendar != sorted(set(calendar)):
+        raise ValueError("Invalid retrain interval or calendar")
+    for label, d in (("origin", origin), ("data_bar", data_bar)):
+        i = bisect_left(calendar, d)
+        if i >= len(calendar) or calendar[i] != d:
+            raise ValueError(f"{label} {d} not in calendar")
+    delta = bisect_left(calendar, data_bar) - bisect_left(calendar, origin)
+    if delta < 0:
+        return False  # 锚点之前的谱系（回放期）不由全局时钟管——调用方自行 bootstrap
+    return delta % interval == 0
 
 
 def configure_asof(cfg: dict, calendar: list[str], asof: str, *, horizon: int = 20,
