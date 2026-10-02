@@ -270,11 +270,11 @@ _indices = {"csi300": "SH000300", "csi500": "SH000905", "csi1000": "SH000852",
 | 项 | 机制 |
 |---|---|
 | 全局重训时钟 | `qlib_live_retrain.retrain_due_calendar`：锚点 `RETRAIN_ORIGIN="2026-09-18"`（bar 日期）= csi1000 现役谱系的真实 fit bar（09-21 使用日 bootstrap 重训，train 止 2025-07-09）。两池从同一日历推导 → **每个 20 session 的 due 日两池同日重训，fit 窗口完全一致**。写死于代码（改相位=显式代码变更，可审计）。错过 due 日由各池 20-session 规则自愈，下一个 due 日重新对齐 |
-| 生产接入 | `daily_standalone`：`train_now = 无缓存 OR 全局due OR 20-session自愈`。生效节奏：10-08（国庆后首个交易日）chinext bootstrap（fit bar 09-30）与 csi1000 复用同 bar 模型（意外产物 74bda2d1 也是 09-30 fit——相位天然对齐）；**10-27 前后首个全局 due 日两池同日重训**，此后永久同步 |
+| 生产接入 | `daily_standalone`：`train_now = 无缓存 OR 全局due OR 20-session自愈`。**生产实跑已验证**：10-02 07:00 cron（双池版部署后首个调度）成功跑通两池全链路——csi1000 复用 5c1c81ca（fit 09-18）、chinext bootstrap 重训（74bda2d1，fit 09-30），发布被节假日 gate 正确跳过。10-08：两池各自复用现有缓存（模型 fit bar 相差 7 session 的暂态），**10-27 前后首个全局 due 日两池同日重训、fit 窗口完全一致**，此后每 20 session 永久同步 |
 | 同源回放 | `backfill_signals` 重构为 lineage 结构（原 per-date 独立重训版废弃合并）：训练遵循与生产同一节律（bootstrap → origin due → 20-session），复用日逐日对新 bar 重新预测（非复制前日榜单）。**顺带修复一天前视泄露**：旧 per-date 版 `test=[使用日,使用日]` 用 T 日 bar 排名冒充 T 日信号（应基于 T-1 bar）——波及 csi1000 网站历史 09-17 档（backfill 产物；09-21 起为真实 cron 产物无此问题） |
 | 网页数据 | 创业板 9 日榜单已换同源回放版：09-17 bootstrap（bar 09-16）+ 09-21 due 重训（**fit bar 09-18 / train 止 2025-07-09，与 csi1000 现役模型 5c1c81ca 完全同窗口同 bar**）+ 7 日复用 |
 | 收益对照 | 同源版 9 日可执行累计 **-1.31%**（per-date 版 -7.26% 的 -3.6pp 差值 = 模型 churn 敏感度实测；旧"无 09-21 重训"节律 -3.62%）。vs csi1000 同期 -0.79%。9 日样本仍小，生产 cron 真实信号（10-09 起）才是终审 |
-| 遗留 | ①csi1000 网站 09-17 档需单日同源重放修泄露（~$0.1，待办）；②at2018cow 缓存里的 74bda2d1（09-30 fit，回归冒烟意外写入）被同步机制收编为合法节点；③需 `modal deploy`（at2018cow）使同步机制生产生效 |
+| 遗留 | ①~~csi1000 09-17 泄露档~~已修（§8.9 同源重放，top1 不变口径已正）；②74bda2d1 签名经本地对照证实为 **chinext 生产 bootstrap**（10-02 07:00 cron 产物），此前"回归冒烟意外写入"判断有误——冒烟写的是 infi Volume；③节假日 cron 仍全量跑 daily_standalone 后才被 gate 跳过（10-01~07 每天两池各下载 567MB+推理，~$0.5-1/日）——可选优化：gate 前移（akshare 日历失败时的 fail-open 语义需先设计） |
 
 ### 8.8 下一步 runbook
 
