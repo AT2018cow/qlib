@@ -3380,10 +3380,25 @@ def _cn_trading_calendar():
     数据自带的 day.txt 日历只含已发生的交易日，无法判断"今天是否交易日"；
     本函数用 akshare 的 Sina 交易日历（含未来）补足。已对照 2026-09 实况验证：
     09-25（中秋）不在、09-28/09-24 在、国庆 10-01~10-07 不在、10-08 复市。
+    重试 2 次（间隔 10 秒）：akshare/Sina 间歇断连常见，单次失败即降级太敏感——
+    降级会让 gate 前移失效（节假日也要全量跑）并进入 fail-open 发布口径。
     """
+    import time
+
     import akshare as ak
 
-    cal_df = ak.tool_trade_date_hist_sina()
+    last_err = None
+    for attempt in (1, 2):
+        try:
+            cal_df = ak.tool_trade_date_hist_sina()
+            break
+        except Exception as e:  # pylint: disable=W0703
+            last_err = e
+            if attempt == 1:
+                print(f"[calendar] 拉取失败（第 1 次），10 秒后重试: {e}")
+                time.sleep(10)
+    else:
+        raise RuntimeError(f"交易日历两次拉取均失败: {last_err}") from last_err
     cal = set()
     for d in cal_df.iloc[:, 0]:
         try:
@@ -3391,6 +3406,24 @@ def _cn_trading_calendar():
         except AttributeError:
             cal.add(str(d)[:10])
     return cal
+
+
+def _early_gate(cal, signal_date: str) -> str:
+    """Gate 前移的预判定（成本优化，语义最小化）。
+
+    唯一的零成本跳过路径：日历可用且确认 signal_date 非 A 股交易日——
+    节假日无需下载 567MB 数据和跑两池推理（10-01~10-07 每天约 $0.5-1 纯浪费）。
+    返回 "skip" 或 "proceed"。
+
+    fail-open 语义（关键约束）：
+    - cal=None（akshare 失败，含重试后仍失败）→ "proceed"——日历失败 ≠ 今天不是交易日，
+      在降级模式下跳过会漏发信号（比浪费一次跑批严重得多）；照常跑两池，
+      由 _publication_decision 的降级口径（fallback_days ≤12 publish / >12 raise）裁决。
+    - 即：gate 前移只改变了"日历可用时的节假日"这一种情形的成本，其余一切路径行为不变。
+    """
+    if cal is None:
+        return "proceed"
+    return "skip" if signal_date not in cal else "proceed"
 
 
 def _publication_decision(cal, data_date: str, signal_date: str, fallback_days: int = 0):
@@ -3466,6 +3499,25 @@ def daily_cron():
 
     import requests
 
+    # ---- gate 前移：先拿日历做零成本预判定，非交易日直接 return（省两池下载+推理）----
+    # 日历拉取失败（重试后仍失败）→ cal=None → 预判定返回 proceed（fail-open：
+    # 日历失败 ≠ 今天非交易日，降级模式下必须照常跑两池，否则交易日会漏发信号）
+    today = datetime.now(ZoneInfo("Asia/Shanghai")).date()
+    signal_date = today.isoformat()
+    try:
+        cal = _cn_trading_calendar()
+    except Exception as e:  # pylint: disable=W0703
+        cal = None
+        print(f"[cron] ⚠️ 交易日历获取失败（已重试），进入 fail-open 降级: {e}")
+        cal_err = str(e)
+    else:
+        cal_err = None
+    early = _early_gate(cal, signal_date)
+    if early == "skip":
+        print(f"[cron] {signal_date} 非 A 股交易日（假日），gate 前移零成本跳过；最近排名见最近一份已发布信号")
+        return
+
+    print(f"[cron] {signal_date} 为交易日（或日历降级 fail-open）——启动两池训练/推理")
     res = daily_standalone.remote(topk=20, nd=2, market="csi1000")
     try:
         # nd=3 = chinext 批次A 网格胜出值 + 批次C 终审口径（低换手形态）
@@ -3477,20 +3529,10 @@ def daily_cron():
         print(f"[cron] ⚠️ chinext 池失败（不影响 csi1000 发布）: {chi_err_msg}")
     data_date = res["date"]  # 数据覆盖到的最后交易日
     print(f"[cron] 数据日历至 {data_date}")
-
-    today = datetime.now(ZoneInfo("Asia/Shanghai")).date()
-    signal_date = today.isoformat()  # 信号日期 = 使用日（07:00 发布今天用的信号）
     print(f"[cron] 信号日期 {signal_date}（基于数据日 {data_date} 的收盘数据）")
 
-    # 发布判定（交易日 gate + 数据新鲜度，交易日口径，见 _publication_decision docstring）
-    try:
-        cal = _cn_trading_calendar()
-    except Exception as e:
-        cal = None
-        print(f"[cron] ⚠️ 交易日历获取失败，进入 fail-open 降级: {e}")
-        cal_err = str(e)
-    else:
-        cal_err = None
+    # 完整发布判定（交易日 gate + 数据新鲜度，交易日口径，见 _publication_decision docstring）：
+    # 此处 skip 分支只在日历口径差异时兜底触发；主路径已在上方预判定
     fallback_days = (today - datetime.strptime(data_date, "%Y-%m-%d").date()).days
     action, detail = _publication_decision(cal, data_date, signal_date, fallback_days)
     print(f"[cron] {detail}")
