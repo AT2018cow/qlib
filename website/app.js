@@ -7,8 +7,8 @@ const NAME_MAP_URL = `${CSV_BASE}/code_name_map.csv`;
 
 // 池定义：suffix 决定信号/走势文件名（csi1000 无后缀=网站历史兼容；chinext 带 _chinext）
 const POOLS = {
-    csi1000: { label: '中证1000', suffix: '', desc: 'top20 · 20日收益排序分（非收益率预测）· nd2 执行口径' },
-    chinext: { label: '创业板', suffix: '_chinext', desc: 'top20 · 20日收益排序分（非收益率预测）· nd3 执行口径（等权基准）' },
+    csi1000: { label: '中证1000', suffix: '', desc: 'top20 · 预测未来 20 日收益 · nd2 执行口径' },
+    chinext: { label: '创业板', suffix: '_chinext', desc: 'top20 · 预测未来 20 日收益 · nd3 执行口径（等权基准）' },
 };
 const DEFAULT_POOL = 'csi1000';
 
@@ -118,7 +118,7 @@ async function main(pool) {
         </header>
         <div id="table-wrap">
             <table class="signal-table">
-                <thead><tr><th>#</th><th>代码</th><th>名称</th><th>模型评分<span class="muted" title="模型对20日收益的条件期望×100。截面IC≈0.10：只用于横截面排序，不构成单股幅度预测（头部个股实现收益系统性低于预测分数，详见策略方法论）">ⓘ</span></th><th>变化</th><th>近60日</th></tr></thead>
+                <thead><tr><th>#</th><th>代码</th><th>名称</th><th>预测20日收益</th><th>变化</th><th>近60日</th></tr></thead>
                 <tbody id="signal-rows"></tbody>
             </table>
         </div>
@@ -140,7 +140,7 @@ async function main(pool) {
             <tr><td class="rank">${r.rank}</td>
                 <td><code><a href="${r.sinaUrl}" target="_blank" rel="noopener">${r.instrument}</a></code></td>
                 <td class="name">${r.name}</td>
-                <td class="score red">${r.score}</td>
+                <td class="score red">+${r.score}%</td>
                 <td>${r.tag}</td>
                 <td class="spark">${r.spark}</td></tr>`).join('');
         // 移动卡片
@@ -149,7 +149,7 @@ async function main(pool) {
                 <div class="card-top"><span class="rank">${r.rank}</span>
                     <code><a href="${r.sinaUrl}" target="_blank" rel="noopener">${r.instrument}</a></code>
                     <span class="name">${r.name}</span>${r.tag}</div>
-                <div class="card-bottom"><span class="score red">${r.score}</span>${r.spark}</div>
+                <div class="card-bottom"><span class="score red">+${r.score}%</span>${r.spark}</div>
             </div>`).join('');
     };
 
