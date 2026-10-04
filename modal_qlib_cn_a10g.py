@@ -1430,7 +1430,8 @@ TUNE_WORKERS = 4  # 普通 modal run 模式（本地保持连接驱动 map），
     max_containers=TUNE_WORKERS,
 )
 def tune_one(params: dict, horizon: int = 20):
-    """给定一组 LGB 超参，训练（Alpha360 + N日标签 + long_train）并返回 test 段 Rank IC。
+    """给定一组 LGB 超参，训练生产候选（Alpha158 + 20日标签 + csi1000 + long_train）。
+    仅在 purge 后的 valid 段比较扣费后组合超额，Rank IC 作为诊断；test 不参与选参。
     供 --tune 并行搜索使用。LGB 是 CPU 模型，无需 GPU；max_containers=TUNE_WORKERS 限制并行数。
     容器会被 map 复用（一组容器跑多组参数），因此 init 用 skip_if_reg 防重复注册，
     Rank IC 用 dataset.prepare(DK_L) 拿 label——与 LGB 训练同路径；
