@@ -147,19 +147,22 @@ def prepare(force: bool = True):
     max_containers=8,
 )
 def freq_window(args: dict):
-    """重训点 worker：训练（purge 边界）→ 预测并回测执行区间 [T+1, T']。"""
-    import numpy as np
-    import pandas as pd
+    """重训点 worker：只训练并返回该模型负责区间的信号，不在这里重置账户回测。
+
+    retrain_asof 当日收盘完成训练并对当日打分；该分数供下一交易日执行。
+    signal_end 是下一次重训日前一交易日，因此各 worker 信号区间不重叠。
+    """
+    import pickle
+    import zlib
 
     import qlib
-    from qlib.backtest import backtest as normal_backtest
     from qlib.data.dataset import Dataset
     from qlib.model.base import Model
     from qlib.utils import init_instance_by_config
 
     from qlib_audit_fixes import last_matured_sample, purge_cfg_splits, read_trading_calendar
 
-    qlib.init(**{**_load_task(args["market"])["qlib_init"], "skip_if_reg": True})  # 容器复用时防重复初始化
+    qlib.init(**{**_load_task(args["market"])["qlib_init"], "skip_if_reg": True})
     cal = read_trading_calendar(DATA_DIR)
     horizon = args.get("horizon", 20)
     asof_i = bisect_left(cal, args["retrain_asof"])
@@ -167,6 +170,7 @@ def freq_window(args: dict):
     valid_start_i = valid_end_i - args.get("valid_sessions", 252) + 1
     if valid_start_i <= 0 or valid_end_i <= 0:
         raise RuntimeError(f"insufficient history at {args['retrain_asof']}")
+
     cfg = _load_task(args["market"])
     dk = cfg["task"]["dataset"]["kwargs"]
     seg = dk["segments"]
@@ -174,83 +178,164 @@ def freq_window(args: dict):
     train_end = last_matured_sample(cal, cal[valid_start_i], horizon)
     seg["train"] = ["2016-01-01", train_end]
     seg["valid"] = [cal[valid_start_i], cal[valid_end_i]]
-    seg["test"] = [args["eval_start"], args["eval_end"]]
+    seg["test"] = [args["retrain_asof"], args["signal_end"]]
     handler["start_time"] = "2015-01-01"
-    handler["end_time"] = args["eval_end"]
+    handler["end_time"] = args["signal_end"]
     handler["fit_start_time"] = "2016-01-01"
     handler["fit_end_time"] = train_end
     purge_cfg_splits(cfg, cal, horizon=horizon)
+
     m = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
     ds = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
     m.fit(ds)
     pred = m.predict(ds, segment="test")
     if pred.empty:
-        raise RuntimeError(f"empty predictions {args['eval_start']}~{args['eval_end']}")
-    executor = {"class": "SimulatorExecutor", "module_path": "qlib.backtest.executor",
-                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True}}
-    strategy = {"class": "TopkDropoutStrategy", "module_path": "qlib.contrib.strategy",
-                "kwargs": {"signal": pred, "topk": args["topk"], "n_drop": args["nd"]}}
-    # 新池（star/chinext 板块）为 ±20% 口径：阈值 0.195；回测窗口不得早于创业板改革日（board_rules guard）
-    if args["market"] in ("star_chn", "chinext", "star"):
-        from board_rules import star_chn_backtest_guard
-
-        star_chn_backtest_guard(args["eval_start"])
-    limit_th = 0.195 if args["market"] in ("star_chn", "chinext", "star") else 0.095
-    pm, _ = normal_backtest(strategy=strategy, executor=executor,
-                             start_time=args["eval_start"], end_time=args["eval_end"],
-                             account=100000000, benchmark=_bench_of(args["market"]),
-                             exchange_kwargs={"limit_threshold": limit_th, "deal_price": "close",
-                                              "open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5})
-    rep = pm["1day"][0]
-    excess = rep["return"] - rep["bench"] - rep["cost"]
-    if excess.empty:
-        raise RuntimeError("empty excess series")
-    return {"freq": args["freq"], "eval_start": args["eval_start"],
-            "daily": [round(float(v), 8) for v in excess.tolist()]}
+        raise RuntimeError(f"empty predictions {args['retrain_asof']}~{args['signal_end']}")
+    first_signal = str(pred.index.get_level_values(0).min())[:10]
+    last_signal = str(pred.index.get_level_values(0).max())[:10]
+    if first_signal != args["retrain_asof"] or last_signal != args["signal_end"]:
+        raise RuntimeError(
+            f"prediction coverage mismatch: got {first_signal}~{last_signal}, "
+            f"expected {args['retrain_asof']}~{args['signal_end']}"
+        )
+    payload = zlib.compress(pickle.dumps(pred, protocol=pickle.HIGHEST_PROTOCOL), level=6)
+    return {
+        "freq": args["freq"],
+        "retrain_asof": args["retrain_asof"],
+        "signal_end": args["signal_end"],
+        "n_rows": int(len(pred)),
+        "pred_zlib_pickle": payload,
+    }
 
 
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=8 * 3600)
 def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20, nd=2):
-    """主函数：日历索引划分重训点（区间 [cal[i+1], cal[i+freq]] 无缝衔接）。"""
+    """连续账户重训频率实验。
+
+    每个 worker 只负责一个模型谱系区间的预测；driver 拼接全部预测后只运行一次
+    TopkDropoutStrategy 回测。这样重训只替换模型，不清空持仓，也保证首个执行日
+    使用 retrain_asof 当日收盘生成的上一交易步信号。
+    """
     import json as _json
+    import pickle
+    import zlib
 
     import numpy as np
+    import pandas as pd
+    import qlib
+    from qlib.backtest import backtest as normal_backtest
 
     from qlib_audit_fixes import read_trading_calendar
 
     prepare.remote(force=True)
+    try:
+        vol.reload()
+    except Exception:
+        pass
     cal = read_trading_calendar(DATA_DIR)
     start_i = bisect_left(cal, eval_from)
+    if start_i >= len(cal) - 1 or cal[start_i] != eval_from:
+        raise ValueError("eval_from must be a trading day with a following execution day")
+
     results = {}
     for freq in [int(x) for x in freqs.split(",")]:
+        if freq < 1:
+            raise ValueError("retraining frequency must be positive")
         jobs = []
         i = start_i
         while i < len(cal) - 1:
-            jobs.append({"freq": freq, "retrain_asof": cal[i], "eval_start": cal[i + 1],
-                         "eval_end": cal[min(i + freq, len(cal) - 1)], "market": market,
-                         "topk": topk, "nd": nd})
+            # Model trained after bar i scores bar i itself; those scores execute on i+1.
+            # Stop its signal responsibility the day before the next retrain to avoid overlap.
+            signal_end_i = min(i + freq - 1, len(cal) - 1)
+            jobs.append({
+                "freq": freq,
+                "retrain_asof": cal[i],
+                "signal_end": cal[signal_end_i],
+                "market": market,
+                "topk": topk,
+                "nd": nd,
+            })
             i += freq
         print(f"[freq] freq={freq}: {len(jobs)} 个重训点")
+
         outs = list(freq_window.map(jobs))
-        daily, errs = [], 0
-        for o in outs:
-            if o.get("daily"):
-                daily.extend(o["daily"])
-            else:
-                errs += 1
-        x = np.array(daily)
+        chunks = []
+        for o in sorted(outs, key=lambda x: x["retrain_asof"]):
+            raw = zlib.decompress(o["pred_zlib_pickle"])
+            pred = pickle.loads(raw)
+            chunks.append(pred)
+        if not chunks:
+            raise RuntimeError(f"freq={freq}: no prediction chunks")
+
+        signal = pd.concat(chunks).sort_index()
+        if signal.index.has_duplicates:
+            raise RuntimeError(f"freq={freq}: duplicate signal rows across retrain chunks")
+        signal_days = signal.index.get_level_values(0)
+        expected_signal_start = cal[start_i]
+        if str(signal_days.min())[:10] != expected_signal_start:
+            raise RuntimeError("missing bootstrap signal on retrain/eval anchor")
+
+        execution_start = cal[start_i + 1]
+        execution_end = cal[-1]
+        qlib.init(**{**_load_task(market)["qlib_init"], "skip_if_reg": True})
+        if market in ("star_chn", "chinext", "star"):
+            from board_rules import star_chn_backtest_guard
+            star_chn_backtest_guard(execution_start)
+        limit_th = 0.195 if market in ("star_chn", "chinext", "star") else 0.095
+        executor = {
+            "class": "SimulatorExecutor",
+            "module_path": "qlib.backtest.executor",
+            "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
+        }
+        strategy = {
+            "class": "TopkDropoutStrategy",
+            "module_path": "qlib.contrib.strategy",
+            "kwargs": {"signal": signal, "topk": topk, "n_drop": nd},
+        }
+        pm, _ = normal_backtest(
+            strategy=strategy,
+            executor=executor,
+            start_time=execution_start,
+            end_time=execution_end,
+            account=100000000,
+            benchmark=_bench_of(market),
+            exchange_kwargs={
+                "limit_threshold": limit_th,
+                "deal_price": "close",
+                "open_cost": 0.0005,
+                "close_cost": 0.0015,
+                "min_cost": 5,
+            },
+        )
+        rep = pm["1day"][0]
+        excess = (rep["return"] - rep["bench"] - rep["cost"]).dropna()
+        if excess.empty:
+            raise RuntimeError(f"freq={freq}: empty continuous-account report")
+        x = excess.to_numpy(dtype=float)
         cum = np.cumsum(x)
         results[str(freq)] = {
-            "n_retrains": len(jobs), "n_errors": errs, "n_days": len(x),
+            "protocol": "continuous_account_v2",
+            "n_retrains": len(jobs),
+            "n_errors": 0,
+            "n_days": len(x),
+            "signal_start": expected_signal_start,
+            "execution_start": execution_start,
+            "execution_end": execution_end,
             "ann_excess": round(float(x.mean() * 238), 4),
             "ir": round(float(x.mean() / x.std(ddof=1) * np.sqrt(238)), 3),
             "max_drawdown": round(float((cum - np.maximum.accumulate(cum)).min()), 4),
             "positive_ratio": round(float((x > 0).mean()), 3),
         }
         print(f"[freq] freq={freq}: {results[str(freq)]}")
+
     out = VOL_ROOT / "freq_experiment"
     out.mkdir(parents=True, exist_ok=True)
     with (out / "results.json").open("w") as f:
-        _json.dump({"window": f"{eval_from}~{cal[-1]}", "market": market, "results": results}, f, indent=2)
+        _json.dump({
+            "protocol": "continuous_account_v2",
+            "window": f"{eval_from}~{cal[-1]}",
+            "market": market,
+            "results": results,
+        }, f, indent=2)
     vol.commit()
     return results
