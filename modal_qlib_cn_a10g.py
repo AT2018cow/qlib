@@ -441,11 +441,12 @@ def bench_years():
 
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=8, memory=24576, timeout=2 * 3600)
 def independent_recheck():
-    """终审：完全独立实现的端到端复算（不经过 _load_and_patch_cfg / risk_analysis 等任何本文件公共代码）。
-    目标窗口：csi1000 w09 (test 2023-01-01~2023-03-31)，管道报告 excess_total = -0.0163。
-    手写全部配置：handler / processors / label / LGB 超参 / 回测参数 / 超额计算。"""
-    import numpy as np
-    import pandas as pd
+    """终审独立复算：不用主管道配置/purge helper，手工复现当前 Batch C w09。
+
+    独立实现仍必须遵守与生产相同的 20 交易日标签成熟边界；否则验证集末端
+    会读取测试期价格参与 LightGBM early stopping，失去独立审计意义。
+    """
+    from bisect import bisect_left, bisect_right
 
     import qlib
     from qlib.backtest import backtest as normal_backtest
@@ -464,21 +465,51 @@ def independent_recheck():
         },
     )
 
-    # ---- 手写 task 配置（对照 lgb158 yaml + 修复后批次C窗口 w09 的语义）----
+    # ---- 独立读取交易日历并手工推导成熟边界（刻意不调用 purge_cfg_splits）----
+    calendar = [
+        line.strip()[:10]
+        for line in (DATA_DIR / "calendars" / "day.txt").read_text().splitlines()
+        if line.strip()
+    ]
+    if not calendar or calendar != sorted(set(calendar)):
+        raise RuntimeError("invalid trading calendar in independent recheck")
+    horizon = 20
+
+    def _last_matured_before(next_start: str) -> str:
+        first_next = bisect_left(calendar, next_start)
+        candidate = first_next - horizon - 1
+        if candidate < 0 or first_next >= len(calendar):
+            raise RuntimeError(f"insufficient calendar before {next_start}")
+        if candidate + horizon >= first_next:
+            raise AssertionError("maturity boundary calculation failed")
+        return calendar[candidate]
+
+    raw_train_end = "2022-09-30"
+    raw_valid_end = "2022-12-31"
+    valid_start = "2022-10-01"
+    test_start = "2023-01-01"
+    train_end = min(raw_train_end, _last_matured_before(valid_start))
+    valid_end = min(raw_valid_end, _last_matured_before(test_start))
+    if bisect_right(calendar, train_end) - 1 + horizon >= bisect_left(calendar, valid_start):
+        raise AssertionError("train labels leak into validation")
+    if bisect_right(calendar, valid_end) - 1 + horizon >= bisect_left(calendar, test_start):
+        raise AssertionError("validation labels leak into test")
+
+    # ---- 手写当前 lgb158 YAML + Alpha158 默认处理器；不经过 _load_and_patch_cfg ----
     task = {
         "model": {
             "class": "LGBModel",
             "module_path": "qlib.contrib.model.gbdt",
             "kwargs": {
                 "loss": "mse",
-                "colsample_bytree": 0.8879,
-                "learning_rate": 0.0421,
-                "subsample": 0.8789,
+                "colsample_bytree": 0.9,
+                "learning_rate": 0.1,
+                "subsample": 0.9,
                 "lambda_l1": 205.6999,
                 "lambda_l2": 580.9768,
                 "max_depth": 8,
-                "num_leaves": 210,
-                "num_threads": 8,
+                "num_leaves": 250,
+                "num_threads": 20,
             },
         },
         "dataset": {
@@ -492,23 +523,20 @@ def independent_recheck():
                         "start_time": "2015-01-01",
                         "end_time": "2023-03-31",
                         "fit_start_time": "2016-01-01",
-                        "fit_end_time": "2022-09-30",
+                        "fit_end_time": train_end,
                         "instruments": "csi1000",
                         "label": ["Ref($close, -20)/$close - 1"],
-                        "infer_processors": [
-                            {"class": "RobustZScoreNorm", "kwargs": {"fields_group": "feature", "clip_outlier": True}},
-                            {"class": "Fillna", "kwargs": {"fields_group": "feature"}},
-                        ],
+                        "infer_processors": [],
                         "learn_processors": [
                             {"class": "DropnaLabel"},
-                            {"class": "CSRankNorm", "kwargs": {"fields_group": "label"}},
+                            {"class": "CSZScoreNorm", "kwargs": {"fields_group": "label"}},
                         ],
                     },
                 },
                 "segments": {
-                    "train": ["2016-01-01", "2022-09-30"],
-                    "valid": ["2022-10-01", "2022-12-31"],
-                    "test": ["2023-01-01", "2023-03-31"],
+                    "train": ["2016-01-01", train_end],
+                    "valid": [valid_start, valid_end],
+                    "test": [test_start, "2023-03-31"],
                 },
             },
         },
@@ -531,7 +559,7 @@ def independent_recheck():
     pm, _ = normal_backtest(
         strategy=strategy,
         executor=executor,
-        start_time="2023-01-01",
+        start_time=test_start,
         end_time="2023-03-31",
         account=100000000,
         benchmark="SH000852",
@@ -544,17 +572,22 @@ def independent_recheck():
         },
     )
     rep = pm["1day"][0]
-    # 手动计算有成本超额（不用 risk_analysis）
     excess = rep["return"] - rep["bench"] - rep["cost"]
     result = {
         "excess_total": round(float(excess.sum()), 4),
         "daily_mean": round(float(excess.mean()), 6),
         "n_days": int(len(excess)),
+        "train_end": train_end,
+        "valid_end": valid_end,
     }
+    # 当前已重跑、带 purge 的 Batch C w09 存档值。
+    expected_excess = -0.0298
+    diff = abs(result["excess_total"] - expected_excess)
     print(f"[recheck] 独立实现: {result}")
-    print(f"[recheck] 管道报告: {{'excess_total': -0.0163, 'daily_mean': -0.000277, 'n_days': 59}}")
-    diff = abs(result["excess_total"] - (-0.0163))
+    print(f"[recheck] 当前 Batch C w09: excess_total={expected_excess}")
     print(f"[recheck] 偏差: {diff:.4f} ({'✅ 一致' if diff < 0.005 else '❌ 需排查'})")
+    if diff >= 0.005:
+        raise RuntimeError("independent recheck diverges from current purged Batch C w09")
     return result
 
 
