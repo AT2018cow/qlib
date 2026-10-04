@@ -2,15 +2,6 @@
   "window": "2021-01-04~2026-09-18",
   "market": "csi1000",
   "results": {
-    "60": {
-      "n_retrains": 24,
-      "n_errors": 0,
-      "n_days": 1385,
-      "ann_excess": 0.1045,
-      "ir": 0.649,
-      "max_drawdown": -0.2717,
-      "positive_ratio": 0.499
-    },
     "20": {
       "n_retrains": 70,
       "n_errors": 0,
@@ -19,6 +10,18 @@
       "ir": 0.737,
       "max_drawdown": -0.328,
       "positive_ratio": 0.504
+    },
+    "60": {
+      "n_retrains": 24,
+      "n_errors": 0,
+      "n_days": 1385,
+      "ann_excess": 0.1045,
+      "ir": 0.649,
+      "max_drawdown": -0.2717,
+      "positive_ratio": 0.499
     }
-  }
+  },
+  "protocol": "segmented_account_v1_legacy",
+  "status": "superseded_needs_continuous_account_rerun",
+  "warning": "Legacy frequency results reset the portfolio at every retrain segment and omit the prior-bar bootstrap signal. Do not use these 20-vs-60 figures to select production retraining frequency; rerun freq_driver with continuous_account_v2."
 }
