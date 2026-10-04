@@ -526,7 +526,15 @@ def independent_recheck():
                         "fit_end_time": train_end,
                         "instruments": "csi1000",
                         "label": ["Ref($close, -20)/$close - 1"],
-                        "infer_processors": [],
+                        # Alpha158 类默认 infer 处理器（YAML 未指定 processors，生产走类默认；
+                        # review 2026-10-05：[] 与生产不符——ProcessInf/Fillna 处理 inf/nan 的方式
+                        # 会影响 LGB 输入，必须镜像）。fit_start/fit_end 由 Alpha158.__init__
+                        # 的 check_transform_proc 自动注入。
+                        "infer_processors": [
+                            {"class": "ProcessInf", "kwargs": {}},
+                            {"class": "ZScoreNorm", "kwargs": {}},
+                            {"class": "Fillna", "kwargs": {}},
+                        ],
                         "learn_processors": [
                             {"class": "DropnaLabel"},
                             {"class": "CSZScoreNorm", "kwargs": {"fields_group": "label"}},

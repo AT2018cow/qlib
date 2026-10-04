@@ -48,6 +48,11 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn('"CSZScoreNorm"', src)
         self.assertNotIn('"CSRankNorm"', src)
         self.assertIn("expected_excess = -0.0298", src)
+        # Alpha158 类默认 infer 处理器必须镜像（review 2026-10-05：[] 与生产不符）
+        self.assertIn('"ProcessInf"', src)
+        self.assertIn('"ZScoreNorm"', src)
+        self.assertIn('"Fillna"', src)
+        self.assertNotIn('"infer_processors": []', src)
 
 
 if __name__ == "__main__":
