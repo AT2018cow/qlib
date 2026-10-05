@@ -42,16 +42,20 @@ from board_rules import (
 )
 from qlib.backtest.exchange import Exchange
 
-_NOMINAL = {"star": TH_20, "chinext": TH_20, "main": TH_10, "bse": TH_30}
+_EXEC_NOMINAL = {"star": 0.20, "chinext": 0.20, "main": 0.10, "bse": 0.30}
 
 
 def board_thresholds(insts, dates) -> np.ndarray:
-    """Vectorized per-row nominal limit threshold; NaN = no limit (index/new-listing)."""
+    """Vectorized statutory limit ratios for execution; NaN = no price limit.
+
+    These are exact exchange ratios (10/20/30/5%), deliberately separate from
+    board_rules.TH_* audit filters (9.5/19.5/29.5/4.5%).
+    """
     inst_arr = np.asarray([str(s) for s in insts])
-    boards = np.array([_NOMINAL.get(_board_quick(s), np.nan) for s in inst_arr], dtype=float)
+    boards = np.array([_EXEC_NOMINAL.get(_board_quick(s), np.nan) for s in inst_arr], dtype=float)
     date_strs = np.array([str(d)[:10] for d in dates])
     reform_mask = np.array([s.startswith("SZ3") for s in inst_arr]) & (date_strs < CHINEXT_REFORM)
-    boards = np.where(boards == TH_20, np.where(reform_mask, TH_10, TH_20), boards)
+    boards = np.where(boards == 0.20, np.where(reform_mask, 0.10, 0.20), boards)
     return boards
 
 
@@ -103,14 +107,22 @@ def compute_limit_masks(insts, dates, open_px, prev_close, close_na,
         # STAR/BSE keep their board limits.
         main_old = st_mask & (board_kind == "main") & (date_strs < MAIN_ST_10_START)
         chn_old = st_mask & (board_kind == "chinext") & (date_strs < CHINEXT_REFORM)
-        thr = np.where(main_old | chn_old, TH_5, thr)
+        thr = np.where(main_old | chn_old, 0.05, thr)
     open_arr = np.asarray(open_px, dtype=float)
     prev_arr = np.asarray(prev_close, dtype=float)
     with np.errstate(invalid="ignore", divide="ignore"):
         gap = open_arr / prev_arr - 1.0
     valid_prev = np.isfinite(prev_arr) & (prev_arr > 0)
-    limit_up = np.where(valid_prev & ~np.isnan(thr), gap >= thr, False)
-    limit_down = np.where(valid_prev & ~np.isnan(thr), gap <= -thr, False)
+    limited = valid_prev & ~np.isnan(thr)
+
+    # A-share/BSE stock prices use a 0.01 CNY minimum tick.  Compare against
+    # the rounded limit *price*, not a 9.5% audit-margin return threshold.
+    # floor(x*100 + 0.5)/100 implements decimal half-up rounding for positive prices.
+    upper_px = np.floor(prev_arr * (1.0 + np.nan_to_num(thr, nan=0.0)) * 100.0 + 0.5) / 100.0
+    lower_px = np.floor(prev_arr * (1.0 - np.nan_to_num(thr, nan=0.0)) * 100.0 + 0.5) / 100.0
+    eps = 1e-8
+    limit_up = np.where(limited, open_arr >= upper_px - eps, False)
+    limit_down = np.where(limited, open_arr <= lower_px + eps, False)
     high_open = np.where(valid_prev, gap > float(high_open_block), False) if high_open_block is not None else np.zeros_like(valid_prev, dtype=bool)
     if listing_dates and calendar:
         cal_idx = {d: i for i, d in enumerate(calendar)}
