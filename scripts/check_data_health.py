@@ -154,8 +154,12 @@ class DataHealthChecker:
                         large_steps = pct_change[pct_change > threshold]
                         result_dict["instruments"].append(filename)
                         result_dict["col_name"].append(col)
-                        result_dict["date"].append(large_steps.index.to_list()[0][1].strftime("%Y-%m-%d"))
-                        result_dict["pct_change"].append(pct_change.max())
+                        first_idx = large_steps.index.to_list()[0]
+                        date_idx = first_idx[-1] if isinstance(first_idx, tuple) else first_idx
+                        if hasattr(date_idx, "strftime"):
+                            date_idx = date_idx.strftime("%Y-%m-%d")
+                        result_dict["date"].append(str(date_idx))
+                        result_dict["pct_change"].append(float(pct_change.max()))
                         affected_columns.append(col)
 
         result_df = pd.DataFrame(result_dict).set_index("instruments")
