@@ -32,7 +32,7 @@ from typing import Dict, Optional
 import numpy as np
 import pandas as pd
 
-from board_rules import CHINEXT_REFORM, TH_10, TH_20, TH_30
+from board_rules import CHINEXT_REFORM, TH_5, TH_10, TH_20, TH_30
 from qlib.backtest.exchange import Exchange
 
 _NOMINAL = {"star": TH_20, "chinext": TH_20, "main": TH_10, "bse": TH_30}
@@ -72,7 +72,8 @@ def _board_quick(symbol: str) -> str:
 def compute_limit_masks(insts, dates, open_px, prev_close, close_na,
                         high_open_block: float = 0.05,
                         listing_dates: Optional[Dict[str, str]] = None,
-                        calendar=None) -> tuple:
+                        calendar=None,
+                        st_symbols: Optional[set[str]] = None) -> tuple:
     """Pure limit-mask computation (unit-testable, no qlib dependency).
 
     Returns (limit_buy, limit_sell) boolean arrays aligned with the inputs.
@@ -87,6 +88,9 @@ def compute_limit_masks(insts, dates, open_px, prev_close, close_na,
     """
     inst_arr = np.asarray([str(s) for s in insts])
     thr = board_thresholds(inst_arr, dates)
+    if st_symbols:
+        st = {str(x).upper() for x in st_symbols}
+        thr = np.where(np.array([x.upper() in st for x in inst_arr]), TH_5, thr)
     open_arr = np.asarray(open_px, dtype=float)
     prev_arr = np.asarray(prev_close, dtype=float)
     with np.errstate(invalid="ignore", divide="ignore"):
@@ -117,9 +121,11 @@ class BoardAwareExchange(Exchange):
     execution-day protection. See module docstring."""
 
     def __init__(self, *args, high_open_block: float = 0.05,
-                 enforce_board_limits: bool = True, **kwargs):
+                 enforce_board_limits: bool = True,
+                 st_symbols: Optional[list[str]] = None, **kwargs):
         self._high_open_block = float(high_open_block)
         self._enforce = bool(enforce_board_limits)
+        self._st_symbols = {str(x).upper() for x in (st_symbols or [])}
         # $open is the fill price (R25); Ref($close,1) is the open-gap reference.
         extra = ["$open", "Ref($close,1)"]
         kwargs["subscribe_fields"] = list(kwargs.get("subscribe_fields") or []) + extra
@@ -144,6 +150,7 @@ class BoardAwareExchange(Exchange):
             high_open_block=self._high_open_block,
             listing_dates=listing_dates,
             calendar=calendar,
+            st_symbols=self._st_symbols,
         )
         df["limit_buy"] = limit_buy
         df["limit_sell"] = limit_sell
@@ -155,12 +162,12 @@ class BoardAwareExchange(Exchange):
         wanted = [s for s in insts if _board_quick(str(s)) in ("star", "chinext")]
         if not wanted:
             return {}
-        spans = D.list_instruments(D.instruments("all"), as_list=True)
+        spans = D.list_instruments(D.instruments("all"), as_list=False)
         out = {}
         for inst in wanted:
             ss = spans.get(inst)
             if ss:
-                out[inst] = min(s for s, _ in ss)
+                out[inst] = str(min(s for s, _ in ss))[:10]
         return out
 
     def _full_calendar(self, dates) -> list:
@@ -170,25 +177,35 @@ class BoardAwareExchange(Exchange):
         return [str(x)[:10] for x in D.calendar(start_time="2000-01-01", end_time=end)]
 
 
-def research_exchange() -> dict:
-    """Standard research backtest exchange config.
+def research_exchange(start_time: str, end_time: str, codes="all",
+                      st_symbols: Optional[list[str]] = None) -> dict:
+    """Backtest kwargs that actually instantiate :class:`BoardAwareExchange`.
 
-    R25 (implemented): T+1 open fill — matching the production protocol
-    "T close data -> T score -> 07:00 publish -> T+1 open execution".
-    Returns a FLAT dict of Exchange kwargs: the backtest pipeline splats
-    exchange_kwargs directly to get_exchange(**kwargs), so a nested class
-    config does not work in this code path.
-
-    R24 (deferred): board-aware per-instrument price limits. The scalar
-    0.095 over-blocks ChiNext/STAR members at 10–19.5% moves but never
-    under-blocks main board. A custom Exchange subclass requires a
-    different injection mechanism (see 09-remaining R24); until then the
-    conservative threshold is kept as a known, documented approximation.
+    Qlib's `backtest(..., exchange_kwargs=...)` splats the dictionary into
+    `get_exchange`.  Therefore the custom exchange must be supplied through
+    the dedicated `exchange` argument; placing class/module_path beside the
+    ordinary kwargs only creates a normal Exchange.  Start/end are embedded in
+    the class config because get_exchange does not merge its outer dates into
+    a supplied exchange config.
     """
+    if not start_time or not end_time:
+        raise ValueError("research_exchange requires explicit start_time/end_time")
     return {
-        "deal_price": "open",
-        "limit_threshold": 0.095,
-        "open_cost": 0.0005,
-        "close_cost": 0.0015,
-        "min_cost": 5,
+        "exchange": {
+            "class": "BoardAwareExchange",
+            "module_path": "board_execution",
+            "kwargs": {
+                "freq": "day",
+                "start_time": str(start_time),
+                "end_time": str(end_time),
+                "codes": codes,
+                "deal_price": "open",
+                "limit_threshold": None,
+                "high_open_block": 0.05,
+                "st_symbols": list(st_symbols or []),
+                "open_cost": 0.0005,
+                "close_cost": 0.0015,
+                "min_cost": 5,
+            },
+        }
     }
