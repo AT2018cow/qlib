@@ -1348,9 +1348,15 @@ def _apply_paper_portfolio(res: dict, usage_date: str, topk: int, nd: int) -> di
         # reproduce the immutable artifact byte-for-byte from persisted history.
         execution_report = pp.history[-1]
     ctx = res.get("paper_context") or {}
+    awaiting_execution_data = False
     if pp.pending_signal is not None:
         pending_date = pp.pending_signal["execution_date"]
-        if pending_date <= res["date"]:
+        if pending_date > res["date"]:
+            # The ranking publication gate permits a one-session stale provider.
+            # In that case the prior order's execution bar is not available yet:
+            # keep the old pending order unchanged and do not invent a new one.
+            awaiting_execution_data = True
+        else:
             if ctx.get("status") != "ready" or ctx.get("execution_date") != pending_date:
                 raise RuntimeError(
                     f"paper execution context unavailable for {market} {pending_date}: {ctx.get('status')}"
@@ -1363,7 +1369,16 @@ def _apply_paper_portfolio(res: dict, usage_date: str, topk: int, nd: int) -> di
             )
 
     planned = None
-    if pp.pending_signal is None:
+    if awaiting_execution_data:
+        p = pp.pending_signal
+        planned = {
+            "signal_date": p["signal_date"],
+            "execution_date": p["execution_date"],
+            "sell": p.get("planned_sell", []),
+            "buy": p.get("planned_buy", []),
+            "status": "awaiting_execution_data",
+        }
+    elif pp.pending_signal is None:
         planned = pp.plan_signal(
             signal_date=res["date"],
             execution_date=usage_date,
