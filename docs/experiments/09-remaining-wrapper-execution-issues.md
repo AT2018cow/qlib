@@ -16,6 +16,8 @@ The implementation status below supersedes the original "deferred" wording in th
 
 ### R24 implementation note
 
+Qlib core was not modified. **Historical Batch C / retraining-frequency numbers must be re-baselined before they are quoted under this protocol**, because the previous artifacts used the scalar 9.5% execution approximation. The independent recheck no longer compares the board-aware result to the stale scalar-limit `-2.23%` w09 anchor; it will automatically re-enable fail-closed comparison once a `board_aware_open_bootstrap_v3` Batch C artifact is committed.
+
 Qlib core was not modified. `research_exchange(start_time, end_time, codes=...)` now supplies a `BoardAwareExchange` config under Qlib's dedicated `exchange` argument. The strategy uses direction-specific price-limit checks (`forbid_all_trade_at_limit=False`) so a limit-up stock can still be sold and a limit-down stock can still be bought when the opposite side is executable.
 
 The optional "open > previous close by 5%" buy rule is intentionally **not** part of historical statutory price-limit masks. It is applied in the paper/live execution planner as a separate operational rule.
