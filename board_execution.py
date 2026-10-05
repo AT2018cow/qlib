@@ -78,7 +78,8 @@ def compute_limit_masks(insts, dates, open_px, prev_close, close_na,
                         high_open_block: Optional[float] = None,
                         listing_dates: Optional[Dict[str, str]] = None,
                         calendar=None,
-                        st_symbols: Optional[set[str]] = None) -> tuple:
+                        st_symbols: Optional[set[str]] = None,
+                        uniform_limit_ratio: Optional[float] = None) -> tuple:
     """Pure limit-mask computation (unit-testable, no qlib dependency).
 
     Returns (limit_buy, limit_sell) boolean arrays aligned with the inputs.
@@ -96,8 +97,16 @@ def compute_limit_masks(insts, dates, open_px, prev_close, close_na,
     date_strs = np.asarray([str(d)[:10] for d in dates])
     if len(inst_arr) != len(date_strs):
         raise ValueError("insts and dates must have the same length")
-    thr = board_thresholds(inst_arr, date_strs)
-    if st_symbols:
+    if uniform_limit_ratio is not None:
+        if not (0 < float(uniform_limit_ratio) < 1):
+            raise ValueError("uniform_limit_ratio must be in (0, 1)")
+        # Attribution control B: reproduce the old one-size-fits-all policy,
+        # but calculate it only from execution-day open / previous close.
+        # Listing/ST/board exceptions are intentionally disabled in this mode.
+        thr = np.full(len(inst_arr), float(uniform_limit_ratio), dtype=float)
+    else:
+        thr = board_thresholds(inst_arr, date_strs)
+    if st_symbols and uniform_limit_ratio is None:
         st = {str(x).upper() for x in st_symbols}
         st_mask = np.array([x.upper() in st for x in inst_arr])
         board_kind = np.array([_board_quick(x) for x in inst_arr])
@@ -124,7 +133,7 @@ def compute_limit_masks(insts, dates, open_px, prev_close, close_na,
     limit_up = np.where(limited, open_arr >= upper_px - eps, False)
     limit_down = np.where(limited, open_arr <= lower_px + eps, False)
     high_open = np.where(valid_prev, gap > float(high_open_block), False) if high_open_block is not None else np.zeros_like(valid_prev, dtype=bool)
-    if listing_dates and calendar:
+    if listing_dates and calendar and uniform_limit_ratio is None:
         cal_idx = {d: i for i, d in enumerate(calendar)}
         d_idx = np.array([cal_idx.get(str(d)[:10], -1) for d in dates])
         for inst, listing in listing_dates.items():
@@ -159,10 +168,14 @@ class BoardAwareExchange(Exchange):
 
     def __init__(self, *args, high_open_block: Optional[float] = None,
                  enforce_board_limits: bool = True,
-                 st_symbols: Optional[list[str]] = None, **kwargs):
+                 st_symbols: Optional[list[str]] = None,
+                 uniform_limit_ratio: Optional[float] = None, **kwargs):
         self._high_open_block = None if high_open_block is None else float(high_open_block)
         self._enforce = bool(enforce_board_limits)
         self._st_symbols = {str(x).upper() for x in (st_symbols or [])}
+        self._uniform_limit_ratio = (
+            None if uniform_limit_ratio is None else float(uniform_limit_ratio)
+        )
         # $open is the fill price (R25); Ref($close,1) is the open-gap reference.
         extra = ["$open", "Ref($close,1)"]
         kwargs["subscribe_fields"] = list(kwargs.get("subscribe_fields") or []) + extra
@@ -188,6 +201,7 @@ class BoardAwareExchange(Exchange):
             listing_dates=listing_dates,
             calendar=calendar,
             st_symbols=self._st_symbols,
+            uniform_limit_ratio=self._uniform_limit_ratio,
         )
         df["limit_buy"] = limit_buy
         df["limit_sell"] = limit_sell
@@ -215,7 +229,8 @@ class BoardAwareExchange(Exchange):
 
 
 def research_exchange(start_time: str, end_time: str, codes="all",
-                      st_symbols: Optional[list[str]] = None) -> dict:
+                      st_symbols: Optional[list[str]] = None,
+                      high_open_block: Optional[float] = None) -> dict:
     """Backtest kwargs that actually instantiate :class:`BoardAwareExchange`.
 
     Qlib's `backtest(..., exchange_kwargs=...)` splats the dictionary into
@@ -238,8 +253,58 @@ def research_exchange(start_time: str, end_time: str, codes="all",
                 "codes": codes,
                 "deal_price": "open",
                 "limit_threshold": None,
-                "high_open_block": None,
+                "high_open_block": high_open_block,
                 "st_symbols": list(st_symbols or []),
+                "open_cost": 0.0005,
+                "close_cost": 0.0015,
+                "min_cost": 5,
+            },
+        }
+    }
+
+
+def legacy_scalar_exchange() -> dict:
+    """Exact legacy v2 execution control (A).
+
+    This intentionally preserves the old Qlib scalar-limit behavior:
+    limit_threshold=0.095 is evaluated from the execution day's full-day
+    $change even though the fill price is the open. It is therefore a
+    look-ahead diagnostic only and must never be used as production logic.
+    """
+    return {
+        "deal_price": "open",
+        "limit_threshold": 0.095,
+        "open_cost": 0.0005,
+        "close_cost": 0.0015,
+        "min_cost": 5,
+    }
+
+
+def uniform_open_exchange(start_time: str, end_time: str, codes="all",
+                          ratio: float = 0.095) -> dict:
+    """Uniform limit control evaluated only from open / previous close (B).
+
+    The default 9.5% exactly preserves the legacy scalar threshold while
+    removing the same-day-close oracle. Keeping threshold and strategy
+    semantics fixed makes A->B an attribution of information timing rather
+    than a simultaneous market-rule change.
+    """
+    if not start_time or not end_time:
+        raise ValueError("uniform_open_exchange requires explicit start_time/end_time")
+    return {
+        "exchange": {
+            "class": "BoardAwareExchange",
+            "module_path": "board_execution",
+            "kwargs": {
+                "freq": "day",
+                "start_time": str(start_time),
+                "end_time": str(end_time),
+                "codes": codes,
+                "deal_price": "open",
+                "limit_threshold": None,
+                "uniform_limit_ratio": float(ratio),
+                "high_open_block": None,
+                "st_symbols": [],
                 "open_cost": 0.0005,
                 "close_cost": 0.0015,
                 "min_cost": 5,
