@@ -3244,12 +3244,27 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
     saved = json.loads(meta_file.read_text()) if meta_file.exists() else None
     if saved is not None and saved.get("signature") != signature:
         raise RuntimeError("Model cache signature mismatch")
-    # 重训节律（两池同步）：①无缓存 → bootstrap；②全局锚定时钟 due（origin=2026-09-18 bar，
+    # R27: compare the current provider prefix against exactly the history that
+    # the cached model could have seen. A newly appended bar is outside the
+    # saved fit_asof cutoff and therefore does not invalidate the cache.
+    cached_data_fingerprint = None
+    data_revision = False
+    if saved is not None:
+        cached_data_fingerprint = provider_training_fingerprint(data_dir, market, saved["fit_asof"])
+        data_revision = saved.get("data_fingerprint") != cached_data_fingerprint
+        if data_revision:
+            print(
+                f"[daily] 历史数据指纹变化：cached={saved.get('data_fingerprint')} "
+                f"current={cached_data_fingerprint}，强制重训"
+            )
+    # 重训节律（两池同步）：①无缓存 → bootstrap；②历史训练前缀发生修订 → 重训；
+    # ③全局锚定时钟 due（origin=2026-09-18 bar，
     # 每 20 个交易日两池同日重训、fit 窗口完全一致）——若本 bar 已 fit（同日重跑）则跳过，
     # 避免无谓重训（review 2026-10-02：due 不看已 fit bar 会让 due 日重跑必重训 ~15 分钟）；
     # ③自 20-session 自愈兜底（错过 due 日时各池按自身节律恢复，下一全局 due 日重新对齐）
     train_now = (
         saved is None
+        or data_revision
         or (retrain_due_calendar(calendar, asof, interval=RETRAIN_EVERY_SESSIONS)
             and saved["fit_asof"] != asof)
         or should_retrain(calendar, asof, saved["fit_asof"], interval=RETRAIN_EVERY_SESSIONS)
@@ -3267,6 +3282,7 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
             "fit_start": cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["fit_start_time"],
             "fit_end": cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["fit_end_time"],
             "runtime_lineage": runtime_lineage,
+            "data_fingerprint": provider_training_fingerprint(data_dir, market, asof),
         }
         tmp_model = cache_dir / f".{signature}.{os.getpid()}.tmp"
         tmp_meta = cache_dir / f".{signature}.{os.getpid()}.json.tmp"
@@ -3292,6 +3308,7 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
             or not saved.get("model_sha256")
             or saved.get("fit_end") != saved.get("train", [None, None])[-1]
             or saved.get("runtime_lineage") != runtime_lineage
+            or saved.get("data_fingerprint") != cached_data_fingerprint
         ):
             raise RuntimeError("Invalid cached model split metadata")
         if hashlib.sha256(model_file.read_bytes()).hexdigest() != saved["model_sha256"]:
