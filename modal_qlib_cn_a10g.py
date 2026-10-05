@@ -1313,10 +1313,12 @@ def _paper_execution_context(data_dir, market: str, calendar: list[str], asof: s
     }
 
 
-def _apply_paper_portfolio(res: dict, usage_date: str, topk: int, nd: int) -> str:
-    """Apply a gated daily result to the persistent paper portfolio.
+def _apply_paper_portfolio(res: dict, usage_date: str, topk: int, nd: int) -> dict:
+    """Propose the next persistent paper state without committing it.
 
-    Returns a JSON artifact suitable for immutable GitHub publication.
+    Cron publishes the immutable artifact first and only then writes state to
+    the Modal Volume, preventing a failed GitHub push from advancing the
+    account lineage.
     """
     import json as _json
     from paper_portfolio import PaperPortfolio
@@ -1388,8 +1390,6 @@ def _apply_paper_portfolio(res: dict, usage_date: str, topk: int, nd: int) -> st
             "idempotent": True,
         }
 
-    pp.save(state_path)
-    vol.commit()
     artifact = {
         "state_version": 2,
         "market": market,
@@ -1406,7 +1406,11 @@ def _apply_paper_portfolio(res: dict, usage_date: str, topk: int, nd: int) -> st
             "settled on the next data refresh using the recorded execution-day open."
         ),
     }
-    return _json.dumps(artifact, ensure_ascii=False, indent=2) + "\n"
+    return {
+        "artifact_json": _json.dumps(artifact, ensure_ascii=False, indent=2) + "\n",
+        "state_path": str(state_path),
+        "state_json": _json.dumps(pp.to_dict(), ensure_ascii=False, indent=2) + "\n",
+    }
 
 
 def _daily_impl(
