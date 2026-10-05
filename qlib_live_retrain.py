@@ -12,7 +12,7 @@ from qlib_audit_fixes import last_matured_sample, purge_cfg_splits
 
 RETRAIN_EVERY_SESSIONS = 20
 VALIDATION_SESSIONS = 252
-MODEL_CACHE_VERSION = 1
+MODEL_CACHE_VERSION = 2
 # 全局重训锚点（bar 日期）：两池共用同一重训时钟的相位原点。
 # 选 2026-09-18 = csi1000 现役谱系的真实 fit bar（09-21 使用日 bootstrap 重训），
 # 使创业板谱系回放与生产既有节律同相位；此后每 20 个交易日两池同日重训。
@@ -104,10 +104,12 @@ def should_retrain(calendar: list[str], asof: str, previous_fit: str | None,
 
 def cache_signature(cfg: dict, *, horizon: int = 20,
                     train_start: str = '2016-01-01',
-                    validation_sessions: int = VALIDATION_SESSIONS) -> str:
-    """Change cache key if model, handler/instrument or split policy changes.
+                    validation_sessions: int = VALIDATION_SESSIONS,
+                    runtime_lineage: dict | None = None) -> str:
+    """Change cache key if model semantics, universe policy or runtime lineage changes.
 
-    Exclude rolling dates: otherwise every new daily bar invalidates the cache.
+    Rolling dates are excluded so each new daily bar does not invalidate the model.
+    runtime_lineage is for stable code/dependency fingerprints, not the latest data date.
     """
     task = cfg['task']
     handler = task['dataset']['kwargs']['handler']
@@ -118,5 +120,6 @@ def cache_signature(cfg: dict, *, horizon: int = 20,
               'infer_processors': opts.get('infer_processors', []),
               'learn_processors': opts.get('learn_processors', 'Alpha158Default'),
               'horizon': horizon, 'train_start': train_start,
-              'validation_sessions': validation_sessions}
+              'validation_sessions': validation_sessions,
+              'runtime_lineage': runtime_lineage or {}}
     return hashlib.sha256(json.dumps(stable, sort_keys=True, default=str).encode()).hexdigest()[:24]
