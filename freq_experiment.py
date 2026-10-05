@@ -42,7 +42,7 @@ image = (
     )
     .run_commands(
         "cd /root/qlib && pip install . --no-build-isolation --no-deps",
-        "cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/qlib/board_rules.py /root/qlib/board_execution.py /root/",
+        "cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/qlib/board_rules.py /root/qlib/board_execution.py /root/qlib/portfolio_performance.py /root/",
     )
 )
 
@@ -222,12 +222,12 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
     import pickle
     import zlib
 
-    import numpy as np
     import pandas as pd
     import qlib
     from qlib.backtest import backtest as normal_backtest
 
     from qlib_audit_fixes import read_trading_calendar
+    from portfolio_performance import portfolio_performance
 
     prepare.remote(force=True)
     try:
@@ -306,20 +306,38 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
         excess = (rep["return"] - rep["bench"] - rep["cost"]).dropna()
         if excess.empty:
             raise RuntimeError(f"freq={freq}: empty continuous-account report")
+        perf = portfolio_performance(
+            rep,
+            initial_cash=100000000,
+            backtest_start=execution_start,
+        )
         x = excess.to_numpy(dtype=float)
-        cum = np.cumsum(x)
         results[str(freq)] = {
             "protocol": "continuous_account_board_aware_v3",
+            "metric_version": perf["metric_version"],
             "n_retrains": len(jobs),
             "n_errors": 0,
             "n_days": len(x),
             "signal_start": expected_signal_start,
             "execution_start": execution_start,
             "execution_end": execution_end,
-            "ann_excess": round(float(x.mean() * 238), 4),
-            "ir": round(float(x.mean() / x.std(ddof=1) * np.sqrt(238)), 3),
-            "max_drawdown": round(float((cum - np.maximum.accumulate(cum)).min()), 4),
+            "strategy_cagr": perf["strategy_cagr"],
+            "benchmark_cagr": perf["benchmark_cagr"],
+            "relative_excess_cagr": perf["relative_excess_cagr"],
+            "strategy_max_drawdown": perf["strategy_max_drawdown"],
+            "benchmark_max_drawdown": perf["benchmark_max_drawdown"],
+            "relative_max_drawdown": perf["relative_max_drawdown"],
+            "sharpe": perf["sharpe"],
+            "information_ratio": perf["information_ratio"],
+            "annual_volatility": perf["annual_volatility"],
+            "account_return_max_error": perf["account_return_max_error"],
+            "legacy_ann_excess_arithmetic": round(float(x.mean() * 238), 4),
+            "legacy_ir_arithmetic": (
+                round(float(x.mean() / x.std(ddof=1) * (238 ** 0.5)), 3)
+                if len(x) > 1 and x.std(ddof=1) > 0 else None
+            ),
             "positive_ratio": round(float((x > 0).mean()), 3),
+            "performance": perf,
         }
         print(f"[freq] freq={freq}: {results[str(freq)]}")
 
@@ -360,6 +378,7 @@ def _run_execution_protocol(signal, *, protocol: str, execution_start: str,
     """Backtest one frozen signal under exactly one execution protocol."""
     import numpy as np
     from qlib.backtest import backtest as normal_backtest
+    from portfolio_performance import portfolio_performance
 
     if protocol == "REF_LEGACY_EXACT":
         # Historical v2 reference: same-day $change oracle + symmetric limit
@@ -435,6 +454,11 @@ def _run_execution_protocol(signal, *, protocol: str, execution_start: str,
     cost = rep["cost"].dropna()
     if excess.empty:
         raise RuntimeError(f"{protocol}: empty report")
+    perf = portfolio_performance(
+        rep,
+        initial_cash=100000000,
+        backtest_start=execution_start,
+    )
     x = excess.to_numpy(dtype=float)
     cum = np.cumsum(x)
     yearly = {}
@@ -454,19 +478,35 @@ def _run_execution_protocol(signal, *, protocol: str, execution_start: str,
 
     result = {
         "protocol": protocol,
+        "metric_version": perf["metric_version"],
         "n_days": int(len(excess)),
-        "ann_excess": round(float(x.mean() * 238), 4),
-        "ir": round(float(x.mean() / x.std(ddof=1) * np.sqrt(238)), 3)
-        if len(x) > 1 and x.std(ddof=1) > 0 else None,
-        "max_drawdown_excess": round(float((cum - np.maximum.accumulate(cum)).min()), 4),
-        "strategy_total_return_sum": round(float(ret.sum()), 4),
+        "strategy_cagr": perf["strategy_cagr"],
+        "benchmark_cagr": perf["benchmark_cagr"],
+        "relative_excess_cagr": perf["relative_excess_cagr"],
+        "strategy_max_drawdown": perf["strategy_max_drawdown"],
+        "benchmark_max_drawdown": perf["benchmark_max_drawdown"],
+        "relative_max_drawdown": perf["relative_max_drawdown"],
+        "sharpe": perf["sharpe"],
+        "information_ratio": perf["information_ratio"],
+        "annual_volatility": perf["annual_volatility"],
+        "account_return_max_error": perf["account_return_max_error"],
+        "legacy_ann_excess_arithmetic": round(float(x.mean() * 238), 4),
+        "legacy_ir_arithmetic": (
+            round(float(x.mean() / x.std(ddof=1) * np.sqrt(238)), 3)
+            if len(x) > 1 and x.std(ddof=1) > 0 else None
+        ),
+        "legacy_max_drawdown_excess_arithmetic": round(
+            float((cum - np.maximum.accumulate(cum)).min()), 4
+        ),
+        "strategy_total_return_sum_legacy": round(float(ret.sum()), 4),
         "total_cost_sum": round(float(cost.sum()), 4),
         "mean_turnover": (
             round(float(rep[turnover_col].dropna().mean()), 6)
             if turnover_col and not rep[turnover_col].dropna().empty else None
         ),
         "turnover_source": turnover_col,
-        "annual_excess": yearly,
+        "annual_excess_arithmetic_legacy": yearly,
+        "performance": perf,
     }
     return result
 
@@ -563,24 +603,53 @@ def execution_attribution_driver(freq: int = 20, eval_from: str = "2021-01-04",
             nd=nd,
         )
 
-    def ann(name):
-        return results[name]["ann_excess"]
+    def metric(name, field):
+        return results[name][field]
 
     attribution = {
+        "metric": "relative_excess_cagr",
         "REF_to_A_direction_semantics_pp": round(
-            (ann("A_LEGACY_ORACLE_CURRENT_DIRECTION") - ann("REF_LEGACY_EXACT")) * 100, 2
+            (metric("A_LEGACY_ORACLE_CURRENT_DIRECTION", "relative_excess_cagr")
+             - metric("REF_LEGACY_EXACT", "relative_excess_cagr")) * 100, 2
         ),
         "A_to_B_same_day_close_oracle_pp": round(
-            (ann("B_UNIFORM_OPEN_095") - ann("A_LEGACY_ORACLE_CURRENT_DIRECTION")) * 100, 2
+            (metric("B_UNIFORM_OPEN_095", "relative_excess_cagr")
+             - metric("A_LEGACY_ORACLE_CURRENT_DIRECTION", "relative_excess_cagr")) * 100, 2
         ),
         "B_to_C_board_rule_pp": round(
-            (ann("C_BOARD_AWARE") - ann("B_UNIFORM_OPEN_095")) * 100, 2
+            (metric("C_BOARD_AWARE", "relative_excess_cagr")
+             - metric("B_UNIFORM_OPEN_095", "relative_excess_cagr")) * 100, 2
         ),
         "C_to_D_high_open_5_pp": round(
-            (ann("D_BOARD_AWARE_HIGH_OPEN_5") - ann("C_BOARD_AWARE")) * 100, 2
+            (metric("D_BOARD_AWARE_HIGH_OPEN_5", "relative_excess_cagr")
+             - metric("C_BOARD_AWARE", "relative_excess_cagr")) * 100, 2
         ),
         "C_to_E_exclude_growth_boards_pp": round(
-            (ann("E_BOARD_AWARE_NO_CHINEXT_STAR") - ann("C_BOARD_AWARE")) * 100, 2
+            (metric("E_BOARD_AWARE_NO_CHINEXT_STAR", "relative_excess_cagr")
+             - metric("C_BOARD_AWARE", "relative_excess_cagr")) * 100, 2
+        ),
+    }
+    legacy_attribution = {
+        "metric": "legacy_ann_excess_arithmetic",
+        "REF_to_A_direction_semantics_pp": round(
+            (metric("A_LEGACY_ORACLE_CURRENT_DIRECTION", "legacy_ann_excess_arithmetic")
+             - metric("REF_LEGACY_EXACT", "legacy_ann_excess_arithmetic")) * 100, 2
+        ),
+        "A_to_B_same_day_close_oracle_pp": round(
+            (metric("B_UNIFORM_OPEN_095", "legacy_ann_excess_arithmetic")
+             - metric("A_LEGACY_ORACLE_CURRENT_DIRECTION", "legacy_ann_excess_arithmetic")) * 100, 2
+        ),
+        "B_to_C_board_rule_pp": round(
+            (metric("C_BOARD_AWARE", "legacy_ann_excess_arithmetic")
+             - metric("B_UNIFORM_OPEN_095", "legacy_ann_excess_arithmetic")) * 100, 2
+        ),
+        "C_to_D_high_open_5_pp": round(
+            (metric("D_BOARD_AWARE_HIGH_OPEN_5", "legacy_ann_excess_arithmetic")
+             - metric("C_BOARD_AWARE", "legacy_ann_excess_arithmetic")) * 100, 2
+        ),
+        "C_to_E_exclude_growth_boards_pp": round(
+            (metric("E_BOARD_AWARE_NO_CHINEXT_STAR", "legacy_ann_excess_arithmetic")
+             - metric("C_BOARD_AWARE", "legacy_ann_excess_arithmetic")) * 100, 2
         ),
     }
 
@@ -595,6 +664,7 @@ def execution_attribution_driver(freq: int = 20, eval_from: str = "2021-01-04",
         "n_retrains": len(jobs),
         "results": results,
         "attribution_pp": attribution,
+        "legacy_attribution_arithmetic_pp": legacy_attribution,
         "notes": {
             "REF_LEGACY_EXACT": "legacy same-day $change oracle; diagnostic only",
             "D_BOARD_AWARE_HIGH_OPEN_5": (

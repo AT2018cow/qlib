@@ -142,5 +142,31 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn("_filter_signal_excluding_growth_boards", src)
 
 
+    def test_frequency_driver_reports_compounded_portfolio_metrics(self):
+        src = function_source("freq_experiment.py", "freq_driver")
+        self.assertIn("portfolio_performance(", src)
+        self.assertIn('"strategy_cagr": perf["strategy_cagr"]', src)
+        self.assertIn('"relative_excess_cagr": perf["relative_excess_cagr"]', src)
+        self.assertIn('"strategy_max_drawdown": perf["strategy_max_drawdown"]', src)
+        self.assertIn('"sharpe": perf["sharpe"]', src)
+        self.assertIn('"information_ratio": perf["information_ratio"]', src)
+        self.assertIn("legacy_ann_excess_arithmetic", src)
+        self.assertNotIn('"max_drawdown": round(float((cum', src)
+
+    def test_execution_attribution_primary_delta_uses_relative_cagr(self):
+        src = function_source("freq_experiment.py", "execution_attribution_driver")
+        self.assertIn('"metric": "relative_excess_cagr"', src)
+        self.assertIn("legacy_attribution_arithmetic_pp", src)
+
+    def test_batch_c_does_not_claim_continuous_account_metrics(self):
+        worker = function_source("modal_qlib_cn_a10g.py", "batch_c_window")
+        self.assertIn("portfolio_performance(", worker)
+        self.assertIn('"strategy_max_drawdown": perf["strategy_max_drawdown"]', worker)
+        summary = function_source("modal_qlib_cn_a10g.py", "batch_c")
+        self.assertIn('"continuous_account_cagr": None', summary)
+        self.assertIn('"continuous_account_max_drawdown": None', summary)
+        self.assertIn("ann_excess_approx_legacy_arithmetic", summary)
+
+
 if __name__ == "__main__":
     unittest.main()

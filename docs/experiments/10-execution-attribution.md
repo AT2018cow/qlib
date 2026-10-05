@@ -60,23 +60,27 @@ Output:
 /vol/execution_attribution/attrib_csi1000_freq60.json
 ```
 
-Each protocol reports:
+Each protocol now reports canonical compounded metrics:
 
-- cost-adjusted annualized excess based on daily mean × 238;
+- strategy CAGR;
+- benchmark CAGR;
+- relative excess CAGR (primary attribution metric);
+- strategy / benchmark / relative maximum drawdown;
+- Sharpe;
 - information ratio;
-- excess max drawdown;
-- strategy return sum;
-- cost sum;
-- mean turnover when exposed by the Qlib report;
-- annual excess breakdown.
+- annualized volatility;
+- cost sum and turnover diagnostics.
 
-The output also reports the attribution deltas in percentage points.
+The old daily-mean × 238 active-return annualization is retained only under explicitly named
+`legacy_*` fields for audit compatibility. Attribution deltas in `attribution_pp` use
+**relative excess CAGR**; the former arithmetic deltas are retained separately as
+`legacy_attribution_arithmetic_pp`.
 
 ## Result governance
 
 1. Use the same provider snapshot for every protocol in one attribution run.
 2. Do not tune thresholds based on this comparison and then call the same history independent OOS.
-3. If D or E appears materially better, treat it as a new risk-overlay hypothesis and validate it separately.
+3. If D or E appears materially better under relative excess CAGR, also inspect strategy CAGR, MaxDD and Sharpe before treating it as a useful risk-overlay hypothesis.
 4. Historical Batch C and frequency artifacts produced under the scalar-limit protocol remain legacy evidence.
 5. Current Batch C artifacts are versioned as `board_aware_open_bootstrap_v3`.
 6. Current standard frequency artifacts are versioned as `continuous_account_board_aware_v3`.
