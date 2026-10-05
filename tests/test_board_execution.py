@@ -10,13 +10,13 @@ class BoardThresholdTests(unittest.TestCase):
         insts = ["SH600519", "SH688981", "SZ300750", "SZ301236", "SZ300680", "BJ430047", "BJ899050"]
         dates = ["2026-09-15", "2026-09-15", "2026-09-15", "2019-01-02", "2019-01-02", "2026-09-15", "2026-09-15"]
         thr = board_thresholds(insts, dates)
-        self.assertEqual(thr[0], 0.095)   # 主板
-        self.assertEqual(thr[1], 0.195)   # 科创板
-        self.assertEqual(thr[2], 0.195)   # 改革后创业板
-        self.assertEqual(thr[3], 0.095)   # 改革前创业板
-        self.assertEqual(thr[4], 0.095)   # 改革前创业板
-        self.assertTrue(np.isnan(thr[6])) # 指数无阈值
-        self.assertEqual(thr[5], 0.295)   # 北交所股票（非指数）
+        self.assertEqual(thr[0], 0.10)    # 主板执行比例
+        self.assertEqual(thr[1], 0.20)    # 科创板
+        self.assertEqual(thr[2], 0.20)    # 改革后创业板
+        self.assertEqual(thr[3], 0.10)    # 改革前创业板
+        self.assertEqual(thr[4], 0.10)    # 改革前创业板
+        self.assertTrue(np.isnan(thr[6])) # 指数无涨跌停
+        self.assertEqual(thr[5], 0.30)    # 北交所股票（非指数）
 
     def test_masks(self):
         insts = ["SH600519", "SH688981", "SZ301236", "SZ300750"]
@@ -24,7 +24,7 @@ class BoardThresholdTests(unittest.TestCase):
         opens = [10.9, 10.0, 11.5, 10.0]
         prev = [10.0, 10.0, 10.0, 10.0]
         lb, ls = compute_limit_masks(insts, dates, opens, prev, [False] * 4)
-        # 600519: +9% 未及 9.5% 涨停；statutory mask 不夹带高开策略规则
+        # 600519: +9% 未及 10% 涨停；statutory mask 不夹带高开策略规则
         self.assertFalse(lb[0]); self.assertFalse(ls[0])
         # 688981: 平开 → 可交易
         self.assertFalse(lb[1]); self.assertFalse(ls[1])
@@ -32,6 +32,18 @@ class BoardThresholdTests(unittest.TestCase):
         self.assertTrue(lb[2]); self.assertFalse(ls[2])
         # 改革后创业板平开 → 可交易
         self.assertFalse(lb[3]); self.assertFalse(ls[3])
+
+    def test_execution_uses_rounded_limit_price_not_audit_margin(self):
+        # prev=2.01, 10% theoretical upper=2.211 -> 0.01 tick rounds to 2.21.
+        lb, _ = compute_limit_masks(
+            ["SH600519", "SH600036"],
+            ["2026-09-15", "2026-09-15"],
+            [2.21, 10.96],
+            [2.01, 10.0],
+            [False, False],
+        )
+        self.assertTrue(lb[0])   # exact rounded limit price
+        self.assertFalse(lb[1])  # +9.6% is legal and must not be treated as limit-up
 
     def test_limit_down_blocks_sell(self):
         lb, ls = compute_limit_masks(["SZ300750"], ["2026-09-15"], [7.9], [10.0], [False])
