@@ -24,8 +24,9 @@ from qlib_live_retrain import (
     cache_signature,
     retrain_due_calendar,
     RETRAIN_EVERY_SESSIONS,
+    provider_training_fingerprint,
 )
-from board_execution import research_exchange
+from board_execution import compute_limit_masks, research_exchange
 from board_rules import (
     CHINEXT_REFORM,
     BENCH_CANDIDATES,
@@ -107,7 +108,7 @@ image = (
     # 审计 PR 的 helper 模块随 add_local_dir 进了 /root/qlib/，但 Modal 入口脚本挂在
     # /root/ 运行（sys.path 首位是 /root）——必须复制到 /root/ 否则 ModuleNotFoundError。
     .run_commands(
-        "cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/qlib/board_rules.py /root/qlib/board_execution.py /root/qlib/github_commit.py /root/"
+        "cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/qlib/board_rules.py /root/qlib/board_execution.py /root/qlib/paper_portfolio.py /root/qlib/github_commit.py /root/"
     )
 )
 
@@ -456,6 +457,13 @@ def _load_and_patch_cfg(
         _model_kw = cfg["task"]["model"]["kwargs"]
         if "early_stop" in _model_kw:
             _model_kw["early_stop"] = 2
+    # Wrapper execution protocol: use Qlib's supported exchange= config hook
+    # to instantiate BoardAwareExchange without modifying Qlib core.
+    if "port_analysis_config" in cfg:
+        _bt = cfg["port_analysis_config"]["backtest"]
+        _codes = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"].get("instruments", "all")
+        _bt["exchange_kwargs"] = research_exchange(_bt["start_time"], _bt["end_time"], codes=_codes)
+        cfg["port_analysis_config"]["strategy"]["kwargs"]["forbid_all_trade_at_limit"] = False
     return cfg
 
 
@@ -615,7 +623,7 @@ def independent_recheck():
     strategy = {
         "class": "TopkDropoutStrategy",
         "module_path": "qlib.contrib.strategy",
-        "kwargs": {"signal": pred, "topk": 20, "n_drop": 2},
+        "kwargs": {"signal": pred, "topk": 20, "n_drop": 2, "forbid_all_trade_at_limit": False},
     }
     pm, _ = normal_backtest(
         strategy=strategy,
@@ -624,35 +632,56 @@ def independent_recheck():
         end_time="2023-03-31",
         account=100000000,
         benchmark="SH000852",
-        exchange_kwargs=research_exchange(),
+        exchange_kwargs=research_exchange(test_start, "2023-03-31", codes="csi1000"),
     )
     rep = pm["1day"][0]
     excess = rep["return"] - rep["bench"] - rep["cost"]
+    protocol = "board_aware_open_bootstrap_v3"
     result = {
+        "protocol": protocol,
         "excess_total": round(float(excess.sum()), 4),
         "daily_mean": round(float(excess.mean()), 6),
         "n_days": int(len(excess)),
         "train_end": train_end,
         "valid_end": valid_end,
+        "anchor_status": "unanchored_pending_batch_c_rerun",
     }
-    # 当前 Batch C w09 存档值（c1000_v2，R25 T+1 open + bootstrap 协议）。
-    expected_excess = -0.0223
-    diff = abs(result["excess_total"] - expected_excess)
+
+    # Never compare a board-aware run with the old scalar-limit anchor.  Once a
+    # Batch C artifact is committed under the exact same protocol, the
+    # independent implementation becomes fail-closed again automatically.
+    import json as _json
+    _artifact = Path("/root/qlib/results/batch_c/rolling5y_c1000_nd2.json")
+    if _artifact.is_file():
+        _stored = _json.loads(_artifact.read_text())
+        if _stored.get("protocol") == protocol:
+            _w09 = next((w for w in _stored.get("windows", []) if w.get("window") == "w09"), None)
+            if _w09 is None:
+                raise RuntimeError("board-aware Batch C artifact missing w09")
+            expected_excess = float(_w09["excess_total"])
+            diff = abs(result["excess_total"] - expected_excess)
+            result["anchor_status"] = "matched" if diff < 0.005 else "diverged"
+            result["anchor_excess_total"] = expected_excess
+            result["anchor_diff"] = round(diff, 6)
+            if diff >= 0.005:
+                raise RuntimeError("independent recheck diverges from board-aware Batch C w09")
+        else:
+            print(
+                f"[recheck] 存档协议={_stored.get('protocol')} 与当前 {protocol} 不同；"
+                "不使用旧收益锚点，需重跑 Batch C 后重新建立独立复算锚点"
+            )
     print(f"[recheck] 独立实现: {result}")
-    print(f"[recheck] 当前 Batch C w09: excess_total={expected_excess}")
-    print(f"[recheck] 偏差: {diff:.4f} ({'✅ 一致' if diff < 0.005 else '❌ 需排查'})")
-    if diff >= 0.005:
-        raise RuntimeError("independent recheck diverges from current purged Batch C w09")
     return result
 
 
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=1800)
 def verify_integrity(market: str = "csi500"):
     """资金安全复核（按池参数化；csi500 保持历史口径）：
-    1) chenditc $change 是否为"当日涨幅"（close/前收-1）——决定回测涨跌停模拟是否正确；
-    2) daily_signal 修复后的涨跌停过滤（Ref($close,1)）是否与 $change 口径一致；
-    3) 最近 10 个交易日 {market} 内 |涨幅|≥阈值的股票数（验证过滤非空转）。
-    新池（chinext/star）阈值 0.195（板块感知，board_rules.EW_BENCH）；csi 池 0.095。"""
+    1) chenditc $change 是否近似"当日涨幅"（close/前收-1）；
+    2) daily ranking 的保守审计过滤（TH_10=.095 / TH_20=.195 等）是否与 $change 口径一致；
+    3) 最近 10 个交易日的过滤计数是否非空转。
+    注意：这些 TH_* 是榜单/audit margin，不是 BoardAwareExchange 的成交涨跌停比例；
+    回测执行使用精确 10/20/30/历史5% 比例并按 0.01 元价位计算涨跌停价。"""
     import numpy as np
     import pandas as pd
 
@@ -682,9 +711,9 @@ def verify_integrity(market: str = "csi500"):
     )
     if diff.quantile(0.95) < 1e-3:
         # 实测中位偏差 2.4e-5（复权/舍入噪声级别）；关键判据是下方逐日涨跌停计数 100% 一致
-        print("[verify] ✅ $change 即当日涨幅（偏差为复权舍入噪声），QLib 回测涨跌停模拟口径正确")
+        print("[verify] ✅ $change 与 close/prev_close-1 一致，可用于 ranking/audit 过滤复核")
     else:
-        print("[verify] ❌ $change 与当日涨幅不一致！回测涨跌停口径存疑，需人工检查")
+        print("[verify] ❌ $change 与当日涨幅不一致！ranking/audit 过滤口径需人工检查")
 
     # 2) 修复后的过滤口径 vs $change 口径（D.features index 为 (instrument, datetime)，按日期需 groupby level=1）
     limit_cnt_ref = (chg_calc.abs() >= limit_th).groupby(level=1).sum()
@@ -1221,6 +1250,209 @@ def _board_listing_dates(provider_uri, symbols) -> dict:
     return sub.groupby("symbol")["start"].min().to_dict()
 
 
+
+def _paper_execution_context(data_dir, market: str, calendar: list[str], asof: str) -> dict:
+    """Read paper state without mutating it and prepare data for pending execution.
+
+    daily_standalone runs before publication gating, so it must never mutate
+    portfolio state.  It only returns the exact historical open/tradability
+    context needed by daily_cron after the signal has passed the gate.
+    """
+    import json as _json
+    import numpy as _np
+    import pandas as _pd
+    from qlib.data import D
+
+    state_path = VOL_ROOT / "paper_portfolio" / f"{market}.json"
+    if not state_path.exists():
+        return {"status": "no_state", "execution_date": None}
+    raw = _json.loads(state_path.read_text())
+    pending = raw.get("pending_signal")
+    if not pending:
+        return {"status": "no_pending", "execution_date": None}
+    execution_date = str(pending["execution_date"])
+    if execution_date > str(asof):
+        return {"status": "awaiting_data", "execution_date": execution_date}
+    if execution_date not in calendar:
+        raise RuntimeError(f"paper pending execution date {execution_date} not in provider calendar")
+
+    symbols = set(raw.get("positions", {}))
+    symbols.update(pending.get("planned_sell", []))
+    symbols.update(pending.get("planned_buy", []))
+    if not symbols:
+        return {
+            "status": "ready",
+            "execution_date": execution_date,
+            "open_prices": {},
+            "buy_tradable": {},
+            "sell_tradable": {},
+        }
+
+    df = D.features(
+        sorted(symbols),
+        ["$open", "Ref($close,1)", "$close"],
+        start_time=execution_date,
+        end_time=execution_date,
+        freq="day",
+    )
+    rows = {}
+    for idx, row in df.iterrows():
+        inst = str(idx[0] if isinstance(idx, tuple) else idx)
+        rows[inst] = row
+
+    insts = sorted(symbols)
+    opens, prevs, close_na = [], [], []
+    open_prices = {}
+    for inst in insts:
+        row = rows.get(inst)
+        op = float(row["$open"]) if row is not None and _pd.notna(row["$open"]) else _np.nan
+        prev = float(row["Ref($close,1)"]) if row is not None and _pd.notna(row["Ref($close,1)"]) else _np.nan
+        close = float(row["$close"]) if row is not None and _pd.notna(row["$close"]) else _np.nan
+        opens.append(op)
+        prevs.append(prev)
+        close_na.append(not _np.isfinite(close))
+        if _np.isfinite(op):
+            open_prices[inst] = op
+
+    listing = _board_listing_dates(data_dir, insts)
+    limit_buy, limit_sell = compute_limit_masks(
+        insts,
+        [execution_date] * len(insts),
+        opens,
+        prevs,
+        close_na,
+        high_open_block=0.05,
+        listing_dates=listing,
+        calendar=calendar,
+    )
+    return {
+        "status": "ready",
+        "execution_date": execution_date,
+        "open_prices": open_prices,
+        "buy_tradable": {inst: not bool(v) for inst, v in zip(insts, limit_buy)},
+        "sell_tradable": {inst: not bool(v) for inst, v in zip(insts, limit_sell)},
+    }
+
+
+def _apply_paper_portfolio(res: dict, usage_date: str, topk: int, nd: int) -> dict:
+    """Propose the next persistent paper state without committing it.
+
+    Cron publishes the immutable artifact first and only then writes state to
+    the Modal Volume, preventing a failed GitHub push from advancing the
+    account lineage.
+    """
+    import json as _json
+    from paper_portfolio import PaperPortfolio
+
+    market = res["market"]
+    state_dir = VOL_ROOT / "paper_portfolio"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    state_path = state_dir / f"{market}.json"
+    try:
+        vol.reload()
+    except Exception:
+        pass
+
+    if state_path.exists():
+        pp = PaperPortfolio.load(state_path)
+        if pp.topk != topk or pp.nd != nd:
+            raise RuntimeError(
+                f"paper portfolio config drift for {market}: state topk/nd={pp.topk}/{pp.nd}, "
+                f"requested={topk}/{nd}"
+            )
+    else:
+        pp = PaperPortfolio(topk=topk, nd=nd, initial_cash=100_000_000)
+
+    execution_report = None
+    if pp.history and pp.history[-1].get("date") == res["date"]:
+        # Same-day rerun after a successful prior publication/state commit:
+        # reproduce the immutable artifact byte-for-byte from persisted history.
+        execution_report = pp.history[-1]
+    ctx = res.get("paper_context") or {}
+    awaiting_execution_data = False
+    if pp.pending_signal is not None:
+        pending_date = pp.pending_signal["execution_date"]
+        if pending_date > res["date"]:
+            # The ranking publication gate permits a one-session stale provider.
+            # In that case the prior order's execution bar is not available yet:
+            # keep the old pending order unchanged and do not invent a new one.
+            awaiting_execution_data = True
+        else:
+            if ctx.get("status") != "ready" or ctx.get("execution_date") != pending_date:
+                raise RuntimeError(
+                    f"paper execution context unavailable for {market} {pending_date}: {ctx.get('status')}"
+                )
+            execution_report = pp.execute_pending(
+                pending_date,
+                ctx.get("open_prices", {}),
+                buy_tradable=ctx.get("buy_tradable", {}),
+                sell_tradable=ctx.get("sell_tradable", {}),
+            )
+
+    planned = None
+    if awaiting_execution_data:
+        p = pp.pending_signal
+        planned = {
+            "signal_date": p["signal_date"],
+            "execution_date": p["execution_date"],
+            "sell": p.get("planned_sell", []),
+            "buy": p.get("planned_buy", []),
+            "status": "awaiting_execution_data",
+        }
+    elif pp.pending_signal is None:
+        planned = pp.plan_signal(
+            signal_date=res["date"],
+            execution_date=usage_date,
+            ranking=[tuple(x) for x in res["ranking_full"]],
+            metadata={
+                "market": market,
+                "model_fit_asof": res["model_fit_asof"],
+                "train_end": res["train_end"],
+                "valid_end": res["valid_end"],
+                "topk": topk,
+                "nd": nd,
+            },
+        )
+    else:
+        # Same-day reruns are idempotent.  Any other unresolved order lineage
+        # blocks a new plan rather than silently overwriting state.
+        p = pp.pending_signal
+        if p["execution_date"] != usage_date or p["signal_date"] != res["date"]:
+            raise RuntimeError(
+                f"unresolved paper signal for {market}: {p['signal_date']}->{p['execution_date']}; "
+                f"refusing new {res['date']}->{usage_date}"
+            )
+        planned = {
+            "signal_date": p["signal_date"],
+            "execution_date": p["execution_date"],
+            "sell": p.get("planned_sell", []),
+            "buy": p.get("planned_buy", []),
+        }
+
+    artifact = {
+        "state_version": 2,
+        "market": market,
+        "signal_data_date": res["date"],
+        "usage_date": usage_date,
+        "execution_report": execution_report,
+        "pending_orders": planned,
+        "cash": round(pp.cash, 2),
+        "n_positions": len(pp.positions),
+        "positions": pp.positions,
+        "model_fit_asof": res["model_fit_asof"],
+        "note": (
+            "Orders are planned before the execution-day open and settled on a later "
+            "data refresh using the recorded open. If provider data is stale, the prior "
+            "pending order remains frozen and no new paper order is invented."
+        ),
+    }
+    return {
+        "artifact_json": _json.dumps(artifact, ensure_ascii=False, indent=2) + "\n",
+        "state_path": str(state_path),
+        "state_json": _json.dumps(pp.to_dict(), ensure_ascii=False, indent=2) + "\n",
+    }
+
+
 def _daily_impl(
     model: str,
     topk: int,
@@ -1266,9 +1498,8 @@ def _daily_impl(
     day = pred.loc[predict_date].dropna()
     top = day.sort_values(ascending=False).head(topk)
 
-    # 过滤当日已涨/跌停（板块感知阈值，涨幅= close/前收-1，口径与 verify_integrity 审计一致）：
-    # 主板/改革前创业板 ±10%、科创板/改革后创业板 ±20%（阈值边际 0.095/0.195）、
-    # 新股前 5 交易日无涨跌停（不剔除）；涨停买不进、跌停卖不出，剔除避免给不可交易信号
+    # 排名 CSV 的保守过滤：使用 board_rules.TH_* 审计 margin（例如 9.5%/19.5%），
+    # 仅用于避免展示接近涨跌停的候选；真正的成交可交易性由 BoardAwareExchange / paper masks 判定。
     from qlib.data import D
 
     day_df = D.features(
@@ -1424,12 +1655,12 @@ def train_ensemble(topk: int = 50, n_drop: int = 2):
         "end_time": _latest_trading_day(),
         "account": 100000000,
         "benchmark": "SH000905",
-        "exchange_kwargs": research_exchange(),
+        "exchange_kwargs": research_exchange("2026-01-01", _latest_trading_day(), codes="csi500"),
     }
     strategy = {
         "class": "TopkDropoutStrategy",
         "module_path": "qlib.contrib.strategy",
-        "kwargs": {"signal": ens, "topk": topk, "n_drop": n_drop},
+        "kwargs": {"signal": ens, "topk": topk, "n_drop": n_drop, "forbid_all_trade_at_limit": False},
     }
     executor = {
         "class": "SimulatorExecutor",
@@ -1537,7 +1768,7 @@ def tune_one(params: dict, horizon: int = 20):
     strategy = {
         "class": "TopkDropoutStrategy",
         "module_path": "qlib.contrib.strategy",
-        "kwargs": {"signal": pred, "topk": 20, "n_drop": 2},
+        "kwargs": {"signal": pred, "topk": 20, "n_drop": 2, "forbid_all_trade_at_limit": False},
     }
     executor = {
         "class": "SimulatorExecutor",
@@ -1552,7 +1783,7 @@ def tune_one(params: dict, horizon: int = 20):
         end_time=valid_end,
         account=100000000,
         benchmark="SH000852",
-        exchange_kwargs=research_exchange(),
+        exchange_kwargs=research_exchange(valid_start, valid_end, codes="csi1000"),
     )
     report = pm["1day"][0]
     if report.empty:
@@ -1679,12 +1910,12 @@ def dual_horizon(topk: int = 50, n_drop: int = 2, best_params: dict = None):
         "end_time": _latest_trading_day(),
         "account": 100000000,
         "benchmark": "SH000905",
-        "exchange_kwargs": research_exchange(),
+        "exchange_kwargs": research_exchange("2026-01-01", _latest_trading_day(), codes="csi500"),
     }
     strategy = {
         "class": "TopkDropoutStrategy",
         "module_path": "qlib.contrib.strategy",
-        "kwargs": {"signal": ens, "topk": topk, "n_drop": n_drop},
+        "kwargs": {"signal": ens, "topk": topk, "n_drop": n_drop, "forbid_all_trade_at_limit": False},
     }
     executor = {
         "class": "SimulatorExecutor",
@@ -1817,7 +2048,7 @@ def p0_diagnostics():
         end_time=END,
         account=100000000,
         benchmark="SH000905",
-        exchange_kwargs=research_exchange(),
+        exchange_kwargs=research_exchange("2026-01-01", END, codes="csi500"),
     )
     executor = {
         "class": "SimulatorExecutor",
@@ -1832,7 +2063,7 @@ def p0_diagnostics():
         strategy = {
             "class": "TopkDropoutStrategy",
             "module_path": "qlib.contrib.strategy",
-            "kwargs": {"signal": pred, "topk": 50, "n_drop": nd},
+            "kwargs": {"signal": pred, "topk": 50, "n_drop": nd, "forbid_all_trade_at_limit": False},
         }
         pm, _ = normal_backtest(strategy=strategy, executor=executor, **bt_kwargs)
         rep = pm["1day"][0]
@@ -1948,7 +2179,7 @@ def p1_diagnostics():
         end_time=END,
         account=100000000,
         benchmark="SH000905",
-        exchange_kwargs=research_exchange(),
+        exchange_kwargs=research_exchange("2026-01-01", END, codes="csi500"),
     )
     executor = {
         "class": "SimulatorExecutor",
@@ -1960,7 +2191,7 @@ def p1_diagnostics():
         strategy = {
             "class": "TopkDropoutStrategy",
             "module_path": "qlib.contrib.strategy",
-            "kwargs": {"signal": signal, "topk": topk, "n_drop": n_drop},
+            "kwargs": {"signal": signal, "topk": topk, "n_drop": n_drop, "forbid_all_trade_at_limit": False},
         }
         pm, _ = normal_backtest(strategy=strategy, executor=executor, **bt_kwargs)
         rep = pm["1day"][0]
@@ -2212,7 +2443,7 @@ def version_check_0911():
         end_time="2026-09-11",
         account=100000000,
         benchmark="SH000905",
-        exchange_kwargs=research_exchange(),
+        exchange_kwargs=research_exchange("2026-01-01", "2026-09-11", codes="csi500"),
     )
     executor = {
         "class": "SimulatorExecutor",
@@ -2234,7 +2465,7 @@ def version_check_0911():
         strategy = {
             "class": "TopkDropoutStrategy",
             "module_path": "qlib.contrib.strategy",
-            "kwargs": {"signal": pred, "topk": 50, "n_drop": 3},
+            "kwargs": {"signal": pred, "topk": 50, "n_drop": 3, "forbid_all_trade_at_limit": False},
         }
         pm, _ = normal_backtest(strategy=strategy, executor=executor, **bt_kwargs)
         ra = risk_analysis(pm["1day"][0]["return"] - pm["1day"][0]["bench"] - pm["1day"][0]["cost"])
@@ -2287,7 +2518,7 @@ def version_check_0916():
         end_time="2026-09-11",
         account=100000000,
         benchmark="SH000905",
-        exchange_kwargs=research_exchange(),
+        exchange_kwargs=research_exchange("2026-01-01", "2026-09-11", codes="csi500"),
     )
     executor = {
         "class": "SimulatorExecutor",
@@ -2308,7 +2539,7 @@ def version_check_0916():
         strategy = {
             "class": "TopkDropoutStrategy",
             "module_path": "qlib.contrib.strategy",
-            "kwargs": {"signal": preds["lgb158"], "topk": 50, "n_drop": nd},
+            "kwargs": {"signal": preds["lgb158"], "topk": 50, "n_drop": nd, "forbid_all_trade_at_limit": False},
         }
         pm, _ = normal_backtest(strategy=strategy, executor=executor, **bt_kwargs)
         ra = risk_analysis(pm["1day"][0]["return"] - pm["1day"][0]["bench"] - pm["1day"][0]["cost"])
@@ -2322,7 +2553,7 @@ def version_check_0916():
     strategy = {
         "class": "TopkDropoutStrategy",
         "module_path": "qlib.contrib.strategy",
-        "kwargs": {"signal": preds["lgb360"], "topk": 50, "n_drop": 3},
+        "kwargs": {"signal": preds["lgb360"], "topk": 50, "n_drop": 3, "forbid_all_trade_at_limit": False},
     }
     pm, _ = normal_backtest(strategy=strategy, executor=executor, **bt_kwargs)
     ra = risk_analysis(pm["1day"][0]["return"] - pm["1day"][0]["bench"] - pm["1day"][0]["cost"])
@@ -2450,9 +2681,9 @@ def batch_c_window(args: dict):
     strategy = {
         "class": "TopkDropoutStrategy",
         "module_path": "qlib.contrib.strategy",
-        "kwargs": {"signal": pred, "topk": args["topk"], "n_drop": args["nd"]},
+        "kwargs": {"signal": pred, "topk": args["topk"], "n_drop": args["nd"], "forbid_all_trade_at_limit": False},
     }
-    # 新池（star/chinext 板块）为 ±20% 口径；csi 池保持 0.095
+    # 执行统一走 BoardAwareExchange；不再按股票池使用单一 0.095/0.195 标量。
     pm, _ = normal_backtest(
         strategy=strategy,
         executor=executor,
@@ -2460,7 +2691,7 @@ def batch_c_window(args: dict):
         end_time=te_e,
         account=100000000,
         benchmark=args["bench"],
-        exchange_kwargs=research_exchange(),
+        exchange_kwargs=research_exchange(te_s, te_e, codes=args["market"]),
     )
     rep = pm["1day"][0]
     excess = rep["return"] - rep["bench"] - rep["cost"]
@@ -2483,7 +2714,7 @@ def batch_c_window(args: dict):
 def batch_c(market: str = "csi1000", bench: str = "SH000852", topk: int = 20, nd: int = 2, tag: str = "c1000"):
     """批次C：候选配置 × 5 年滚动（2021Q1~2026Q3，23 个季度窗口，12 并行）。
     这是多重检验纪律下的唯一终审裁判。结果存 /vol/batch_c/。
-    新池（chinext/star）用各自等权基准 + 0.195 阈 + 改革日 guard（窗口起点 < 2020-08-24 拒绝）。"""
+    新池（chinext/star）用各自等权基准；成交约束统一由 BoardAwareExchange 按股票/日期处理。"""
     import json
 
     if market in EW_BENCH:
@@ -2621,7 +2852,7 @@ def p2_rolling():
         strategy = {
             "class": "TopkDropoutStrategy",
             "module_path": "qlib.contrib.strategy",
-            "kwargs": {"signal": pred, "topk": 50, "n_drop": 3},
+            "kwargs": {"signal": pred, "topk": 50, "n_drop": 3, "forbid_all_trade_at_limit": False},
         }
         pm, _ = normal_backtest(
             strategy=strategy,
@@ -2630,7 +2861,7 @@ def p2_rolling():
             end_time=te_e,
             account=100000000,
             benchmark="SH000905",
-            exchange_kwargs=research_exchange(),
+            exchange_kwargs=research_exchange(te_s, te_e, codes="csi500"),
         )
         rep = pm["1day"][0]
         ra = risk_analysis(rep["return"] - rep["bench"] - rep["cost"])
@@ -2735,7 +2966,7 @@ def topk_grid(topks="10,20,30,50", n_drop: int = 3):
         strategy = {
             "class": "TopkDropoutStrategy",
             "module_path": "qlib.contrib.strategy",
-            "kwargs": {"signal": pred, "topk": tk, "n_drop": n_drop},
+            "kwargs": {"signal": pred, "topk": tk, "n_drop": n_drop, "forbid_all_trade_at_limit": False},
         }
         pm, _ = normal_backtest(
             strategy=strategy,
@@ -2744,7 +2975,7 @@ def topk_grid(topks="10,20,30,50", n_drop: int = 3):
             end_time="2026-09-11",
             account=100000000,
             benchmark="SH000905",
-            exchange_kwargs=research_exchange(),
+            exchange_kwargs=research_exchange("2026-01-01", "2026-09-11", codes="csi500"),
         )
         rep = pm["1day"][0]
         ra = risk_analysis(rep["return"] - rep["bench"] - rep["cost"])
@@ -2806,10 +3037,11 @@ def batch_a():
     print(f"[batchA] SH000852 数据存在: {len(bench1000) > 0}")
 
     def bt(signal, topk, nd, bench="SH000905"):
+        _pool = {"SH000300": "csi300", "SH000905": "csi500", "SH000852": "csi1000"}[bench]
         strategy = {
             "class": "TopkDropoutStrategy",
             "module_path": "qlib.contrib.strategy",
-            "kwargs": {"signal": signal, "topk": topk, "n_drop": nd},
+            "kwargs": {"signal": signal, "topk": topk, "n_drop": nd, "forbid_all_trade_at_limit": False},
         }
         pm, _ = normal_backtest(
             strategy=strategy,
@@ -2818,7 +3050,7 @@ def batch_a():
             end_time="2026-09-11",
             account=100000000,
             benchmark=bench,
-            exchange_kwargs=research_exchange(),
+            exchange_kwargs=research_exchange("2026-01-01", "2026-09-11", codes=_pool),
         )
         rep = pm["1day"][0]
         ra = risk_analysis(rep["return"] - rep["bench"] - rep["cost"])
@@ -2882,7 +3114,7 @@ def batch_a_star_chn(market: str = "star_chn"):
     market: star_chn（合并池） / chinext / star（拆池判别实验：合并稀释 vs 真没 α）。
     一次训练（终审候选口径：LightGBM+Alpha158+20日标签+2016起 recent+long_train），
     固定窗口 2026-01-01~2026-09-11 上跑 top{10,20,50}×nd{1,2,3} 网格（9 组全记录）。
-    基准 = 对应池等权合成指数（board_rules.EW_BENCH），涨跌停阈 0.195（板块感知，改革后口径）。
+    基准 = 对应池等权合成指数（board_rules.EW_BENCH）；成交约束走 BoardAwareExchange。
     前置：Volume 已有 <market>.txt 池 + 对应等权基准（::build_star_chn_bench 一次建全）。
     对照行：csi1000+top20/nd2 单窗口批次A = +26.2%（等权口径不同，仅作池风格参考）。
     结果存 /vol/batch_a_<market>/。"""
@@ -2926,7 +3158,7 @@ def batch_a_star_chn(market: str = "star_chn"):
         strategy = {
             "class": "TopkDropoutStrategy",
             "module_path": "qlib.contrib.strategy",
-            "kwargs": {"signal": signal, "topk": topk, "n_drop": nd},
+            "kwargs": {"signal": signal, "topk": topk, "n_drop": nd, "forbid_all_trade_at_limit": False},
         }
         pm, _ = normal_backtest(
             strategy=strategy,
@@ -2935,7 +3167,7 @@ def batch_a_star_chn(market: str = "star_chn"):
             end_time=WINDOW[1],
             account=100000000,
             benchmark=BENCH,
-            exchange_kwargs=research_exchange(),
+            exchange_kwargs=research_exchange(WINDOW[0], WINDOW[1], codes=market),
         )
         rep = pm["1day"][0]
         if rep.empty:
@@ -2963,7 +3195,7 @@ def batch_a_star_chn(market: str = "star_chn"):
         "window": f"{WINDOW[0]}~{WINDOW[1]}",
         "market": market,
         "bench": BENCH,
-        "limit_th": 0.195,
+        "execution_protocol": "board_aware_open_v3",
         "note": "粗筛：差异<3pp视为噪声；只记 top3 候选；终审以批次C滚动为准",
         "universe": {"n_days": n_day, "n_instruments": n_inst},
     }
@@ -3038,9 +3270,9 @@ def batch_b_one(spec: dict):
     strategy = {
         "class": "TopkDropoutStrategy",
         "module_path": "qlib.contrib.strategy",
-        "kwargs": {"signal": pred, "topk": 20, "n_drop": 2},
+        "kwargs": {"signal": pred, "topk": 20, "n_drop": 2, "forbid_all_trade_at_limit": False},
     }
-    # 新池（star/chinext 板块）为 ±20% 口径；csi 池保持 0.095
+    # 执行统一走 BoardAwareExchange；不再按股票池使用单一 0.095/0.195 标量。
     pm, _ = normal_backtest(
         strategy=strategy,
         executor={
@@ -3052,7 +3284,7 @@ def batch_b_one(spec: dict):
         end_time="2026-09-11",
         account=100000000,
         benchmark=bench,
-        exchange_kwargs=research_exchange(),
+        exchange_kwargs=research_exchange("2026-01-01", "2026-09-11", codes=market),
     )
     rep = pm["1day"][0]
     if rep.empty:
@@ -3078,7 +3310,7 @@ def batch_b(lgb_trials: int = 12, market: str = "csi1000", bench: str = "SH00085
     B1. 训练起点 {2011, 2013, 2016}；B2. expanding vs sliding（6 年滑窗）；
     B3. LGB 超参 12 组快搜（随机种子固定；默认 2016 起点，与串行版一致）。
     16 个任务相互独立（B2 expanding 即 B1 最优复用）→ 单次 .map() 8 并发。
-    统一窗口 2026-01-01~2026-09-11。新池用各自等权基准 + 0.195 阈。
+    统一窗口 2026-01-01~2026-09-11。新池用各自等权基准；执行统一走 BoardAwareExchange。
     结果存 /vol/batch_b_<market>/（csi1000 保持 /vol/batch_b/，不覆盖旧结果）。"""
     import json
     import random
@@ -3235,12 +3467,27 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
     saved = json.loads(meta_file.read_text()) if meta_file.exists() else None
     if saved is not None and saved.get("signature") != signature:
         raise RuntimeError("Model cache signature mismatch")
-    # 重训节律（两池同步）：①无缓存 → bootstrap；②全局锚定时钟 due（origin=2026-09-18 bar，
+    # R27: compare the current provider prefix against exactly the history that
+    # the cached model could have seen. A newly appended bar is outside the
+    # saved fit_asof cutoff and therefore does not invalidate the cache.
+    cached_data_fingerprint = None
+    data_revision = False
+    if saved is not None:
+        cached_data_fingerprint = provider_training_fingerprint(data_dir, market, saved["fit_asof"])
+        data_revision = saved.get("data_fingerprint") != cached_data_fingerprint
+        if data_revision:
+            print(
+                f"[daily] 历史数据指纹变化：cached={saved.get('data_fingerprint')} "
+                f"current={cached_data_fingerprint}，强制重训"
+            )
+    # 重训节律（两池同步）：①无缓存 → bootstrap；②历史训练前缀发生修订 → 重训；
+    # ③全局锚定时钟 due（origin=2026-09-18 bar，
     # 每 20 个交易日两池同日重训、fit 窗口完全一致）——若本 bar 已 fit（同日重跑）则跳过，
     # 避免无谓重训（review 2026-10-02：due 不看已 fit bar 会让 due 日重跑必重训 ~15 分钟）；
     # ③自 20-session 自愈兜底（错过 due 日时各池按自身节律恢复，下一全局 due 日重新对齐）
     train_now = (
         saved is None
+        or data_revision
         or (retrain_due_calendar(calendar, asof, interval=RETRAIN_EVERY_SESSIONS)
             and saved["fit_asof"] != asof)
         or should_retrain(calendar, asof, saved["fit_asof"], interval=RETRAIN_EVERY_SESSIONS)
@@ -3258,6 +3505,7 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
             "fit_start": cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["fit_start_time"],
             "fit_end": cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["fit_end_time"],
             "runtime_lineage": runtime_lineage,
+            "data_fingerprint": provider_training_fingerprint(data_dir, market, asof),
         }
         tmp_model = cache_dir / f".{signature}.{os.getpid()}.tmp"
         tmp_meta = cache_dir / f".{signature}.{os.getpid()}.json.tmp"
@@ -3283,6 +3531,7 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
             or not saved.get("model_sha256")
             or saved.get("fit_end") != saved.get("train", [None, None])[-1]
             or saved.get("runtime_lineage") != runtime_lineage
+            or saved.get("data_fingerprint") != cached_data_fingerprint
         ):
             raise RuntimeError("Invalid cached model split metadata")
         if hashlib.sha256(model_file.read_bytes()).hexdigest() != saved["model_sha256"]:
@@ -3306,11 +3555,22 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
     if str(predict_date)[:10] != asof:
         raise RuntimeError(f"Inference date {predict_date} != latest bar {asof}")
     day = pred.loc[predict_date].dropna()
-    # Ranking only: n_drop requires current holdings and an execution-day order planner.
-    print("[daily] RANKING ONLY: not executable orders; nd does not apply to ranking CSV")
+    # Keep the full unfiltered model cross-section for the stateful TopkDropout
+    # planner.  The public ranking CSV may apply display-time filters below,
+    # but portfolio decisions must see the same full score vector as Qlib.
+    ranking_full = [
+        [str(inst), float(score)]
+        for inst, score in day.sort_values(ascending=False).items()
+    ]
+    try:
+        vol.reload()
+    except Exception:
+        pass
+    paper_context = _paper_execution_context(data_dir, market, calendar, asof)
+    print("[daily] ranking CSV + stateful paper-order context prepared")
     top = day.sort_values(ascending=False).head(topk)
 
-    # ---- 3) 涨跌停过滤（板块感知阈值：主板/改革前创业板±10%、科创板/改革后创业板±20%、新股前5交易日豁免；涨幅=close/前收-1） ----
+    # ---- 3) 排名展示的保守涨跌停过滤（与真实成交 Exchange 分层；board_rules 维护板块/日期/上市豁免） ----
     day_df = D.features(
         [str(x) for x in day.index],
         ["$close", "Ref($close,1)"],
@@ -3354,6 +3614,8 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
         "data_calendar_end": cal_lines[-1],
         "ranking_only": True,
         "rebalance_applied": False,
+        "ranking_full": ranking_full,
+        "paper_context": paper_context,
         "market": market,
         "model_fit_asof": saved["fit_asof"],
         "train_end": saved["train"][-1],
@@ -3507,6 +3769,7 @@ def _publication_decision(cal, data_date: str, signal_date: str, fallback_days: 
 
 
 @app.function(
+    volumes={str(VOL_ROOT): vol},
     schedule=modal.Cron("0 7 * * 1-5", timezone="Asia/Shanghai"),  # 周一~周五 07:00（周一算上周五数据，周二~周五算前一交易日）
     # ⚠️ 此 schedule 行曾被重构编辑意外吞掉（2026-09-28 gate 上线时），导致 09-29 静默无调度——
     #    任何触碰此装饰器的编辑后必须运行 tests/test_cron_gate.py 的守护测试。
@@ -3522,6 +3785,7 @@ def daily_cron():
       - results/signals/<date>_top20_lgb158.csv            （csi1000，网站兼容不变）
       - results/signals/<date>_top20_lgb158_chinext.csv    （chinext）
       - results/signals/<date>_chart.json / <date>_chart_chinext.json
+      - results/signals/<date>_paper_portfolio.json（及 chinext 后缀）
     发布判定（交易日 gate）两池共享（同一数据日）；单池失败不影响另一池发布，
     双池同时失败才 raise（触发 Modal 告警）。
     需 Modal Secret `github-push`（含 GITHUB_TOKEN，对 fork 仓库 Contents 读写权限的 PAT）。"""
@@ -3592,13 +3856,37 @@ def daily_cron():
         res_chi = None
         data_date = res["date"]
 
+    # R28: build stateful paper artifacts only after the data/publication gate
+    # has passed.  State is proposed now but persisted only after immutable
+    # GitHub publication succeeds.
+    paper_proposals = {}
+    paper_enabled = cal is not None and signal_date in cal
+    if not paper_enabled:
+        print("[cron] ⚠️ 交易日历不可确认，排名按既有 fail-open 规则发布，但 paper orders/state 不推进")
     files = {}
     if res is not None:
         files[f"results/signals/{signal_date}_top20_lgb158.csv"] = res["csv_content"]
         files[f"results/signals/{signal_date}_chart.json"] = res["chart_json"]
+        if paper_enabled:
+            paper_proposals["csi1000"] = _apply_paper_portfolio(res, signal_date, topk=20, nd=2)
+            files[f"results/signals/{signal_date}_paper_portfolio.json"] = paper_proposals["csi1000"]["artifact_json"]
     if res_chi is not None:
         files[f"results/signals/{signal_date}_top20_lgb158_chinext.csv"] = res_chi["csv_content"]
         files[f"results/signals/{signal_date}_chart_chinext.json"] = res_chi["chart_json"]
+        if paper_enabled:
+            paper_proposals["chinext"] = _apply_paper_portfolio(res_chi, signal_date, topk=20, nd=3)
+            files[f"results/signals/{signal_date}_paper_portfolio_chinext.json"] = paper_proposals["chinext"]["artifact_json"]
+
+    def _persist_paper_states():
+        if not paper_proposals:
+            return
+        for proposal in paper_proposals.values():
+            p = Path(proposal["state_path"])
+            p.parent.mkdir(parents=True, exist_ok=True)
+            tmp = p.with_name(f".{p.name}.cron.tmp")
+            tmp.write_text(proposal["state_json"])
+            os.replace(tmp, p)
+        vol.commit()
 
     token = os.environ["GITHUB_TOKEN"]
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
@@ -3618,7 +3906,8 @@ def daily_cron():
             continue
         raise RuntimeError(f"Cannot check existing artifact {path}: HTTP {exist.status_code}")
     if not missing_files:
-        print(f"[cron] {signal_date} 所有目标文件均已存在且一致，无需重复提交")
+        _persist_paper_states()
+        print(f"[cron] {signal_date} 所有目标文件均已存在且一致；paper state 已对齐，无需重复提交")
         return
 
     # 使用 Git Data API 一次 commit 写入所有缺失文件
@@ -3632,6 +3921,7 @@ def daily_cron():
         files=missing_files,
         message=f"chore(signal): {signal_date} repair/publish {len(missing_files)} signal artifacts (cron)",
     )
+    _persist_paper_states()
     published_pools = int(res is not None) + int(res_chi is not None)
     print(f"[cron] ✅ 已补发/推送 {len(missing_files)} 个文件，覆盖 {published_pools} 个成功股票池: {signal_date}")
 
@@ -3764,7 +4054,7 @@ def freq_window(args: dict):
     strategy = {
         "class": "TopkDropoutStrategy",
         "module_path": "qlib.contrib.strategy",
-        "kwargs": {"signal": pred, "topk": args["topk"], "n_drop": args["nd"]},
+        "kwargs": {"signal": pred, "topk": args["topk"], "n_drop": args["nd"], "forbid_all_trade_at_limit": False},
     }
     bench = "SH000852" if args["market"] == "csi1000" else "SH000905"
     pm, _ = normal_backtest(
@@ -3774,7 +4064,7 @@ def freq_window(args: dict):
         end_time=args["eval_end"],
         account=100000000,
         benchmark=bench,
-        exchange_kwargs=research_exchange(),
+        exchange_kwargs=research_exchange(args["eval_start"], args["eval_end"], codes=args["market"]),
     )
     rep = pm["1day"][0]
     excess = rep["return"] - rep["bench"] - rep["cost"]

@@ -291,7 +291,7 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
         strategy = {
             "class": "TopkDropoutStrategy",
             "module_path": "qlib.contrib.strategy",
-            "kwargs": {"signal": signal, "topk": topk, "n_drop": nd},
+            "kwargs": {"signal": signal, "topk": topk, "n_drop": nd, "forbid_all_trade_at_limit": False},
         }
         pm, _ = normal_backtest(
             strategy=strategy,
@@ -300,7 +300,7 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
             end_time=execution_end,
             account=100000000,
             benchmark=_bench_of(market),
-            exchange_kwargs=research_exchange(),
+            exchange_kwargs=research_exchange(execution_start, execution_end, codes=market),
         )
         rep = pm["1day"][0]
         excess = (rep["return"] - rep["bench"] - rep["cost"]).dropna()

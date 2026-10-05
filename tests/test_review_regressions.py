@@ -47,7 +47,9 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn('"num_leaves": 250', src)
         self.assertIn('"CSZScoreNorm"', src)
         self.assertNotIn('"CSRankNorm"', src)
-        self.assertIn("expected_excess = -0.0223", src)
+        self.assertIn('"board_aware_open_bootstrap_v3"', src)
+        self.assertIn("unanchored_pending_batch_c_rerun", src)
+        self.assertNotIn("expected_excess = -0.0223", src)
         # Alpha158 类默认 infer 处理器必须镜像（review 2026-10-05：[] 与生产不符）
         self.assertIn('"ProcessInf"', src)
         self.assertIn('"ZScoreNorm"', src)
@@ -81,6 +83,38 @@ class ReviewRegressionTests(unittest.TestCase):
         daily = function_source("modal_qlib_cn_a10g.py", "daily_standalone")
         self.assertIn("runtime_lineage = _runtime_cache_lineage()", daily)
         self.assertIn("saved.get(\"runtime_lineage\") != runtime_lineage", daily)
+
+
+    def test_r24_research_backtests_use_custom_exchange_config(self):
+        src = (ROOT / "board_execution.py").read_text()
+        self.assertIn('"exchange": {', src)
+        self.assertIn('"class": "BoardAwareExchange"', src)
+        self.assertIn('"limit_threshold": None', src)
+        main = (ROOT / "modal_qlib_cn_a10g.py").read_text()
+        self.assertNotIn("exchange_kwargs=research_exchange(),", main)
+        freq = (ROOT / "freq_experiment.py").read_text()
+        self.assertNotIn("exchange_kwargs=research_exchange(),", freq)
+
+    def test_r27_live_cache_checks_provider_prefix_fingerprint(self):
+        daily = function_source("modal_qlib_cn_a10g.py", "daily_standalone")
+        self.assertIn("provider_training_fingerprint", daily)
+        self.assertIn("data_revision", daily)
+        self.assertIn('"data_fingerprint"', daily)
+        helper = function_source("qlib_live_retrain.py", "provider_training_fingerprint")
+        self.assertIn("cutoff_i", helper)
+        self.assertIn("--members--", helper)
+        self.assertIn("--features--", helper)
+
+    def test_r28_daily_cron_publishes_paper_portfolio_and_commits_state_after_push(self):
+        cron = function_source("modal_qlib_cn_a10g.py", "daily_cron")
+        self.assertIn("_apply_paper_portfolio", cron)
+        self.assertIn("_paper_portfolio.json", cron)
+        self.assertIn("_paper_portfolio_chinext.json", cron)
+        self.assertIn("_persist_paper_states()", cron)
+        self.assertLess(cron.index("push_files("), cron.rindex("_persist_paper_states()"))
+        daily = function_source("modal_qlib_cn_a10g.py", "daily_standalone")
+        self.assertIn('"ranking_full": ranking_full', daily)
+        self.assertIn('"paper_context": paper_context', daily)
 
 
 if __name__ == "__main__":

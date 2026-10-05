@@ -1,3 +1,5 @@
+import os
+import tempfile
 import unittest
 
 from paper_portfolio import PaperPortfolio
@@ -5,52 +7,93 @@ from paper_portfolio import PaperPortfolio
 
 class PaperPortfolioTests(unittest.TestCase):
     def setUp(self):
-        self.pp = PaperPortfolio(topk=3, nd=1, initial_cash=100000)
-        self.prices = {"A": 10.0, "B": 20.0, "C": 30.0, "D": 40.0, "E": 50.0}
+        self.pp = PaperPortfolio(topk=3, nd=1, initial_cash=100000, risk_degree=0.95)
+        self.ranking = [("A", 0.5), ("B", 0.4), ("C", 0.3), ("D", 0.2), ("E", 0.1)]
+        self.prices = {"A": 10.0, "B": 20.0, "C": 25.0, "D": 40.0, "E": 50.0}
 
-    def test_first_day_fills_topk(self):
-        ranking = [("A", 0.5), ("B", 0.4), ("C", 0.3), ("D", 0.2)]
-        r = self.pp.step("2026-01-05", ranking, self.prices, self.prices)
-        self.assertEqual(len(r["held"]), 3)
-        self.assertEqual(set(r["held"]), {"A", "B", "C"})
-        self.assertEqual(r["buys"], ["A", "B", "C"])
+    def _plan_execute(self, signal_date, execution_date, ranking=None, buy_tradable=None, sell_tradable=None):
+        self.pp.plan_signal(signal_date, execution_date, ranking or self.ranking)
+        return self.pp.execute_pending(
+            execution_date,
+            self.prices,
+            buy_tradable=buy_tradable,
+            sell_tradable=sell_tradable,
+        )
 
-    def test_dropout_replaces_worst(self):
-        # Day 1: fill with A, B, C
-        self.pp.step("2026-01-05", [("A", 0.5), ("B", 0.4), ("C", 0.3)], self.prices, self.prices)
-        # Day 2: D rises above C → C should be dropped, D bought (nd=1)
-        p2 = {**self.prices, "D": 40.0}
-        r = self.pp.step("2026-01-06", [("A", 0.5), ("B", 0.4), ("D", 0.35), ("C", 0.2)], p2, self.prices)
-        self.assertIn("C", r["sells"])
-        self.assertIn("D", r["buys"])
-        self.assertNotIn("C", r["held"])
-        self.assertIn("D", r["held"])
+    def test_first_execution_fills_topk(self):
+        r = self._plan_execute("2026-01-04", "2026-01-05")
+        self.assertEqual(set(r["positions"]), {"A", "B", "C"})
+        self.assertEqual([x["instrument"] for x in r["executed_buy"]], ["A", "B", "C"])
+        self.assertLess(self.pp.cash, self.pp.initial_cash)
 
-    def test_nd_limits_replacement(self):
-        self.pp = PaperPortfolio(topk=3, nd=1, initial_cash=100000)
-        self.pp.step("2026-01-05", [("A", 0.5), ("B", 0.4), ("C", 0.3)], self.prices, self.prices)
-        # Day 2: A,B,C all drop out; only 1 replacement allowed (nd=1)
-        ranking = [("D", 0.9), ("E", 0.8), ("F", 0.7), ("A", 0.1), ("B", 0.05), ("C", 0.01)]
-        p2 = {**self.prices, "D": 40.0, "E": 50.0, "F": 60.0}
-        r = self.pp.step("2026-01-06", ranking, p2, self.prices)
-        # nd=1: sell 1 worst, buy 1 best → 2 of 3 holdings unchanged
-        self.assertEqual(len(r["sells"]), 1)
-        self.assertEqual(len(r["buys"]), 1)
-        self.assertEqual(len(r["held"]), 3)
+    def test_dropout_replaces_only_worst(self):
+        self._plan_execute("2026-01-04", "2026-01-05")
+        ranking2 = [("A", 0.5), ("B", 0.4), ("D", 0.35), ("C", 0.2), ("E", 0.1)]
+        self.pp.plan_signal("2026-01-05", "2026-01-06", ranking2)
+        r = self.pp.execute_pending("2026-01-06", self.prices)
+        self.assertEqual(r["planned_sell"], ["C"])
+        self.assertEqual(r["planned_buy"], ["D"])
+        self.assertNotIn("C", self.pp.positions)
+        self.assertIn("D", self.pp.positions)
 
-    def test_state_roundtrip(self):
-        self.pp.step("2026-01-05", [("A", 0.5), ("B", 0.4), ("C", 0.3)], self.prices, self.prices)
-        import tempfile, os
-        f = os.path.join(tempfile.mkdtemp(), "state.json")
-        self.pp.save(f)
-        pp2 = PaperPortfolio.load(f)
-        self.assertEqual(pp2.cash, self.pp.cash)
-        self.assertEqual(set(pp2.positions), set(self.pp.positions))
+    def test_blocked_buy_is_not_substituted(self):
+        self._plan_execute("2026-01-04", "2026-01-05")
+        ranking2 = [("D", 0.9), ("E", 0.8), ("A", 0.4), ("B", 0.3), ("C", 0.1)]
+        self.pp.plan_signal("2026-01-05", "2026-01-06", ranking2)
+        r = self.pp.execute_pending(
+            "2026-01-06",
+            self.prices,
+            buy_tradable={"D": False, "E": True},
+        )
+        self.assertEqual(r["planned_buy"], ["D"])
+        self.assertEqual(r["executed_buy"], [])
+        self.assertNotIn("E", self.pp.positions)
 
-    def test_no_double_step(self):
-        self.pp.step("2026-01-05", [("A", 0.5)], self.prices, self.prices)
+    def test_sell_block_does_not_shrink_planned_buy_list(self):
+        self._plan_execute("2026-01-04", "2026-01-05")
+        ranking2 = [("D", 0.9), ("A", 0.4), ("B", 0.3), ("C", 0.1)]
+        self.pp.plan_signal("2026-01-05", "2026-01-06", ranking2)
+        r = self.pp.execute_pending(
+            "2026-01-06",
+            self.prices,
+            sell_tradable={"C": False},
+        )
+        self.assertEqual(r["planned_sell"], ["C"])
+        self.assertEqual(r["planned_buy"], ["D"])
+        self.assertIn("C", self.pp.positions)
+        self.assertIn("D", self.pp.positions)
+        self.assertEqual(len(self.pp.positions), 4)  # mirrors Qlib default only_tradable=False behavior
+
+    def test_qllib_cash_sizing_uses_planned_buy_count(self):
+        self._plan_execute("2026-01-04", "2026-01-05")
+        ranking2 = [("D", 0.9), ("A", 0.4), ("B", 0.3), ("C", 0.1)]
+        before = self.pp.cash
+        self.pp.plan_signal("2026-01-05", "2026-01-06", ranking2)
+        r = self.pp.execute_pending("2026-01-06", self.prices)
+        self.assertEqual(len(r["planned_buy"]), 1)
+        # The single new buy receives nearly 95% of post-sell cash, not cash / portfolio-size.
+        self.assertGreater(r["executed_buy"][0]["shares"] * r["executed_buy"][0]["price"], before * 0.8)
+
+    def test_state_roundtrip_preserves_execution_config_and_pending(self):
+        self.pp.plan_signal("2026-01-04", "2026-01-05", self.ranking)
+        with tempfile.TemporaryDirectory() as td:
+            path = os.path.join(td, "state.json")
+            self.pp.save(path)
+            pp2 = PaperPortfolio.load(path)
+        self.assertEqual(pp2.risk_degree, self.pp.risk_degree)
+        self.assertEqual(pp2.open_cost, self.pp.open_cost)
+        self.assertEqual(pp2.high_open_block, self.pp.high_open_block)
+        self.assertEqual(pp2.pending_signal, self.pp.pending_signal)
+
+    def test_pending_cannot_be_overwritten(self):
+        self.pp.plan_signal("2026-01-04", "2026-01-05", self.ranking)
+        with self.assertRaises(RuntimeError):
+            self.pp.plan_signal("2026-01-05", "2026-01-06", self.ranking)
+
+    def test_execution_date_must_match_pending(self):
+        self.pp.plan_signal("2026-01-04", "2026-01-05", self.ranking)
         with self.assertRaises(ValueError):
-            self.pp.step("2026-01-05", [("A", 0.5)], self.prices, self.prices)
+            self.pp.execute_pending("2026-01-06", self.prices)
 
 
 if __name__ == "__main__":

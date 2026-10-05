@@ -7,18 +7,17 @@ Subclasses qlib's Exchange without modifying the qlib package:
   ChiNext/STAR members).
 - R25: T+1 open fill convention (deal_price="$open"), matching the production
   protocol "T close data -> T score -> publish 07:00 -> execute at T+1 open".
-- Execution-day protection encoded in the same masks: buys are blocked when the
-  day opens more than `high_open_block` above the previous close (the manual
-  "T+1 高开>5% 跳过" rule, now applied consistently in research).
+- Optional execution-day buy protection can be requested with `high_open_block`,
+  but the standard research exchange leaves it disabled. The 5% high-open rule
+  belongs to the live/paper order layer, not to statutory price-limit modeling.
 
 Limit semantics (documented approximation, daily bars):
 - limit_up / limit_down are evaluated on the OPEN gap versus the previous close:
   a stock that opens at/through its board's limit cannot be meaningfully filled
   that day, so the order is blocked for the whole day (same coarse daily
   granularity as qlib's scalar rule, but with the correct board threshold).
-- Listing exemption: board_rules.limit_threshold returns None for the first
-  5 sessions of a STAR/ChiNext listing -> no limit block those days (the
-  high-open protection still applies).
+- Listing exemption: the first 5 sessions of a STAR/ChiNext listing receive no
+  statutory limit block when listing metadata is available.
 - Suspension: qlib's own rule ($close NaN) is preserved.
 
 Only the limit columns are overridden; everything else (costs, trade unit,
@@ -32,21 +31,27 @@ from typing import Dict, Optional
 import numpy as np
 import pandas as pd
 
-from board_rules import CHINEXT_REFORM, TH_10, TH_20, TH_30
+from board_rules import (
+    CHINEXT_REFORM,
+    MAIN_REGISTRATION_FIRST_LISTING,
+    MAIN_ST_10_START,
+)
 from qlib.backtest.exchange import Exchange
 
-_NOMINAL = {"star": TH_20, "chinext": TH_20, "main": TH_10, "bse": TH_30}
+_EXEC_NOMINAL = {"star": 0.20, "chinext": 0.20, "main": 0.10, "bse": 0.30}
 
 
 def board_thresholds(insts, dates) -> np.ndarray:
-    """Vectorized per-row nominal limit threshold; NaN = no limit (index/new-listing)."""
+    """Vectorized statutory limit ratios for execution; NaN = no price limit.
+
+    These are exact exchange ratios (10/20/30/5%), deliberately separate from
+    board_rules.TH_* audit filters (9.5/19.5/29.5/4.5%).
+    """
     inst_arr = np.asarray([str(s) for s in insts])
-    boards = np.array([_NOMINAL.get(_board_quick(s), np.nan) for s in inst_arr], dtype=float)
+    boards = np.array([_EXEC_NOMINAL.get(_board_quick(s), np.nan) for s in inst_arr], dtype=float)
     date_strs = np.array([str(d)[:10] for d in dates])
-    reform_mask = (inst_arr.str if False else np.array([s.startswith("SZ3") for s in inst_arr])) & (
-        date_strs < CHINEXT_REFORM
-    )
-    boards = np.where(boards == TH_20, np.where(reform_mask, TH_10, TH_20), boards)
+    reform_mask = np.array([s.startswith("SZ3") for s in inst_arr]) & (date_strs < CHINEXT_REFORM)
+    boards = np.where(boards == 0.20, np.where(reform_mask, 0.10, 0.20), boards)
     return boards
 
 
@@ -70,9 +75,10 @@ def _board_quick(symbol: str) -> str:
 
 
 def compute_limit_masks(insts, dates, open_px, prev_close, close_na,
-                        high_open_block: float = 0.05,
+                        high_open_block: Optional[float] = None,
                         listing_dates: Optional[Dict[str, str]] = None,
-                        calendar=None) -> tuple:
+                        calendar=None,
+                        st_symbols: Optional[set[str]] = None) -> tuple:
     """Pure limit-mask computation (unit-testable, no qlib dependency).
 
     Returns (limit_buy, limit_sell) boolean arrays aligned with the inputs.
@@ -82,28 +88,63 @@ def compute_limit_masks(insts, dates, open_px, prev_close, close_na,
     - high_open_block: buys blocked when the day opens more than this fraction
       above the previous close (execution-day protection, applies regardless
       of limit exemption).
-    - listing_dates/calendar: optional new-listing exemption inputs; when
-      provided, star/chinext rows within the first 5 sessions get no limit.
+    - listing_dates/calendar: optional new-listing exemption inputs for
+      STAR/ChiNext first five sessions, post-registration main-board first
+      five sessions, and BSE listing day.
     """
     inst_arr = np.asarray([str(s) for s in insts])
-    thr = board_thresholds(inst_arr, dates)
+    date_strs = np.asarray([str(d)[:10] for d in dates])
+    if len(inst_arr) != len(date_strs):
+        raise ValueError("insts and dates must have the same length")
+    thr = board_thresholds(inst_arr, date_strs)
+    if st_symbols:
+        st = {str(x).upper() for x in st_symbols}
+        st_mask = np.array([x.upper() in st for x in inst_arr])
+        board_kind = np.array([_board_quick(x) for x in inst_arr])
+        # Current/historical risk-warning limits:
+        # main: 5% before 2026-07-06, 10% afterwards;
+        # ChiNext: 5% before reform, 20% afterwards;
+        # STAR/BSE keep their board limits.
+        main_old = st_mask & (board_kind == "main") & (date_strs < MAIN_ST_10_START)
+        chn_old = st_mask & (board_kind == "chinext") & (date_strs < CHINEXT_REFORM)
+        thr = np.where(main_old | chn_old, 0.05, thr)
     open_arr = np.asarray(open_px, dtype=float)
     prev_arr = np.asarray(prev_close, dtype=float)
     with np.errstate(invalid="ignore", divide="ignore"):
         gap = open_arr / prev_arr - 1.0
     valid_prev = np.isfinite(prev_arr) & (prev_arr > 0)
-    limit_up = np.where(valid_prev & ~np.isnan(thr), gap >= thr, False)
-    limit_down = np.where(valid_prev & ~np.isnan(thr), gap <= -thr, False)
-    high_open = np.where(valid_prev, gap > float(high_open_block), False)
+    limited = valid_prev & ~np.isnan(thr)
+
+    # A-share/BSE stock prices use a 0.01 CNY minimum tick.  Compare against
+    # the rounded limit *price*, not a 9.5% audit-margin return threshold.
+    # floor(x*100 + 0.5)/100 implements decimal half-up rounding for positive prices.
+    upper_px = np.floor(prev_arr * (1.0 + np.nan_to_num(thr, nan=0.0)) * 100.0 + 0.5) / 100.0
+    lower_px = np.floor(prev_arr * (1.0 - np.nan_to_num(thr, nan=0.0)) * 100.0 + 0.5) / 100.0
+    eps = 1e-8
+    limit_up = np.where(limited, open_arr >= upper_px - eps, False)
+    limit_down = np.where(limited, open_arr <= lower_px + eps, False)
+    high_open = np.where(valid_prev, gap > float(high_open_block), False) if high_open_block is not None else np.zeros_like(valid_prev, dtype=bool)
     if listing_dates and calendar:
         cal_idx = {d: i for i, d in enumerate(calendar)}
         d_idx = np.array([cal_idx.get(str(d)[:10], -1) for d in dates])
         for inst, listing in listing_dates.items():
-            li = cal_idx.get(str(listing)[:10])
+            listing = str(listing)[:10]
+            li = cal_idx.get(listing)
             if li is None:
                 continue
+            board = _board_quick(inst)
+            if board in ("star", "chinext"):
+                n_exempt = 5
+            elif board == "main" and listing >= MAIN_REGISTRATION_FIRST_LISTING:
+                n_exempt = 5
+            elif board == "bse":
+                n_exempt = 1
+            else:
+                n_exempt = 0
+            if not n_exempt:
+                continue
             rows = inst_arr == inst
-            exempt = rows & (d_idx >= 0) & (d_idx <= li + 4)
+            exempt = rows & (d_idx >= li) & (d_idx < li + n_exempt)
             thr = np.where(exempt, np.nan, thr)
             limit_up = np.where(exempt, False, limit_up)
             limit_down = np.where(exempt, False, limit_down)
@@ -116,10 +157,12 @@ class BoardAwareExchange(Exchange):
     """Exchange with per-instrument/date board-aware limits and T+1-open-era
     execution-day protection. See module docstring."""
 
-    def __init__(self, *args, high_open_block: float = 0.05,
-                 enforce_board_limits: bool = True, **kwargs):
-        self._high_open_block = float(high_open_block)
+    def __init__(self, *args, high_open_block: Optional[float] = None,
+                 enforce_board_limits: bool = True,
+                 st_symbols: Optional[list[str]] = None, **kwargs):
+        self._high_open_block = None if high_open_block is None else float(high_open_block)
         self._enforce = bool(enforce_board_limits)
+        self._st_symbols = {str(x).upper() for x in (st_symbols or [])}
         # $open is the fill price (R25); Ref($close,1) is the open-gap reference.
         extra = ["$open", "Ref($close,1)"]
         kwargs["subscribe_fields"] = list(kwargs.get("subscribe_fields") or []) + extra
@@ -144,23 +187,24 @@ class BoardAwareExchange(Exchange):
             high_open_block=self._high_open_block,
             listing_dates=listing_dates,
             calendar=calendar,
+            st_symbols=self._st_symbols,
         )
         df["limit_buy"] = limit_buy
         df["limit_sell"] = limit_sell
 
     def _listing_dates(self, insts) -> Dict[str, str]:
-        """Listing date (first span start) for star/chinext instruments in the universe."""
+        """Listing date (first span start) for stock instruments in the universe."""
         from qlib.data import D
 
-        wanted = [s for s in insts if _board_quick(str(s)) in ("star", "chinext")]
+        wanted = [s for s in insts if _board_quick(str(s)) != "index"]
         if not wanted:
             return {}
-        spans = D.list_instruments(D.instruments("all"), as_list=True)
+        spans = D.list_instruments(D.instruments("all"), as_list=False)
         out = {}
         for inst in wanted:
             ss = spans.get(inst)
             if ss:
-                out[inst] = min(s for s, _ in ss)
+                out[inst] = str(min(s for s, _ in ss))[:10]
         return out
 
     def _full_calendar(self, dates) -> list:
@@ -170,25 +214,35 @@ class BoardAwareExchange(Exchange):
         return [str(x)[:10] for x in D.calendar(start_time="2000-01-01", end_time=end)]
 
 
-def research_exchange() -> dict:
-    """Standard research backtest exchange config.
+def research_exchange(start_time: str, end_time: str, codes="all",
+                      st_symbols: Optional[list[str]] = None) -> dict:
+    """Backtest kwargs that actually instantiate :class:`BoardAwareExchange`.
 
-    R25 (implemented): T+1 open fill — matching the production protocol
-    "T close data -> T score -> 07:00 publish -> T+1 open execution".
-    Returns a FLAT dict of Exchange kwargs: the backtest pipeline splats
-    exchange_kwargs directly to get_exchange(**kwargs), so a nested class
-    config does not work in this code path.
-
-    R24 (deferred): board-aware per-instrument price limits. The scalar
-    0.095 over-blocks ChiNext/STAR members at 10–19.5% moves but never
-    under-blocks main board. A custom Exchange subclass requires a
-    different injection mechanism (see 09-remaining R24); until then the
-    conservative threshold is kept as a known, documented approximation.
+    Qlib's `backtest(..., exchange_kwargs=...)` splats the dictionary into
+    `get_exchange`.  Therefore the custom exchange must be supplied through
+    the dedicated `exchange` argument; placing class/module_path beside the
+    ordinary kwargs only creates a normal Exchange.  Start/end are embedded in
+    the class config because get_exchange does not merge its outer dates into
+    a supplied exchange config.
     """
+    if not start_time or not end_time:
+        raise ValueError("research_exchange requires explicit start_time/end_time")
     return {
-        "deal_price": "open",
-        "limit_threshold": 0.095,
-        "open_cost": 0.0005,
-        "close_cost": 0.0015,
-        "min_cost": 5,
+        "exchange": {
+            "class": "BoardAwareExchange",
+            "module_path": "board_execution",
+            "kwargs": {
+                "freq": "day",
+                "start_time": str(start_time),
+                "end_time": str(end_time),
+                "codes": codes,
+                "deal_price": "open",
+                "limit_threshold": None,
+                "high_open_block": None,
+                "st_symbols": list(st_symbols or []),
+                "open_cost": 0.0005,
+                "close_cost": 0.0015,
+                "min_cost": 5,
+            },
+        }
     }

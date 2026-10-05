@@ -9,6 +9,8 @@ from board_rules import (
     CHINEXT_REFORM,
     EW_BENCH,
     POOL_BOARDS,
+    MAIN_REGISTRATION_FIRST_LISTING,
+    MAIN_ST_10_START,
     TH_10,
     TH_20,
     TH_30,
@@ -76,8 +78,14 @@ class LimitThresholdTests(unittest.TestCase):
         self.assertIsNone(limit_threshold("SZ399006", "2026-09-15"))
         self.assertIsNone(limit_threshold("SH000852", "2020-08-21"))
 
-    def test_st_override(self):
-        self.assertEqual(limit_threshold("SZ300750", "2026-09-15", st_symbols={"SZ300750"}), TH_5)
+    def test_st_override_is_board_and_date_aware(self):
+        # 创业板 ST：改革前 5%，改革后仍按创业板 20%。
+        self.assertEqual(limit_threshold("SZ300750", "2020-08-21", st_symbols={"SZ300750"}), TH_5)
+        self.assertEqual(limit_threshold("SZ300750", "2026-09-15", st_symbols={"SZ300750"}), TH_20)
+        # 主板风险警示：2026-07-06 起从 5% 调整为 10%。
+        self.assertEqual(limit_threshold("SH600001", "2026-07-03", st_symbols={"SH600001"}), TH_5)
+        self.assertEqual(limit_threshold("SH600001", "2026-07-06", st_symbols={"SH600001"}), TH_10)
+        self.assertEqual(MAIN_ST_10_START, "2026-07-06")
 
     CAL = [
         "2026-09-01",
@@ -89,6 +97,24 @@ class LimitThresholdTests(unittest.TestCase):
         "2026-09-09",
         "2026-09-10",
     ]
+
+
+    def test_main_registration_ipo_first_five_sessions_unlimited(self):
+        cal = [
+            "2023-04-10", "2023-04-11", "2023-04-12", "2023-04-13",
+            "2023-04-14", "2023-04-17",
+        ]
+        listing = {"SZ001286": "2023-04-10"}
+        for d in cal[:5]:
+            self.assertIsNone(limit_threshold("SZ001286", d, listing_dates=listing, calendar=cal))
+        self.assertEqual(limit_threshold("SZ001286", cal[5], listing_dates=listing, calendar=cal), TH_10)
+        self.assertEqual(MAIN_REGISTRATION_FIRST_LISTING, "2023-04-10")
+
+    def test_bse_only_listing_day_unlimited(self):
+        cal = ["2026-01-05", "2026-01-06"]
+        listing = {"BJ430047": "2026-01-05"}
+        self.assertIsNone(limit_threshold("BJ430047", cal[0], listing_dates=listing, calendar=cal))
+        self.assertEqual(limit_threshold("BJ430047", cal[1], listing_dates=listing, calendar=cal), TH_30)
 
     def test_new_listing_no_limit_with_calendar(self):
         listing = {"SH688001": "2026-09-01"}

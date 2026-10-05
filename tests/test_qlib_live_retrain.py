@@ -2,7 +2,8 @@ import copy
 import unittest
 
 from qlib_live_retrain import (configure_asof, should_retrain, cache_signature,
-                               retrain_due_calendar, RETRAIN_ORIGIN)
+                               retrain_due_calendar, RETRAIN_ORIGIN,
+                               provider_training_fingerprint)
 
 
 class LiveRetrainTests(unittest.TestCase):
@@ -69,6 +70,73 @@ class LiveRetrainTests(unittest.TestCase):
             cache_signature(self.cfg, runtime_lineage={"pyqlib": "a"}),
             cache_signature(self.cfg, runtime_lineage={"pyqlib": "b"}),
         )
+
+
+    def test_provider_fingerprint_ignores_new_bars_but_detects_history_revision(self):
+        import struct
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "calendars").mkdir()
+            (root / "instruments").mkdir()
+            (root / "features" / "sh600001").mkdir(parents=True)
+            cal = ["2026-01-05", "2026-01-06", "2026-01-07"]
+            (root / "calendars" / "day.txt").write_text("\n".join(cal))
+            (root / "instruments" / "csi1000.txt").write_text(
+                "SH600001\t2026-01-05\t2026-01-07\n"
+            )
+
+            def write_field(field, values):
+                payload = struct.pack("<f", 0.0) + b"".join(struct.pack("<f", float(v)) for v in values)
+                (root / "features" / "sh600001" / f"{field}.day.bin").write_bytes(payload)
+
+            for field in ("open", "high", "low", "close", "volume", "factor"):
+                write_field(field, [1.0, 2.0, 3.0])
+
+            fp1 = provider_training_fingerprint(root, "csi1000", "2026-01-06")
+
+            # Appending a normal new bar and extending an open membership span
+            # must not change the prefix hash at the old fit cutoff.
+            cal.append("2026-01-08")
+            (root / "calendars" / "day.txt").write_text("\n".join(cal))
+            (root / "instruments" / "csi1000.txt").write_text(
+                "SH600001\t2026-01-05\t2026-01-08\n"
+            )
+            for field in ("open", "high", "low", "close", "volume", "factor"):
+                write_field(field, [1.0, 2.0, 3.0, 4.0])
+            fp2 = provider_training_fingerprint(root, "csi1000", "2026-01-06")
+            self.assertEqual(fp1, fp2)
+
+            # A value revision before the cached model's cutoff must invalidate.
+            write_field("close", [1.0, 2.5, 3.0, 4.0])
+            fp3 = provider_training_fingerprint(root, "csi1000", "2026-01-06")
+            self.assertNotEqual(fp1, fp3)
+
+    def test_provider_fingerprint_detects_membership_revision(self):
+        import struct
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "calendars").mkdir()
+            (root / "instruments").mkdir()
+            (root / "features" / "sh600001").mkdir(parents=True)
+            cal = ["2026-01-05", "2026-01-06", "2026-01-07"]
+            (root / "calendars" / "day.txt").write_text("\n".join(cal))
+            for field in ("open", "high", "low", "close", "volume", "factor"):
+                (root / "features" / "sh600001" / f"{field}.day.bin").write_bytes(
+                    struct.pack("<f", 0.0) + b"".join(struct.pack("<f", x) for x in (1.0, 2.0, 3.0))
+                )
+            inst = root / "instruments" / "csi1000.txt"
+            inst.write_text("SH600001\t2026-01-05\t2026-01-07\n")
+            a = provider_training_fingerprint(root, "csi1000", "2026-01-07")
+            inst.write_text("SH600001\t2026-01-06\t2026-01-07\n")
+            b = provider_training_fingerprint(root, "csi1000", "2026-01-07")
+            self.assertNotEqual(a, b)
+
 
     def test_fail_closed_bad_asof(self):
         self.assertRaises(ValueError, configure_asof, self.cfg, self.cal, self.cal[-2])

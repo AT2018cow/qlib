@@ -1,187 +1,290 @@
-"""Stateful paper portfolio for daily rankings (R28).
+"""Persistent paper portfolio aligned with Qlib TopkDropoutStrategy semantics.
 
-Transforms the daily Top-20 ranking into an executable portfolio with persistent
-state (cash, positions, holding days), producing actionable buy/sell orders.
-Validates against Qlib's TopkDropoutStrategy under the same execution assumptions.
+The live cron runs before the execution day's open is known.  Therefore state
+has two phases:
 
-Usage:
-    pp = PaperPortfolio(topk=20, nd=2)
-    report = pp.step(date, ranking, open_prices, prev_closes)
-    pp.save(path)
+1. plan_signal(): store yesterday-close ranking as orders intended for the next
+   execution date.
+2. execute_pending(): on the next data refresh, settle those orders at the
+   recorded execution day's actual open using buy/sell tradability masks.
 
-The TopkDropout algorithm (verified against qlib/contrib/strategy/signal_strategy.py):
-1. Sort current holdings by today's score (descending).
-2. Candidates to buy = top-ranked stocks NOT in holdings (enough to fill topk).
-3. Combine holdings + candidates, sort by score.
-4. Sell the nd lowest-scoring held stocks (from the combined list, only stocks
-   actually held, subject to tradability).
-5. Buy enough candidates to fill topk after selling.
-6. Equal-weight allocation among all held positions.
+This deliberately mirrors Qlib's default TopkDropoutStrategy selection rules:
+method_buy=top, method_sell=bottom, only_tradable=False, hold_thresh=1.  The
+buy list is fixed before execution; a blocked buy is NOT replaced by the next
+ranked stock.  Cash sizing follows Qlib's risk_degree convention.
 """
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
-STATE_VERSION = 1
+STATE_VERSION = 2
 
 
 class PaperPortfolio:
-    """Stateful paper trading portfolio driven by daily Top-N rankings."""
+    """Stateful paper portfolio driven by daily cross-sectional scores."""
 
-    def __init__(self, topk: int = 20, nd: int = 2, initial_cash: float = 1_000_000,
-                 open_cost: float = 0.0005, close_cost: float = 0.0015,
-                 min_cost: float = 5.0, high_open_block: float = 0.05):
-        self.topk = topk
-        self.nd = nd
-        self.initial_cash = initial_cash
-        self.open_cost = open_cost
-        self.close_cost = close_cost
-        self.min_cost = min_cost
-        self.high_open_block = high_open_block
-        self.cash = initial_cash
-        self.positions: Dict[str, dict] = {}  # {symbol: {shares, entry_price, entry_date, cost_basis}}
+    def __init__(
+        self,
+        topk: int = 20,
+        nd: int = 2,
+        initial_cash: float = 1_000_000,
+        open_cost: float = 0.0005,
+        close_cost: float = 0.0015,
+        min_cost: float = 5.0,
+        risk_degree: float = 0.95,
+        hold_thresh: int = 1,
+        trade_unit: int = 100,
+        high_open_block: float = 0.05,
+    ):
+        if topk < 1 or nd < 0 or initial_cash <= 0 or not (0 < risk_degree <= 1):
+            raise ValueError("invalid paper portfolio configuration")
+        self.topk = int(topk)
+        self.nd = int(nd)
+        self.initial_cash = float(initial_cash)
+        self.open_cost = float(open_cost)
+        self.close_cost = float(close_cost)
+        self.min_cost = float(min_cost)
+        self.risk_degree = float(risk_degree)
+        self.hold_thresh = int(hold_thresh)
+        self.trade_unit = int(trade_unit)
+        self.high_open_block = float(high_open_block)
+        self.cash = float(initial_cash)
+        self.positions: Dict[str, dict] = {}
+        self.pending_signal: Optional[dict] = None
         self.history: List[dict] = []
-        self.last_step_date: Optional[str] = None
+        self.last_execution_date: Optional[str] = None
 
-    # ------------------------------------------------------------------ state
+    # ---------------------------------------------------------------- state
 
-    def save(self, path: str) -> None:
-        Path(path).write_text(json.dumps({
+    def _config_dict(self) -> dict:
+        return {
+            "topk": self.topk,
+            "nd": self.nd,
+            "initial_cash": self.initial_cash,
+            "open_cost": self.open_cost,
+            "close_cost": self.close_cost,
+            "min_cost": self.min_cost,
+            "risk_degree": self.risk_degree,
+            "hold_thresh": self.hold_thresh,
+            "trade_unit": self.trade_unit,
+            "high_open_block": self.high_open_block,
+        }
+
+    def to_dict(self) -> dict:
+        return {
             "version": STATE_VERSION,
+            "config": self._config_dict(),
             "cash": self.cash,
             "positions": self.positions,
-            "last_step_date": self.last_step_date,
-            "topk": self.topk, "nd": self.nd,
-            "initial_cash": self.initial_cash,
-            "history": self.history[-60:],  # keep recent history
-        }, indent=2, ensure_ascii=False))
+            "pending_signal": self.pending_signal,
+            "last_execution_date": self.last_execution_date,
+            "history": self.history[-120:],
+        }
+
+    def save(self, path: str | Path) -> None:
+        p = Path(path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        tmp = p.with_name(f".{p.name}.tmp")
+        tmp.write_text(json.dumps(self.to_dict(), indent=2, ensure_ascii=False))
+        tmp.replace(p)
 
     @classmethod
-    def load(cls, path: str) -> "PaperPortfolio":
-        s = json.loads(Path(path).read_text())
-        pp = cls(topk=s["topk"], nd=s["nd"], initial_cash=s["initial_cash"])
-        pp.cash = s["cash"]
-        pp.positions = s["positions"]
-        pp.last_step_date = s.get("last_step_date")
-        pp.history = s.get("history", [])
+    def load(cls, path: str | Path) -> "PaperPortfolio":
+        raw = json.loads(Path(path).read_text())
+        if raw.get("version") != STATE_VERSION:
+            raise ValueError(f"unsupported paper portfolio state version: {raw.get('version')}")
+        pp = cls(**raw["config"])
+        pp.cash = float(raw["cash"])
+        pp.positions = raw.get("positions", {})
+        pp.pending_signal = raw.get("pending_signal")
+        pp.last_execution_date = raw.get("last_execution_date")
+        pp.history = raw.get("history", [])
         return pp
 
-    # ------------------------------------------------------------------ step
+    # --------------------------------------------------------- Qlib selection
 
-    def step(self, date: str, ranking: List[Tuple[str, float]],
-             open_prices: Dict[str, float], prev_closes: Dict[str, float],
-             tradable: Optional[Dict[str, bool]] = None) -> dict:
-        """Process one trading day and return a report.
+    @staticmethod
+    def _score_map(ranking: Iterable[Tuple[str, float]]) -> tuple[list[str], dict[str, float]]:
+        rows = [(str(s), float(v)) for s, v in ranking]
+        # Qlib sorts pred_score descending before taking today's candidates.
+        rows.sort(key=lambda x: x[1], reverse=True)
+        return [s for s, _ in rows], dict(rows)
 
-        Args:
-            date: trading date (YYYY-MM-DD)
-            ranking: [(symbol, score)] sorted by score descending (from the model)
-            open_prices: {symbol: today's open price}
-            prev_closes: {symbol: previous trading day's close}
-            tradable: {symbol: bool} — False = blocked (limit/suspension); None = all tradable
+    def decision_from_ranking(self, ranking: Iterable[Tuple[str, float]]) -> dict:
+        """Return Qlib-style *planned* sell/buy lists before tradability checks."""
+        ranked, scores = self._score_map(ranking)
+        held = list(self.positions)
+        last = sorted(held, key=lambda s: scores.get(s, float("-inf")), reverse=True)
+        held_set = set(last)
 
-        Returns:
-            Daily report dict with sells, buys, portfolio state, P&L.
-        """
-        if self.last_step_date and date <= self.last_step_date:
-            raise ValueError(f"date {date} <= last_step_date {self.last_step_date}")
+        n_today = self.nd + self.topk - len(last)
+        not_held = [s for s in ranked if s not in held_set]
+        today = not_held[:n_today] if n_today != 0 else []
 
-        tradable = tradable or {}
-        scores = dict(ranking)
-        held = sorted(self.positions.keys(), key=lambda s: scores.get(s, -1e9), reverse=True)
-        held_set = set(held)
+        # pandas Index.union is unique; sort combined symbols by score descending.
+        comb = list(dict.fromkeys(last + today))
+        comb.sort(key=lambda s: scores.get(s, float("-inf")), reverse=True)
+        bottom = set(comb[-self.nd:]) if self.nd > 0 else set()
+        sell = [s for s in last if s in bottom]
+        n_buy = len(sell) + self.topk - len(last)
+        buy = today[:n_buy] if n_buy != 0 else []
+        return {"sell": sell, "buy": buy}
 
-        # 1. Build buy candidates: high-scoring stocks not held
-        cand_all = [s for s, _ in ranking if s not in held_set and s in open_prices]
-        n_to_fill = self.topk - len(held)
-        today_buy_pool = cand_all[: max(self.nd + n_to_fill, 0)]
+    # -------------------------------------------------------------- two-phase
 
-        # 2. Combined list (holdings + candidates), sorted by score
-        comb = sorted([s for s in held if s in scores] + today_buy_pool,
-                       key=lambda s: scores.get(s, -1e9), reverse=True)
+    def plan_signal(
+        self,
+        signal_date: str,
+        execution_date: str,
+        ranking: Iterable[Tuple[str, float]],
+        metadata: Optional[dict] = None,
+    ) -> dict:
+        if execution_date <= signal_date:
+            raise ValueError("execution_date must be after signal_date")
+        if self.pending_signal is not None:
+            raise RuntimeError(
+                f"unsettled pending signal for {self.pending_signal['execution_date']}; "
+                "refusing to overwrite portfolio lineage"
+            )
+        rows = [[str(s), float(v)] for s, v in ranking]
+        decision = self.decision_from_ranking(rows)
+        self.pending_signal = {
+            "signal_date": str(signal_date),
+            "execution_date": str(execution_date),
+            "ranking": rows,
+            "planned_sell": decision["sell"],
+            "planned_buy": decision["buy"],
+            "metadata": metadata or {},
+        }
+        return {
+            "signal_date": str(signal_date),
+            "execution_date": str(execution_date),
+            **decision,
+        }
 
-        # 3. Sell: the nd lowest-scored held stocks from comb (bottom method)
-        comb_held = [s for s in comb if s in held_set]
-        sell_candidates = comb_held[-self.nd:] if len(comb_held) >= self.nd else comb_held
-        sells = []
-        for s in sell_candidates:
-            if tradable.get(s, True) is False:
-                continue  # blocked (limit down / suspension)
-            sells.append(s)
+    def execute_pending(
+        self,
+        execution_date: str,
+        open_prices: Dict[str, float],
+        buy_tradable: Optional[Dict[str, bool]] = None,
+        sell_tradable: Optional[Dict[str, bool]] = None,
+    ) -> dict:
+        if self.pending_signal is None:
+            return {"date": execution_date, "status": "no_pending"}
+        pending = self.pending_signal
+        if str(execution_date) != pending["execution_date"]:
+            raise ValueError(
+                f"pending execution date {pending['execution_date']} != supplied {execution_date}"
+            )
+        if self.last_execution_date and execution_date <= self.last_execution_date:
+            raise ValueError("execution date is not strictly increasing")
 
-        # 4. Buy: fill topk after selling
-        n_buy = min(self.topk - len(held) + len(sells), len(today_buy_pool))
-        buys = []
-        for s in today_buy_pool:
-            if len(buys) >= n_buy:
-                break
-            if tradable.get(s, True) is False:
-                continue  # blocked (high open / limit up / suspension)
-            buys.append(s)
+        buy_tradable = buy_tradable or {}
+        sell_tradable = sell_tradable or {}
 
-        # 5. Execute sells (at open price, with close_cost)
-        for s in sells:
-            pos = self.positions.pop(s, None)
+        # A position bought yesterday has one completed bar of holding time today,
+        # matching Qlib's default hold_thresh=1 eligibility on the next step.
+        for pos in self.positions.values():
+            pos["holding_days"] = int(pos.get("holding_days", 0)) + 1
+
+        # Recompute from the stored ranking against the actual current position.
+        decision = self.decision_from_ranking(pending["ranking"])
+        planned_sell = decision["sell"]
+        planned_buy = decision["buy"]
+        executed_sell, blocked_sell = [], []
+        sell_cost_total = 0.0
+
+        for sym in planned_sell:
+            pos = self.positions.get(sym)
+            px = open_prices.get(sym)
             if pos is None:
                 continue
-            price = open_prices.get(s)
-            if price is None or price <= 0:
-                self.positions[s] = pos  # can't sell, restore
+            if int(pos.get("holding_days", 0)) < self.hold_thresh:
+                blocked_sell.append({"instrument": sym, "reason": "hold_thresh"})
                 continue
-            trade_val = pos["shares"] * price
-            cost = max(trade_val * self.close_cost, self.min_cost)
-            self.cash += trade_val - cost
+            if sell_tradable.get(sym, True) is False:
+                blocked_sell.append({"instrument": sym, "reason": "not_tradable"})
+                continue
+            if px is None or px <= 0:
+                blocked_sell.append({"instrument": sym, "reason": "missing_open"})
+                continue
+            trade_value = float(pos["shares"]) * float(px)
+            cost = max(trade_value * self.close_cost, self.min_cost)
+            self.cash += trade_value - cost
+            sell_cost_total += cost
+            self.positions.pop(sym)
+            executed_sell.append({"instrument": sym, "shares": pos["shares"], "price": float(px), "cost": cost})
 
-        # 6. Execute buys (at open price, with open_cost)
-        if buys:
-            n_targets = len(self.positions) + len(buys)
-            alloc = self.cash / max(n_targets, 1) if self.cash > 0 else 0
-            for s in buys:
-                price = open_prices.get(s)
-                if price is None or price <= 0 or alloc <= 0:
-                    continue
-                shares = int(alloc / price / 100) * 100  # A-share lot size
-                if shares <= 0:
-                    continue
-                trade_val = shares * price
-                cost = max(trade_val * self.open_cost, self.min_cost)
-                if trade_val + cost > self.cash:
-                    continue
-                self.cash -= trade_val + cost
-                self.positions[s] = {
-                    "shares": shares, "entry_price": price,
-                    "entry_date": date, "cost_basis": trade_val + cost,
-                }
+        # Qlib sizes by the planned buy count, not by the number that later pass
+        # tradability.  A blocked order therefore leaves cash idle and is not
+        # replaced with the next-ranked stock.
+        value_per_buy = self.cash * self.risk_degree / len(planned_buy) if planned_buy else 0.0
+        executed_buy, blocked_buy = [], []
+        buy_cost_total = 0.0
+        for sym in planned_buy:
+            px = open_prices.get(sym)
+            if buy_tradable.get(sym, True) is False:
+                blocked_buy.append({"instrument": sym, "reason": "not_tradable"})
+                continue
+            if px is None or px <= 0:
+                blocked_buy.append({"instrument": sym, "reason": "missing_open"})
+                continue
+            shares = int(value_per_buy / float(px) / self.trade_unit) * self.trade_unit
+            if shares <= 0:
+                blocked_buy.append({"instrument": sym, "reason": "rounding"})
+                continue
+            trade_value = shares * float(px)
+            cost = max(trade_value * self.open_cost, self.min_cost)
+            if trade_value + cost > self.cash:
+                # Qlib's generator does not reserve open_cost in sizing.  The
+                # paper layer stays fail-safe and refuses an unaffordable fill.
+                affordable = int((self.cash - self.min_cost) / float(px) / self.trade_unit) * self.trade_unit
+                shares = max(0, affordable)
+                trade_value = shares * float(px)
+                cost = max(trade_value * self.open_cost, self.min_cost) if shares > 0 else 0.0
+            if shares <= 0 or trade_value + cost > self.cash:
+                blocked_buy.append({"instrument": sym, "reason": "cash"})
+                continue
+            self.cash -= trade_value + cost
+            buy_cost_total += cost
+            self.positions[sym] = {
+                "shares": shares,
+                "entry_price": float(px),
+                "last_price": float(px),
+                "entry_date": str(execution_date),
+                "cost_basis": trade_value + cost,
+                "holding_days": 0,
+            }
+            executed_buy.append({"instrument": sym, "shares": shares, "price": float(px), "cost": cost})
 
-        # 7. Compute portfolio value
-        pv = self.cash + sum(
-            p["shares"] * open_prices.get(s, p["entry_price"])
-            for s, p in self.positions.items()
+        for sym, pos in self.positions.items():
+            px = open_prices.get(sym)
+            if px is not None and px > 0:
+                pos["last_price"] = float(px)
+
+        portfolio_value = self.cash + sum(
+            float(pos["shares"]) * float(pos.get("last_price", pos["entry_price"]))
+            for pos in self.positions.values()
         )
         report = {
-            "date": date, "cash": round(self.cash, 2),
-            "portfolio_value": round(pv, 2),
+            "date": str(execution_date),
+            "signal_date": pending["signal_date"],
+            "planned_sell": planned_sell,
+            "planned_buy": planned_buy,
+            "executed_sell": executed_sell,
+            "blocked_sell": blocked_sell,
+            "executed_buy": executed_buy,
+            "blocked_buy": blocked_buy,
+            "cash": round(self.cash, 2),
+            "portfolio_value": round(portfolio_value, 2),
             "n_positions": len(self.positions),
-            "sells": sells, "buys": buys,
-            "held": sorted(self.positions.keys()),
+            "positions": sorted(self.positions),
+            "cost": round(sell_cost_total + buy_cost_total, 2),
+            "metadata": pending.get("metadata", {}),
         }
         self.history.append(report)
-        self.last_step_date = date
+        self.last_execution_date = str(execution_date)
+        self.pending_signal = None
         return report
-
-    # -------------------------------------------------------------- validation
-
-    def portfolio_value_series(self, prices_by_date: Dict[str, Dict[str, float]]) -> List[Tuple[str, float]]:
-        """Reconstruct the daily portfolio value from history."""
-        out = []
-        for h in self.history:
-            d = h["date"]
-            prices = prices_by_date.get(d, {})
-            pv = h["cash"] + sum(
-                self.positions.get(s, {}).get("shares", 0) * prices.get(s, 0)
-                for s in h["held"]
-            ) if d == self.last_step_date else h["portfolio_value"]
-            out.append((d, pv))
-        return out

@@ -7,12 +7,14 @@ from __future__ import annotations
 from bisect import bisect_left
 import hashlib
 import json
+from pathlib import Path
+import struct
 
 from qlib_audit_fixes import last_matured_sample, purge_cfg_splits
 
 RETRAIN_EVERY_SESSIONS = 20
 VALIDATION_SESSIONS = 252
-MODEL_CACHE_VERSION = 2
+MODEL_CACHE_VERSION = 3
 # 全局重训锚点（bar 日期）：两池共用同一重训时钟的相位原点。
 # 选 2026-09-18 = csi1000 现役谱系的真实 fit bar（09-21 使用日 bootstrap 重训），
 # 使创业板谱系回放与生产既有节律同相位；此后每 20 个交易日两池同日重训。
@@ -100,6 +102,76 @@ def should_retrain(calendar: list[str], asof: str, previous_fit: str | None,
     if prior >= len(calendar) or calendar[prior] != previous_fit or prior > now:
         raise ValueError('Cached fit date missing from calendar or in future')
     return now - prior >= interval
+
+
+def provider_training_fingerprint(provider_dir, market: str, cutoff: str,
+                                  fields=("open", "high", "low", "close", "volume", "factor")) -> str:
+    """Hash only provider data that could have been visible to a cached model.
+
+    The hash is clipped at cutoff (normally the model fit_asof), so appending
+    tomorrow's bar does not invalidate today's cached model. A historical
+    value revision, bin offset change, calendar rewrite, or point-in-time
+    membership change at/before the cutoff does invalidate it.
+    """
+    root = Path(provider_dir)
+    cal_file = root / "calendars" / "day.txt"
+    inst_file = root / "instruments" / f"{market}.txt"
+    if not cal_file.is_file() or not inst_file.is_file():
+        raise FileNotFoundError(f"provider fingerprint inputs missing: {cal_file} / {inst_file}")
+
+    calendar = [x.strip()[:10] for x in cal_file.read_text().splitlines() if x.strip()]
+    if not calendar or calendar != sorted(set(calendar)):
+        raise ValueError("invalid provider calendar for fingerprint")
+    cutoff_i = bisect_left(calendar, str(cutoff)[:10])
+    if cutoff_i >= len(calendar) or calendar[cutoff_i] != str(cutoff)[:10]:
+        raise ValueError(f"fingerprint cutoff {cutoff} not in provider calendar")
+
+    members = []
+    symbols = set()
+    for raw in inst_file.read_text().splitlines():
+        if not raw.strip():
+            continue
+        parts = raw.split("\t")
+        if len(parts) < 3:
+            raise ValueError(f"malformed instrument row in {inst_file}: {raw!r}")
+        sym, start, end = parts[0].upper(), parts[1][:10], parts[2][:10]
+        if start > calendar[cutoff_i]:
+            continue
+        clipped_end = min(end, calendar[cutoff_i])
+        if clipped_end < start:
+            continue
+        members.append((sym, start, clipped_end))
+        symbols.add(sym)
+
+    h = hashlib.sha256()
+    h.update(f"qlib-provider-prefix-v1|{market}|{calendar[cutoff_i]}\n".encode())
+    h.update("\n".join(calendar[: cutoff_i + 1]).encode())
+    h.update(b"\n--members--\n")
+    for row in sorted(members):
+        h.update(("\t".join(row) + "\n").encode())
+
+    h.update(b"--features--\n")
+    for sym in sorted(symbols):
+        base = root / "features" / sym.lower()
+        for field in fields:
+            p = base / f"{field}.day.bin"
+            h.update(f"{sym}|{field}|".encode())
+            if not p.is_file():
+                h.update(b"MISSING\n")
+                continue
+            with p.open("rb") as fh:
+                header = fh.read(4)
+                if len(header) != 4:
+                    raise ValueError(f"invalid qlib bin header: {p}")
+                start_idx = int(round(struct.unpack("<f", header)[0]))
+                n_values = max(0, cutoff_i - start_idx + 1)
+                prefix = fh.read(n_values * 4)
+                h.update(header)
+                h.update(prefix)
+                if len(prefix) != n_values * 4:
+                    h.update(f"|SHORT:{len(prefix)}/{n_values * 4}|".encode())
+                h.update(b"\n")
+    return h.hexdigest()
 
 
 def cache_signature(cfg: dict, *, horizon: int = 20,
