@@ -107,3 +107,16 @@ def test_calendar_none_spring_festival_level_gap_publish():
     """Degraded mode: worst legitimate gap (~10 natural days) must NOT raise."""
     action, _ = _publication_decision(None, "2026-02-13", "2026-02-23", fallback_days=10)
     assert action == "publish"
+
+
+def test_same_day_data_rejected():
+    cal = _cal(["2026-10-08", "2026-10-09"])
+    action, detail = _publication_decision(cal, "2026-10-08", "2026-10-08")
+    assert action == "raise"
+    assert "必须早于" in detail
+
+
+def test_future_data_rejected():
+    cal = _cal(["2026-10-08", "2026-10-09"])
+    action, _ = _publication_decision(cal, "2026-10-09", "2026-10-08")
+    assert action == "raise"
