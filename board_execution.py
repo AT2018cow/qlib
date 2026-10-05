@@ -35,10 +35,6 @@ from board_rules import (
     CHINEXT_REFORM,
     MAIN_REGISTRATION_FIRST_LISTING,
     MAIN_ST_10_START,
-    TH_5,
-    TH_10,
-    TH_20,
-    TH_30,
 )
 from qlib.backtest.exchange import Exchange
 
