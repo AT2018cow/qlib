@@ -24,6 +24,7 @@ jobs:
           sudo apt-get install -y build-essential
           pip install numpy==1.26.4 pandas==2.2.3 cython pyyaml ruamel.yaml fire loguru tqdm pytest modal lightgbm mlflow dill filelock joblib pyarrow pydantic-settings redis python-redis-lock pymongo gym cvxpy matplotlib setuptools-scm
           pip install . --no-build-isolation --no-deps
+          python setup.py build_ext --inplace
       - name: Compile changed modules
         run: |
           python -m py_compile board_execution.py qlib_live_retrain.py paper_portfolio.py freq_experiment.py modal_qlib_cn_a10g.py
