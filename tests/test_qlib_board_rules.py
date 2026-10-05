@@ -364,3 +364,34 @@ class EwIndexMatrixTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class EwBenchSpanEnforcementTests(unittest.TestCase):
+    """R26 Option A: 区间外价格不得贡献基准收益。"""
+
+    def test_price_outside_span_ignored(self):
+        import tempfile
+
+        from board_rules import build_ew_bench_files
+
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td)
+            (p / "calendars").mkdir()
+            (p / "instruments").mkdir()
+            cal = ["2026-01-05", "2026-01-06", "2026-01-07", "2026-01-08", "2026-01-09"]
+            (p / "calendars" / "day.txt").write_text("\n".join(cal))
+            # 成员区间只有 01-06 起生效（01-05 的价格在区间外，必须被忽略）
+            (p / "instruments" / "chinext.txt").write_text("SZ300001\t2026-01-06\t2026-01-09\n")
+            d = p / "features" / "sz300001"
+            d.mkdir(parents=True)
+            np.array([0] + [10.0, 11.0, 12.0, 14.0, 20.0], dtype="<f").tofile(d / "close.day.bin")
+            build_ew_bench_files(p, "chinext")
+            out = np.fromfile(p / "features" / "sz399998" / "close.day.bin", dtype="<f")
+            # day0 (01-05) 区间外 → 无有效收益 → flat 1.0
+            # day1 (01-06) 成员首日：无前收（01-05 被屏蔽）→ flat
+            # day2: 12/11-1 有效
+            self.assertTrue(np.isclose(out[1], 1.0, atol=1e-7))
+            self.assertTrue(np.isclose(out[2], 1.0, atol=1e-7))
+            self.assertTrue(np.isclose(out[3], 12.0 / 11.0, rtol=1e-6))
+            # 01-09 的 20.0 在区间内(day4) → 14/12-1? 检查: day3=13(12*?)…直接验证 day4 用 day3 值
+            self.assertTrue(np.isclose(out[4], 14.0 / 11.0, rtol=1e-6))  # out[4]=day3=(12/11)*(14/12)

@@ -42,11 +42,13 @@ image = (
     )
     .run_commands(
         "cd /root/qlib && pip install . --no-build-isolation --no-deps",
-        "cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/qlib/board_rules.py /root/",
+        "cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/qlib/board_rules.py /root/qlib/board_execution.py /root/",
     )
 )
 
 app = modal.App(APP_NAME, image=image)
+
+from board_execution import research_exchange
 
 YAML_PATH = "/root/qlib/examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158_csi500.yaml"
 
@@ -281,7 +283,6 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
         if market in ("star_chn", "chinext", "star"):
             from board_rules import star_chn_backtest_guard
             star_chn_backtest_guard(execution_start)
-        limit_th = 0.195 if market in ("star_chn", "chinext", "star") else 0.095
         executor = {
             "class": "SimulatorExecutor",
             "module_path": "qlib.backtest.executor",
@@ -299,13 +300,7 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
             end_time=execution_end,
             account=100000000,
             benchmark=_bench_of(market),
-            exchange_kwargs={
-                "limit_threshold": limit_th,
-                "deal_price": "close",
-                "open_cost": 0.0005,
-                "close_cost": 0.0015,
-                "min_cost": 5,
-            },
+            exchange_kwargs=research_exchange(),
         )
         rep = pm["1day"][0]
         excess = (rep["return"] - rep["bench"] - rep["cost"]).dropna()

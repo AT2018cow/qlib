@@ -25,6 +25,7 @@ from qlib_live_retrain import (
     retrain_due_calendar,
     RETRAIN_EVERY_SESSIONS,
 )
+from board_execution import research_exchange
 from board_rules import (
     CHINEXT_REFORM,
     BENCH_CANDIDATES,
@@ -106,7 +107,7 @@ image = (
     # 审计 PR 的 helper 模块随 add_local_dir 进了 /root/qlib/，但 Modal 入口脚本挂在
     # /root/ 运行（sys.path 首位是 /root）——必须复制到 /root/ 否则 ModuleNotFoundError。
     .run_commands(
-        "cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/qlib/board_rules.py /root/qlib/github_commit.py /root/"
+        "cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/qlib/board_rules.py /root/qlib/board_execution.py /root/qlib/github_commit.py /root/"
     )
 )
 
@@ -389,10 +390,11 @@ def _load_and_patch_cfg(
             cfg["market"] = market
             cfg["benchmark"] = _bench
             cfg["port_analysis_config"]["backtest"]["benchmark"] = _bench
-            # 池内全部为 ±20% 板块（见 board_rules），回测窗口必须不跨创业板改革日
+            # 池内全部为 ±20% 板块（见 board_rules），回测窗口必须不跨创业板改革日。
+            # 直接的回测执行统一走 board_execution.research_exchange()（逐股掩码 + T+1 开盘价），
+            # 此处不再设置标量 limit_threshold。
             bt_start = cfg["port_analysis_config"]["backtest"]["start_time"]
             star_chn_backtest_guard(bt_start)
-            cfg["port_analysis_config"]["backtest"]["exchange_kwargs"]["limit_threshold"] = 0.195
         else:
             _indices = {"csi300": "SH000300", "csi500": "SH000905", "csi1000": "SH000852"}
             if market not in _indices:
@@ -609,13 +611,7 @@ def independent_recheck():
         end_time="2023-03-31",
         account=100000000,
         benchmark="SH000852",
-        exchange_kwargs={
-            "limit_threshold": 0.095,
-            "deal_price": "close",
-            "open_cost": 0.0005,
-            "close_cost": 0.0015,
-            "min_cost": 5,
-        },
+        exchange_kwargs=research_exchange(),
     )
     rep = pm["1day"][0]
     excess = rep["return"] - rep["bench"] - rep["cost"]
@@ -650,7 +646,6 @@ def verify_integrity(market: str = "csi500"):
     import qlib
     from qlib.data import D
 
-    limit_th = 0.195 if market in EW_BENCH else 0.095
     _ensure_data()
     qlib.init(provider_uri=str(DATA_DIR), region="cn")
     end = _latest_trading_day()
@@ -1416,13 +1411,7 @@ def train_ensemble(topk: int = 50, n_drop: int = 2):
         "end_time": _latest_trading_day(),
         "account": 100000000,
         "benchmark": "SH000905",
-        "exchange_kwargs": {
-            "limit_threshold": 0.095,
-            "deal_price": "close",
-            "open_cost": 0.0005,
-            "close_cost": 0.0015,
-            "min_cost": 5,
-        },
+        "exchange_kwargs": research_exchange(),
     }
     strategy = {
         "class": "TopkDropoutStrategy",
@@ -1550,13 +1539,7 @@ def tune_one(params: dict, horizon: int = 20):
         end_time=valid_end,
         account=100000000,
         benchmark="SH000852",
-        exchange_kwargs={
-            "limit_threshold": 0.095,
-            "deal_price": "close",
-            "open_cost": 0.0005,
-            "close_cost": 0.0015,
-            "min_cost": 5,
-        },
+        exchange_kwargs=research_exchange(),
     )
     report = pm["1day"][0]
     if report.empty:
@@ -1683,13 +1666,7 @@ def dual_horizon(topk: int = 50, n_drop: int = 2, best_params: dict = None):
         "end_time": _latest_trading_day(),
         "account": 100000000,
         "benchmark": "SH000905",
-        "exchange_kwargs": {
-            "limit_threshold": 0.095,
-            "deal_price": "close",
-            "open_cost": 0.0005,
-            "close_cost": 0.0015,
-            "min_cost": 5,
-        },
+        "exchange_kwargs": research_exchange(),
     }
     strategy = {
         "class": "TopkDropoutStrategy",
@@ -1827,13 +1804,7 @@ def p0_diagnostics():
         end_time=END,
         account=100000000,
         benchmark="SH000905",
-        exchange_kwargs={
-            "limit_threshold": 0.095,
-            "deal_price": "close",
-            "open_cost": 0.0005,
-            "close_cost": 0.0015,
-            "min_cost": 5,
-        },
+        exchange_kwargs=research_exchange(),
     )
     executor = {
         "class": "SimulatorExecutor",
@@ -1964,13 +1935,7 @@ def p1_diagnostics():
         end_time=END,
         account=100000000,
         benchmark="SH000905",
-        exchange_kwargs={
-            "limit_threshold": 0.095,
-            "deal_price": "close",
-            "open_cost": 0.0005,
-            "close_cost": 0.0015,
-            "min_cost": 5,
-        },
+        exchange_kwargs=research_exchange(),
     )
     executor = {
         "class": "SimulatorExecutor",
@@ -2234,13 +2199,7 @@ def version_check_0911():
         end_time="2026-09-11",
         account=100000000,
         benchmark="SH000905",
-        exchange_kwargs={
-            "limit_threshold": 0.095,
-            "deal_price": "close",
-            "open_cost": 0.0005,
-            "close_cost": 0.0015,
-            "min_cost": 5,
-        },
+        exchange_kwargs=research_exchange(),
     )
     executor = {
         "class": "SimulatorExecutor",
@@ -2315,13 +2274,7 @@ def version_check_0916():
         end_time="2026-09-11",
         account=100000000,
         benchmark="SH000905",
-        exchange_kwargs={
-            "limit_threshold": 0.095,
-            "deal_price": "close",
-            "open_cost": 0.0005,
-            "close_cost": 0.0015,
-            "min_cost": 5,
-        },
+        exchange_kwargs=research_exchange(),
     )
     executor = {
         "class": "SimulatorExecutor",
@@ -2487,7 +2440,6 @@ def batch_c_window(args: dict):
         "kwargs": {"signal": pred, "topk": args["topk"], "n_drop": args["nd"]},
     }
     # 新池（star/chinext 板块）为 ±20% 口径；csi 池保持 0.095
-    limit_th = 0.195 if args["market"] in EW_BENCH else 0.095
     pm, _ = normal_backtest(
         strategy=strategy,
         executor=executor,
@@ -2495,13 +2447,7 @@ def batch_c_window(args: dict):
         end_time=te_e,
         account=100000000,
         benchmark=args["bench"],
-        exchange_kwargs={
-            "limit_threshold": limit_th,
-            "deal_price": "close",
-            "open_cost": 0.0005,
-            "close_cost": 0.0015,
-            "min_cost": 5,
-        },
+        exchange_kwargs=research_exchange(),
     )
     rep = pm["1day"][0]
     excess = rep["return"] - rep["bench"] - rep["cost"]
@@ -2671,13 +2617,7 @@ def p2_rolling():
             end_time=te_e,
             account=100000000,
             benchmark="SH000905",
-            exchange_kwargs={
-                "limit_threshold": 0.095,
-                "deal_price": "close",
-                "open_cost": 0.0005,
-                "close_cost": 0.0015,
-                "min_cost": 5,
-            },
+            exchange_kwargs=research_exchange(),
         )
         rep = pm["1day"][0]
         ra = risk_analysis(rep["return"] - rep["bench"] - rep["cost"])
@@ -2791,13 +2731,7 @@ def topk_grid(topks="10,20,30,50", n_drop: int = 3):
             end_time="2026-09-11",
             account=100000000,
             benchmark="SH000905",
-            exchange_kwargs={
-                "limit_threshold": 0.095,
-                "deal_price": "close",
-                "open_cost": 0.0005,
-                "close_cost": 0.0015,
-                "min_cost": 5,
-            },
+            exchange_kwargs=research_exchange(),
         )
         rep = pm["1day"][0]
         ra = risk_analysis(rep["return"] - rep["bench"] - rep["cost"])
@@ -2871,13 +2805,7 @@ def batch_a():
             end_time="2026-09-11",
             account=100000000,
             benchmark=bench,
-            exchange_kwargs={
-                "limit_threshold": 0.095,
-                "deal_price": "close",
-                "open_cost": 0.0005,
-                "close_cost": 0.0015,
-                "min_cost": 5,
-            },
+            exchange_kwargs=research_exchange(),
         )
         rep = pm["1day"][0]
         ra = risk_analysis(rep["return"] - rep["bench"] - rep["cost"])
@@ -2994,13 +2922,7 @@ def batch_a_star_chn(market: str = "star_chn"):
             end_time=WINDOW[1],
             account=100000000,
             benchmark=BENCH,
-            exchange_kwargs={
-                "limit_threshold": 0.195,
-                "deal_price": "close",
-                "open_cost": 0.0005,
-                "close_cost": 0.0015,
-                "min_cost": 5,
-            },
+            exchange_kwargs=research_exchange(),
         )
         rep = pm["1day"][0]
         if rep.empty:
@@ -3106,7 +3028,6 @@ def batch_b_one(spec: dict):
         "kwargs": {"signal": pred, "topk": 20, "n_drop": 2},
     }
     # 新池（star/chinext 板块）为 ±20% 口径；csi 池保持 0.095
-    limit_th = 0.195 if market in EW_BENCH else 0.095
     pm, _ = normal_backtest(
         strategy=strategy,
         executor={
@@ -3118,13 +3039,7 @@ def batch_b_one(spec: dict):
         end_time="2026-09-11",
         account=100000000,
         benchmark=bench,
-        exchange_kwargs={
-            "limit_threshold": limit_th,
-            "deal_price": "close",
-            "open_cost": 0.0005,
-            "close_cost": 0.0015,
-            "min_cost": 5,
-        },
+        exchange_kwargs=research_exchange(),
     )
     rep = pm["1day"][0]
     if rep.empty:
@@ -3846,13 +3761,7 @@ def freq_window(args: dict):
         end_time=args["eval_end"],
         account=100000000,
         benchmark=bench,
-        exchange_kwargs={
-            "limit_threshold": 0.095,
-            "deal_price": "close",
-            "open_cost": 0.0005,
-            "close_cost": 0.0015,
-            "min_cost": 5,
-        },
+        exchange_kwargs=research_exchange(),
     )
     rep = pm["1day"][0]
     excess = rep["return"] - rep["bench"] - rep["cost"]

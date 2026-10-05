@@ -19,7 +19,7 @@ Filter thresholds use the pipeline's audit口径 margin: nominal minus 0.5pp
 """
 from __future__ import annotations
 
-from bisect import bisect_right
+from bisect import bisect_left, bisect_right
 from pathlib import Path
 
 STAR_LAUNCH = "2019-07-22"
@@ -257,6 +257,12 @@ def build_ew_bench_files(provider_dir, market: str) -> dict:
     qlib provider dir. Single source of truth for both the Volume research path and
     the production daily container path — the two MUST NOT drift.
 
+    Benchmark definition (R26, Option A decided 2026-10-05): **point-in-time
+    reference index** — each instrument contributes only on calendar dates inside
+    its membership span(s) from the pool file; suspended days are excluded from
+    that day's equal-weight average (documented daily-reweighting semantics, not
+    an investable buy-and-hold portfolio).
+
     Qlib bin layout per chenditc: file = [float32 header = calendar index of the
     first value] + values (calendar-aligned, NaN = missing bar). Reads the pool
     file instruments/<market>.txt (build it first if missing) and features/<sym>/
@@ -283,9 +289,15 @@ def build_ew_bench_files(provider_dir, market: str) -> dict:
     inst = pd.read_csv(pool_txt, sep="\t", header=None, names=["symbol", "start", "end"])
     symbols = sorted(inst["symbol"].unique())
     M = np.full((len(symbols), n), np.nan, dtype="<f")
+    member = np.zeros((len(symbols), n), dtype=bool)  # R26 Option A: 成分区间强制
     missing = 0
     for k, sym in enumerate(symbols):
         p = root / "features" / sym.lower() / "close.day.bin"
+        for _, s_row in inst[inst["symbol"] == sym].iterrows():
+            i0 = bisect_left(cal, str(s_row["start"])[:10])
+            i1 = bisect_right(cal, str(s_row["end"])[:10])
+            if i1 > max(i0, 0):
+                member[k, max(i0, 0):i1] = True
         if not p.is_file():
             missing += 1
             continue
@@ -296,7 +308,9 @@ def build_ew_bench_files(provider_dir, market: str) -> dict:
         if start < 0 or start >= n:
             continue
         take = min(len(vals), n - start)
-        M[k, start : start + take] = vals[:take]
+        M[k, start: start + take] = vals[:take]
+    # 区间外价格不参与（即使 bin 有数据也屏蔽）
+    M = np.where(member, M, np.nan)
     mean_ret, idx_close = ew_index_matrix(M)
     n_days = int(np.count_nonzero(np.isfinite(mean_ret)))
     if n_days == 0:
