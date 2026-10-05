@@ -2,6 +2,39 @@
 
 This note records the issues intentionally **not** fixed in PR #3 because they change backtest semantics, execution assumptions, benchmark definition, or production portfolio behavior and therefore require separate historical validation.
 
+## Status update — 2026-10-05 follow-up review
+
+The implementation status below supersedes the original "deferred" wording in this note.
+
+| Item | Status | Current implementation |
+|---|---|---|
+| R24 mixed-board price limits | **RESOLVED for board/date/listing rules; PIT ST metadata still limited** | Research backtests instantiate `BoardAwareExchange` through Qlib's supported `exchange=` hook. Buy/sell masks are instrument/date aware for main board, STAR, ChiNext reform history, BSE, listing exemptions and suspension. Direction-specific limit handling is enabled. Historical ST 5% treatment is supported by the wrapper when an ST set is supplied, but this repository still lacks a complete point-in-time historical ST membership source. |
+| R25 next-day execution price | **RESOLVED** | Research convention is T score -> T+1 open. |
+| R26 point-in-time equal-weight benchmark | **RESOLVED** | Membership `start/end` spans are enforced; benchmark is explicitly a daily-reweighted reference index rather than an investable buy-and-hold portfolio. |
+| R27 historical value revisions vs live cache | **RESOLVED** | Cache v3 stores a provider fingerprint clipped to the cached model's `fit_asof`. Appending later bars does not invalidate the model; revisions to pre-cutoff OHLCV/factor data, calendar prefix or membership spans do. |
+| R28 stateful portfolio/order layer | **RESOLVED as a paper-trading layer** | Cron maintains persistent cash/positions/pending orders, plans orders before the execution-day open, and settles them on the next data refresh using the actual recorded open and board-aware tradability. Published ranking remains available separately. This is not a broker OMS and does not claim live broker fill reconciliation. |
+
+### R24 implementation note
+
+Qlib core was not modified. `research_exchange(start_time, end_time, codes=...)` now supplies a `BoardAwareExchange` config under Qlib's dedicated `exchange` argument. The strategy uses direction-specific price-limit checks (`forbid_all_trade_at_limit=False`) so a limit-up stock can still be sold and a limit-down stock can still be bought when the opposite side is executable.
+
+The optional "open > previous close by 5%" buy rule is intentionally **not** part of historical statutory price-limit masks. It is applied in the paper/live execution planner as a separate operational rule.
+
+### R27 implementation note
+
+The old whole-tarball SHA is retained only as release/audit metadata. It is not suitable as the model-cache key because a normal newly appended bar changes the tarball every day. The cache-effective fingerprint instead hashes only data visible at the cached model's historical cutoff.
+
+### R28 implementation note
+
+The 07:00 cron cannot know the same day's open. Paper execution therefore uses two phases:
+
+1. publish/store a pending order plan for the current trading day using the previous close's signal;
+2. on a later data refresh, settle that pending plan using the execution day's recorded open and then create the next pending plan.
+
+A one-session-stale provider never causes the paper layer to invent fills or overwrite an unresolved order. If the market calendar itself is unavailable, rankings may follow the existing fail-open publication policy, while paper state remains frozen.
+
+---
+
 ## Scope
 
 These are not currently identified as Qlib core bugs. They are wrapper / integration / execution-model issues in this repository.
