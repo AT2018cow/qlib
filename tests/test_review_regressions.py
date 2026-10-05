@@ -31,7 +31,7 @@ class ReviewRegressionTests(unittest.TestCase):
         src = function_source("freq_experiment.py", "freq_driver")
         self.assertIn("pd.concat(chunks)", src)
         self.assertIn("execution_start = cal[start_i + 1]", src)
-        self.assertIn('"protocol": "continuous_account_v2"', src)
+        self.assertIn('"protocol": "continuous_account_board_aware_v3"', src)
         self.assertEqual(src.count("normal_backtest("), 1)
 
     def test_independent_recheck_has_its_own_maturity_guard(self):
@@ -115,6 +115,31 @@ class ReviewRegressionTests(unittest.TestCase):
         daily = function_source("modal_qlib_cn_a10g.py", "daily_standalone")
         self.assertIn('"ranking_full": ranking_full', daily)
         self.assertIn('"paper_context": paper_context', daily)
+
+
+    def test_batch_c_artifact_has_board_aware_protocol(self):
+        src = function_source("modal_qlib_cn_a10g.py", "batch_c")
+        self.assertIn('"protocol": "board_aware_open_bootstrap_v3"', src)
+        worker = function_source("modal_qlib_cn_a10g.py", "batch_c_window")
+        self.assertIn('"protocol": "board_aware_open_bootstrap_v3"', worker)
+
+    def test_execution_attribution_reuses_frozen_signal(self):
+        src = function_source("freq_experiment.py", "execution_attribution_driver")
+        self.assertEqual(src.count("freq_window.map(jobs)"), 1)
+        self.assertIn("REF_LEGACY_EXACT", src)
+        self.assertIn("A_LEGACY_ORACLE_CURRENT_DIRECTION", src)
+        self.assertIn("B_UNIFORM_OPEN_095", src)
+        self.assertIn("C_BOARD_AWARE", src)
+        self.assertIn("D_BOARD_AWARE_HIGH_OPEN_5", src)
+        self.assertIn("E_BOARD_AWARE_NO_CHINEXT_STAR", src)
+        self.assertIn('"protocol": "execution_attribution_v1"', src)
+
+    def test_execution_attribution_defines_clean_deltas(self):
+        src = function_source("freq_experiment.py", "_run_execution_protocol")
+        self.assertIn("legacy_scalar_exchange()", src)
+        self.assertIn("uniform_open_exchange(", src)
+        self.assertIn("high_open_block=0.05", src)
+        self.assertIn("_filter_signal_excluding_growth_boards", src)
 
 
 if __name__ == "__main__":
