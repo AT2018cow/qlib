@@ -192,6 +192,13 @@ def _ensure_data(force: bool = False):
             shutil.copytree(src, DATA_DIR / name)
 
     marker.write_text("chenditc daily release")
+    # R27: data revision fingerprint — hash the tarball as a stable release identifier.
+    # If the tarball changes but the calendar end date stays the same, historical data may have been revised.
+    import hashlib as _hl
+
+    tar_hash = _hl.sha256(zip_path.read_bytes()).hexdigest()[:16]
+    (DATA_DIR / ".data_fingerprint").write_text(f"{tar_hash}\n")
+    print(f"[data] 数据指纹: {tar_hash}")
     cal = DATA_DIR / "calendars" / "day.txt"
     if cal.exists():
         lines = cal.read_text().strip().splitlines()
