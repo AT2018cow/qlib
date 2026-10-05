@@ -3512,8 +3512,19 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
     if str(predict_date)[:10] != asof:
         raise RuntimeError(f"Inference date {predict_date} != latest bar {asof}")
     day = pred.loc[predict_date].dropna()
-    # Ranking only: n_drop requires current holdings and an execution-day order planner.
-    print("[daily] RANKING ONLY: not executable orders; nd does not apply to ranking CSV")
+    # Keep the full unfiltered model cross-section for the stateful TopkDropout
+    # planner.  The public ranking CSV may apply display-time filters below,
+    # but portfolio decisions must see the same full score vector as Qlib.
+    ranking_full = [
+        [str(inst), float(score)]
+        for inst, score in day.sort_values(ascending=False).items()
+    ]
+    try:
+        vol.reload()
+    except Exception:
+        pass
+    paper_context = _paper_execution_context(data_dir, market, calendar, asof)
+    print("[daily] ranking CSV + stateful paper-order context prepared")
     top = day.sort_values(ascending=False).head(topk)
 
     # ---- 3) 涨跌停过滤（板块感知阈值：主板/改革前创业板±10%、科创板/改革后创业板±20%、新股前5交易日豁免；涨幅=close/前收-1） ----
@@ -3560,6 +3571,8 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
         "data_calendar_end": cal_lines[-1],
         "ranking_only": True,
         "rebalance_applied": False,
+        "ranking_full": ranking_full,
+        "paper_context": paper_context,
         "market": market,
         "model_fit_asof": saved["fit_asof"],
         "train_end": saved["train"][-1],
