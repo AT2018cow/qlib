@@ -27,7 +27,7 @@ jobs:
           python setup.py build_ext --inplace
       - name: Compile changed modules
         run: |
-          python -m py_compile board_execution.py qlib_live_retrain.py paper_portfolio.py freq_experiment.py modal_qlib_cn_a10g.py
+          python -m py_compile board_rules.py board_execution.py qlib_live_retrain.py paper_portfolio.py freq_experiment.py modal_qlib_cn_a10g.py
       - name: Run focused tests
         run: |
           PYTHONPATH=. python -m unittest             tests.test_qlib_live_retrain             tests.test_paper_portfolio             tests.test_board_execution             tests.test_review_regressions -v
