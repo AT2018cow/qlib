@@ -48,7 +48,7 @@ image = (
 
 app = modal.App(APP_NAME, image=image)
 
-from board_execution import research_exchange
+from board_execution import legacy_scalar_exchange, research_exchange, uniform_open_exchange
 
 YAML_PATH = "/root/qlib/examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158_csi500.yaml"
 
@@ -309,7 +309,7 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
         x = excess.to_numpy(dtype=float)
         cum = np.cumsum(x)
         results[str(freq)] = {
-            "protocol": "continuous_account_v2",
+            "protocol": "continuous_account_board_aware_v3",
             "n_retrains": len(jobs),
             "n_errors": 0,
             "n_days": len(x),
@@ -327,10 +327,269 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
     out.mkdir(parents=True, exist_ok=True)
     with (out / "results.json").open("w") as f:
         _json.dump({
-            "protocol": "continuous_account_v2",
+            "protocol": "continuous_account_board_aware_v3",
             "window": f"{eval_from}~{cal[-1]}",
             "market": market,
             "results": results,
         }, f, indent=2)
     vol.commit()
     return results
+
+
+
+def _filter_signal_excluding_growth_boards(signal):
+    """Remove ChiNext/STAR instruments from an already-trained signal.
+
+    This deliberately does not retrain the model.  E therefore answers only
+    the execution/universe question: "what if the same model scores were not
+    allowed to enter those boards?"
+    """
+    from board_rules import board_of
+
+    idx = signal.index
+    if "instrument" in idx.names:
+        inst = idx.get_level_values("instrument")
+    else:
+        inst = idx.get_level_values(-1)
+    keep = [board_of(str(x)) not in ("chinext", "star") for x in inst]
+    return signal[keep]
+
+
+def _run_execution_protocol(signal, *, protocol: str, execution_start: str,
+                            execution_end: str, market: str, topk: int, nd: int):
+    """Backtest one frozen signal under exactly one execution protocol."""
+    import numpy as np
+    from qlib.backtest import backtest as normal_backtest
+
+    if protocol == "REF_LEGACY_EXACT":
+        # Historical v2 reference: same-day $change oracle + symmetric limit
+        # blocking (TopkDropoutStrategy default).  Diagnostic only.
+        exchange_kwargs = legacy_scalar_exchange()
+        forbid_all = True
+        sig = signal
+    elif protocol == "A_LEGACY_ORACLE_CURRENT_DIRECTION":
+        # Keep the old same-day-close oracle, but use today's direction-aware
+        # strategy semantics so A->B isolates information timing only.
+        exchange_kwargs = legacy_scalar_exchange()
+        forbid_all = False
+        sig = signal
+    elif protocol == "B_UNIFORM_OPEN_095":
+        # Same 9.5% scalar policy, but computed only from open/previous close.
+        exchange_kwargs = uniform_open_exchange(
+            execution_start, execution_end, codes=market, ratio=0.095
+        )
+        forbid_all = False
+        sig = signal
+    elif protocol == "C_BOARD_AWARE":
+        exchange_kwargs = research_exchange(
+            execution_start, execution_end, codes=market
+        )
+        forbid_all = False
+        sig = signal
+    elif protocol == "D_BOARD_AWARE_HIGH_OPEN_5":
+        # Diagnostic overlay: uses the realised opening print to decide whether
+        # the buy is allowed, then fills at that same open.  This measures the
+        # value of the rule but is not automatically an implementable auction
+        # protocol without a post-open execution convention.
+        exchange_kwargs = research_exchange(
+            execution_start, execution_end, codes=market, high_open_block=0.05
+        )
+        forbid_all = False
+        sig = signal
+    elif protocol == "E_BOARD_AWARE_NO_CHINEXT_STAR":
+        exchange_kwargs = research_exchange(
+            execution_start, execution_end, codes=market
+        )
+        forbid_all = False
+        sig = _filter_signal_excluding_growth_boards(signal)
+    else:
+        raise ValueError(f"unknown execution protocol: {protocol}")
+
+    executor = {
+        "class": "SimulatorExecutor",
+        "module_path": "qlib.backtest.executor",
+        "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
+    }
+    strategy = {
+        "class": "TopkDropoutStrategy",
+        "module_path": "qlib.contrib.strategy",
+        "kwargs": {
+            "signal": sig,
+            "topk": topk,
+            "n_drop": nd,
+            "forbid_all_trade_at_limit": forbid_all,
+        },
+    }
+    pm, _ = normal_backtest(
+        strategy=strategy,
+        executor=executor,
+        start_time=execution_start,
+        end_time=execution_end,
+        account=100000000,
+        benchmark=_bench_of(market),
+        exchange_kwargs=exchange_kwargs,
+    )
+    rep = pm["1day"][0]
+    excess = (rep["return"] - rep["bench"] - rep["cost"]).dropna()
+    ret = rep["return"].dropna()
+    cost = rep["cost"].dropna()
+    if excess.empty:
+        raise RuntimeError(f"{protocol}: empty report")
+    x = excess.to_numpy(dtype=float)
+    cum = np.cumsum(x)
+    result = {
+        "protocol": protocol,
+        "n_days": int(len(excess)),
+        "ann_excess": round(float(x.mean() * 238), 4),
+        "ir": round(float(x.mean() / x.std(ddof=1) * np.sqrt(238)), 3)
+        if len(x) > 1 and x.std(ddof=1) > 0 else None,
+        "max_drawdown_excess": round(float((cum - np.maximum.accumulate(cum)).min()), 4),
+        "strategy_total_return_sum": round(float(ret.sum()), 4),
+        "total_cost_sum": round(float(cost.sum()), 4),
+    }
+    return result
+
+
+@app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=8 * 3600)
+def execution_attribution_driver(freq: int = 20, eval_from: str = "2021-01-04",
+                                 market: str = "csi1000", topk: int = 20, nd: int = 2):
+    """Freeze one trained signal path and compare execution protocols only.
+
+    Attribution map:
+      REF -> A : old symmetric-limit strategy semantics
+      A   -> B : same-day-close ($change) oracle / information-timing effect
+      B   -> C : uniform 9.5% -> board/date-aware statutory execution
+      C   -> D : 5% high-open overlay (diagnostic)
+      C   -> E : excluding ChiNext/STAR from the same frozen signal
+
+    The model is trained only once per retraining point.  All protocols consume
+    the exact same concatenated signal path; E only filters instruments after
+    scoring and never retrains.
+    """
+    import json as _json
+    import pickle
+    import zlib
+
+    import pandas as pd
+    import qlib
+
+    from qlib_audit_fixes import read_trading_calendar
+
+    if freq < 1:
+        raise ValueError("freq must be positive")
+
+    prepare.remote(force=True)
+    try:
+        vol.reload()
+    except Exception:
+        pass
+
+    cal = read_trading_calendar(DATA_DIR)
+    start_i = bisect_left(cal, eval_from)
+    if start_i >= len(cal) - 1 or cal[start_i] != eval_from:
+        raise ValueError("eval_from must be a trading day with a following execution day")
+
+    jobs = []
+    i = start_i
+    while i < len(cal) - 1:
+        signal_end_i = min(i + freq - 1, len(cal) - 1)
+        jobs.append({
+            "freq": freq,
+            "retrain_asof": cal[i],
+            "signal_end": cal[signal_end_i],
+            "market": market,
+            "topk": topk,
+            "nd": nd,
+        })
+        i += freq
+
+    print(f"[attrib] freq={freq}: train {len(jobs)} model windows once")
+    outs = list(freq_window.map(jobs))
+    chunks = []
+    for o in sorted(outs, key=lambda x: x["retrain_asof"]):
+        chunks.append(pickle.loads(zlib.decompress(o["pred_zlib_pickle"])))
+    if not chunks:
+        raise RuntimeError("no signal chunks")
+
+    signal = pd.concat(chunks).sort_index()
+    if signal.index.has_duplicates:
+        raise RuntimeError("duplicate signal rows across retrain chunks")
+    if str(signal.index.get_level_values(0).min())[:10] != cal[start_i]:
+        raise RuntimeError("missing attribution bootstrap signal")
+
+    execution_start = cal[start_i + 1]
+    execution_end = cal[-1]
+    qlib.init(**{**_load_task(market)["qlib_init"], "skip_if_reg": True})
+
+    protocols = [
+        "REF_LEGACY_EXACT",
+        "A_LEGACY_ORACLE_CURRENT_DIRECTION",
+        "B_UNIFORM_OPEN_095",
+        "C_BOARD_AWARE",
+        "D_BOARD_AWARE_HIGH_OPEN_5",
+        "E_BOARD_AWARE_NO_CHINEXT_STAR",
+    ]
+    results = {}
+    for name in protocols:
+        print(f"[attrib] running {name}")
+        results[name] = _run_execution_protocol(
+            signal,
+            protocol=name,
+            execution_start=execution_start,
+            execution_end=execution_end,
+            market=market,
+            topk=topk,
+            nd=nd,
+        )
+
+    def ann(name):
+        return results[name]["ann_excess"]
+
+    attribution = {
+        "REF_to_A_direction_semantics_pp": round(
+            (ann("A_LEGACY_ORACLE_CURRENT_DIRECTION") - ann("REF_LEGACY_EXACT")) * 100, 2
+        ),
+        "A_to_B_same_day_close_oracle_pp": round(
+            (ann("B_UNIFORM_OPEN_095") - ann("A_LEGACY_ORACLE_CURRENT_DIRECTION")) * 100, 2
+        ),
+        "B_to_C_board_rule_pp": round(
+            (ann("C_BOARD_AWARE") - ann("B_UNIFORM_OPEN_095")) * 100, 2
+        ),
+        "C_to_D_high_open_5_pp": round(
+            (ann("D_BOARD_AWARE_HIGH_OPEN_5") - ann("C_BOARD_AWARE")) * 100, 2
+        ),
+        "C_to_E_exclude_growth_boards_pp": round(
+            (ann("E_BOARD_AWARE_NO_CHINEXT_STAR") - ann("C_BOARD_AWARE")) * 100, 2
+        ),
+    }
+
+    payload = {
+        "protocol": "execution_attribution_v1",
+        "market": market,
+        "freq": freq,
+        "topk": topk,
+        "n_drop": nd,
+        "window": f"{execution_start}~{execution_end}",
+        "signal_rows": int(len(signal)),
+        "n_retrains": len(jobs),
+        "results": results,
+        "attribution_pp": attribution,
+        "notes": {
+            "REF_LEGACY_EXACT": "legacy same-day $change oracle; diagnostic only",
+            "D_BOARD_AWARE_HIGH_OPEN_5": (
+                "diagnostic conditional on observed open; not automatically an implementable "
+                "opening-auction execution protocol"
+            ),
+            "E_BOARD_AWARE_NO_CHINEXT_STAR": (
+                "same trained signal; filters ChiNext/STAR after scoring, no retraining"
+            ),
+        },
+    }
+
+    out = VOL_ROOT / "execution_attribution"
+    out.mkdir(parents=True, exist_ok=True)
+    with (out / f"attrib_{market}_freq{freq}.json").open("w") as fh:
+        _json.dump(payload, fh, indent=2, ensure_ascii=False)
+    vol.commit()
+    print(f"[attrib] attribution(pp): {attribution}")
+    return payload
