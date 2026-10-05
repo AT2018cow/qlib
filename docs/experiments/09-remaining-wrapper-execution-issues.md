@@ -301,3 +301,17 @@ For each change:
 4. Keep old results labeled as legacy protocol rather than deleting them.
 5. Do not present improved historical numbers as new independent out-of-sample evidence.
 
+
+---
+
+## Addendum (2026-10-05, at merge)
+
+- Stored batch_c results (all three) are marked `protocol: no_bootstrap_v1` /
+  `status: legacy`; rerun batch_c under the bootstrap protocol before quoting them.
+- `independent_recheck` was intentionally NOT changed by this PR: it still
+  validates the legacy no-bootstrap protocol and remains self-consistent with
+  its -0.0298 anchor. Once batch_c is rerun under the bootstrap protocol,
+  the recheck must be upgraded to the same protocol and re-anchored to the new
+  w09 value (fail-closed guard will otherwise surface the mismatch).
+- Cache v2 means the next production run retrains both pools once
+  (signature includes runtime lineage; num_threads also normalized to 8).

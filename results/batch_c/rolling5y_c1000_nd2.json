@@ -194,5 +194,7 @@
       "max_drawdown": -0.0279,
       "n_days": 58
     }
-  ]
+  ],
+  "protocol": "no_bootstrap_v1",
+  "status": "legacy - superseded by bootstrap protocol (PR #3, 2026-10-05): each window now trades from the first test day using the previous day's signal; rerun batch_c under the new protocol before quoting these numbers"
 }
