@@ -70,7 +70,7 @@ def _board_quick(symbol: str) -> str:
 
 
 def compute_limit_masks(insts, dates, open_px, prev_close, close_na,
-                        high_open_block: float = 0.05,
+                        high_open_block: Optional[float] = None,
                         listing_dates: Optional[Dict[str, str]] = None,
                         calendar=None,
                         st_symbols: Optional[set[str]] = None) -> tuple:
@@ -98,7 +98,7 @@ def compute_limit_masks(insts, dates, open_px, prev_close, close_na,
     valid_prev = np.isfinite(prev_arr) & (prev_arr > 0)
     limit_up = np.where(valid_prev & ~np.isnan(thr), gap >= thr, False)
     limit_down = np.where(valid_prev & ~np.isnan(thr), gap <= -thr, False)
-    high_open = np.where(valid_prev, gap > float(high_open_block), False)
+    high_open = np.where(valid_prev, gap > float(high_open_block), False) if high_open_block is not None else np.zeros_like(valid_prev, dtype=bool)
     if listing_dates and calendar:
         cal_idx = {d: i for i, d in enumerate(calendar)}
         d_idx = np.array([cal_idx.get(str(d)[:10], -1) for d in dates])
@@ -120,10 +120,10 @@ class BoardAwareExchange(Exchange):
     """Exchange with per-instrument/date board-aware limits and T+1-open-era
     execution-day protection. See module docstring."""
 
-    def __init__(self, *args, high_open_block: float = 0.05,
+    def __init__(self, *args, high_open_block: Optional[float] = None,
                  enforce_board_limits: bool = True,
                  st_symbols: Optional[list[str]] = None, **kwargs):
-        self._high_open_block = float(high_open_block)
+        self._high_open_block = None if high_open_block is None else float(high_open_block)
         self._enforce = bool(enforce_board_limits)
         self._st_symbols = {str(x).upper() for x in (st_symbols or [])}
         # $open is the fill price (R25); Ref($close,1) is the open-gap reference.
@@ -201,7 +201,7 @@ def research_exchange(start_time: str, end_time: str, codes="all",
                 "codes": codes,
                 "deal_price": "open",
                 "limit_threshold": None,
-                "high_open_block": 0.05,
+                "high_open_block": None,
                 "st_symbols": list(st_symbols or []),
                 "open_cost": 0.0005,
                 "close_cost": 0.0015,
