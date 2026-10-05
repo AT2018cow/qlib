@@ -2464,9 +2464,10 @@ def batch_c_window(args: dict):
     # additionally include T-1 as a bootstrap row without making it part of validation.
     _cal = read_trading_calendar(DATA_DIR)
     purge_cfg_splits(cfg, _cal, horizon=20)
-    _te_i = _cal.index(te_s)
-    if _te_i < 1:
-        raise RuntimeError(f"no bootstrap trading day before Batch C test start {te_s}")
+    from bisect import bisect_left as _bisect_left
+    _te_i = _bisect_left(_cal, te_s)
+    if _te_i < 1 or _te_i >= len(_cal):
+        raise RuntimeError(f"no bootstrap/execution trading day around Batch C test start {te_s}")
     signal_start = _cal[_te_i - 1]
     seg["test"] = [signal_start, te_e]
     m = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
@@ -2646,9 +2647,10 @@ def p2_rolling():
         seg["test"] = [te_s, te_e]
         _cal = read_trading_calendar(DATA_DIR)
         purge_cfg_splits(cfg, _cal, horizon=20)
-        _te_i = _cal.index(te_s)
-        if _te_i < 1:
-            raise RuntimeError(f"no bootstrap trading day before P2 test start {te_s}")
+        from bisect import bisect_left as _bisect_left
+        _te_i = _bisect_left(_cal, te_s)
+        if _te_i < 1 or _te_i >= len(_cal):
+            raise RuntimeError(f"no bootstrap/execution trading day around P2 test start {te_s}")
         seg["test"] = [_cal[_te_i - 1], te_e]
         m = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
         ds = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
