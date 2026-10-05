@@ -55,5 +55,33 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertNotIn('"infer_processors": []', src)
 
 
+    def test_batch_c_bootstraps_previous_signal_day(self):
+        src = function_source("modal_qlib_cn_a10g.py", "batch_c_window")
+        self.assertIn("signal_start = _cal[_te_i - 1]", src)
+        self.assertIn('seg["test"] = [signal_start, te_e]', src)
+        self.assertIn("start_time=te_s", src)
+
+    def test_p2_bootstraps_previous_signal_day(self):
+        src = function_source("modal_qlib_cn_a10g.py", "p2_rolling")
+        self.assertIn('seg["test"] = [_cal[_te_i - 1], te_e]', src)
+        self.assertIn("start_time=te_s", src)
+
+    def test_daily_cron_isolates_both_pools_and_repairs_missing_files(self):
+        src = function_source("modal_qlib_cn_a10g.py", "daily_cron")
+        self.assertIn('pool_errors["csi1000"]', src)
+        self.assertIn('pool_errors["chinext"]', src)
+        self.assertIn("if res is None and res_chi is None", src)
+        self.assertIn("missing_files = {}", src)
+        self.assertIn("Same-date artifact changed", src)
+        self.assertIn("files=missing_files", src)
+
+    def test_runtime_lineage_participates_in_cache_signature(self):
+        src = function_source("qlib_live_retrain.py", "cache_signature")
+        self.assertIn("runtime_lineage", src)
+        daily = function_source("modal_qlib_cn_a10g.py", "daily_standalone")
+        self.assertIn("runtime_lineage = _runtime_cache_lineage()", daily)
+        self.assertIn("saved.get(\"runtime_lineage\") != runtime_lineage", daily)
+
+
 if __name__ == "__main__":
     unittest.main()
