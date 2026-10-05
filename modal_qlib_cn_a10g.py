@@ -2696,6 +2696,7 @@ def batch_c_window(args: dict):
     rep = pm["1day"][0]
     excess = rep["return"] - rep["bench"] - rep["cost"]
     return {
+        "protocol": "board_aware_open_bootstrap_v3",
         "window": args["name"],
         "test": f"{te_s}~{te_e}",
         "excess_total": round(float(excess.sum()), 4),
@@ -2753,6 +2754,7 @@ def batch_c(market: str = "csi1000", bench: str = "SH000852", topk: int = 20, nd
 
     pos = sum(1 for e in excess_all if e > 0)
     summary = {
+        "protocol": "board_aware_open_bootstrap_v3",
         "config": f"{market} top{topk}/nd{nd} bench={bench}",
         "n_windows": len(ok),
         "n_errors": len(errs),
