@@ -1343,6 +1343,10 @@ def _apply_paper_portfolio(res: dict, usage_date: str, topk: int, nd: int) -> di
         pp = PaperPortfolio(topk=topk, nd=nd, initial_cash=100_000_000)
 
     execution_report = None
+    if pp.history and pp.history[-1].get("date") == res["date"]:
+        # Same-day rerun after a successful prior publication/state commit:
+        # reproduce the immutable artifact byte-for-byte from persisted history.
+        execution_report = pp.history[-1]
     ctx = res.get("paper_context") or {}
     if pp.pending_signal is not None:
         pending_date = pp.pending_signal["execution_date"]
@@ -1387,7 +1391,6 @@ def _apply_paper_portfolio(res: dict, usage_date: str, topk: int, nd: int) -> di
             "execution_date": p["execution_date"],
             "sell": p.get("planned_sell", []),
             "buy": p.get("planned_buy", []),
-            "idempotent": True,
         }
 
     artifact = {
