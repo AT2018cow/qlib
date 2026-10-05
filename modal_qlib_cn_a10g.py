@@ -3824,17 +3824,22 @@ def daily_cron():
     # has passed.  State is proposed now but persisted only after immutable
     # GitHub publication succeeds.
     paper_proposals = {}
+    paper_enabled = cal is not None and signal_date in cal
+    if not paper_enabled:
+        print("[cron] ⚠️ 交易日历不可确认，排名按既有 fail-open 规则发布，但 paper orders/state 不推进")
     files = {}
     if res is not None:
         files[f"results/signals/{signal_date}_top20_lgb158.csv"] = res["csv_content"]
         files[f"results/signals/{signal_date}_chart.json"] = res["chart_json"]
-        paper_proposals["csi1000"] = _apply_paper_portfolio(res, signal_date, topk=20, nd=2)
-        files[f"results/signals/{signal_date}_paper_portfolio.json"] = paper_proposals["csi1000"]["artifact_json"]
+        if paper_enabled:
+            paper_proposals["csi1000"] = _apply_paper_portfolio(res, signal_date, topk=20, nd=2)
+            files[f"results/signals/{signal_date}_paper_portfolio.json"] = paper_proposals["csi1000"]["artifact_json"]
     if res_chi is not None:
         files[f"results/signals/{signal_date}_top20_lgb158_chinext.csv"] = res_chi["csv_content"]
         files[f"results/signals/{signal_date}_chart_chinext.json"] = res_chi["chart_json"]
-        paper_proposals["chinext"] = _apply_paper_portfolio(res_chi, signal_date, topk=20, nd=3)
-        files[f"results/signals/{signal_date}_paper_portfolio_chinext.json"] = paper_proposals["chinext"]["artifact_json"]
+        if paper_enabled:
+            paper_proposals["chinext"] = _apply_paper_portfolio(res_chi, signal_date, topk=20, nd=3)
+            files[f"results/signals/{signal_date}_paper_portfolio_chinext.json"] = paper_proposals["chinext"]["artifact_json"]
 
     def _persist_paper_states():
         if not paper_proposals:
