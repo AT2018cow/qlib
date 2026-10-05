@@ -124,14 +124,21 @@ def compute_limit_masks(insts, dates, open_px, prev_close, close_na,
     valid_prev = np.isfinite(prev_arr) & (prev_arr > 0)
     limited = valid_prev & ~np.isnan(thr)
 
-    # A-share/BSE stock prices use a 0.01 CNY minimum tick.  Compare against
-    # the rounded limit *price*, not a 9.5% audit-margin return threshold.
-    # floor(x*100 + 0.5)/100 implements decimal half-up rounding for positive prices.
-    upper_px = np.floor(prev_arr * (1.0 + np.nan_to_num(thr, nan=0.0)) * 100.0 + 0.5) / 100.0
-    lower_px = np.floor(prev_arr * (1.0 - np.nan_to_num(thr, nan=0.0)) * 100.0 + 0.5) / 100.0
-    eps = 1e-8
-    limit_up = np.where(limited, open_arr >= upper_px - eps, False)
-    limit_down = np.where(limited, open_arr <= lower_px + eps, False)
+    if uniform_limit_ratio is not None:
+        # Attribution control B must match the old scalar 9.5% threshold
+        # exactly, changing only *when* the return is observed (open gap rather
+        # than execution-day full-day $change).
+        limit_up = np.where(limited, gap >= float(uniform_limit_ratio), False)
+        limit_down = np.where(limited, gap <= -float(uniform_limit_ratio), False)
+    else:
+        # Statutory board-aware execution uses exact 10/20/30/5% ratios and
+        # the 0.01 CNY price tick. floor(x*100 + 0.5)/100 is positive-price
+        # decimal half-up rounding.
+        upper_px = np.floor(prev_arr * (1.0 + np.nan_to_num(thr, nan=0.0)) * 100.0 + 0.5) / 100.0
+        lower_px = np.floor(prev_arr * (1.0 - np.nan_to_num(thr, nan=0.0)) * 100.0 + 0.5) / 100.0
+        eps = 1e-8
+        limit_up = np.where(limited, open_arr >= upper_px - eps, False)
+        limit_down = np.where(limited, open_arr <= lower_px + eps, False)
     high_open = np.where(valid_prev, gap > float(high_open_block), False) if high_open_block is not None else np.zeros_like(valid_prev, dtype=bool)
     if listing_dates and calendar and uniform_limit_ratio is None:
         cal_idx = {d: i for i, d in enumerate(calendar)}
