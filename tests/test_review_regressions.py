@@ -47,7 +47,9 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn('"num_leaves": 250', src)
         self.assertIn('"CSZScoreNorm"', src)
         self.assertNotIn('"CSRankNorm"', src)
-        self.assertIn("expected_excess = -0.0223", src)
+        self.assertIn('"board_aware_open_bootstrap_v3"', src)
+        self.assertIn("unanchored_pending_batch_c_rerun", src)
+        self.assertNotIn("expected_excess = -0.0223", src)
         # Alpha158 类默认 infer 处理器必须镜像（review 2026-10-05：[] 与生产不符）
         self.assertIn('"ProcessInf"', src)
         self.assertIn('"ZScoreNorm"', src)
