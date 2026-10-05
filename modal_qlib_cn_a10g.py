@@ -24,8 +24,9 @@ from qlib_live_retrain import (
     cache_signature,
     retrain_due_calendar,
     RETRAIN_EVERY_SESSIONS,
+    provider_training_fingerprint,
 )
-from board_execution import research_exchange
+from board_execution import compute_limit_masks, research_exchange
 from board_rules import (
     CHINEXT_REFORM,
     BENCH_CANDIDATES,
@@ -107,7 +108,7 @@ image = (
     # 审计 PR 的 helper 模块随 add_local_dir 进了 /root/qlib/，但 Modal 入口脚本挂在
     # /root/ 运行（sys.path 首位是 /root）——必须复制到 /root/ 否则 ModuleNotFoundError。
     .run_commands(
-        "cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/qlib/board_rules.py /root/qlib/board_execution.py /root/qlib/github_commit.py /root/"
+        "cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/qlib/board_rules.py /root/qlib/board_execution.py /root/qlib/paper_portfolio.py /root/qlib/github_commit.py /root/"
     )
 )
 
@@ -456,6 +457,13 @@ def _load_and_patch_cfg(
         _model_kw = cfg["task"]["model"]["kwargs"]
         if "early_stop" in _model_kw:
             _model_kw["early_stop"] = 2
+    # Wrapper execution protocol: use Qlib's supported exchange= config hook
+    # to instantiate BoardAwareExchange without modifying Qlib core.
+    if "port_analysis_config" in cfg:
+        _bt = cfg["port_analysis_config"]["backtest"]
+        _codes = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"].get("instruments", "all")
+        _bt["exchange_kwargs"] = research_exchange(_bt["start_time"], _bt["end_time"], codes=_codes)
+        cfg["port_analysis_config"]["strategy"]["kwargs"]["forbid_all_trade_at_limit"] = False
     return cfg
 
 
