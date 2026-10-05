@@ -7,18 +7,17 @@ Subclasses qlib's Exchange without modifying the qlib package:
   ChiNext/STAR members).
 - R25: T+1 open fill convention (deal_price="$open"), matching the production
   protocol "T close data -> T score -> publish 07:00 -> execute at T+1 open".
-- Execution-day protection encoded in the same masks: buys are blocked when the
-  day opens more than `high_open_block` above the previous close (the manual
-  "T+1 高开>5% 跳过" rule, now applied consistently in research).
+- Optional execution-day buy protection can be requested with `high_open_block`,
+  but the standard research exchange leaves it disabled. The 5% high-open rule
+  belongs to the live/paper order layer, not to statutory price-limit modeling.
 
 Limit semantics (documented approximation, daily bars):
 - limit_up / limit_down are evaluated on the OPEN gap versus the previous close:
   a stock that opens at/through its board's limit cannot be meaningfully filled
   that day, so the order is blocked for the whole day (same coarse daily
   granularity as qlib's scalar rule, but with the correct board threshold).
-- Listing exemption: board_rules.limit_threshold returns None for the first
-  5 sessions of a STAR/ChiNext listing -> no limit block those days (the
-  high-open protection still applies).
+- Listing exemption: the first 5 sessions of a STAR/ChiNext listing receive no
+  statutory limit block when listing metadata is available.
 - Suspension: qlib's own rule ($close NaN) is preserved.
 
 Only the limit columns are overridden; everything else (costs, trade unit,
@@ -43,9 +42,7 @@ def board_thresholds(insts, dates) -> np.ndarray:
     inst_arr = np.asarray([str(s) for s in insts])
     boards = np.array([_NOMINAL.get(_board_quick(s), np.nan) for s in inst_arr], dtype=float)
     date_strs = np.array([str(d)[:10] for d in dates])
-    reform_mask = (inst_arr.str if False else np.array([s.startswith("SZ3") for s in inst_arr])) & (
-        date_strs < CHINEXT_REFORM
-    )
+    reform_mask = np.array([s.startswith("SZ3") for s in inst_arr]) & (date_strs < CHINEXT_REFORM)
     boards = np.where(boards == TH_20, np.where(reform_mask, TH_10, TH_20), boards)
     return boards
 
