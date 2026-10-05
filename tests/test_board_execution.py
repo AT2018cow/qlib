@@ -24,8 +24,8 @@ class BoardThresholdTests(unittest.TestCase):
         opens = [10.9, 10.0, 11.5, 10.0]
         prev = [10.0, 10.0, 10.0, 10.0]
         lb, ls = compute_limit_masks(insts, dates, opens, prev, [False] * 4)
-        # 600519: +9% 未及 9.5% 涨停但 >5% 高开保护 → 买被阻
-        self.assertTrue(lb[0]); self.assertFalse(ls[0])
+        # 600519: +9% 未及 9.5% 涨停；statutory mask 不夹带高开策略规则
+        self.assertFalse(lb[0]); self.assertFalse(ls[0])
         # 688981: 平开 → 可交易
         self.assertFalse(lb[1]); self.assertFalse(ls[1])
         # 改革前创业板 +15% ≥ 9.5% → 涨停买被阻；卖出不受影响
@@ -43,7 +43,7 @@ class BoardThresholdTests(unittest.TestCase):
         cal = ["2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04"]
         lb, ls = compute_limit_masks(
             ["SH688001"], ["2026-09-03"], [13.0], [10.0], [False],
-            listing_dates={"SH688001": "2026-09-01"}, calendar=cal,
+            listing_dates={"SH688001": "2026-09-01"}, calendar=cal, high_open_block=0.05,
         )
         self.assertTrue(lb[0])   # +30% 被高开>5% 阻止（策略级规则，所有板块适用）
         self.assertFalse(ls[0])
@@ -59,10 +59,28 @@ class BoardThresholdTests(unittest.TestCase):
 
 class ResearchExchangeConfigTests(unittest.TestCase):
     def test_config_shape(self):
-        cfg = research_exchange()
-        self.assertEqual(cfg["deal_price"], "open")
-        self.assertEqual(cfg["limit_threshold"], 0.095)
-        self.assertIn("open_cost", cfg)
+        cfg = research_exchange("2026-01-05", "2026-01-09", codes="csi1000")
+        self.assertEqual(set(cfg), {"exchange"})
+        exc = cfg["exchange"]
+        self.assertEqual(exc["class"], "BoardAwareExchange")
+        self.assertEqual(exc["module_path"], "board_execution")
+        self.assertEqual(exc["kwargs"]["deal_price"], "open")
+        self.assertIsNone(exc["kwargs"]["limit_threshold"])
+        self.assertEqual(exc["kwargs"]["codes"], "csi1000")
+        self.assertEqual(exc["kwargs"]["start_time"], "2026-01-05")
+        self.assertEqual(exc["kwargs"]["end_time"], "2026-01-09")
+
+    def test_dates_required(self):
+        with self.assertRaises(ValueError):
+            research_exchange(None, "2026-01-09")
+
+    def test_st_override(self):
+        lb, ls = compute_limit_masks(
+            ["SH600001"], ["2026-01-05"], [10.5], [10.0], [False],
+            st_symbols={"SH600001"},
+        )
+        self.assertTrue(lb[0])
+        self.assertFalse(ls[0])
 
 
 if __name__ == "__main__":
