@@ -88,11 +88,15 @@ def compute_limit_masks(insts, dates, open_px, prev_close, close_na,
     - high_open_block: buys blocked when the day opens more than this fraction
       above the previous close (execution-day protection, applies regardless
       of limit exemption).
-    - listing_dates/calendar: optional new-listing exemption inputs; when
-      provided, star/chinext rows within the first 5 sessions get no limit.
+    - listing_dates/calendar: optional new-listing exemption inputs for
+      STAR/ChiNext first five sessions, post-registration main-board first
+      five sessions, and BSE listing day.
     """
     inst_arr = np.asarray([str(s) for s in insts])
-    thr = board_thresholds(inst_arr, dates)
+    date_strs = np.asarray([str(d)[:10] for d in dates])
+    if len(inst_arr) != len(date_strs):
+        raise ValueError("insts and dates must have the same length")
+    thr = board_thresholds(inst_arr, date_strs)
     if st_symbols:
         st = {str(x).upper() for x in st_symbols}
         st_mask = np.array([x.upper() in st for x in inst_arr])
