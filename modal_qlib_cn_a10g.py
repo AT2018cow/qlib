@@ -2717,7 +2717,11 @@ def batch_c_window(args: dict):
         "information_ratio": perf["information_ratio"],
         "annual_volatility": perf["annual_volatility"],
         "account_return_max_error": perf["account_return_max_error"],
+        # Kept for independent_recheck / historical artifact compatibility.
+        # This is the arithmetic sum of daily active returns, NOT CAGR.
+        "excess_total": round(float(excess.sum()), 4),
         "excess_total_legacy_arithmetic": round(float(excess.sum()), 4),
+        "excess_total_definition": "sum(return - bench - cost); legacy audit anchor, not CAGR",
         "daily_mean_active_return": round(float(excess.mean()), 6),
         "legacy_max_drawdown_excess_arithmetic": round(
             float((legacy_excess_curve - legacy_excess_curve.cummax()).min()), 4
