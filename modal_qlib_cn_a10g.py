@@ -108,7 +108,7 @@ image = (
     # 审计 PR 的 helper 模块随 add_local_dir 进了 /root/qlib/，但 Modal 入口脚本挂在
     # /root/ 运行（sys.path 首位是 /root）——必须复制到 /root/ 否则 ModuleNotFoundError。
     .run_commands(
-        "cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/qlib/board_rules.py /root/qlib/board_execution.py /root/qlib/paper_portfolio.py /root/qlib/github_commit.py /root/"
+        "cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/qlib/board_rules.py /root/qlib/board_execution.py /root/qlib/paper_portfolio.py /root/qlib/portfolio_performance.py /root/qlib/github_commit.py /root/"
     )
 )
 
