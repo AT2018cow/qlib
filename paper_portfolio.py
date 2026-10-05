@@ -148,7 +148,7 @@ class PaperPortfolio:
                 f"unsettled pending signal for {self.pending_signal['execution_date']}; "
                 "refusing to overwrite portfolio lineage"
             )
-        rows = [(str(s), float(v)) for s, v in ranking]
+        rows = [[str(s), float(v)] for s, v in ranking]
         decision = self.decision_from_ranking(rows)
         self.pending_signal = {
             "signal_date": str(signal_date),
