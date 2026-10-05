@@ -170,21 +170,25 @@ class BoardAwareExchange(Exchange):
         return [str(x)[:10] for x in D.calendar(start_time="2000-01-01", end_time=end)]
 
 
-def research_exchange(market: str) -> dict:
-    """Standard research backtest exchange config (R24+R25).
+def research_exchange() -> dict:
+    """Standard research backtest exchange config.
 
-    Board-aware per-instrument limits + T+1 open fill + 5% high-open buy block.
-    Callers pass the returned dict as `exchange_kwargs`.
+    R25 (implemented): T+1 open fill — matching the production protocol
+    "T close data -> T score -> 07:00 publish -> T+1 open execution".
+    Returns a FLAT dict of Exchange kwargs: the backtest pipeline splats
+    exchange_kwargs directly to get_exchange(**kwargs), so a nested class
+    config does not work in this code path.
+
+    R24 (deferred): board-aware per-instrument price limits. The scalar
+    0.095 over-blocks ChiNext/STAR members at 10–19.5% moves but never
+    under-blocks main board. A custom Exchange subclass requires a
+    different injection mechanism (see 09-remaining R24); until then the
+    conservative threshold is kept as a known, documented approximation.
     """
     return {
-        "class": "BoardAwareExchange",
-        "module_path": "board_execution",
-        "kwargs": {
-            "deal_price": "open",
-            "limit_threshold": None,
-            "high_open_block": 0.05,
-            "open_cost": 0.0005,
-            "close_cost": 0.0015,
-            "min_cost": 5,
-        },
+        "deal_price": "open",
+        "limit_threshold": 0.095,
+        "open_cost": 0.0005,
+        "close_cost": 0.0015,
+        "min_cost": 5,
     }

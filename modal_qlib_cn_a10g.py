@@ -528,6 +528,12 @@ def independent_recheck():
     raw_valid_end = "2022-12-31"
     valid_start = "2022-10-01"
     test_start = "2023-01-01"
+    # Bootstrap: predictions include the trading day before test_start so the
+    # first backtest day (test_start) has a signal (TopkDropout uses shift=1).
+    _ti = bisect_left(calendar, test_start)
+    if _ti < 1:
+        raise RuntimeError(f"no trading day before test_start {test_start}")
+    signal_start = calendar[_ti - 1]
     train_end = min(raw_train_end, _last_matured_before(valid_start))
     valid_end = min(raw_valid_end, _last_matured_before(test_start))
     if bisect_right(calendar, train_end) - 1 + horizon >= bisect_left(calendar, valid_start):
@@ -584,7 +590,7 @@ def independent_recheck():
                 "segments": {
                     "train": ["2016-01-01", train_end],
                     "valid": [valid_start, valid_end],
-                    "test": [test_start, "2023-03-31"],
+                    "test": [signal_start, "2023-03-31"],
                 },
             },
         },
@@ -622,8 +628,8 @@ def independent_recheck():
         "train_end": train_end,
         "valid_end": valid_end,
     }
-    # 当前已重跑、带 purge 的 Batch C w09 存档值。
-    expected_excess = -0.0298
+    # 当前 Batch C w09 存档值（c1000_v2，R25 T+1 open + bootstrap 协议）。
+    expected_excess = -0.0223
     diff = abs(result["excess_total"] - expected_excess)
     print(f"[recheck] 独立实现: {result}")
     print(f"[recheck] 当前 Batch C w09: excess_total={expected_excess}")

@@ -59,13 +59,10 @@ class BoardThresholdTests(unittest.TestCase):
 
 class ResearchExchangeConfigTests(unittest.TestCase):
     def test_config_shape(self):
-        cfg = research_exchange("chinext")
-        self.assertEqual(cfg["class"], "BoardAmareExchange" if False else "BoardAwareExchange")
-        self.assertEqual(cfg["module_path"], "board_execution")
-        self.assertEqual(cfg["kwargs"]["deal_price"], "open")
-        self.assertIsNone(cfg["kwargs"]["limit_threshold"])
-        self.assertEqual(cfg["kwargs"]["high_open_block"], 0.05)
-        self.assertIn("open_cost", cfg["kwargs"])
+        cfg = research_exchange()
+        self.assertEqual(cfg["deal_price"], "open")
+        self.assertEqual(cfg["limit_threshold"], 0.095)
+        self.assertIn("open_cost", cfg)
 
 
 if __name__ == "__main__":
