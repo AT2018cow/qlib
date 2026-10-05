@@ -181,10 +181,10 @@ class BoardAwareExchange(Exchange):
         df["limit_sell"] = limit_sell
 
     def _listing_dates(self, insts) -> Dict[str, str]:
-        """Listing date (first span start) for star/chinext instruments in the universe."""
+        """Listing date (first span start) for stock instruments in the universe."""
         from qlib.data import D
 
-        wanted = [s for s in insts if _board_quick(str(s)) in ("star", "chinext")]
+        wanted = [s for s in insts if _board_quick(str(s)) != "index"]
         if not wanted:
             return {}
         spans = D.list_instruments(D.instruments("all"), as_list=False)
