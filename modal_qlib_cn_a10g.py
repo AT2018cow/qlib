@@ -1440,8 +1440,9 @@ def _apply_paper_portfolio(res: dict, usage_date: str, topk: int, nd: int) -> di
         "positions": pp.positions,
         "model_fit_asof": res["model_fit_asof"],
         "note": (
-            "Orders for usage_date are planned before the open. Their actual fills are "
-            "settled on the next data refresh using the recorded execution-day open."
+            "Orders are planned before the execution-day open and settled on a later "
+            "data refresh using the recorded open. If provider data is stale, the prior "
+            "pending order remains frozen and no new paper order is invented."
         ),
     }
     return {
