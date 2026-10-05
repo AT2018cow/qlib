@@ -636,21 +636,41 @@ def independent_recheck():
     )
     rep = pm["1day"][0]
     excess = rep["return"] - rep["bench"] - rep["cost"]
+    protocol = "board_aware_open_bootstrap_v3"
     result = {
+        "protocol": protocol,
         "excess_total": round(float(excess.sum()), 4),
         "daily_mean": round(float(excess.mean()), 6),
         "n_days": int(len(excess)),
         "train_end": train_end,
         "valid_end": valid_end,
+        "anchor_status": "unanchored_pending_batch_c_rerun",
     }
-    # 当前 Batch C w09 存档值（c1000_v2，R25 T+1 open + bootstrap 协议）。
-    expected_excess = -0.0223
-    diff = abs(result["excess_total"] - expected_excess)
+
+    # Never compare a board-aware run with the old scalar-limit anchor.  Once a
+    # Batch C artifact is committed under the exact same protocol, the
+    # independent implementation becomes fail-closed again automatically.
+    import json as _json
+    _artifact = Path("/root/qlib/results/batch_c/rolling5y_c1000_nd2.json")
+    if _artifact.is_file():
+        _stored = _json.loads(_artifact.read_text())
+        if _stored.get("protocol") == protocol:
+            _w09 = next((w for w in _stored.get("windows", []) if w.get("window") == "w09"), None)
+            if _w09 is None:
+                raise RuntimeError("board-aware Batch C artifact missing w09")
+            expected_excess = float(_w09["excess_total"])
+            diff = abs(result["excess_total"] - expected_excess)
+            result["anchor_status"] = "matched" if diff < 0.005 else "diverged"
+            result["anchor_excess_total"] = expected_excess
+            result["anchor_diff"] = round(diff, 6)
+            if diff >= 0.005:
+                raise RuntimeError("independent recheck diverges from board-aware Batch C w09")
+        else:
+            print(
+                f"[recheck] 存档协议={_stored.get('protocol')} 与当前 {protocol} 不同；"
+                "不使用旧收益锚点，需重跑 Batch C 后重新建立独立复算锚点"
+            )
     print(f"[recheck] 独立实现: {result}")
-    print(f"[recheck] 当前 Batch C w09: excess_total={expected_excess}")
-    print(f"[recheck] 偏差: {diff:.4f} ({'✅ 一致' if diff < 0.005 else '❌ 需排查'})")
-    if diff >= 0.005:
-        raise RuntimeError("independent recheck diverges from current purged Batch C w09")
     return result
 
 
