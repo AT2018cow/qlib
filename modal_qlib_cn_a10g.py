@@ -3730,6 +3730,7 @@ def _publication_decision(cal, data_date: str, signal_date: str, fallback_days: 
 
 
 @app.function(
+    volumes={str(VOL_ROOT): vol},
     schedule=modal.Cron("0 7 * * 1-5", timezone="Asia/Shanghai"),  # 周一~周五 07:00（周一算上周五数据，周二~周五算前一交易日）
     # ⚠️ 此 schedule 行曾被重构编辑意外吞掉（2026-09-28 gate 上线时），导致 09-29 静默无调度——
     #    任何触碰此装饰器的编辑后必须运行 tests/test_cron_gate.py 的守护测试。
@@ -3745,6 +3746,7 @@ def daily_cron():
       - results/signals/<date>_top20_lgb158.csv            （csi1000，网站兼容不变）
       - results/signals/<date>_top20_lgb158_chinext.csv    （chinext）
       - results/signals/<date>_chart.json / <date>_chart_chinext.json
+      - results/signals/<date>_paper_portfolio.json（及 chinext 后缀）
     发布判定（交易日 gate）两池共享（同一数据日）；单池失败不影响另一池发布，
     双池同时失败才 raise（触发 Modal 告警）。
     需 Modal Secret `github-push`（含 GITHUB_TOKEN，对 fork 仓库 Contents 读写权限的 PAT）。"""
@@ -3815,13 +3817,32 @@ def daily_cron():
         res_chi = None
         data_date = res["date"]
 
+    # R28: build stateful paper artifacts only after the data/publication gate
+    # has passed.  State is proposed now but persisted only after immutable
+    # GitHub publication succeeds.
+    paper_proposals = {}
     files = {}
     if res is not None:
         files[f"results/signals/{signal_date}_top20_lgb158.csv"] = res["csv_content"]
         files[f"results/signals/{signal_date}_chart.json"] = res["chart_json"]
+        paper_proposals["csi1000"] = _apply_paper_portfolio(res, signal_date, topk=20, nd=2)
+        files[f"results/signals/{signal_date}_paper_portfolio.json"] = paper_proposals["csi1000"]["artifact_json"]
     if res_chi is not None:
         files[f"results/signals/{signal_date}_top20_lgb158_chinext.csv"] = res_chi["csv_content"]
         files[f"results/signals/{signal_date}_chart_chinext.json"] = res_chi["chart_json"]
+        paper_proposals["chinext"] = _apply_paper_portfolio(res_chi, signal_date, topk=20, nd=3)
+        files[f"results/signals/{signal_date}_paper_portfolio_chinext.json"] = paper_proposals["chinext"]["artifact_json"]
+
+    def _persist_paper_states():
+        if not paper_proposals:
+            return
+        for proposal in paper_proposals.values():
+            p = Path(proposal["state_path"])
+            p.parent.mkdir(parents=True, exist_ok=True)
+            tmp = p.with_name(f".{p.name}.cron.tmp")
+            tmp.write_text(proposal["state_json"])
+            os.replace(tmp, p)
+        vol.commit()
 
     token = os.environ["GITHUB_TOKEN"]
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
@@ -3841,7 +3862,8 @@ def daily_cron():
             continue
         raise RuntimeError(f"Cannot check existing artifact {path}: HTTP {exist.status_code}")
     if not missing_files:
-        print(f"[cron] {signal_date} 所有目标文件均已存在且一致，无需重复提交")
+        _persist_paper_states()
+        print(f"[cron] {signal_date} 所有目标文件均已存在且一致；paper state 已对齐，无需重复提交")
         return
 
     # 使用 Git Data API 一次 commit 写入所有缺失文件
@@ -3855,6 +3877,7 @@ def daily_cron():
         files=missing_files,
         message=f"chore(signal): {signal_date} repair/publish {len(missing_files)} signal artifacts (cron)",
     )
+    _persist_paper_states()
     published_pools = int(res is not None) + int(res_chi is not None)
     print(f"[cron] ✅ 已补发/推送 {len(missing_files)} 个文件，覆盖 {published_pools} 个成功股票池: {signal_date}")
 
