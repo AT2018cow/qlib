@@ -2,7 +2,14 @@ import unittest
 
 import numpy as np
 
-from board_execution import _board_quick, board_thresholds, compute_limit_masks, research_exchange
+from board_execution import (
+    _board_quick,
+    board_thresholds,
+    compute_limit_masks,
+    legacy_scalar_exchange,
+    research_exchange,
+    uniform_open_exchange,
+)
 
 
 class BoardThresholdTests(unittest.TestCase):
@@ -99,6 +106,35 @@ class ResearchExchangeConfigTests(unittest.TestCase):
             st_symbols={"SH600001"},
         )
         self.assertFalse(lb2[0])
+
+    def test_uniform_open_override_uses_one_ratio_without_board_exemptions(self):
+        cal = ["2023-04-10", "2023-04-11", "2023-04-12"]
+        lb, ls = compute_limit_masks(
+            ["SZ001286", "SH688001"],
+            ["2023-04-10", "2023-04-10"],
+            [11.0, 11.0],
+            [10.0, 10.0],
+            [False, False],
+            listing_dates={"SZ001286": "2023-04-10", "SH688001": "2023-04-10"},
+            calendar=cal,
+            uniform_limit_ratio=0.095,
+        )
+        self.assertTrue(lb[0])
+        self.assertTrue(lb[1])
+        self.assertFalse(ls[0]); self.assertFalse(ls[1])
+
+    def test_uniform_open_exchange_config(self):
+        cfg = uniform_open_exchange("2026-01-05", "2026-01-09", codes="csi1000")
+        kw = cfg["exchange"]["kwargs"]
+        self.assertEqual(kw["uniform_limit_ratio"], 0.095)
+        self.assertIsNone(kw["high_open_block"])
+        self.assertEqual(kw["deal_price"], "open")
+
+    def test_legacy_scalar_control_is_explicit(self):
+        cfg = legacy_scalar_exchange()
+        self.assertEqual(cfg["deal_price"], "open")
+        self.assertEqual(cfg["limit_threshold"], 0.095)
+        self.assertNotIn("exchange", cfg)
 
     def test_main_and_bse_listing_exemptions(self):
         cal = [
