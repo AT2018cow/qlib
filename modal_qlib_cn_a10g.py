@@ -211,6 +211,41 @@ def _latest_trading_day(data_dir=None) -> str:
     return "2026-09-11"  # 兜底（仅当数据目录不可读时）
 
 
+def _runtime_cache_lineage() -> dict:
+    """Stable fingerprints for code/dependencies that define cached-model semantics.
+
+    Deliberately excludes the latest data date so a new daily bar does not force
+    retraining. Historical value revisions remain a separate data-version audit.
+    """
+    import hashlib as _hashlib
+    import importlib.metadata as _metadata
+    import inspect as _inspect
+
+    from qlib.contrib.data.handler import Alpha158
+    import qlib_live_retrain as _live_mod
+    import qlib_audit_fixes as _audit_mod
+
+    def _source_sha(obj) -> str:
+        path = _inspect.getsourcefile(obj)
+        if not path:
+            return "unknown"
+        return _hashlib.sha256(Path(path).read_bytes()).hexdigest()[:16]
+
+    def _version(pkg: str) -> str:
+        try:
+            return _metadata.version(pkg)
+        except _metadata.PackageNotFoundError:
+            return "unknown"
+
+    return {
+        "pyqlib": _version("pyqlib"),
+        "lightgbm": _version("lightgbm"),
+        "alpha158_source": _source_sha(Alpha158),
+        "live_retrain_source": _source_sha(_live_mod),
+        "audit_source": _source_sha(_audit_mod),
+    }
+
+
 def _load_and_patch_cfg(
     yaml_path: str,
     smoke: bool,
@@ -3259,7 +3294,8 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
     asof = calendar[-1]
     # Today is a feature/prediction date, NEVER a training/validation label date.
     live_split = configure_asof(cfg, calendar, asof, horizon=20)
-    signature = cache_signature(cfg, horizon=20)
+    runtime_lineage = _runtime_cache_lineage()
+    signature = cache_signature(cfg, horizon=20, runtime_lineage=runtime_lineage)
     cache_dir = VOL_ROOT / "live_models"
     cache_dir.mkdir(parents=True, exist_ok=True)
     model_file = cache_dir / f"{signature}.pkl"
@@ -3291,6 +3327,7 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
             "valid": list(cfg["task"]["dataset"]["kwargs"]["segments"]["valid"]),
             "fit_start": cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["fit_start_time"],
             "fit_end": cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["fit_end_time"],
+            "runtime_lineage": runtime_lineage,
         }
         tmp_model = cache_dir / f".{signature}.{os.getpid()}.tmp"
         tmp_meta = cache_dir / f".{signature}.{os.getpid()}.json.tmp"
@@ -3315,6 +3352,7 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
             saved.get("horizon") != 20
             or not saved.get("model_sha256")
             or saved.get("fit_end") != saved.get("train", [None, None])[-1]
+            or saved.get("runtime_lineage") != runtime_lineage
         ):
             raise RuntimeError("Invalid cached model split metadata")
         if hashlib.sha256(model_file.read_bytes()).hexdigest() != saved["model_sha256"]:
