@@ -6,8 +6,6 @@ import pandas as pd
 from loguru import logger
 from tqdm import tqdm
 
-import qlib
-from qlib.data import D
 
 
 class DataHealthChecker:
@@ -47,10 +45,14 @@ class DataHealthChecker:
                 self.data[filename] = df
 
         elif qlib_dir:
+            import qlib
+
             qlib.init(provider_uri=qlib_dir)
             self.load_qlib_data()
 
     def load_qlib_data(self):
+        from qlib.data import D
+
         instruments = D.instruments(market="all")
         instrument_list = D.list_instruments(instruments=instruments, as_list=True, freq=self.freq)
         required_fields = ["$open", "$close", "$low", "$high", "$volume", "$factor"]
