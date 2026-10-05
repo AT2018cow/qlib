@@ -677,10 +677,11 @@ def independent_recheck():
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=1800)
 def verify_integrity(market: str = "csi500"):
     """资金安全复核（按池参数化；csi500 保持历史口径）：
-    1) chenditc $change 是否为"当日涨幅"（close/前收-1）——决定回测涨跌停模拟是否正确；
-    2) daily_signal 修复后的涨跌停过滤（Ref($close,1)）是否与 $change 口径一致；
-    3) 最近 10 个交易日 {market} 内 |涨幅|≥阈值的股票数（验证过滤非空转）。
-    新池（chinext/star）阈值 0.195（板块感知，board_rules.EW_BENCH）；csi 池 0.095。"""
+    1) chenditc $change 是否近似"当日涨幅"（close/前收-1）；
+    2) daily ranking 的保守审计过滤（TH_10=.095 / TH_20=.195 等）是否与 $change 口径一致；
+    3) 最近 10 个交易日的过滤计数是否非空转。
+    注意：这些 TH_* 是榜单/audit margin，不是 BoardAwareExchange 的成交涨跌停比例；
+    回测执行使用精确 10/20/30/历史5% 比例并按 0.01 元价位计算涨跌停价。"""
     import numpy as np
     import pandas as pd
 
@@ -710,9 +711,9 @@ def verify_integrity(market: str = "csi500"):
     )
     if diff.quantile(0.95) < 1e-3:
         # 实测中位偏差 2.4e-5（复权/舍入噪声级别）；关键判据是下方逐日涨跌停计数 100% 一致
-        print("[verify] ✅ $change 即当日涨幅（偏差为复权舍入噪声），QLib 回测涨跌停模拟口径正确")
+        print("[verify] ✅ $change 与 close/prev_close-1 一致，可用于 ranking/audit 过滤复核")
     else:
-        print("[verify] ❌ $change 与当日涨幅不一致！回测涨跌停口径存疑，需人工检查")
+        print("[verify] ❌ $change 与当日涨幅不一致！ranking/audit 过滤口径需人工检查")
 
     # 2) 修复后的过滤口径 vs $change 口径（D.features index 为 (instrument, datetime)，按日期需 groupby level=1）
     limit_cnt_ref = (chg_calc.abs() >= limit_th).groupby(level=1).sum()
@@ -1497,9 +1498,8 @@ def _daily_impl(
     day = pred.loc[predict_date].dropna()
     top = day.sort_values(ascending=False).head(topk)
 
-    # 过滤当日已涨/跌停（板块感知阈值，涨幅= close/前收-1，口径与 verify_integrity 审计一致）：
-    # 主板/改革前创业板 ±10%、科创板/改革后创业板 ±20%（阈值边际 0.095/0.195）、
-    # 新股前 5 交易日无涨跌停（不剔除）；涨停买不进、跌停卖不出，剔除避免给不可交易信号
+    # 排名 CSV 的保守过滤：使用 board_rules.TH_* 审计 margin（例如 9.5%/19.5%），
+    # 仅用于避免展示接近涨跌停的候选；真正的成交可交易性由 BoardAwareExchange / paper masks 判定。
     from qlib.data import D
 
     day_df = D.features(
@@ -2683,7 +2683,7 @@ def batch_c_window(args: dict):
         "module_path": "qlib.contrib.strategy",
         "kwargs": {"signal": pred, "topk": args["topk"], "n_drop": args["nd"], "forbid_all_trade_at_limit": False},
     }
-    # 新池（star/chinext 板块）为 ±20% 口径；csi 池保持 0.095
+    # 执行统一走 BoardAwareExchange；不再按股票池使用单一 0.095/0.195 标量。
     pm, _ = normal_backtest(
         strategy=strategy,
         executor=executor,
@@ -2714,7 +2714,7 @@ def batch_c_window(args: dict):
 def batch_c(market: str = "csi1000", bench: str = "SH000852", topk: int = 20, nd: int = 2, tag: str = "c1000"):
     """批次C：候选配置 × 5 年滚动（2021Q1~2026Q3，23 个季度窗口，12 并行）。
     这是多重检验纪律下的唯一终审裁判。结果存 /vol/batch_c/。
-    新池（chinext/star）用各自等权基准 + 0.195 阈 + 改革日 guard（窗口起点 < 2020-08-24 拒绝）。"""
+    新池（chinext/star）用各自等权基准；成交约束统一由 BoardAwareExchange 按股票/日期处理。"""
     import json
 
     if market in EW_BENCH:
@@ -3114,7 +3114,7 @@ def batch_a_star_chn(market: str = "star_chn"):
     market: star_chn（合并池） / chinext / star（拆池判别实验：合并稀释 vs 真没 α）。
     一次训练（终审候选口径：LightGBM+Alpha158+20日标签+2016起 recent+long_train），
     固定窗口 2026-01-01~2026-09-11 上跑 top{10,20,50}×nd{1,2,3} 网格（9 组全记录）。
-    基准 = 对应池等权合成指数（board_rules.EW_BENCH），涨跌停阈 0.195（板块感知，改革后口径）。
+    基准 = 对应池等权合成指数（board_rules.EW_BENCH）；成交约束走 BoardAwareExchange。
     前置：Volume 已有 <market>.txt 池 + 对应等权基准（::build_star_chn_bench 一次建全）。
     对照行：csi1000+top20/nd2 单窗口批次A = +26.2%（等权口径不同，仅作池风格参考）。
     结果存 /vol/batch_a_<market>/。"""
@@ -3195,7 +3195,7 @@ def batch_a_star_chn(market: str = "star_chn"):
         "window": f"{WINDOW[0]}~{WINDOW[1]}",
         "market": market,
         "bench": BENCH,
-        "limit_th": 0.195,
+        "execution_protocol": "board_aware_open_v3",
         "note": "粗筛：差异<3pp视为噪声；只记 top3 候选；终审以批次C滚动为准",
         "universe": {"n_days": n_day, "n_instruments": n_inst},
     }
@@ -3272,7 +3272,7 @@ def batch_b_one(spec: dict):
         "module_path": "qlib.contrib.strategy",
         "kwargs": {"signal": pred, "topk": 20, "n_drop": 2, "forbid_all_trade_at_limit": False},
     }
-    # 新池（star/chinext 板块）为 ±20% 口径；csi 池保持 0.095
+    # 执行统一走 BoardAwareExchange；不再按股票池使用单一 0.095/0.195 标量。
     pm, _ = normal_backtest(
         strategy=strategy,
         executor={
@@ -3310,7 +3310,7 @@ def batch_b(lgb_trials: int = 12, market: str = "csi1000", bench: str = "SH00085
     B1. 训练起点 {2011, 2013, 2016}；B2. expanding vs sliding（6 年滑窗）；
     B3. LGB 超参 12 组快搜（随机种子固定；默认 2016 起点，与串行版一致）。
     16 个任务相互独立（B2 expanding 即 B1 最优复用）→ 单次 .map() 8 并发。
-    统一窗口 2026-01-01~2026-09-11。新池用各自等权基准 + 0.195 阈。
+    统一窗口 2026-01-01~2026-09-11。新池用各自等权基准；执行统一走 BoardAwareExchange。
     结果存 /vol/batch_b_<market>/（csi1000 保持 /vol/batch_b/，不覆盖旧结果）。"""
     import json
     import random
@@ -3570,7 +3570,7 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
     print("[daily] ranking CSV + stateful paper-order context prepared")
     top = day.sort_values(ascending=False).head(topk)
 
-    # ---- 3) 涨跌停过滤（板块感知阈值：主板/改革前创业板±10%、科创板/改革后创业板±20%、新股前5交易日豁免；涨幅=close/前收-1） ----
+    # ---- 3) 排名展示的保守涨跌停过滤（与真实成交 Exchange 分层；board_rules 维护板块/日期/上市豁免） ----
     day_df = D.features(
         [str(x) for x in day.index],
         ["$close", "Ref($close,1)"],
