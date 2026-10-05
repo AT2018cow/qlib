@@ -10,9 +10,13 @@ Price-limit facts (verified against exchange rules, 2026-09):
 - ChiNext (SZ300*/SZ301*/SZ302*): ±10% before the registration reform
   (first session without limit: 2020-08-24), ±20% from 2020-08-24 onward;
   listings from 2020-08-24 onward: first 5 trading sessions no price limit.
-- Main boards: ±10% (SZ00*/SZ30 pre-reform/SH60*); ST stocks ±5% everywhere
-  (ST status cannot be inferred from the symbol; pass st_symbols explicitly).
-- BSE (北交所, BJ*): ±30%.
+- Main boards: ±10%. IPOs under the full-registration regime (first batch
+  listed 2023-04-10) have no price limit for their first 5 trading sessions.
+- Risk-warning rules are board/date dependent, not a universal ±5%: main-board
+  ST/*ST was ±5% before 2026-07-06 and is ±10% from that date; ChiNext
+  risk-warning stocks follow the ChiNext regime (±5% before the 2020 reform,
+  ±20% after); STAR risk-warning stocks remain ±20%.
+- BSE (北交所, BJ*): ±30%; public-offering listing day has no price limit.
 Filter thresholds use the pipeline's audit口径 margin: nominal minus 0.5pp
 (10%→0.095, 20%→0.195, 30%→0.295, 5%→0.045), matching the existing
 |close/prev_close - 1| >= threshold filter.
@@ -24,6 +28,8 @@ from pathlib import Path
 
 STAR_LAUNCH = "2019-07-22"
 CHINEXT_REFORM = "2020-08-24"  # first session trading at ±20% on ChiNext
+MAIN_REGISTRATION_FIRST_LISTING = "2023-04-10"
+MAIN_ST_10_START = "2026-07-06"
 NEW_LISTING_SESSIONS = 5
 
 TH_10 = 0.095
@@ -82,17 +88,28 @@ def limit_threshold(
     b = board_of(symbol)
     if b == "index":
         return None
-    if st_symbols is not None and symbol in st_symbols:
-        return TH_5
-    if listing_dates and symbol in listing_dates and b in ("star", "chinext"):
-        if in_first_sessions(listing_dates[symbol], date, calendar=calendar):
+    d = str(date)[:10]
+    listing = str(listing_dates[symbol])[:10] if listing_dates and symbol in listing_dates else None
+    if listing:
+        if b in ("star", "chinext") and in_first_sessions(listing, d, calendar=calendar):
             return None
+        if b == "main" and listing >= MAIN_REGISTRATION_FIRST_LISTING:
+            if in_first_sessions(listing, d, calendar=calendar):
+                return None
+        if b == "bse" and in_first_sessions(listing, d, calendar=calendar, n=1):
+            return None
+
+    is_st = st_symbols is not None and symbol in st_symbols
     if b == "star":
         return TH_20
     if b == "chinext":
-        return TH_20 if str(date)[:10] >= CHINEXT_REFORM else TH_10
+        if d >= CHINEXT_REFORM:
+            return TH_20
+        return TH_5 if is_st else TH_10
     if b == "bse":
         return TH_30
+    if is_st and d < MAIN_ST_10_START:
+        return TH_5
     return TH_10
 
 
