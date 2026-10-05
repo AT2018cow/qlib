@@ -2631,6 +2631,7 @@ def batch_c_window(args: dict):
     from qlib.data.dataset import Dataset
     from qlib.model.base import Model
     from qlib.utils import init_instance_by_config
+    from portfolio_performance import portfolio_performance
 
     _ensure_data()
     qlib.init(
@@ -2694,15 +2695,35 @@ def batch_c_window(args: dict):
         exchange_kwargs=research_exchange(te_s, te_e, codes=args["market"]),
     )
     rep = pm["1day"][0]
-    excess = rep["return"] - rep["bench"] - rep["cost"]
+    excess = (rep["return"] - rep["bench"] - rep["cost"]).dropna()
+    perf = portfolio_performance(
+        rep,
+        initial_cash=100000000,
+        backtest_start=te_s,
+    )
+    legacy_excess_curve = excess.cumsum()
     return {
         "protocol": "board_aware_open_bootstrap_v3",
+        "metric_version": perf["metric_version"],
         "window": args["name"],
         "test": f"{te_s}~{te_e}",
-        "excess_total": round(float(excess.sum()), 4),
-        "daily_mean": round(float(excess.mean()), 6),
-        "max_drawdown": round(float((excess.cumsum() - excess.cumsum().cummax()).min()), 4),
+        "strategy_cagr": perf["strategy_cagr"],
+        "benchmark_cagr": perf["benchmark_cagr"],
+        "relative_excess_cagr": perf["relative_excess_cagr"],
+        "strategy_max_drawdown": perf["strategy_max_drawdown"],
+        "benchmark_max_drawdown": perf["benchmark_max_drawdown"],
+        "relative_max_drawdown": perf["relative_max_drawdown"],
+        "sharpe": perf["sharpe"],
+        "information_ratio": perf["information_ratio"],
+        "annual_volatility": perf["annual_volatility"],
+        "account_return_max_error": perf["account_return_max_error"],
+        "excess_total_legacy_arithmetic": round(float(excess.sum()), 4),
+        "daily_mean_active_return": round(float(excess.mean()), 6),
+        "legacy_max_drawdown_excess_arithmetic": round(
+            float((legacy_excess_curve - legacy_excess_curve.cummax()).min()), 4
+        ),
         "n_days": int(len(excess)),
+        "performance": perf,
     }
 
 
@@ -2749,7 +2770,11 @@ def batch_c(market: str = "csi1000", bench: str = "SH000852", topk: int = 20, nd
     results = list(batch_c_window.map(jobs))
     ok = [r for r in results if "error" not in r]
     errs = [r for r in results if "error" in r]
-    excess_all = [r["excess_total"] for r in ok]
+    excess_all = [r["excess_total_legacy_arithmetic"] for r in ok]
+    relative_cagrs = [r["relative_excess_cagr"] for r in ok]
+    strategy_cagrs = [r["strategy_cagr"] for r in ok]
+    strategy_mdds = [r["strategy_max_drawdown"] for r in ok]
+    sharpes = [r["sharpe"] for r in ok if r["sharpe"] is not None]
     import numpy as np
 
     pos = sum(1 for e in excess_all if e > 0)
@@ -2763,13 +2788,26 @@ def batch_c(market: str = "csi1000", bench: str = "SH000852", topk: int = 20, nd
         "best_q": round(max(excess_all), 4),
         "worst_q": round(min(excess_all), 4),
         "positive_windows": pos,
-        "ann_excess_approx": round(float(np.mean(excess_all)) * 4, 4),
-        "note": "季度超额均值×4≈年化（expanding训练，窗口自相关未校正）",
+        "ann_excess_approx_legacy_arithmetic": round(float(np.mean(excess_all)) * 4, 4),
+        "median_window_relative_excess_cagr": round(float(np.median(relative_cagrs)), 4),
+        "median_window_strategy_cagr": round(float(np.median(strategy_cagrs)), 4),
+        "median_window_strategy_max_drawdown": round(float(np.median(strategy_mdds)), 4),
+        "median_window_sharpe": (
+            round(float(np.median(sharpes)), 4) if sharpes else None
+        ),
+        "continuous_account_cagr": None,
+        "continuous_account_max_drawdown": None,
+        "note": (
+            "Batch C 每季度重置账户，因此不能从季度窗口拼出真实5年连续CAGR/MaxDD；"
+            "ann_excess_approx_legacy_arithmetic 仅保留历史兼容。"
+        ),
         "windows": results,
     }
     print(
         f"[batchC] {tag} 汇总: 均值季度超额={summary['mean_q_excess']} 正窗口={pos}/{len(ok)} "
-        f"年化≈{summary['ann_excess_approx']} 最差季={summary['worst_q']}"
+        f"legacy年化≈{summary['ann_excess_approx_legacy_arithmetic']} "
+        f"窗口中位relative CAGR={summary['median_window_relative_excess_cagr']} "
+        f"最差季={summary['worst_q']}"
     )
     out = VOL_ROOT / "batch_c"
     out.mkdir(parents=True, exist_ok=True)
