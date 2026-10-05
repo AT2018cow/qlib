@@ -34,6 +34,21 @@
 - **Data in this fork**: chenditc daily full release (append-only, no revisions, real historical constituents — all verified); Volume `qlib-cn-data`. Docker-style local data setup from upstream README section does NOT apply to the daily pipeline (it always downloads fresh).
 - **Critical bug-fix conventions** (hard-won, see 03-risks-and-audit.md): limit-up filter must use close/prev-close with correct MultiIndex alignment; train/valid/test boundaries must be purged via `purge_cfg_splits`; never trust a too-good backtest number before a look-ahead audit.
 
+## Modal usage (critical, repeatedly forgotten)
+- **NEVER use `nohup ... &` for Modal commands** — the shell tool kills background processes when its timeout expires, silently losing the run. Use synchronous execution with a long `timeout` (e.g. `timeout: 3600000` for 1 hour).
+- **`modal run` creates a temporary app** — it uses the local file directly; no redeploy needed for experiments. Use `modal deploy` only for the production cron.
+- **Workspace switching**: `modal profile activate <name>` — always verify with `modal profile current` after switching. at2018cow = production; infi = experiments.
+- **`modal run` is synchronous** — it waits for all functions to complete. For long jobs, set the bash `timeout` parameter generously (Batch C ≈ 20 min → `timeout: 1200000`; freq experiments ≈ 60 min → `timeout: 3600000`).
+- **`modal run --detach` is dangerous** — disconnecting cancels pending inputs (confirmed: two detach runs both lost work after ~10 min). Only use for fire-and-forget one-shot scripts.
+- **Image rebuild**: `modal run` rebuilds the image from the local file each time (add_local_dir + run_commands). Changes to helper modules (board_rules.py, board_execution.py, etc.) are picked up automatically. No need to redeploy for experiments.
+- **Volume data is per-workspace** — building a benchmark or pool file on infi does NOT make it available on at2018cow. Run data prep on the workspace you'll use.
+
+## Path discipline (repeated errors, fix permanently)
+- **Working directory is `/home/ss/git_repos/qlib`** — always use `workdir` parameter; never `cd` into a subdirectory you're already in (e.g. being in `tests/` and running `cd tests` again).
+- **`read` tool takes a file path, NOT bash syntax** — don't pipe or add shell commands to the path.
+- **Never typo the path** — it's `git_repos`, not `git_reos`.
+- **Run tests from the repo root with `PYTHONPATH=/home/ss/git_repos/qlib`**, or from `tests/` with the same PYTHONPATH; use the venv at `/home/ss/git_repos/qlib/.venv/bin/python`.
+
 ## Conventions / gotchas
 - Docstrings: Numpydoc style (`docs/developer/code_standard_and_dev_guide.rst`).
 - `make clean` deletes `*.so/*.cpp/mlruns/build/dist`; use it before rebuilds, not casually.
