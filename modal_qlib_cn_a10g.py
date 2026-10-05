@@ -1229,6 +1229,186 @@ def _board_listing_dates(provider_uri, symbols) -> dict:
     return sub.groupby("symbol")["start"].min().to_dict()
 
 
+
+def _paper_execution_context(data_dir, market: str, calendar: list[str], asof: str) -> dict:
+    """Read paper state without mutating it and prepare data for pending execution.
+
+    daily_standalone runs before publication gating, so it must never mutate
+    portfolio state.  It only returns the exact historical open/tradability
+    context needed by daily_cron after the signal has passed the gate.
+    """
+    import json as _json
+    import numpy as _np
+    import pandas as _pd
+    from qlib.data import D
+
+    state_path = VOL_ROOT / "paper_portfolio" / f"{market}.json"
+    if not state_path.exists():
+        return {"status": "no_state", "execution_date": None}
+    raw = _json.loads(state_path.read_text())
+    pending = raw.get("pending_signal")
+    if not pending:
+        return {"status": "no_pending", "execution_date": None}
+    execution_date = str(pending["execution_date"])
+    if execution_date > str(asof):
+        return {"status": "awaiting_data", "execution_date": execution_date}
+    if execution_date not in calendar:
+        raise RuntimeError(f"paper pending execution date {execution_date} not in provider calendar")
+
+    symbols = set(raw.get("positions", {}))
+    symbols.update(pending.get("planned_sell", []))
+    symbols.update(pending.get("planned_buy", []))
+    if not symbols:
+        return {
+            "status": "ready",
+            "execution_date": execution_date,
+            "open_prices": {},
+            "buy_tradable": {},
+            "sell_tradable": {},
+        }
+
+    df = D.features(
+        sorted(symbols),
+        ["$open", "Ref($close,1)", "$close"],
+        start_time=execution_date,
+        end_time=execution_date,
+        freq="day",
+    )
+    rows = {}
+    for idx, row in df.iterrows():
+        inst = str(idx[0] if isinstance(idx, tuple) else idx)
+        rows[inst] = row
+
+    insts = sorted(symbols)
+    opens, prevs, close_na = [], [], []
+    open_prices = {}
+    for inst in insts:
+        row = rows.get(inst)
+        op = float(row["$open"]) if row is not None and _pd.notna(row["$open"]) else _np.nan
+        prev = float(row["Ref($close,1)"]) if row is not None and _pd.notna(row["Ref($close,1)"]) else _np.nan
+        close = float(row["$close"]) if row is not None and _pd.notna(row["$close"]) else _np.nan
+        opens.append(op)
+        prevs.append(prev)
+        close_na.append(not _np.isfinite(close))
+        if _np.isfinite(op):
+            open_prices[inst] = op
+
+    listing = _board_listing_dates(data_dir, insts)
+    limit_buy, limit_sell = compute_limit_masks(
+        insts,
+        [execution_date] * len(insts),
+        opens,
+        prevs,
+        close_na,
+        high_open_block=0.05,
+        listing_dates=listing,
+        calendar=calendar,
+    )
+    return {
+        "status": "ready",
+        "execution_date": execution_date,
+        "open_prices": open_prices,
+        "buy_tradable": {inst: not bool(v) for inst, v in zip(insts, limit_buy)},
+        "sell_tradable": {inst: not bool(v) for inst, v in zip(insts, limit_sell)},
+    }
+
+
+def _apply_paper_portfolio(res: dict, usage_date: str, topk: int, nd: int) -> str:
+    """Apply a gated daily result to the persistent paper portfolio.
+
+    Returns a JSON artifact suitable for immutable GitHub publication.
+    """
+    import json as _json
+    from paper_portfolio import PaperPortfolio
+
+    market = res["market"]
+    state_dir = VOL_ROOT / "paper_portfolio"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    state_path = state_dir / f"{market}.json"
+    try:
+        vol.reload()
+    except Exception:
+        pass
+
+    if state_path.exists():
+        pp = PaperPortfolio.load(state_path)
+        if pp.topk != topk or pp.nd != nd:
+            raise RuntimeError(
+                f"paper portfolio config drift for {market}: state topk/nd={pp.topk}/{pp.nd}, "
+                f"requested={topk}/{nd}"
+            )
+    else:
+        pp = PaperPortfolio(topk=topk, nd=nd, initial_cash=100_000_000)
+
+    execution_report = None
+    ctx = res.get("paper_context") or {}
+    if pp.pending_signal is not None:
+        pending_date = pp.pending_signal["execution_date"]
+        if pending_date <= res["date"]:
+            if ctx.get("status") != "ready" or ctx.get("execution_date") != pending_date:
+                raise RuntimeError(
+                    f"paper execution context unavailable for {market} {pending_date}: {ctx.get('status')}"
+                )
+            execution_report = pp.execute_pending(
+                pending_date,
+                ctx.get("open_prices", {}),
+                buy_tradable=ctx.get("buy_tradable", {}),
+                sell_tradable=ctx.get("sell_tradable", {}),
+            )
+
+    planned = None
+    if pp.pending_signal is None:
+        planned = pp.plan_signal(
+            signal_date=res["date"],
+            execution_date=usage_date,
+            ranking=[tuple(x) for x in res["ranking_full"]],
+            metadata={
+                "market": market,
+                "model_fit_asof": res["model_fit_asof"],
+                "train_end": res["train_end"],
+                "valid_end": res["valid_end"],
+                "topk": topk,
+                "nd": nd,
+            },
+        )
+    else:
+        # Same-day reruns are idempotent.  Any other unresolved order lineage
+        # blocks a new plan rather than silently overwriting state.
+        p = pp.pending_signal
+        if p["execution_date"] != usage_date or p["signal_date"] != res["date"]:
+            raise RuntimeError(
+                f"unresolved paper signal for {market}: {p['signal_date']}->{p['execution_date']}; "
+                f"refusing new {res['date']}->{usage_date}"
+            )
+        planned = {
+            "signal_date": p["signal_date"],
+            "execution_date": p["execution_date"],
+            "sell": p.get("planned_sell", []),
+            "buy": p.get("planned_buy", []),
+            "idempotent": True,
+        }
+
+    pp.save(state_path)
+    vol.commit()
+    artifact = {
+        "state_version": 2,
+        "market": market,
+        "signal_data_date": res["date"],
+        "usage_date": usage_date,
+        "execution_report": execution_report,
+        "pending_orders": planned,
+        "cash": round(pp.cash, 2),
+        "n_positions": len(pp.positions),
+        "positions": pp.positions,
+        "model_fit_asof": res["model_fit_asof"],
+        "note": (
+            "Orders for usage_date are planned before the open. Their actual fills are "
+            "settled on the next data refresh using the recorded execution-day open."
+        ),
+    }
+    return _json.dumps(artifact, ensure_ascii=False, indent=2) + "\n"
+
+
 def _daily_impl(
     model: str,
     topk: int,
