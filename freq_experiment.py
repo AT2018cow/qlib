@@ -146,7 +146,7 @@ def prepare(force: bool = True):
     cpu=8,
     memory=24576,
     timeout=2 * 3600,
-    max_containers=8,
+    max_containers=25,
 )
 def freq_window(args: dict):
     """重训点 worker：只训练并返回该模型负责区间的信号，不在这里重置账户回测。

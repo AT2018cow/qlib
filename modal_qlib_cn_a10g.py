@@ -2618,7 +2618,7 @@ def _gen_5y_windows():
     cpu=8,
     memory=24576,
     timeout=2 * 3600,
-    max_containers=12,  # 22 窗口 ÷ 12 并发 = 两轮（新池训练更小，单窗口 ~6-10min）
+    max_containers=25,  # 23 窗口全部并行
 )
 def batch_c_window(args: dict):
     """批次C 窗口级 worker：单窗口 训练+回测（严格无前视）。"""
@@ -3222,7 +3222,7 @@ def batch_a_star_chn(market: str = "star_chn"):
     cpu=CPU_COUNT,
     memory=32768,
     timeout=4 * 3600,
-    max_containers=8,  # 批次B 16 个独立任务 ÷ 8 并发 = 两轮 wall time（串行 ~1.5h → 并行 ~25min）
+    max_containers=25,
 )
 def batch_b_one(spec: dict):
     """批次B worker：一个（起点/滑窗/超参）配置 = 一次训练 + 一次回测，16 任务全独立。
@@ -3981,7 +3981,7 @@ def daily_cron():
     cpu=8,
     memory=24576,
     timeout=2 * 3600,
-    max_containers=8,
+    max_containers=25,
 )
 def freq_window(args: dict):
     """频率实验窗口 worker：在重训日训练（purge 边界）→ 预测并回测执行区间。
