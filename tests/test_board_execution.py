@@ -74,13 +74,34 @@ class ResearchExchangeConfigTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             research_exchange(None, "2026-01-09")
 
-    def test_st_override(self):
+    def test_st_override_is_date_aware(self):
+        # Before 2026-07-06, main-board ST uses the historical ~5% threshold.
         lb, ls = compute_limit_masks(
-            ["SH600001"], ["2026-01-05"], [10.5], [10.0], [False],
+            ["SH600001"], ["2026-07-03"], [10.5], [10.0], [False],
             st_symbols={"SH600001"},
         )
-        self.assertTrue(lb[0])
-        self.assertFalse(ls[0])
+        self.assertTrue(lb[0]); self.assertFalse(ls[0])
+        # From 2026-07-06, main-board risk-warning stocks use the normal 10% regime.
+        lb2, _ = compute_limit_masks(
+            ["SH600001"], ["2026-07-06"], [10.5], [10.0], [False],
+            st_symbols={"SH600001"},
+        )
+        self.assertFalse(lb2[0])
+
+    def test_main_and_bse_listing_exemptions(self):
+        cal = [
+            "2023-04-10", "2023-04-11", "2023-04-12",
+            "2023-04-13", "2023-04-14", "2023-04-17",
+        ]
+        insts = ["SZ001286", "BJ430047"]
+        dates = ["2023-04-12", "2023-04-10"]
+        lb, ls = compute_limit_masks(
+            insts, dates, [20.0, 20.0], [10.0, 10.0], [False, False],
+            listing_dates={"SZ001286": "2023-04-10", "BJ430047": "2023-04-10"},
+            calendar=cal,
+        )
+        self.assertFalse(lb[0]); self.assertFalse(ls[0])  # main IPO day 3
+        self.assertFalse(lb[1]); self.assertFalse(ls[1])  # BSE listing day
 
 
 if __name__ == "__main__":
