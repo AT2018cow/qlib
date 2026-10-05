@@ -19,7 +19,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install test dependencies
-        run: pip install fire loguru tqdm pandas pytest
+        run: pip install fire loguru tqdm pandas pytest modal
       - name: Compile changed Python
         run: python -m py_compile modal_qlib_cn_a10g.py qlib_live_retrain.py scripts/check_data_health.py tests/test_cron_gate.py tests/test_review_regressions.py tests/test_data_health_wrapper.py
       - name: Run focused wrapper tests
