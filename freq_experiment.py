@@ -437,6 +437,21 @@ def _run_execution_protocol(signal, *, protocol: str, execution_start: str,
         raise RuntimeError(f"{protocol}: empty report")
     x = excess.to_numpy(dtype=float)
     cum = np.cumsum(x)
+    yearly = {}
+    for year, vals in excess.groupby(excess.index.year):
+        arr = vals.to_numpy(dtype=float)
+        yearly[str(int(year))] = {
+            "excess_sum": round(float(arr.sum()), 4),
+            "ann_excess_from_daily_mean": round(float(arr.mean() * 238), 4),
+            "n_days": int(len(arr)),
+        }
+
+    turnover_col = None
+    for candidate in ("turnover", "total_turnover"):
+        if candidate in rep.columns:
+            turnover_col = candidate
+            break
+
     result = {
         "protocol": protocol,
         "n_days": int(len(excess)),
@@ -446,6 +461,12 @@ def _run_execution_protocol(signal, *, protocol: str, execution_start: str,
         "max_drawdown_excess": round(float((cum - np.maximum.accumulate(cum)).min()), 4),
         "strategy_total_return_sum": round(float(ret.sum()), 4),
         "total_cost_sum": round(float(cost.sum()), 4),
+        "mean_turnover": (
+            round(float(rep[turnover_col].dropna().mean()), 6)
+            if turnover_col and not rep[turnover_col].dropna().empty else None
+        ),
+        "turnover_source": turnover_col,
+        "annual_excess": yearly,
     }
     return result
 
