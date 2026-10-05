@@ -31,7 +31,15 @@ from typing import Dict, Optional
 import numpy as np
 import pandas as pd
 
-from board_rules import CHINEXT_REFORM, TH_5, TH_10, TH_20, TH_30
+from board_rules import (
+    CHINEXT_REFORM,
+    MAIN_REGISTRATION_FIRST_LISTING,
+    MAIN_ST_10_START,
+    TH_5,
+    TH_10,
+    TH_20,
+    TH_30,
+)
 from qlib.backtest.exchange import Exchange
 
 _NOMINAL = {"star": TH_20, "chinext": TH_20, "main": TH_10, "bse": TH_30}
@@ -87,7 +95,15 @@ def compute_limit_masks(insts, dates, open_px, prev_close, close_na,
     thr = board_thresholds(inst_arr, dates)
     if st_symbols:
         st = {str(x).upper() for x in st_symbols}
-        thr = np.where(np.array([x.upper() in st for x in inst_arr]), TH_5, thr)
+        st_mask = np.array([x.upper() in st for x in inst_arr])
+        board_kind = np.array([_board_quick(x) for x in inst_arr])
+        # Current/historical risk-warning limits:
+        # main: 5% before 2026-07-06, 10% afterwards;
+        # ChiNext: 5% before reform, 20% afterwards;
+        # STAR/BSE keep their board limits.
+        main_old = st_mask & (board_kind == "main") & (date_strs < MAIN_ST_10_START)
+        chn_old = st_mask & (board_kind == "chinext") & (date_strs < CHINEXT_REFORM)
+        thr = np.where(main_old | chn_old, TH_5, thr)
     open_arr = np.asarray(open_px, dtype=float)
     prev_arr = np.asarray(prev_close, dtype=float)
     with np.errstate(invalid="ignore", divide="ignore"):
@@ -100,11 +116,23 @@ def compute_limit_masks(insts, dates, open_px, prev_close, close_na,
         cal_idx = {d: i for i, d in enumerate(calendar)}
         d_idx = np.array([cal_idx.get(str(d)[:10], -1) for d in dates])
         for inst, listing in listing_dates.items():
-            li = cal_idx.get(str(listing)[:10])
+            listing = str(listing)[:10]
+            li = cal_idx.get(listing)
             if li is None:
                 continue
+            board = _board_quick(inst)
+            if board in ("star", "chinext"):
+                n_exempt = 5
+            elif board == "main" and listing >= MAIN_REGISTRATION_FIRST_LISTING:
+                n_exempt = 5
+            elif board == "bse":
+                n_exempt = 1
+            else:
+                n_exempt = 0
+            if not n_exempt:
+                continue
             rows = inst_arr == inst
-            exempt = rows & (d_idx >= 0) & (d_idx <= li + 4)
+            exempt = rows & (d_idx >= li) & (d_idx < li + n_exempt)
             thr = np.where(exempt, np.nan, thr)
             limit_up = np.where(exempt, False, limit_up)
             limit_down = np.where(exempt, False, limit_down)
