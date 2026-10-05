@@ -623,7 +623,7 @@ def independent_recheck():
     strategy = {
         "class": "TopkDropoutStrategy",
         "module_path": "qlib.contrib.strategy",
-        "kwargs": {"signal": pred, "topk": 20, "n_drop": 2},
+        "kwargs": {"signal": pred, "topk": 20, "n_drop": 2, "forbid_all_trade_at_limit": False},
     }
     pm, _ = normal_backtest(
         strategy=strategy,
@@ -632,7 +632,7 @@ def independent_recheck():
         end_time="2023-03-31",
         account=100000000,
         benchmark="SH000852",
-        exchange_kwargs=research_exchange(),
+        exchange_kwargs=research_exchange(test_start, "2023-03-31", codes="csi1000"),
     )
     rep = pm["1day"][0]
     excess = rep["return"] - rep["bench"] - rep["cost"]
@@ -1432,12 +1432,12 @@ def train_ensemble(topk: int = 50, n_drop: int = 2):
         "end_time": _latest_trading_day(),
         "account": 100000000,
         "benchmark": "SH000905",
-        "exchange_kwargs": research_exchange(),
+        "exchange_kwargs": research_exchange("2026-01-01", _latest_trading_day(), codes="csi500"),
     }
     strategy = {
         "class": "TopkDropoutStrategy",
         "module_path": "qlib.contrib.strategy",
-        "kwargs": {"signal": ens, "topk": topk, "n_drop": n_drop},
+        "kwargs": {"signal": ens, "topk": topk, "n_drop": n_drop, "forbid_all_trade_at_limit": False},
     }
     executor = {
         "class": "SimulatorExecutor",
@@ -1545,7 +1545,7 @@ def tune_one(params: dict, horizon: int = 20):
     strategy = {
         "class": "TopkDropoutStrategy",
         "module_path": "qlib.contrib.strategy",
-        "kwargs": {"signal": pred, "topk": 20, "n_drop": 2},
+        "kwargs": {"signal": pred, "topk": 20, "n_drop": 2, "forbid_all_trade_at_limit": False},
     }
     executor = {
         "class": "SimulatorExecutor",
@@ -1560,7 +1560,7 @@ def tune_one(params: dict, horizon: int = 20):
         end_time=valid_end,
         account=100000000,
         benchmark="SH000852",
-        exchange_kwargs=research_exchange(),
+        exchange_kwargs=research_exchange(valid_start, valid_end, codes="csi1000"),
     )
     report = pm["1day"][0]
     if report.empty:
@@ -1687,12 +1687,12 @@ def dual_horizon(topk: int = 50, n_drop: int = 2, best_params: dict = None):
         "end_time": _latest_trading_day(),
         "account": 100000000,
         "benchmark": "SH000905",
-        "exchange_kwargs": research_exchange(),
+        "exchange_kwargs": research_exchange("2026-01-01", _latest_trading_day(), codes="csi500"),
     }
     strategy = {
         "class": "TopkDropoutStrategy",
         "module_path": "qlib.contrib.strategy",
-        "kwargs": {"signal": ens, "topk": topk, "n_drop": n_drop},
+        "kwargs": {"signal": ens, "topk": topk, "n_drop": n_drop, "forbid_all_trade_at_limit": False},
     }
     executor = {
         "class": "SimulatorExecutor",
@@ -1825,7 +1825,7 @@ def p0_diagnostics():
         end_time=END,
         account=100000000,
         benchmark="SH000905",
-        exchange_kwargs=research_exchange(),
+        exchange_kwargs=research_exchange("2026-01-01", END, codes="csi500"),
     )
     executor = {
         "class": "SimulatorExecutor",
@@ -1840,7 +1840,7 @@ def p0_diagnostics():
         strategy = {
             "class": "TopkDropoutStrategy",
             "module_path": "qlib.contrib.strategy",
-            "kwargs": {"signal": pred, "topk": 50, "n_drop": nd},
+            "kwargs": {"signal": pred, "topk": 50, "n_drop": nd, "forbid_all_trade_at_limit": False},
         }
         pm, _ = normal_backtest(strategy=strategy, executor=executor, **bt_kwargs)
         rep = pm["1day"][0]
@@ -1956,7 +1956,7 @@ def p1_diagnostics():
         end_time=END,
         account=100000000,
         benchmark="SH000905",
-        exchange_kwargs=research_exchange(),
+        exchange_kwargs=research_exchange("2026-01-01", END, codes="csi500"),
     )
     executor = {
         "class": "SimulatorExecutor",
@@ -1968,7 +1968,7 @@ def p1_diagnostics():
         strategy = {
             "class": "TopkDropoutStrategy",
             "module_path": "qlib.contrib.strategy",
-            "kwargs": {"signal": signal, "topk": topk, "n_drop": n_drop},
+            "kwargs": {"signal": signal, "topk": topk, "n_drop": n_drop, "forbid_all_trade_at_limit": False},
         }
         pm, _ = normal_backtest(strategy=strategy, executor=executor, **bt_kwargs)
         rep = pm["1day"][0]
@@ -2220,7 +2220,7 @@ def version_check_0911():
         end_time="2026-09-11",
         account=100000000,
         benchmark="SH000905",
-        exchange_kwargs=research_exchange(),
+        exchange_kwargs=research_exchange("2026-01-01", "2026-09-11", codes="csi500"),
     )
     executor = {
         "class": "SimulatorExecutor",
@@ -2242,7 +2242,7 @@ def version_check_0911():
         strategy = {
             "class": "TopkDropoutStrategy",
             "module_path": "qlib.contrib.strategy",
-            "kwargs": {"signal": pred, "topk": 50, "n_drop": 3},
+            "kwargs": {"signal": pred, "topk": 50, "n_drop": 3, "forbid_all_trade_at_limit": False},
         }
         pm, _ = normal_backtest(strategy=strategy, executor=executor, **bt_kwargs)
         ra = risk_analysis(pm["1day"][0]["return"] - pm["1day"][0]["bench"] - pm["1day"][0]["cost"])
@@ -2295,7 +2295,7 @@ def version_check_0916():
         end_time="2026-09-11",
         account=100000000,
         benchmark="SH000905",
-        exchange_kwargs=research_exchange(),
+        exchange_kwargs=research_exchange("2026-01-01", "2026-09-11", codes="csi500"),
     )
     executor = {
         "class": "SimulatorExecutor",
@@ -2316,7 +2316,7 @@ def version_check_0916():
         strategy = {
             "class": "TopkDropoutStrategy",
             "module_path": "qlib.contrib.strategy",
-            "kwargs": {"signal": preds["lgb158"], "topk": 50, "n_drop": nd},
+            "kwargs": {"signal": preds["lgb158"], "topk": 50, "n_drop": nd, "forbid_all_trade_at_limit": False},
         }
         pm, _ = normal_backtest(strategy=strategy, executor=executor, **bt_kwargs)
         ra = risk_analysis(pm["1day"][0]["return"] - pm["1day"][0]["bench"] - pm["1day"][0]["cost"])
@@ -2330,7 +2330,7 @@ def version_check_0916():
     strategy = {
         "class": "TopkDropoutStrategy",
         "module_path": "qlib.contrib.strategy",
-        "kwargs": {"signal": preds["lgb360"], "topk": 50, "n_drop": 3},
+        "kwargs": {"signal": preds["lgb360"], "topk": 50, "n_drop": 3, "forbid_all_trade_at_limit": False},
     }
     pm, _ = normal_backtest(strategy=strategy, executor=executor, **bt_kwargs)
     ra = risk_analysis(pm["1day"][0]["return"] - pm["1day"][0]["bench"] - pm["1day"][0]["cost"])
@@ -2458,7 +2458,7 @@ def batch_c_window(args: dict):
     strategy = {
         "class": "TopkDropoutStrategy",
         "module_path": "qlib.contrib.strategy",
-        "kwargs": {"signal": pred, "topk": args["topk"], "n_drop": args["nd"]},
+        "kwargs": {"signal": pred, "topk": args["topk"], "n_drop": args["nd"], "forbid_all_trade_at_limit": False},
     }
     # 新池（star/chinext 板块）为 ±20% 口径；csi 池保持 0.095
     pm, _ = normal_backtest(
@@ -2468,7 +2468,7 @@ def batch_c_window(args: dict):
         end_time=te_e,
         account=100000000,
         benchmark=args["bench"],
-        exchange_kwargs=research_exchange(),
+        exchange_kwargs=research_exchange(te_s, te_e, codes=args["market"]),
     )
     rep = pm["1day"][0]
     excess = rep["return"] - rep["bench"] - rep["cost"]
@@ -2629,7 +2629,7 @@ def p2_rolling():
         strategy = {
             "class": "TopkDropoutStrategy",
             "module_path": "qlib.contrib.strategy",
-            "kwargs": {"signal": pred, "topk": 50, "n_drop": 3},
+            "kwargs": {"signal": pred, "topk": 50, "n_drop": 3, "forbid_all_trade_at_limit": False},
         }
         pm, _ = normal_backtest(
             strategy=strategy,
@@ -2638,7 +2638,7 @@ def p2_rolling():
             end_time=te_e,
             account=100000000,
             benchmark="SH000905",
-            exchange_kwargs=research_exchange(),
+            exchange_kwargs=research_exchange(te_s, te_e, codes="csi500"),
         )
         rep = pm["1day"][0]
         ra = risk_analysis(rep["return"] - rep["bench"] - rep["cost"])
@@ -2743,7 +2743,7 @@ def topk_grid(topks="10,20,30,50", n_drop: int = 3):
         strategy = {
             "class": "TopkDropoutStrategy",
             "module_path": "qlib.contrib.strategy",
-            "kwargs": {"signal": pred, "topk": tk, "n_drop": n_drop},
+            "kwargs": {"signal": pred, "topk": tk, "n_drop": n_drop, "forbid_all_trade_at_limit": False},
         }
         pm, _ = normal_backtest(
             strategy=strategy,
@@ -2752,7 +2752,7 @@ def topk_grid(topks="10,20,30,50", n_drop: int = 3):
             end_time="2026-09-11",
             account=100000000,
             benchmark="SH000905",
-            exchange_kwargs=research_exchange(),
+            exchange_kwargs=research_exchange("2026-01-01", "2026-09-11", codes="csi500"),
         )
         rep = pm["1day"][0]
         ra = risk_analysis(rep["return"] - rep["bench"] - rep["cost"])
@@ -2814,10 +2814,11 @@ def batch_a():
     print(f"[batchA] SH000852 数据存在: {len(bench1000) > 0}")
 
     def bt(signal, topk, nd, bench="SH000905"):
+        _pool = {"SH000300": "csi300", "SH000905": "csi500", "SH000852": "csi1000"}[bench]
         strategy = {
             "class": "TopkDropoutStrategy",
             "module_path": "qlib.contrib.strategy",
-            "kwargs": {"signal": signal, "topk": topk, "n_drop": nd},
+            "kwargs": {"signal": signal, "topk": topk, "n_drop": nd, "forbid_all_trade_at_limit": False},
         }
         pm, _ = normal_backtest(
             strategy=strategy,
@@ -2826,7 +2827,7 @@ def batch_a():
             end_time="2026-09-11",
             account=100000000,
             benchmark=bench,
-            exchange_kwargs=research_exchange(),
+            exchange_kwargs=research_exchange("2026-01-01", "2026-09-11", codes=_pool),
         )
         rep = pm["1day"][0]
         ra = risk_analysis(rep["return"] - rep["bench"] - rep["cost"])
@@ -2934,7 +2935,7 @@ def batch_a_star_chn(market: str = "star_chn"):
         strategy = {
             "class": "TopkDropoutStrategy",
             "module_path": "qlib.contrib.strategy",
-            "kwargs": {"signal": signal, "topk": topk, "n_drop": nd},
+            "kwargs": {"signal": signal, "topk": topk, "n_drop": nd, "forbid_all_trade_at_limit": False},
         }
         pm, _ = normal_backtest(
             strategy=strategy,
@@ -2943,7 +2944,7 @@ def batch_a_star_chn(market: str = "star_chn"):
             end_time=WINDOW[1],
             account=100000000,
             benchmark=BENCH,
-            exchange_kwargs=research_exchange(),
+            exchange_kwargs=research_exchange(WINDOW[0], WINDOW[1], codes=market),
         )
         rep = pm["1day"][0]
         if rep.empty:
@@ -3046,7 +3047,7 @@ def batch_b_one(spec: dict):
     strategy = {
         "class": "TopkDropoutStrategy",
         "module_path": "qlib.contrib.strategy",
-        "kwargs": {"signal": pred, "topk": 20, "n_drop": 2},
+        "kwargs": {"signal": pred, "topk": 20, "n_drop": 2, "forbid_all_trade_at_limit": False},
     }
     # 新池（star/chinext 板块）为 ±20% 口径；csi 池保持 0.095
     pm, _ = normal_backtest(
@@ -3060,7 +3061,7 @@ def batch_b_one(spec: dict):
         end_time="2026-09-11",
         account=100000000,
         benchmark=bench,
-        exchange_kwargs=research_exchange(),
+        exchange_kwargs=research_exchange("2026-01-01", "2026-09-11", codes=market),
     )
     rep = pm["1day"][0]
     if rep.empty:
@@ -3772,7 +3773,7 @@ def freq_window(args: dict):
     strategy = {
         "class": "TopkDropoutStrategy",
         "module_path": "qlib.contrib.strategy",
-        "kwargs": {"signal": pred, "topk": args["topk"], "n_drop": args["nd"]},
+        "kwargs": {"signal": pred, "topk": args["topk"], "n_drop": args["nd"], "forbid_all_trade_at_limit": False},
     }
     bench = "SH000852" if args["market"] == "csi1000" else "SH000905"
     pm, _ = normal_backtest(
@@ -3782,7 +3783,7 @@ def freq_window(args: dict):
         end_time=args["eval_end"],
         account=100000000,
         benchmark=bench,
-        exchange_kwargs=research_exchange(),
+        exchange_kwargs=research_exchange(args["eval_start"], args["eval_end"], codes=args["market"]),
     )
     rep = pm["1day"][0]
     excess = rep["return"] - rep["bench"] - rep["cost"]
