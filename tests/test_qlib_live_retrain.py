@@ -65,6 +65,10 @@ class LiveRetrainTests(unittest.TestCase):
         self.assertEqual(initial, cache_signature(cfg2))
         cfg2['task']['model']['kwargs']['learning_rate'] = 0.05
         self.assertNotEqual(initial, cache_signature(cfg2))
+        self.assertNotEqual(
+            cache_signature(self.cfg, runtime_lineage={"pyqlib": "a"}),
+            cache_signature(self.cfg, runtime_lineage={"pyqlib": "b"}),
+        )
 
     def test_fail_closed_bad_asof(self):
         self.assertRaises(ValueError, configure_asof, self.cfg, self.cal, self.cal[-2])

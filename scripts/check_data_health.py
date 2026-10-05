@@ -6,8 +6,6 @@ import pandas as pd
 from loguru import logger
 from tqdm import tqdm
 
-import qlib
-from qlib.data import D
 
 
 class DataHealthChecker:
@@ -36,9 +34,10 @@ class DataHealthChecker:
         self.large_step_threshold_price = large_step_threshold_price
         self.large_step_threshold_volume = large_step_threshold_volume
         self.missing_data_num = missing_data_num
-        self.qlib_dir = os.path.abspath(os.path.expanduser(qlib_dir))
+        self.qlib_dir = os.path.abspath(os.path.expanduser(qlib_dir)) if qlib_dir else None
 
         if csv_path:
+            csv_path = os.path.abspath(os.path.expanduser(csv_path))
             assert os.path.isdir(csv_path), f"{csv_path} should be a directory."
             files = [f for f in os.listdir(csv_path) if f.endswith(".csv")]
             for filename in tqdm(files, desc="Loading data"):
@@ -46,13 +45,18 @@ class DataHealthChecker:
                 self.data[filename] = df
 
         elif qlib_dir:
+            import qlib
+
             qlib.init(provider_uri=qlib_dir)
             self.load_qlib_data()
 
     def load_qlib_data(self):
+        from qlib.data import D
+
         instruments = D.instruments(market="all")
         instrument_list = D.list_instruments(instruments=instruments, as_list=True, freq=self.freq)
         required_fields = ["$open", "$close", "$low", "$high", "$volume", "$factor"]
+        df = None
         for instrument in instrument_list:
             df = D.features([instrument], required_fields, freq=self.freq)
             df.rename(
@@ -67,7 +71,8 @@ class DataHealthChecker:
                 inplace=True,
             )
             self.data[instrument] = df
-        print(df)
+        if df is not None:
+            print(df)
 
     # NOTE:
     # This check is added due to a known issue in Qlib where feature paths
@@ -120,11 +125,11 @@ class DataHealthChecker:
             missing_data_columns = df.isnull().sum()[df.isnull().sum() > self.missing_data_num].index.tolist()
             if len(missing_data_columns) > 0:
                 result_dict["instruments"].append(filename)
-                result_dict["open"].append(df.isnull().sum()["open"])
-                result_dict["high"].append(df.isnull().sum()["high"])
-                result_dict["low"].append(df.isnull().sum()["low"])
-                result_dict["close"].append(df.isnull().sum()["close"])
-                result_dict["volume"].append(df.isnull().sum()["volume"])
+                result_dict["open"].append(int(df["open"].isnull().sum()) if "open" in df.columns else None)
+                result_dict["high"].append(int(df["high"].isnull().sum()) if "high" in df.columns else None)
+                result_dict["low"].append(int(df["low"].isnull().sum()) if "low" in df.columns else None)
+                result_dict["close"].append(int(df["close"].isnull().sum()) if "close" in df.columns else None)
+                result_dict["volume"].append(int(df["volume"].isnull().sum()) if "volume" in df.columns else None)
 
         result_df = pd.DataFrame(result_dict).set_index("instruments")
         if not result_df.empty:
@@ -151,8 +156,12 @@ class DataHealthChecker:
                         large_steps = pct_change[pct_change > threshold]
                         result_dict["instruments"].append(filename)
                         result_dict["col_name"].append(col)
-                        result_dict["date"].append(large_steps.index.to_list()[0][1].strftime("%Y-%m-%d"))
-                        result_dict["pct_change"].append(pct_change.max())
+                        first_idx = large_steps.index.to_list()[0]
+                        date_idx = first_idx[-1] if isinstance(first_idx, tuple) else first_idx
+                        if hasattr(date_idx, "strftime"):
+                            date_idx = date_idx.strftime("%Y-%m-%d")
+                        result_dict["date"].append(str(date_idx))
+                        result_dict["pct_change"].append(float(pct_change.max()))
                         affected_columns.append(col)
 
         result_df = pd.DataFrame(result_dict).set_index("instruments")
@@ -165,17 +174,13 @@ class DataHealthChecker:
     def check_required_columns(self) -> Optional[pd.DataFrame]:
         """Check if any of the required columns (OLHCV) are missing in the DataFrame."""
         required_columns = ["open", "high", "low", "close", "volume"]
-        result_dict = {
-            "instruments": [],
-            "missing_col": [],
-        }
+        rows = []
         for filename, df in self.data.items():
-            if not all(column in df.columns for column in required_columns):
-                missing_required_columns = [column for column in required_columns if column not in df.columns]
-                result_dict["instruments"].append(filename)
-                result_dict["missing_col"] += missing_required_columns
+            missing_required_columns = [column for column in required_columns if column not in df.columns]
+            if missing_required_columns:
+                rows.append({"instruments": filename, "missing_col": ",".join(missing_required_columns)})
 
-        result_df = pd.DataFrame(result_dict).set_index("instruments")
+        result_df = pd.DataFrame(rows, columns=["instruments", "missing_col"]).set_index("instruments")
         if not result_df.empty:
             return result_df
         else:
@@ -184,26 +189,22 @@ class DataHealthChecker:
 
     def check_missing_factor(self) -> Optional[pd.DataFrame]:
         """Check if the 'factor' column is missing in the DataFrame."""
-        result_dict = {
-            "instruments": [],
-            "missing_factor_col": [],
-            "missing_factor_data": [],
-        }
+        rows = []
         for filename, df in self.data.items():
             if "000300" in filename or "000903" in filename or "000905" in filename:
                 continue
-            if "factor" not in df.columns:
-                result_dict["instruments"].append(filename)
-                result_dict["missing_factor_col"].append(True)
-            if df["factor"].isnull().all():
-                if filename in result_dict["instruments"]:
-                    result_dict["missing_factor_data"].append(True)
-                else:
-                    result_dict["instruments"].append(filename)
-                    result_dict["missing_factor_col"].append(False)
-                    result_dict["missing_factor_data"].append(True)
+            missing_col = "factor" not in df.columns
+            missing_data = False if missing_col else bool(df["factor"].isnull().all())
+            if missing_col or missing_data:
+                rows.append({
+                    "instruments": filename,
+                    "missing_factor_col": missing_col,
+                    "missing_factor_data": missing_data,
+                })
 
-        result_df = pd.DataFrame(result_dict).set_index("instruments")
+        result_df = pd.DataFrame(
+            rows, columns=["instruments", "missing_factor_col", "missing_factor_data"]
+        ).set_index("instruments")
         if not result_df.empty:
             return result_df
         else:

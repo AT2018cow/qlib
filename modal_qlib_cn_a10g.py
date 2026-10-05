@@ -211,6 +211,41 @@ def _latest_trading_day(data_dir=None) -> str:
     return "2026-09-11"  # 兜底（仅当数据目录不可读时）
 
 
+def _runtime_cache_lineage() -> dict:
+    """Stable fingerprints for code/dependencies that define cached-model semantics.
+
+    Deliberately excludes the latest data date so a new daily bar does not force
+    retraining. Historical value revisions remain a separate data-version audit.
+    """
+    import hashlib as _hashlib
+    import importlib.metadata as _metadata
+    import inspect as _inspect
+
+    from qlib.contrib.data.handler import Alpha158
+    import qlib_live_retrain as _live_mod
+    import qlib_audit_fixes as _audit_mod
+
+    def _source_sha(obj) -> str:
+        path = _inspect.getsourcefile(obj)
+        if not path:
+            return "unknown"
+        return _hashlib.sha256(Path(path).read_bytes()).hexdigest()[:16]
+
+    def _version(pkg: str) -> str:
+        try:
+            return _metadata.version(pkg)
+        except _metadata.PackageNotFoundError:
+            return "unknown"
+
+    return {
+        "pyqlib": _version("pyqlib"),
+        "lightgbm": _version("lightgbm"),
+        "alpha158_source": _source_sha(Alpha158),
+        "live_retrain_source": _source_sha(_live_mod),
+        "audit_source": _source_sha(_audit_mod),
+    }
+
+
 def _load_and_patch_cfg(
     yaml_path: str,
     smoke: bool,
@@ -261,9 +296,12 @@ def _load_and_patch_cfg(
         "module_path": "qlib.workflow.expm",
         "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-daily"},
     }
-    # 3) DataLoader 并发对齐 Modal cpu，避免 n_jobs=20 超配
+    # 3) LightGBM 统一使用 canonical num_threads，避免与 n_jobs 别名并存导致实际线程数不清晰。
     try:
-        cfg["task"]["model"]["kwargs"]["n_jobs"] = CPU_COUNT
+        _model_kw = cfg["task"]["model"]["kwargs"]
+        if "num_threads" in _model_kw or cfg["task"]["model"].get("class") == "LGBModel":
+            _model_kw["num_threads"] = CPU_COUNT
+            _model_kw.pop("n_jobs", None)
     except KeyError:
         pass
     # 4) 烟雾：只跑 2 个 epoch 验证 CUDA+数据链路
@@ -2131,7 +2169,8 @@ def version_check_0911():
         if m <= 0:
             continue
         d = np.abs(a11[:m] - a16[:m])
-        dmax = float(d.max()) if len(d) else 0.0
+        finite_d = d[np.isfinite(d)]
+        dmax = float(finite_d.max()) if finite_d.size else 0.0
         if dmax > 1e-4:
             factor_diff_stocks += 1
             factor_max = max(factor_max, dmax)
@@ -2141,18 +2180,20 @@ def version_check_0911():
             diff_dates_max = dmax_date if diff_dates_max is None else max(diff_dates_max, dmax_date)
             if len(detail) < 5:
                 detail[s] = {"factor_max_diff": round(dmax, 6), "n_days_diff": int(len(bad))}
-        # close 差异比较：factor 有差异的股票 + 前 50 只（抽样），比较相对差
-        want_close = (dmax > 1e-4) or (close_diff_stocks + factor_diff_stocks) < 50
-        if want_close and (f11 / "close.day.bin").exists() and (f16 / "close.day.bin").exists():
+        # close 差异比较：所有两侧都有 close 的股票，覆盖完整重叠历史。
+        want_close = (f11 / "close.day.bin").exists() and (f16 / "close.day.bin").exists()
+        if want_close:
             s11c, v11c = _read_bin(f11 / "close.day.bin")
             s16c, v16c = _read_bin(f16 / "close.day.bin")
             offc = max(s11c, s16c)
-            c11 = v11c[offc - s11c : offc - s11c + 300]
-            c16 = v16c[offc - s16c : offc - s16c + 300]
+            overlap_n = max(0, overlap_end_idx - offc + 1)
+            c11 = v11c[offc - s11c : offc - s11c + overlap_n]
+            c16 = v16c[offc - s16c : offc - s16c + overlap_n]
             mc = min(len(c11), len(c16))
             if mc > 0:
                 rel = np.abs((c11[:mc] - c16[:mc]) / np.where(c16[:mc] != 0, c16[:mc], 1))
-                rmax = float(rel.max())
+                finite_rel = rel[np.isfinite(rel)]
+                rmax = float(finite_rel.max()) if finite_rel.size else 0.0
                 if rmax > 1e-6:
                     close_diff_stocks += 1
                     close_max_rel = max(close_max_rel, rmax)
@@ -2418,8 +2459,17 @@ def batch_c_window(args: dict):
     seg["train"] = [tr_s, tr_e]
     seg["valid"] = [va_s, va_e]
     seg["test"] = [te_s, te_e]
-    # Validation targets near the boundary cannot use test-period closes.
-    purge_cfg_splits(cfg, read_trading_calendar(DATA_DIR), horizon=20)
+    # Purge against the actual execution-test boundary first. TopkDropoutStrategy
+    # trades day T from the previous trading step's signal, so prediction must
+    # additionally include T-1 as a bootstrap row without making it part of validation.
+    _cal = read_trading_calendar(DATA_DIR)
+    purge_cfg_splits(cfg, _cal, horizon=20)
+    from bisect import bisect_left as _bisect_left
+    _te_i = _bisect_left(_cal, te_s)
+    if _te_i < 1 or _te_i >= len(_cal):
+        raise RuntimeError(f"no bootstrap/execution trading day around Batch C test start {te_s}")
+    signal_start = _cal[_te_i - 1]
+    seg["test"] = [signal_start, te_e]
     m = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
     ds = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
     m.fit(ds)
@@ -2472,7 +2522,7 @@ def batch_c_window(args: dict):
     timeout=12 * 3600,
 )
 def batch_c(market: str = "csi1000", bench: str = "SH000852", topk: int = 20, nd: int = 2, tag: str = "c1000"):
-    """批次C：候选配置 × 5 年滚动（2021Q1~2026Q3，22 个季度窗口，12 并行）。
+    """批次C：候选配置 × 5 年滚动（2021Q1~2026Q3，23 个季度窗口，12 并行）。
     这是多重检验纪律下的唯一终审裁判。结果存 /vol/batch_c/。
     新池（chinext/star）用各自等权基准 + 0.195 阈 + 改革日 guard（窗口起点 < 2020-08-24 拒绝）。"""
     import json
@@ -2595,7 +2645,13 @@ def p2_rolling():
         seg["train"] = [tr_s, tr_e]
         seg["valid"] = [va_s, va_e]
         seg["test"] = [te_s, te_e]
-        purge_cfg_splits(cfg, read_trading_calendar(DATA_DIR), horizon=20)
+        _cal = read_trading_calendar(DATA_DIR)
+        purge_cfg_splits(cfg, _cal, horizon=20)
+        from bisect import bisect_left as _bisect_left
+        _te_i = _bisect_left(_cal, te_s)
+        if _te_i < 1 or _te_i >= len(_cal):
+            raise RuntimeError(f"no bootstrap/execution trading day around P2 test start {te_s}")
+        seg["test"] = [_cal[_te_i - 1], te_e]
         m = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
         ds = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
         m.fit(ds)
@@ -3240,7 +3296,8 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
     asof = calendar[-1]
     # Today is a feature/prediction date, NEVER a training/validation label date.
     live_split = configure_asof(cfg, calendar, asof, horizon=20)
-    signature = cache_signature(cfg, horizon=20)
+    runtime_lineage = _runtime_cache_lineage()
+    signature = cache_signature(cfg, horizon=20, runtime_lineage=runtime_lineage)
     cache_dir = VOL_ROOT / "live_models"
     cache_dir.mkdir(parents=True, exist_ok=True)
     model_file = cache_dir / f"{signature}.pkl"
@@ -3272,6 +3329,7 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
             "valid": list(cfg["task"]["dataset"]["kwargs"]["segments"]["valid"]),
             "fit_start": cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["fit_start_time"],
             "fit_end": cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["fit_end_time"],
+            "runtime_lineage": runtime_lineage,
         }
         tmp_model = cache_dir / f".{signature}.{os.getpid()}.tmp"
         tmp_meta = cache_dir / f".{signature}.{os.getpid()}.json.tmp"
@@ -3296,6 +3354,7 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
             saved.get("horizon") != 20
             or not saved.get("model_sha256")
             or saved.get("fit_end") != saved.get("train", [None, None])[-1]
+            or saved.get("runtime_lineage") != runtime_lineage
         ):
             raise RuntimeError("Invalid cached model split metadata")
         if hashlib.sha256(model_file.read_bytes()).hexdigest() != saved["model_sha256"]:
@@ -3344,7 +3403,7 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
     csv_content = "rank,instrument,score\n" + "\n".join(
         f"{i},{inst},{score}" for i, (inst, score) in enumerate(top.items(), 1)
     )
-    print(f"[daily] {predict_date} top{topk}（{market}，未来20日收益预测）:")
+    print(f"[daily] {predict_date} top{topk}（{market}，20日横截面相对强弱评分）:")
     for rank, (inst, score) in enumerate(top.items(), 1):
         print(f"  {rank:>2}. {inst}  score={score:.4f}")
 
@@ -3501,6 +3560,8 @@ def _publication_decision(cal, data_date: str, signal_date: str, fallback_days: 
           - fallback_days ≤ 12 → publish（保留极端兜底：12 自然日 ≈ 春节级长假上限之外）
           - > 12 → raise（日历与数据源同时故障且数据极端陈旧）
     """
+    if data_date >= signal_date:
+        return ("raise", f"异常数据日期：data_date={data_date} 必须早于 signal_date={signal_date}；拒绝发布")
     if cal is not None:
         if signal_date not in cal:
             return ("skip", f"{signal_date} 非 A 股交易日（假日），不发布榜单；最近排名见最近一份已发布信号")
@@ -3562,16 +3623,24 @@ def daily_cron():
         return
 
     print(f"[cron] {signal_date} 为交易日（或日历降级 fail-open）——启动两池训练/推理")
-    res = daily_standalone.remote(topk=20, nd=2, market="csi1000")
+    res = None
+    res_chi = None
+    pool_errors = {}
+    try:
+        res = daily_standalone.remote(topk=20, nd=2, market="csi1000")
+    except Exception as csi_err:  # pylint: disable=W0703
+        pool_errors["csi1000"] = f"{type(csi_err).__name__}: {str(csi_err)[:300]}"
+        print(f"[cron] ⚠️ csi1000 池失败（chinext 仍可独立发布）: {pool_errors['csi1000']}")
     try:
         # nd=3 = chinext 批次A 网格胜出值 + 批次C 终审口径（低换手形态）
         # nd 不改变 RANKING-ONLY 榜单内容，仅保证配置元数据与已终审参数一致
         res_chi = daily_standalone.remote(topk=20, nd=3, market="chinext")
     except Exception as chi_err:  # pylint: disable=W0703
-        res_chi = None
-        chi_err_msg = f"{type(chi_err).__name__}: {str(chi_err)[:300]}"
-        print(f"[cron] ⚠️ chinext 池失败（不影响 csi1000 发布）: {chi_err_msg}")
-    data_date = res["date"]  # 数据覆盖到的最后交易日
+        pool_errors["chinext"] = f"{type(chi_err).__name__}: {str(chi_err)[:300]}"
+        print(f"[cron] ⚠️ chinext 池失败（csi1000 仍可独立发布）: {pool_errors['chinext']}")
+    if res is None and res_chi is None:
+        raise RuntimeError(f"两个股票池均失败: {pool_errors}")
+    data_date = (res or res_chi)["date"]  # 任一成功池的数据覆盖日
     print(f"[cron] 数据日历至 {data_date}")
     print(f"[cron] 信号日期 {signal_date}（基于数据日 {data_date} 的收盘数据）")
 
@@ -3589,34 +3658,42 @@ def daily_cron():
     if cal_err:
         print(f"[cron] ⚠️ 降级原因: {cal_err}")
 
-    # 两池数据日必须一致（同一份下载/同一 gate 口径）；不一致拒绝发布 chinext 并告警
-    if res_chi is not None and res_chi["date"] != data_date:
-        print(f"[cron] ⚠️ chinext 数据日 {res_chi['date']} != csi1000 {data_date}，本次跳过 chinext 发布")
+    # 两池都成功时必须使用同一数据日；不一致时保留与 data_date 一致的池，拒绝混合来源。
+    if res is not None and res_chi is not None and res_chi["date"] != res["date"]:
+        print(f"[cron] ⚠️ 双池数据日不一致: csi1000={res['date']} chinext={res_chi['date']}；仅发布 csi1000")
         res_chi = None
+        data_date = res["date"]
 
-    files = {
-        f"results/signals/{signal_date}_top20_lgb158.csv": res["csv_content"],
-        f"results/signals/{signal_date}_chart.json": res["chart_json"],
-    }
+    files = {}
+    if res is not None:
+        files[f"results/signals/{signal_date}_top20_lgb158.csv"] = res["csv_content"]
+        files[f"results/signals/{signal_date}_chart.json"] = res["chart_json"]
     if res_chi is not None:
         files[f"results/signals/{signal_date}_top20_lgb158_chinext.csv"] = res_chi["csv_content"]
         files[f"results/signals/{signal_date}_chart_chinext.json"] = res_chi["chart_json"]
 
     token = os.environ["GITHUB_TOKEN"]
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
-    # 同日重跑 dedup：csi1000 CSV 已存在且内容一致则跳过（两池同 commit，一起跳过）
-    files_key0 = f"results/signals/{signal_date}_top20_lgb158.csv"
-    csi_api = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{files_key0}"
-    exist = requests.get(csi_api, headers=headers, timeout=30)
-    if exist.status_code == 200 and base64.b64decode(exist.json()["content"]).decode() == res["csv_content"]:
-        print(f"[cron] {files_key0} 已存在且内容一致，跳过（同日重跑）")
+    # 同日重跑按文件幂等：已存在且相同则保留；缺失则补发；已有但内容不同则拒绝覆盖。
+    missing_files = {}
+    for path, content in files.items():
+        api = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{path}"
+        exist = requests.get(api, headers=headers, timeout=30)
+        if exist.status_code == 200:
+            old = base64.b64decode(exist.json()["content"]).decode()
+            if old != content:
+                raise RuntimeError(f"Same-date artifact changed: refusing to rewrite immutable record {path}")
+            print(f"[cron] {path} 已存在且内容一致，保留")
+            continue
+        if exist.status_code == 404:
+            missing_files[path] = content
+            continue
+        raise RuntimeError(f"Cannot check existing artifact {path}: HTTP {exist.status_code}")
+    if not missing_files:
+        print(f"[cron] {signal_date} 所有目标文件均已存在且一致，无需重复提交")
         return
-    if exist.status_code == 200:
-        raise RuntimeError("Same-date signal changed: refusing to rewrite immutable paper-trading record")
-    if exist.status_code != 404:
-        raise RuntimeError(f"Cannot check existing signal: HTTP {exist.status_code}")
 
-    # 使用 Git Data API 一次 commit 同时写入两池 CSV + chart JSON
+    # 使用 Git Data API 一次 commit 写入所有缺失文件
     # （避免多次独立的 Contents API push 触发两次 Actions → concurrency cancel 导致 chart 部署丢失）
     from github_commit import push_files
 
@@ -3624,12 +3701,11 @@ def daily_cron():
         token=token,
         repo=GITHUB_REPO,
         branch=SIGNAL_BRANCH,
-        files=files,
-        message=f"chore(signal): {signal_date} top20 + chart (cron"
-        + (f", {len(files)} files incl. chinext)" if res_chi is not None else ")"),
+        files=missing_files,
+        message=f"chore(signal): {signal_date} repair/publish {len(missing_files)} signal artifacts (cron)",
     )
-    n_pool = 2 if res_chi is not None else 1
-    print(f"[cron] ✅ 已推送 {n_pool} 池 CSV + chart JSON: {signal_date}")
+    published_pools = int(res is not None) + int(res_chi is not None)
+    print(f"[cron] ✅ 已补发/推送 {len(missing_files)} 个文件，覆盖 {published_pools} 个成功股票池: {signal_date}")
 
     # ---- 名称映射每日自动更新（akshare 全量拉取，有变化才推送；失败不影响信号）----
     try:
@@ -4146,7 +4222,7 @@ def main(
         return
     if best:
         # 终审固化配置（2026-09-18，见 docs/experiments/05-final-audit.md）：
-        # LGB + Alpha158 + 20日标签 + 2016起 expanding + csi1000 + top20 + nd2（唯一实盘候选，滚动 +7.5%）
+        # LGB + Alpha158 + 20日标签 + 2016起 expanding + csi1000 + top20 + nd2（当前生产候选；历史收益须按当前协议解释）
         # 注意：--daily 时 topk/nd/market 生效；--best 单独跑完整训练+回测时回测参数同此
         model, recent, long_train, label20 = "lgb158", True, True, True
         topk, nd, market = 20, 2, (market if market else "csi1000")
