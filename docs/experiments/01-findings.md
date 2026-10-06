@@ -1,5 +1,7 @@
 # 研究结论全记录
 
+> **2026-10-07 current-status boundary:** This file is a chronological experiment ledger, not the current strategy baseline. Many early conclusions (close execution, scalar 9.5% limits, old n_drop/topk winners, 0.47%/9%/11% headline returns, and pre-deterministic reproducibility assumptions) were superseded by the later execution attribution, canonical portfolio metrics, deterministic gate, and phase audits. Read [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md) first; use this file only for provenance unless a result is explicitly revalidated there.
+
 > **Historical experiment ledger (current-status override 2026-10-07):** This file intentionally preserves the chronological P0/P1/P2/Batch A/B/C record. Many headline conclusions below predate the corrected execution attribution, canonical portfolio metrics, deterministic double-fit gate, and phase audit. Use [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md) for current pool status and production-aligned evidence; do not promote old "optimal" TopK/n_drop or 11%+ figures into the next tuner without revalidation.
 
 
