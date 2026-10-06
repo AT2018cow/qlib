@@ -31,7 +31,7 @@ class ReviewRegressionTests(unittest.TestCase):
         src = function_source("freq_experiment.py", "freq_driver")
         self.assertIn("pd.concat(chunks)", src)
         self.assertIn("execution_start = cal[start_i + 1]", src)
-        self.assertIn('"protocol": "continuous_account_board_aware_v3"', src)
+        self.assertIn('"protocol": "continuous_account_board_aware_v4_cny_tick"', src)
         self.assertEqual(src.count("normal_backtest("), 1)
 
     def test_independent_recheck_has_its_own_maturity_guard(self):
@@ -47,7 +47,7 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn('"num_leaves": 250', src)
         self.assertIn('"CSZScoreNorm"', src)
         self.assertNotIn('"CSRankNorm"', src)
-        self.assertIn('"board_aware_open_bootstrap_v3"', src)
+        self.assertIn('"board_aware_open_bootstrap_v4_cny_tick"', src)
         self.assertIn("unanchored_pending_batch_c_rerun", src)
         self.assertNotIn("expected_excess = -0.0223", src)
         # Alpha158 类默认 infer 处理器必须镜像（review 2026-10-05：[] 与生产不符）
@@ -119,9 +119,9 @@ class ReviewRegressionTests(unittest.TestCase):
 
     def test_batch_c_artifact_has_board_aware_protocol(self):
         src = function_source("modal_qlib_cn_a10g.py", "batch_c")
-        self.assertIn('"protocol": "board_aware_open_bootstrap_v3"', src)
+        self.assertIn('"protocol": "board_aware_open_bootstrap_v4_cny_tick"', src)
         worker = function_source("modal_qlib_cn_a10g.py", "batch_c_window")
-        self.assertIn('"protocol": "board_aware_open_bootstrap_v3"', worker)
+        self.assertIn('"protocol": "board_aware_open_bootstrap_v4_cny_tick"', worker)
 
     def test_execution_attribution_reuses_frozen_signal(self):
         src = function_source("freq_experiment.py", "execution_attribution_driver")
@@ -132,7 +132,7 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn("C_BOARD_AWARE", src)
         self.assertIn("D_BOARD_AWARE_HIGH_OPEN_5", src)
         self.assertIn("E_BOARD_AWARE_NO_CHINEXT_STAR", src)
-        self.assertIn('"protocol": "execution_attribution_v1"', src)
+        self.assertIn('"protocol": "execution_attribution_v2_cny_tick"', src)
 
     def test_execution_attribution_defines_clean_deltas(self):
         src = function_source("freq_experiment.py", "_run_execution_protocol")
@@ -141,6 +141,31 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn("high_open_block=0.05", src)
         self.assertIn("_filter_signal_excluding_growth_boards", src)
 
+
+
+    def test_paper_execution_uses_factor_and_no_high_open_overlay(self):
+        src = function_source("modal_qlib_cn_a10g.py", "_paper_execution_context")
+        self.assertIn('"$factor"', src)
+        self.assertIn("factors=factors", src)
+        self.assertIn("high_open_block=None", src)
+        self.assertNotIn("high_open_block=0.05", src)
+
+    def test_frequency_driver_persists_raw_daily_report(self):
+        src = function_source("freq_experiment.py", "freq_driver")
+        self.assertIn("_write_report_artifact(", src)
+        self.assertIn('"report_artifact": report_artifact', src)
+        self.assertIn("reports_dir", src)
+
+    def test_phase_sensitivity_uses_common_window_and_all_offsets(self):
+        src = function_source("freq_experiment.py", "retrain_phase_sensitivity_driver")
+        self.assertIn("list(range(freq))", src)
+        self.assertIn("execution_start = cal[start_i + 1]", src)
+        self.assertIn("_phase_jobs(", src)
+        self.assertIn("audit_only_do_not_select_best_phase", src)
+        self.assertIn("_write_report_artifact(", src)
+        helper = function_source("freq_experiment.py", "_phase_jobs")
+        self.assertIn("first_i = start_i - phase", helper)
+        self.assertIn('"phase": phase', helper)
 
     def test_frequency_driver_reports_compounded_portfolio_metrics(self):
         src = function_source("freq_experiment.py", "freq_driver")

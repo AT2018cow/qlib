@@ -636,7 +636,7 @@ def independent_recheck():
     )
     rep = pm["1day"][0]
     excess = rep["return"] - rep["bench"] - rep["cost"]
-    protocol = "board_aware_open_bootstrap_v3"
+    protocol = "board_aware_open_bootstrap_v4_cny_tick"
     result = {
         "protocol": protocol,
         "excess_total": round(float(excess.sum()), 4),
@@ -1290,7 +1290,7 @@ def _paper_execution_context(data_dir, market: str, calendar: list[str], asof: s
 
     df = D.features(
         sorted(symbols),
-        ["$open", "Ref($close,1)", "$close"],
+        ["$open", "Ref($close,1)", "$close", "$factor"],
         start_time=execution_date,
         end_time=execution_date,
         freq="day",
@@ -1301,16 +1301,18 @@ def _paper_execution_context(data_dir, market: str, calendar: list[str], asof: s
         rows[inst] = row
 
     insts = sorted(symbols)
-    opens, prevs, close_na = [], [], []
+    opens, prevs, close_na, factors = [], [], [], []
     open_prices = {}
     for inst in insts:
         row = rows.get(inst)
         op = float(row["$open"]) if row is not None and _pd.notna(row["$open"]) else _np.nan
         prev = float(row["Ref($close,1)"]) if row is not None and _pd.notna(row["Ref($close,1)"]) else _np.nan
         close = float(row["$close"]) if row is not None and _pd.notna(row["$close"]) else _np.nan
+        factor = float(row["$factor"]) if row is not None and _pd.notna(row["$factor"]) else _np.nan
         opens.append(op)
         prevs.append(prev)
         close_na.append(not _np.isfinite(close))
+        factors.append(factor)
         if _np.isfinite(op):
             open_prices[inst] = op
 
@@ -1321,9 +1323,10 @@ def _paper_execution_context(data_dir, market: str, calendar: list[str], asof: s
         opens,
         prevs,
         close_na,
-        high_open_block=0.05,
+        high_open_block=None,
         listing_dates=listing,
         calendar=calendar,
+        factors=factors,
     )
     return {
         "status": "ready",
@@ -2703,7 +2706,7 @@ def batch_c_window(args: dict):
     )
     legacy_excess_curve = excess.cumsum()
     return {
-        "protocol": "board_aware_open_bootstrap_v3",
+        "protocol": "board_aware_open_bootstrap_v4_cny_tick",
         "metric_version": perf["metric_version"],
         "window": args["name"],
         "test": f"{te_s}~{te_e}",
@@ -2783,7 +2786,7 @@ def batch_c(market: str = "csi1000", bench: str = "SH000852", topk: int = 20, nd
 
     pos = sum(1 for e in excess_all if e > 0)
     summary = {
-        "protocol": "board_aware_open_bootstrap_v3",
+        "protocol": "board_aware_open_bootstrap_v4_cny_tick",
         "config": f"{market} top{topk}/nd{nd} bench={bench}",
         "n_windows": len(ok),
         "n_errors": len(errs),

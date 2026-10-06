@@ -36,7 +36,7 @@ class PaperPortfolio:
         risk_degree: float = 0.95,
         hold_thresh: int = 1,
         trade_unit: int = 100,
-        high_open_block: float = 0.05,
+        high_open_block: Optional[float] = None,
     ):
         if topk < 1 or nd < 0 or initial_cash <= 0 or not (0 < risk_degree <= 1):
             raise ValueError("invalid paper portfolio configuration")
@@ -49,7 +49,7 @@ class PaperPortfolio:
         self.risk_degree = float(risk_degree)
         self.hold_thresh = int(hold_thresh)
         self.trade_unit = int(trade_unit)
-        self.high_open_block = float(high_open_block)
+        self.high_open_block = None if high_open_block is None else float(high_open_block)
         self.cash = float(initial_cash)
         self.positions: Dict[str, dict] = {}
         self.pending_signal: Optional[dict] = None
