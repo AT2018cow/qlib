@@ -420,6 +420,7 @@ def freq_window(args: dict):
 
     from qlib_audit_fixes import last_matured_sample, purge_cfg_splits, read_trading_calendar
 
+    _worker_assert_snapshot(args)
     qlib.init(**{**_load_task(args["market"])["qlib_init"], "skip_if_reg": True})
     cal = read_trading_calendar(DATA_DIR)
     horizon = args.get("horizon", 20)
@@ -456,13 +457,17 @@ def freq_window(args: dict):
             f"prediction coverage mismatch: got {first_signal}~{last_signal}, "
             f"expected {args['retrain_asof']}~{args['signal_end']}"
         )
+    prediction_sha = _signal_sha256(pred)
     payload = zlib.compress(pickle.dumps(pred, protocol=pickle.HIGHEST_PROTOCOL), level=6)
     return {
         "freq": args["freq"],
         "phase": args.get("phase"),
+        "repeat": args.get("repeat"),
         "retrain_asof": args["retrain_asof"],
         "signal_end": args["signal_end"],
         "n_rows": int(len(pred)),
+        "prediction_sha256": prediction_sha,
+        "snapshot_token": args["snapshot_token"],
         "pred_zlib_pickle": payload,
     }
 
