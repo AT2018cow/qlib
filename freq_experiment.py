@@ -889,22 +889,17 @@ def retrain_phase_sensitivity_driver(
     topk: int = 20,
     nd: int = 2,
     phases: str = "all",
+    require_repro_gate: bool = True,
 ):
-    """Evaluate retraining-calendar phase sensitivity under one fixed protocol.
+    """Evaluate retraining-calendar phase sensitivity after a reproducibility gate.
 
-    All phases share the exact same execution window.  phase=0 reproduces the
-    historical freq-driver schedule.  phase=1..freq-1 means the model lineage
-    was already active that many sessions before eval_from.
-
-    This is an audit, not a tuner: no phase is selected or deployed.
+    Phase 0 is reused from the passing double-fit gate instead of being trained
+    a third time.  All other phases use the exact same provider snapshot and
+    deterministic LightGBM policy.  The driver fails before launching expensive
+    model fits when the baseline manifest, runtime, provider fingerprint, or
+    portfolio configuration differs.
     """
     import json as _json
-    import pickle
-    import zlib
-
-    import pandas as pd
-    import qlib
-    from qlib.backtest import backtest as normal_backtest
 
     from qlib_audit_fixes import read_trading_calendar
     from portfolio_performance import portfolio_performance
@@ -920,12 +915,11 @@ def retrain_phase_sensitivity_driver(
         if phase_list[0] < 0 or phase_list[-1] >= freq:
             raise ValueError(f"phases must be within 0..{freq - 1}")
 
-    prepare.remote(force=True, market=market)
-    try:
-        vol.reload()
-    except Exception:
-        pass
-
+    # Reuse the committed provider snapshot from the reproducibility gate.
+    # For custom pools, prepare(force=False) only ensures derived pool/benchmark
+    # files and never downloads a newer provider package.
+    prepare.remote(force=False, market=market)
+    vol.reload()
     cal = read_trading_calendar(DATA_DIR)
     start_i = bisect_left(cal, eval_from)
     if start_i >= len(cal) - 1 or cal[start_i] != eval_from:
@@ -933,83 +927,111 @@ def retrain_phase_sensitivity_driver(
     if start_i - max(phase_list) < 0:
         raise ValueError("insufficient pre-evaluation calendar for requested phases")
 
-    all_jobs = []
+    current_manifest = _runtime_repro_manifest(market, cal[-1])
+    baseline_path = VOL_ROOT / "freq_experiment" / f"results_{market}.json"
+    if not baseline_path.is_file() and market == "csi1000":
+        baseline_path = VOL_ROOT / "freq_experiment" / "results.json"
+    if not baseline_path.is_file():
+        raise RuntimeError(
+            f"missing baseline result {baseline_path}; run reproducibility_gate_driver first"
+        )
+    baseline = _json.loads(baseline_path.read_text())
+    gate = baseline.get("reproducibility_gate") or {}
+    if require_repro_gate and not gate.get("passed"):
+        raise RuntimeError(
+            "phase audit requires a passing reproducibility_gate_driver baseline"
+        )
+    if baseline.get("protocol") != "continuous_account_board_aware_v5_repro":
+        raise RuntimeError("baseline protocol is not v5 reproducible protocol")
+    if baseline.get("market") != market:
+        raise RuntimeError("baseline market mismatch")
+    if int(baseline.get("topk", -1)) != int(topk) or int(baseline.get("n_drop", -1)) != int(nd):
+        raise RuntimeError("baseline topk/n_drop mismatch")
+    if baseline.get("reproducibility") != current_manifest:
+        raise RuntimeError(
+            "provider/runtime/source manifest changed since reproducibility gate; "
+            "rerun the gate before phase audit"
+        )
+    baseline_result = (baseline.get("results") or {}).get(str(freq))
+    if baseline_result is None:
+        raise RuntimeError(f"baseline missing freq={freq}")
+
+    snapshot_token = current_manifest["snapshot_token"]
+    _publish_snapshot_manifest(current_manifest)
+
     jobs_by_phase = {}
+    all_jobs = []
     for phase in phase_list:
-        jobs = _phase_jobs(cal, start_i, freq, phase, market, topk, nd)
+        if phase == 0:
+            jobs_by_phase[phase] = []
+            continue
+        jobs = _phase_jobs(cal, start_i, freq, phase, market, int(topk), int(nd))
+        for job in jobs:
+            job["snapshot_token"] = snapshot_token
         jobs_by_phase[phase] = jobs
         all_jobs.extend(jobs)
     print(
         f"[phase] freq={freq} phases={phase_list}: "
-        f"{len(all_jobs)} total model fits"
+        f"{len(all_jobs)} model fits; phase0 reused from repro gate"
     )
 
-    outs = list(freq_window.map(all_jobs))
     outs_by_phase = {phase: [] for phase in phase_list}
-    for out in outs:
-        phase = out.get("phase")
-        if phase not in outs_by_phase:
-            raise RuntimeError(f"unexpected phase output: {phase}")
-        outs_by_phase[phase].append(out)
+    if all_jobs:
+        outs = list(freq_window.map(all_jobs))
+        for out in outs:
+            phase = out.get("phase")
+            if phase not in outs_by_phase:
+                raise RuntimeError(f"unexpected phase output: {phase}")
+            outs_by_phase[phase].append(out)
 
     execution_start = cal[start_i + 1]
     execution_end = cal[-1]
-    qlib.init(**{**_load_task(market)["qlib_init"], "skip_if_reg": True})
-    if market in ("star_chn", "chinext", "star"):
-        from board_rules import star_chn_backtest_guard
-        star_chn_backtest_guard(execution_start)
-
-    executor = {
-        "class": "SimulatorExecutor",
-        "module_path": "qlib.backtest.executor",
-        "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
-    }
     report_root = VOL_ROOT / "freq_phase_sensitivity" / "reports"
     report_root.mkdir(parents=True, exist_ok=True)
     results = {}
 
     for phase in phase_list:
-        chunks = []
-        phase_outs = sorted(outs_by_phase[phase], key=lambda x: x["retrain_asof"])
-        for out in phase_outs:
-            chunks.append(pickle.loads(zlib.decompress(out["pred_zlib_pickle"])))
-        if not chunks:
-            raise RuntimeError(f"phase={phase}: no prediction chunks")
-        signal = pd.concat(chunks).sort_index()
-        if signal.index.has_duplicates:
-            raise RuntimeError(f"phase={phase}: duplicate signal rows")
+        if phase == 0:
+            signal = _load_signal_artifact(baseline_result["signal_artifact"])
+            if _signal_sha256(signal) != baseline_result["signal_sha256"]:
+                raise RuntimeError("baseline phase0 signal hash mismatch")
+            results["0"] = {
+                "phase": 0,
+                "source": "repro_gate_baseline_reuse",
+                "first_retrain_asof": eval_from,
+                "n_retrains": int(baseline_result["n_retrains"]),
+                "signal_sha256": baseline_result["signal_sha256"],
+                "signal_artifact": baseline_result["signal_artifact"],
+                "strategy_cagr": baseline_result["strategy_cagr"],
+                "benchmark_cagr": baseline_result["benchmark_cagr"],
+                "relative_excess_cagr": baseline_result["relative_excess_cagr"],
+                "strategy_max_drawdown": baseline_result["strategy_max_drawdown"],
+                "relative_max_drawdown": baseline_result["relative_max_drawdown"],
+                "sharpe": baseline_result["sharpe"],
+                "information_ratio": baseline_result["information_ratio"],
+                "account_return_max_error": baseline_result["account_return_max_error"],
+                "report_artifact": baseline_result["report_artifact"],
+                "performance": baseline_result["performance"],
+            }
+            continue
+
+        signal, chunk_meta = _assemble_signal(outs_by_phase[phase])
         signal_days = {str(x)[:10] for x in signal.index.get_level_values(0).unique()}
         if eval_from not in signal_days:
             raise RuntimeError(f"phase={phase}: bootstrap signal missing for {eval_from}")
         if cal[-2] not in signal_days:
             raise RuntimeError(f"phase={phase}: final executable signal day missing")
 
-        strategy = {
-            "class": "TopkDropoutStrategy",
-            "module_path": "qlib.contrib.strategy",
-            "kwargs": {
-                "signal": signal,
-                "topk": int(topk),
-                "n_drop": int(nd),
-                "forbid_all_trade_at_limit": False,
-            },
-        }
-        pm, _ = normal_backtest(
-            strategy=strategy,
-            executor=executor,
-            start_time=execution_start,
-            end_time=execution_end,
-            account=100000000,
-            benchmark=_bench_of(market),
-            exchange_kwargs=research_exchange(
-                execution_start, execution_end, codes=market
-            ),
+        rep = _run_signal_backtest(
+            signal,
+            execution_start=execution_start,
+            execution_end=execution_end,
+            market=market,
+            topk=int(topk),
+            nd=int(nd),
         )
-        rep = pm["1day"][0]
         perf = portfolio_performance(
-            rep,
-            initial_cash=100000000,
-            backtest_start=execution_start,
+            rep, initial_cash=100000000, backtest_start=execution_start
         )
         report_artifact = _write_report_artifact(
             rep,
@@ -1020,8 +1042,11 @@ def retrain_phase_sensitivity_driver(
         )
         results[str(phase)] = {
             "phase": phase,
+            "source": "deterministic_refit",
             "first_retrain_asof": jobs_by_phase[phase][0]["retrain_asof"],
             "n_retrains": len(jobs_by_phase[phase]),
+            "signal_sha256": _signal_sha256(signal),
+            "chunk_predictions": chunk_meta,
             "strategy_cagr": perf["strategy_cagr"],
             "benchmark_cagr": perf["benchmark_cagr"],
             "relative_excess_cagr": perf["relative_excess_cagr"],
@@ -1075,13 +1100,17 @@ def retrain_phase_sensitivity_driver(
         "execution_end": execution_end,
         "phases": phase_list,
         "complete_phase_grid": complete_grid,
+        "phase0_reused_from_repro_gate": 0 in phase_list,
+        "reproducibility": current_manifest,
+        "reproducibility_gate": gate,
         "results": results,
         "summary": summary,
     }
     out = VOL_ROOT / "freq_phase_sensitivity"
     out.mkdir(parents=True, exist_ok=True)
-    with (out / f"phase_{market}_freq{freq}.json").open("w") as fh:
-        _json.dump(payload, fh, indent=2, ensure_ascii=False)
+    (out / f"phase_{market}_freq{freq}.json").write_text(
+        _json.dumps(payload, indent=2, ensure_ascii=False)
+    )
     vol.commit()
     return payload
 
