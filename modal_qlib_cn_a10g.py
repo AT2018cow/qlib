@@ -25,6 +25,7 @@ from qlib_live_retrain import (
     retrain_due_calendar,
     RETRAIN_EVERY_SESSIONS,
     provider_training_fingerprint,
+    apply_lgb_reproducibility,
 )
 from board_execution import compute_limit_masks, research_exchange
 from board_rules import (
@@ -305,12 +306,13 @@ def _load_and_patch_cfg(
         "module_path": "qlib.workflow.expm",
         "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-daily"},
     }
-    # 3) LightGBM 统一使用 canonical num_threads，避免与 n_jobs 别名并存导致实际线程数不清晰。
+    # 3) LightGBM 统一使用 canonical num_threads，并启用共享的可复现训练策略。
     try:
         _model_kw = cfg["task"]["model"]["kwargs"]
         if "num_threads" in _model_kw or cfg["task"]["model"].get("class") == "LGBModel":
             _model_kw["num_threads"] = CPU_COUNT
             _model_kw.pop("n_jobs", None)
+        apply_lgb_reproducibility(cfg)
     except KeyError:
         pass
     # 4) 烟雾：只跑 2 个 epoch 验证 CUDA+数据链路
@@ -636,7 +638,7 @@ def independent_recheck():
     )
     rep = pm["1day"][0]
     excess = rep["return"] - rep["bench"] - rep["cost"]
-    protocol = "board_aware_open_bootstrap_v4_cny_tick"
+    protocol = "board_aware_open_bootstrap_v5_repro"
     result = {
         "protocol": protocol,
         "excess_total": round(float(excess.sum()), 4),
@@ -2706,7 +2708,7 @@ def batch_c_window(args: dict):
     )
     legacy_excess_curve = excess.cumsum()
     return {
-        "protocol": "board_aware_open_bootstrap_v4_cny_tick",
+        "protocol": "board_aware_open_bootstrap_v5_repro",
         "metric_version": perf["metric_version"],
         "window": args["name"],
         "test": f"{te_s}~{te_e}",
@@ -2786,7 +2788,7 @@ def batch_c(market: str = "csi1000", bench: str = "SH000852", topk: int = 20, nd
 
     pos = sum(1 for e in excess_all if e > 0)
     summary = {
-        "protocol": "board_aware_open_bootstrap_v4_cny_tick",
+        "protocol": "board_aware_open_bootstrap_v5_repro",
         "config": f"{market} top{topk}/nd{nd} bench={bench}",
         "n_windows": len(ok),
         "n_errors": len(errs),

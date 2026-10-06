@@ -69,6 +69,23 @@ def _ensure_custom_pool(market: str) -> None:
 
 BENCH_BY_MARKET = {"csi1000": "SH000852", "csi500": "SH000905", "csi300": "SH000300"}
 
+# Frozen pre-tuner audit configurations. These are baselines, not tuned optima.
+PRE_TUNER_AUDIT_CONFIGS = {
+    "csi1000": {"topk": 20, "nd": 2},
+    "chinext": {"topk": 20, "nd": 3},
+    "star": {"topk": 50, "nd": 2},
+}
+
+
+def pre_tuner_audit_config(market: str) -> dict:
+    if market not in PRE_TUNER_AUDIT_CONFIGS:
+        raise ValueError(
+            f"pre-tuner audit market must be one of {sorted(PRE_TUNER_AUDIT_CONFIGS)}"
+        )
+    return dict(PRE_TUNER_AUDIT_CONFIGS[market])
+
+
+
 
 def _bench_of(market: str) -> str:
     """新池用各自等权合成基准（board_rules.EW_BENCH，需先构造）；csi 池用中证系。"""
@@ -95,20 +112,39 @@ def _load_task(market: str) -> dict:
         "class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
         "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-freq"},
     }
+    from qlib_live_retrain import apply_lgb_reproducibility
+    apply_lgb_reproducibility(cfg)
     return cfg
 
 
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=4 * 3600)
-def prepare(force: bool = True):
-    """确保 Volume 数据最新（infi Volume 可能是旧版本）。"""
+def prepare(force: bool = True, market: str = ""):
+    """确保 Volume 数据快照，并为 custom pool 重建派生等权基准。"""
     import shutil
     import tarfile
 
     import requests
 
     marker = DATA_DIR / ".chenditc"
+
+    def _ensure_market_artifacts():
+        if market not in ("star_chn", "chinext", "star"):
+            return None
+        from board_rules import POOL_BOARDS, build_custom_instruments, build_ew_bench_files
+        pool_txt = DATA_DIR / "instruments" / f"{market}.txt"
+        build_custom_instruments(
+            DATA_DIR / "instruments" / "all.txt",
+            pool_txt,
+            boards=POOL_BOARDS[market],
+        )
+        return build_ew_bench_files(DATA_DIR, market)
+
     if not force and marker.exists():
-        print("[data] skip")
+        bench_report = _ensure_market_artifacts()
+        if bench_report is not None:
+            print(f"[data] ensured custom benchmark: {bench_report}")
+            vol.commit()
+        print("[data] reuse committed provider snapshot")
         return
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     url = "https://github.com/chenditc/investment_data/releases/latest/download/qlib_bin.tar.gz"
@@ -136,9 +172,229 @@ def prepare(force: bool = True):
             shutil.rmtree(p)
         shutil.copytree(base / name, p)
     marker.write_text("latest")
+    bench_report = _ensure_market_artifacts()
+    if bench_report is not None:
+        print(f"[data] rebuilt custom benchmark: {bench_report}")
     vol.commit()
     cal = (DATA_DIR / "calendars" / "day.txt").read_text().strip().splitlines()
     print(f"[data] 就绪，日历至 {cal[-1]}")
+
+
+
+def _stable_json_sha256(obj) -> str:
+    import hashlib
+    import json
+    return hashlib.sha256(
+        json.dumps(obj, sort_keys=True, separators=(",", ":"), default=str).encode()
+    ).hexdigest()
+
+
+def _signal_sha256(signal) -> str:
+    """Canonical content hash for a prediction Series, independent of pickle bytes."""
+    import hashlib
+    import struct
+
+    s = signal.sort_index()
+    h = hashlib.sha256()
+    h.update(b"qlib-signal-v1\n")
+    for idx, value in s.items():
+        parts = idx if isinstance(idx, tuple) else (idx,)
+        for part in parts:
+            h.update(str(part).encode())
+            h.update(b"\x1f")
+        h.update(struct.pack("!d", float(value)))
+        h.update(b"\n")
+    return h.hexdigest()
+
+
+def _frame_sha256(frame) -> str:
+    """Canonical content hash for a numeric daily report."""
+    import hashlib
+
+    text = frame.sort_index().to_csv(
+        index=True,
+        float_format="%.17g",
+        date_format="%Y-%m-%dT%H:%M:%S.%f",
+    )
+    return hashlib.sha256(text.encode()).hexdigest()
+
+
+def _runtime_repro_manifest(market: str, cutoff: str) -> dict:
+    """Fingerprint provider, model semantics, code, and key runtime versions."""
+    import hashlib
+    import importlib.metadata as metadata
+    import platform
+
+    from qlib_live_retrain import LGB_REPRO_PARAMS, provider_training_fingerprint
+
+    cfg = _load_task(market)
+    model_cfg = cfg["task"]["model"]
+
+    def version(name):
+        try:
+            return metadata.version(name)
+        except metadata.PackageNotFoundError:
+            return "unknown"
+
+    source_path = Path(__file__)
+    source_sha = (
+        hashlib.sha256(source_path.read_bytes()).hexdigest()
+        if source_path.is_file() else "unavailable"
+    )
+    provider_fp = provider_training_fingerprint(DATA_DIR, market, cutoff)
+    manifest = {
+        "manifest_version": "freq_repro_v1",
+        "market": market,
+        "provider_cutoff": cutoff,
+        "provider_fingerprint": provider_fp,
+        "model_config_sha256": _stable_json_sha256(model_cfg),
+        "lgb_repro_params": dict(LGB_REPRO_PARAMS),
+        "runtime": {
+            "python": platform.python_version(),
+            "pyqlib": version("pyqlib"),
+            "lightgbm": version("lightgbm"),
+            "numpy": version("numpy"),
+            "pandas": version("pandas"),
+        },
+        "freq_experiment_source_sha256": source_sha,
+    }
+    manifest["snapshot_token"] = _stable_json_sha256(manifest)
+    return manifest
+
+
+def _snapshot_manifest_path(market: str) -> Path:
+    return VOL_ROOT / "freq_repro" / f"provider_snapshot_{market}.json"
+
+
+def _publish_snapshot_manifest(manifest: dict) -> None:
+    import json
+
+    path = _snapshot_manifest_path(manifest["market"])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(manifest, indent=2, sort_keys=True))
+    vol.commit()
+
+
+def _worker_assert_snapshot(args: dict) -> None:
+    """Warm Modal workers must reload the Volume and see the driver's snapshot token."""
+    import json
+
+    try:
+        vol.reload()
+    except Exception as exc:
+        raise RuntimeError(f"worker Volume reload failed: {exc}") from exc
+    expected = args.get("snapshot_token")
+    if not expected:
+        raise RuntimeError("missing snapshot_token in retrain job")
+    path = _snapshot_manifest_path(args["market"])
+    if not path.is_file():
+        raise RuntimeError(f"provider snapshot manifest missing: {path}")
+    actual = json.loads(path.read_text()).get("snapshot_token")
+    if actual != expected:
+        raise RuntimeError(
+            f"worker provider snapshot mismatch: expected={expected} actual={actual}"
+        )
+
+
+def _assemble_signal(outs):
+    import pickle
+    import zlib
+
+    import pandas as pd
+
+    chunks = []
+    chunk_meta = []
+    for out in sorted(outs, key=lambda x: x["retrain_asof"]):
+        pred = pickle.loads(zlib.decompress(out["pred_zlib_pickle"]))
+        actual_hash = _signal_sha256(pred)
+        if actual_hash != out.get("prediction_sha256"):
+            raise RuntimeError(
+                f"prediction payload hash mismatch at {out['retrain_asof']}"
+            )
+        chunks.append(pred)
+        chunk_meta.append({
+            "repeat": out.get("repeat"),
+            "phase": out.get("phase"),
+            "retrain_asof": out["retrain_asof"],
+            "signal_end": out["signal_end"],
+            "n_rows": out["n_rows"],
+            "prediction_sha256": actual_hash,
+        })
+    if not chunks:
+        raise RuntimeError("no prediction chunks")
+    signal = pd.concat(chunks).sort_index()
+    if signal.index.has_duplicates:
+        raise RuntimeError("duplicate signal rows across retrain chunks")
+    return signal, chunk_meta
+
+
+def _write_signal_artifact(signal, path: Path) -> dict:
+    import hashlib
+
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    signal.sort_index().rename("score").to_frame().to_parquet(path, index=True)
+    return {
+        "path": str(path),
+        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "content_sha256": _signal_sha256(signal),
+        "rows": int(len(signal)),
+    }
+
+
+def _load_signal_artifact(meta: dict):
+    import hashlib
+
+    import pandas as pd
+
+    path = Path(meta["path"])
+    if not path.is_file():
+        raise RuntimeError(f"baseline signal artifact missing: {path}")
+    if hashlib.sha256(path.read_bytes()).hexdigest() != meta["sha256"]:
+        raise RuntimeError("baseline signal artifact byte hash mismatch")
+    frame = pd.read_parquet(path)
+    if "score" not in frame.columns:
+        raise RuntimeError("baseline signal artifact missing score column")
+    signal = frame["score"].sort_index()
+    if _signal_sha256(signal) != meta["content_sha256"]:
+        raise RuntimeError("baseline signal artifact content hash mismatch")
+    return signal
+
+
+def _run_signal_backtest(signal, *, execution_start: str, execution_end: str,
+                         market: str, topk: int, nd: int):
+    import qlib
+    from qlib.backtest import backtest as normal_backtest
+
+    qlib.init(**{**_load_task(market)["qlib_init"], "skip_if_reg": True})
+    if market in ("star_chn", "chinext", "star"):
+        from board_rules import star_chn_backtest_guard
+        star_chn_backtest_guard(execution_start)
+    executor = {
+        "class": "SimulatorExecutor",
+        "module_path": "qlib.backtest.executor",
+        "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
+    }
+    strategy = {
+        "class": "TopkDropoutStrategy",
+        "module_path": "qlib.contrib.strategy",
+        "kwargs": {
+            "signal": signal,
+            "topk": int(topk),
+            "n_drop": int(nd),
+            "forbid_all_trade_at_limit": False,
+        },
+    }
+    pm, _ = normal_backtest(
+        strategy=strategy,
+        executor=executor,
+        start_time=execution_start,
+        end_time=execution_end,
+        account=100000000,
+        benchmark=_bench_of(market),
+        exchange_kwargs=research_exchange(execution_start, execution_end, codes=market),
+    )
+    return pm["1day"][0]
 
 
 @app.function(
@@ -164,6 +420,7 @@ def freq_window(args: dict):
 
     from qlib_audit_fixes import last_matured_sample, purge_cfg_splits, read_trading_calendar
 
+    _worker_assert_snapshot(args)
     qlib.init(**{**_load_task(args["market"])["qlib_init"], "skip_if_reg": True})
     cal = read_trading_calendar(DATA_DIR)
     horizon = args.get("horizon", 20)
@@ -200,13 +457,17 @@ def freq_window(args: dict):
             f"prediction coverage mismatch: got {first_signal}~{last_signal}, "
             f"expected {args['retrain_asof']}~{args['signal_end']}"
         )
+    prediction_sha = _signal_sha256(pred)
     payload = zlib.compress(pickle.dumps(pred, protocol=pickle.HIGHEST_PROTOCOL), level=6)
     return {
         "freq": args["freq"],
         "phase": args.get("phase"),
+        "repeat": args.get("repeat"),
         "retrain_asof": args["retrain_asof"],
         "signal_end": args["signal_end"],
         "n_rows": int(len(pred)),
+        "prediction_sha256": prediction_sha,
+        "snapshot_token": args["snapshot_token"],
         "pred_zlib_pickle": payload,
     }
 
@@ -223,6 +484,7 @@ def _write_report_artifact(report, path: Path) -> dict:
     return {
         "path": str(path),
         "sha256": digest,
+        "content_sha256": _frame_sha256(report),
         "rows": int(len(report)),
         "columns": [str(x) for x in report.columns],
     }
@@ -279,109 +541,73 @@ def _phase_metric_summary(results: dict, field: str) -> dict:
 
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=8 * 3600)
 def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20, nd=2):
-    """连续账户重训频率实验。
+    """Single-pass continuous-account baseline under a fingerprinted provider snapshot.
 
-    每个 worker 只负责一个模型谱系区间的预测；driver 拼接全部预测后只运行一次
-    TopkDropoutStrategy 回测。这样重训只替换模型，不清空持仓，也保证首个执行日
-    使用 retrain_asof 当日收盘生成的上一交易步信号。
+    This driver is deterministic but is *not* the reproducibility gate because it
+    trains each lineage only once.  Run reproducibility_gate_driver before an
+    expensive phase audit.
     """
     import json as _json
-    import pickle
-    import zlib
 
-    import pandas as pd
-    import qlib
-    from qlib.backtest import backtest as normal_backtest
+    import numpy as np
 
     from qlib_audit_fixes import read_trading_calendar
     from portfolio_performance import portfolio_performance
 
-    prepare.remote(force=True)
-    try:
-        vol.reload()
-    except Exception:
-        pass
+    prepare.remote(force=True, market=market)
+    vol.reload()
     cal = read_trading_calendar(DATA_DIR)
     start_i = bisect_left(cal, eval_from)
     if start_i >= len(cal) - 1 or cal[start_i] != eval_from:
         raise ValueError("eval_from must be a trading day with a following execution day")
 
+    manifest = _runtime_repro_manifest(market, cal[-1])
+    _publish_snapshot_manifest(manifest)
+
     out = VOL_ROOT / "freq_experiment"
     reports_dir = out / "reports"
+    signals_dir = out / "signals"
     reports_dir.mkdir(parents=True, exist_ok=True)
+    signals_dir.mkdir(parents=True, exist_ok=True)
     results = {}
+
     for freq in [int(x) for x in freqs.split(",")]:
         if freq < 1:
             raise ValueError("retraining frequency must be positive")
-        jobs = []
-        i = start_i
-        while i < len(cal) - 1:
-            # Model trained after bar i scores bar i itself; those scores execute on i+1.
-            # Stop its signal responsibility the day before the next retrain to avoid overlap.
-            signal_end_i = min(i + freq - 1, len(cal) - 1)
-            jobs.append({
-                "freq": freq,
-                "retrain_asof": cal[i],
-                "signal_end": cal[signal_end_i],
-                "market": market,
-                "topk": int(topk),
-                "nd": nd,
-            })
-            i += freq
-        print(f"[freq] freq={freq}: {len(jobs)} 个重训点")
+        jobs = _phase_jobs(cal, start_i, freq, 0, market, int(topk), int(nd))
+        for job in jobs:
+            job["snapshot_token"] = manifest["snapshot_token"]
+        print(f"[freq] freq={freq}: {len(jobs)} deterministic retrain points")
 
         outs = list(freq_window.map(jobs))
-        chunks = []
-        for o in sorted(outs, key=lambda x: x["retrain_asof"]):
-            raw = zlib.decompress(o["pred_zlib_pickle"])
-            pred = pickle.loads(raw)
-            chunks.append(pred)
-        if not chunks:
-            raise RuntimeError(f"freq={freq}: no prediction chunks")
-
-        signal = pd.concat(chunks).sort_index()
-        if signal.index.has_duplicates:
-            raise RuntimeError(f"freq={freq}: duplicate signal rows across retrain chunks")
-        signal_days = signal.index.get_level_values(0)
+        signal, chunk_meta = _assemble_signal(outs)
         expected_signal_start = cal[start_i]
-        if str(signal_days.min())[:10] != expected_signal_start:
+        if str(signal.index.get_level_values(0).min())[:10] != expected_signal_start:
             raise RuntimeError("missing bootstrap signal on retrain/eval anchor")
 
         execution_start = cal[start_i + 1]
         execution_end = cal[-1]
-        qlib.init(**{**_load_task(market)["qlib_init"], "skip_if_reg": True})
-        if market in ("star_chn", "chinext", "star"):
-            from board_rules import star_chn_backtest_guard
-            star_chn_backtest_guard(execution_start)
-        executor = {
-            "class": "SimulatorExecutor",
-            "module_path": "qlib.backtest.executor",
-            "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
-        }
-        strategy = {
-            "class": "TopkDropoutStrategy",
-            "module_path": "qlib.contrib.strategy",
-            "kwargs": {"signal": signal, "topk": int(topk), "n_drop": int(nd), "forbid_all_trade_at_limit": False},
-        }
-        pm, _ = normal_backtest(
-            strategy=strategy,
-            executor=executor,
-            start_time=execution_start,
-            end_time=execution_end,
-            account=100000000,
-            benchmark=_bench_of(market),
-            exchange_kwargs=research_exchange(execution_start, execution_end, codes=market),
+        rep = _run_signal_backtest(
+            signal,
+            execution_start=execution_start,
+            execution_end=execution_end,
+            market=market,
+            topk=int(topk),
+            nd=int(nd),
         )
-        rep = pm["1day"][0]
         excess = (rep["return"] - rep["bench"] - rep["cost"]).dropna()
         if excess.empty:
             raise RuntimeError(f"freq={freq}: empty continuous-account report")
         perf = portfolio_performance(
-            rep,
-            initial_cash=100000000,
-            backtest_start=execution_start,
+            rep, initial_cash=100000000, backtest_start=execution_start
         )
         x = excess.to_numpy(dtype=float)
+        signal_artifact = _write_signal_artifact(
+            signal,
+            signals_dir / (
+                f"signal_{market}_freq{freq}_phase00_{expected_signal_start}_{cal[-2]}.parquet"
+            ),
+        )
         report_artifact = _write_report_artifact(
             rep,
             reports_dir / (
@@ -389,7 +615,7 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
             ),
         )
         results[str(freq)] = {
-            "protocol": "continuous_account_board_aware_v4_cny_tick",
+            "protocol": "continuous_account_board_aware_v5_repro",
             "metric_version": perf["metric_version"],
             "n_retrains": len(jobs),
             "n_errors": 0,
@@ -397,6 +623,9 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
             "signal_start": expected_signal_start,
             "execution_start": execution_start,
             "execution_end": execution_end,
+            "signal_sha256": signal_artifact["content_sha256"],
+            "signal_artifact": signal_artifact,
+            "chunk_predictions": chunk_meta,
             "strategy_cagr": perf["strategy_cagr"],
             "benchmark_cagr": perf["benchmark_cagr"],
             "relative_excess_cagr": perf["relative_excess_cagr"],
@@ -416,18 +645,240 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
             "positive_ratio": round(float((x > 0).mean()), 3),
             "performance": perf,
         }
-        print(f"[freq] freq={freq}: {results[str(freq)]}")
 
-    with (out / "results.json").open("w") as f:
-        _json.dump({
-            "protocol": "continuous_account_board_aware_v4_cny_tick",
-            "window": f"{eval_from}~{cal[-1]}",
-            "market": market,
-            "results": results,
-        }, f, indent=2)
+    payload = {
+        "protocol": "continuous_account_board_aware_v5_repro",
+        "window": f"{eval_from}~{cal[-1]}",
+        "market": market,
+        "topk": int(topk),
+        "n_drop": int(nd),
+        "benchmark": _bench_of(market),
+        "reproducibility": manifest,
+        "reproducibility_gate": {
+            "passed": False,
+            "reason": "single-pass baseline; run reproducibility_gate_driver",
+        },
+        "results": results,
+    }
+    market_path = out / f"results_{market}.json"
+    market_path.write_text(_json.dumps(payload, indent=2, ensure_ascii=False))
+    if market == "csi1000":
+        (out / "results.json").write_text(
+            _json.dumps(payload, indent=2, ensure_ascii=False)
+        )
     vol.commit()
-    return results
+    return payload
 
+
+def pre_tuner_audit_matrix() -> dict:
+    """Frozen three-pool audit matrix used before any nested tuning."""
+    from board_rules import EW_BENCH
+
+    out = {}
+    for market, cfg in PRE_TUNER_AUDIT_CONFIGS.items():
+        out[market] = {
+            **cfg,
+            "benchmark": _bench_of(market),
+            "phase_count": 20,
+            "screening_phases": [0, 5, 10, 15],
+            "eval_from": "2021-01-04",
+        }
+    if out["chinext"]["benchmark"] != EW_BENCH["chinext"]:
+        raise RuntimeError("chinext audit benchmark drift")
+    if out["star"]["benchmark"] != EW_BENCH["star"]:
+        raise RuntimeError("star audit benchmark drift")
+    return out
+
+
+@app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=12 * 3600)
+def reproducibility_gate_driver(
+    freq: int = 20,
+    eval_from: str = "2021-01-04",
+    market: str = "csi1000",
+    topk: int = 20,
+    nd: int = 2,
+):
+    """Train the identical phase-0 lineage twice and require byte-level identities.
+
+    The two repeats are submitted together to exercise independent workers and
+    scheduling.  The gate passes only if every prediction chunk hash, the
+    concatenated signal hash, and two portfolio report content hashes match.
+    A passing gate also writes the canonical phase-0 baseline and signal
+    artifact consumed by retrain_phase_sensitivity_driver.
+    """
+    import json as _json
+
+    import numpy as np
+
+    from qlib_audit_fixes import read_trading_calendar
+    from portfolio_performance import portfolio_performance
+
+    if freq < 1:
+        raise ValueError("freq must be positive")
+    prepare.remote(force=True, market=market)
+    vol.reload()
+    cal = read_trading_calendar(DATA_DIR)
+    start_i = bisect_left(cal, eval_from)
+    if start_i >= len(cal) - 1 or cal[start_i] != eval_from:
+        raise ValueError("eval_from must be a trading day with a following execution day")
+
+    manifest = _runtime_repro_manifest(market, cal[-1])
+    _publish_snapshot_manifest(manifest)
+    base_jobs = _phase_jobs(cal, start_i, freq, 0, market, int(topk), int(nd))
+    jobs = []
+    for repeat in (0, 1):
+        for original in base_jobs:
+            job = dict(original)
+            job["repeat"] = repeat
+            job["snapshot_token"] = manifest["snapshot_token"]
+            jobs.append(job)
+    print(
+        f"[repro] {market} freq={freq}: {len(base_jobs)} retrains x2 = {len(jobs)} fits"
+    )
+
+    outs = list(freq_window.map(jobs))
+    by_repeat = {0: [], 1: []}
+    for out in outs:
+        repeat = out.get("repeat")
+        if repeat not in by_repeat:
+            raise RuntimeError(f"unexpected repeat id: {repeat}")
+        by_repeat[repeat].append(out)
+
+    signal_a, chunks_a = _assemble_signal(by_repeat[0])
+    signal_b, chunks_b = _assemble_signal(by_repeat[1])
+    hashes_a = [(x["retrain_asof"], x["prediction_sha256"]) for x in chunks_a]
+    hashes_b = [(x["retrain_asof"], x["prediction_sha256"]) for x in chunks_b]
+    if hashes_a != hashes_b:
+        mismatches = [
+            {"a": a, "b": b}
+            for a, b in zip(hashes_a, hashes_b)
+            if a != b
+        ][:10]
+        raise RuntimeError(f"repro gate failed: prediction chunk mismatch {mismatches}")
+
+    signal_hash_a = _signal_sha256(signal_a)
+    signal_hash_b = _signal_sha256(signal_b)
+    if signal_hash_a != signal_hash_b:
+        raise RuntimeError("repro gate failed: concatenated signal hash mismatch")
+
+    execution_start = cal[start_i + 1]
+    execution_end = cal[-1]
+    rep_a = _run_signal_backtest(
+        signal_a,
+        execution_start=execution_start,
+        execution_end=execution_end,
+        market=market,
+        topk=int(topk),
+        nd=int(nd),
+    )
+    rep_b = _run_signal_backtest(
+        signal_b,
+        execution_start=execution_start,
+        execution_end=execution_end,
+        market=market,
+        topk=int(topk),
+        nd=int(nd),
+    )
+    report_hash_a = _frame_sha256(rep_a)
+    report_hash_b = _frame_sha256(rep_b)
+    if report_hash_a != report_hash_b:
+        raise RuntimeError("repro gate failed: portfolio report content hash mismatch")
+
+    perf = portfolio_performance(
+        rep_a, initial_cash=100000000, backtest_start=execution_start
+    )
+    excess = (rep_a["return"] - rep_a["bench"] - rep_a["cost"]).dropna()
+    x = excess.to_numpy(dtype=float)
+
+    out = VOL_ROOT / "freq_experiment"
+    signals_dir = out / "signals"
+    reports_dir = out / "reports"
+    signal_artifact = _write_signal_artifact(
+        signal_a,
+        signals_dir / (
+            f"signal_{market}_freq{freq}_phase00_{eval_from}_{cal[-2]}.parquet"
+        ),
+    )
+    report_artifact = _write_report_artifact(
+        rep_a,
+        reports_dir / (
+            f"report_{market}_freq{freq}_{execution_start}_{execution_end}.parquet"
+        ),
+    )
+    result = {
+        "protocol": "continuous_account_board_aware_v5_repro",
+        "metric_version": perf["metric_version"],
+        "n_retrains": len(base_jobs),
+        "n_errors": 0,
+        "n_days": int(len(excess)),
+        "signal_start": eval_from,
+        "execution_start": execution_start,
+        "execution_end": execution_end,
+        "signal_sha256": signal_hash_a,
+        "signal_artifact": signal_artifact,
+        "chunk_predictions": chunks_a,
+        "strategy_cagr": perf["strategy_cagr"],
+        "benchmark_cagr": perf["benchmark_cagr"],
+        "relative_excess_cagr": perf["relative_excess_cagr"],
+        "strategy_max_drawdown": perf["strategy_max_drawdown"],
+        "benchmark_max_drawdown": perf["benchmark_max_drawdown"],
+        "relative_max_drawdown": perf["relative_max_drawdown"],
+        "sharpe": perf["sharpe"],
+        "information_ratio": perf["information_ratio"],
+        "annual_volatility": perf["annual_volatility"],
+        "account_return_max_error": perf["account_return_max_error"],
+        "report_artifact": report_artifact,
+        "legacy_ann_excess_arithmetic": round(float(x.mean() * 238), 4),
+        "legacy_ir_arithmetic": (
+            round(float(x.mean() / x.std(ddof=1) * (238 ** 0.5)), 3)
+            if len(x) > 1 and x.std(ddof=1) > 0 else None
+        ),
+        "positive_ratio": round(float((x > 0).mean()), 3),
+        "performance": perf,
+    }
+    gate = {
+        "passed": True,
+        "gate_version": "phase0_double_fit_v1",
+        "prediction_chunks_match": True,
+        "signal_hash_match": True,
+        "report_hash_match": True,
+        "repeat_a_signal_sha256": signal_hash_a,
+        "repeat_b_signal_sha256": signal_hash_b,
+        "repeat_a_report_content_sha256": report_hash_a,
+        "repeat_b_report_content_sha256": report_hash_b,
+        "n_retrains_per_repeat": len(base_jobs),
+    }
+    payload = {
+        "protocol": "continuous_account_board_aware_v5_repro",
+        "window": f"{eval_from}~{cal[-1]}",
+        "market": market,
+        "topk": int(topk),
+        "n_drop": int(nd),
+        "benchmark": _bench_of(market),
+        "reproducibility": manifest,
+        "reproducibility_gate": gate,
+        "results": {str(freq): result},
+    }
+
+    out.mkdir(parents=True, exist_ok=True)
+    (out / f"results_{market}.json").write_text(
+        _json.dumps(payload, indent=2, ensure_ascii=False)
+    )
+    if market == "csi1000":
+        (out / "results.json").write_text(
+            _json.dumps(payload, indent=2, ensure_ascii=False)
+        )
+    gate_dir = VOL_ROOT / "freq_repro"
+    gate_dir.mkdir(parents=True, exist_ok=True)
+    (gate_dir / f"gate_{market}_freq{freq}.json").write_text(
+        _json.dumps(payload, indent=2, ensure_ascii=False)
+    )
+    vol.commit()
+    print(
+        f"[repro] PASS signal={signal_hash_a[:12]} report={report_hash_a[:12]} "
+        f"CAGR={perf['strategy_cagr']:.4f}"
+    )
+    return payload
 
 
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=24 * 3600)
@@ -438,22 +889,17 @@ def retrain_phase_sensitivity_driver(
     topk: int = 20,
     nd: int = 2,
     phases: str = "all",
+    require_repro_gate: bool = True,
 ):
-    """Evaluate retraining-calendar phase sensitivity under one fixed protocol.
+    """Evaluate retraining-calendar phase sensitivity after a reproducibility gate.
 
-    All phases share the exact same execution window.  phase=0 reproduces the
-    historical freq-driver schedule.  phase=1..freq-1 means the model lineage
-    was already active that many sessions before eval_from.
-
-    This is an audit, not a tuner: no phase is selected or deployed.
+    Phase 0 is reused from the passing double-fit gate instead of being trained
+    a third time.  All other phases use the exact same provider snapshot and
+    deterministic LightGBM policy.  The driver fails before launching expensive
+    model fits when the baseline manifest, runtime, provider fingerprint, or
+    portfolio configuration differs.
     """
     import json as _json
-    import pickle
-    import zlib
-
-    import pandas as pd
-    import qlib
-    from qlib.backtest import backtest as normal_backtest
 
     from qlib_audit_fixes import read_trading_calendar
     from portfolio_performance import portfolio_performance
@@ -469,12 +915,11 @@ def retrain_phase_sensitivity_driver(
         if phase_list[0] < 0 or phase_list[-1] >= freq:
             raise ValueError(f"phases must be within 0..{freq - 1}")
 
-    prepare.remote(force=True)
-    try:
-        vol.reload()
-    except Exception:
-        pass
-
+    # Reuse the committed provider snapshot from the reproducibility gate.
+    # For custom pools, prepare(force=False) only ensures derived pool/benchmark
+    # files and never downloads a newer provider package.
+    prepare.remote(force=False, market=market)
+    vol.reload()
     cal = read_trading_calendar(DATA_DIR)
     start_i = bisect_left(cal, eval_from)
     if start_i >= len(cal) - 1 or cal[start_i] != eval_from:
@@ -482,83 +927,111 @@ def retrain_phase_sensitivity_driver(
     if start_i - max(phase_list) < 0:
         raise ValueError("insufficient pre-evaluation calendar for requested phases")
 
-    all_jobs = []
+    current_manifest = _runtime_repro_manifest(market, cal[-1])
+    baseline_path = VOL_ROOT / "freq_experiment" / f"results_{market}.json"
+    if not baseline_path.is_file() and market == "csi1000":
+        baseline_path = VOL_ROOT / "freq_experiment" / "results.json"
+    if not baseline_path.is_file():
+        raise RuntimeError(
+            f"missing baseline result {baseline_path}; run reproducibility_gate_driver first"
+        )
+    baseline = _json.loads(baseline_path.read_text())
+    gate = baseline.get("reproducibility_gate") or {}
+    if require_repro_gate and not gate.get("passed"):
+        raise RuntimeError(
+            "phase audit requires a passing reproducibility_gate_driver baseline"
+        )
+    if baseline.get("protocol") != "continuous_account_board_aware_v5_repro":
+        raise RuntimeError("baseline protocol is not v5 reproducible protocol")
+    if baseline.get("market") != market:
+        raise RuntimeError("baseline market mismatch")
+    if int(baseline.get("topk", -1)) != int(topk) or int(baseline.get("n_drop", -1)) != int(nd):
+        raise RuntimeError("baseline topk/n_drop mismatch")
+    if baseline.get("reproducibility") != current_manifest:
+        raise RuntimeError(
+            "provider/runtime/source manifest changed since reproducibility gate; "
+            "rerun the gate before phase audit"
+        )
+    baseline_result = (baseline.get("results") or {}).get(str(freq))
+    if baseline_result is None:
+        raise RuntimeError(f"baseline missing freq={freq}")
+
+    snapshot_token = current_manifest["snapshot_token"]
+    _publish_snapshot_manifest(current_manifest)
+
     jobs_by_phase = {}
+    all_jobs = []
     for phase in phase_list:
-        jobs = _phase_jobs(cal, start_i, freq, phase, market, topk, nd)
+        if phase == 0:
+            jobs_by_phase[phase] = []
+            continue
+        jobs = _phase_jobs(cal, start_i, freq, phase, market, int(topk), int(nd))
+        for job in jobs:
+            job["snapshot_token"] = snapshot_token
         jobs_by_phase[phase] = jobs
         all_jobs.extend(jobs)
     print(
         f"[phase] freq={freq} phases={phase_list}: "
-        f"{len(all_jobs)} total model fits"
+        f"{len(all_jobs)} model fits; phase0 reused from repro gate"
     )
 
-    outs = list(freq_window.map(all_jobs))
     outs_by_phase = {phase: [] for phase in phase_list}
-    for out in outs:
-        phase = out.get("phase")
-        if phase not in outs_by_phase:
-            raise RuntimeError(f"unexpected phase output: {phase}")
-        outs_by_phase[phase].append(out)
+    if all_jobs:
+        outs = list(freq_window.map(all_jobs))
+        for out in outs:
+            phase = out.get("phase")
+            if phase not in outs_by_phase:
+                raise RuntimeError(f"unexpected phase output: {phase}")
+            outs_by_phase[phase].append(out)
 
     execution_start = cal[start_i + 1]
     execution_end = cal[-1]
-    qlib.init(**{**_load_task(market)["qlib_init"], "skip_if_reg": True})
-    if market in ("star_chn", "chinext", "star"):
-        from board_rules import star_chn_backtest_guard
-        star_chn_backtest_guard(execution_start)
-
-    executor = {
-        "class": "SimulatorExecutor",
-        "module_path": "qlib.backtest.executor",
-        "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
-    }
     report_root = VOL_ROOT / "freq_phase_sensitivity" / "reports"
     report_root.mkdir(parents=True, exist_ok=True)
     results = {}
 
     for phase in phase_list:
-        chunks = []
-        phase_outs = sorted(outs_by_phase[phase], key=lambda x: x["retrain_asof"])
-        for out in phase_outs:
-            chunks.append(pickle.loads(zlib.decompress(out["pred_zlib_pickle"])))
-        if not chunks:
-            raise RuntimeError(f"phase={phase}: no prediction chunks")
-        signal = pd.concat(chunks).sort_index()
-        if signal.index.has_duplicates:
-            raise RuntimeError(f"phase={phase}: duplicate signal rows")
+        if phase == 0:
+            signal = _load_signal_artifact(baseline_result["signal_artifact"])
+            if _signal_sha256(signal) != baseline_result["signal_sha256"]:
+                raise RuntimeError("baseline phase0 signal hash mismatch")
+            results["0"] = {
+                "phase": 0,
+                "source": "repro_gate_baseline_reuse",
+                "first_retrain_asof": eval_from,
+                "n_retrains": int(baseline_result["n_retrains"]),
+                "signal_sha256": baseline_result["signal_sha256"],
+                "signal_artifact": baseline_result["signal_artifact"],
+                "strategy_cagr": baseline_result["strategy_cagr"],
+                "benchmark_cagr": baseline_result["benchmark_cagr"],
+                "relative_excess_cagr": baseline_result["relative_excess_cagr"],
+                "strategy_max_drawdown": baseline_result["strategy_max_drawdown"],
+                "relative_max_drawdown": baseline_result["relative_max_drawdown"],
+                "sharpe": baseline_result["sharpe"],
+                "information_ratio": baseline_result["information_ratio"],
+                "account_return_max_error": baseline_result["account_return_max_error"],
+                "report_artifact": baseline_result["report_artifact"],
+                "performance": baseline_result["performance"],
+            }
+            continue
+
+        signal, chunk_meta = _assemble_signal(outs_by_phase[phase])
         signal_days = {str(x)[:10] for x in signal.index.get_level_values(0).unique()}
         if eval_from not in signal_days:
             raise RuntimeError(f"phase={phase}: bootstrap signal missing for {eval_from}")
         if cal[-2] not in signal_days:
             raise RuntimeError(f"phase={phase}: final executable signal day missing")
 
-        strategy = {
-            "class": "TopkDropoutStrategy",
-            "module_path": "qlib.contrib.strategy",
-            "kwargs": {
-                "signal": signal,
-                "topk": int(topk),
-                "n_drop": int(nd),
-                "forbid_all_trade_at_limit": False,
-            },
-        }
-        pm, _ = normal_backtest(
-            strategy=strategy,
-            executor=executor,
-            start_time=execution_start,
-            end_time=execution_end,
-            account=100000000,
-            benchmark=_bench_of(market),
-            exchange_kwargs=research_exchange(
-                execution_start, execution_end, codes=market
-            ),
+        rep = _run_signal_backtest(
+            signal,
+            execution_start=execution_start,
+            execution_end=execution_end,
+            market=market,
+            topk=int(topk),
+            nd=int(nd),
         )
-        rep = pm["1day"][0]
         perf = portfolio_performance(
-            rep,
-            initial_cash=100000000,
-            backtest_start=execution_start,
+            rep, initial_cash=100000000, backtest_start=execution_start
         )
         report_artifact = _write_report_artifact(
             rep,
@@ -569,8 +1042,11 @@ def retrain_phase_sensitivity_driver(
         )
         results[str(phase)] = {
             "phase": phase,
+            "source": "deterministic_refit",
             "first_retrain_asof": jobs_by_phase[phase][0]["retrain_asof"],
             "n_retrains": len(jobs_by_phase[phase]),
+            "signal_sha256": _signal_sha256(signal),
+            "chunk_predictions": chunk_meta,
             "strategy_cagr": perf["strategy_cagr"],
             "benchmark_cagr": perf["benchmark_cagr"],
             "relative_excess_cagr": perf["relative_excess_cagr"],
@@ -613,7 +1089,7 @@ def retrain_phase_sensitivity_driver(
         3,
     )
     payload = {
-        "protocol": "retrain_phase_sensitivity_v1_cny_tick",
+        "protocol": "retrain_phase_sensitivity_v2_repro",
         "purpose": "audit_only_do_not_select_best_phase",
         "market": market,
         "freq": freq,
@@ -624,13 +1100,17 @@ def retrain_phase_sensitivity_driver(
         "execution_end": execution_end,
         "phases": phase_list,
         "complete_phase_grid": complete_grid,
+        "phase0_reused_from_repro_gate": 0 in phase_list,
+        "reproducibility": current_manifest,
+        "reproducibility_gate": gate,
         "results": results,
         "summary": summary,
     }
     out = VOL_ROOT / "freq_phase_sensitivity"
     out.mkdir(parents=True, exist_ok=True)
-    with (out / f"phase_{market}_freq{freq}.json").open("w") as fh:
-        _json.dump(payload, fh, indent=2, ensure_ascii=False)
+    (out / f"phase_{market}_freq{freq}.json").write_text(
+        _json.dumps(payload, indent=2, ensure_ascii=False)
+    )
     vol.commit()
     return payload
 
@@ -819,7 +1299,7 @@ def execution_attribution_driver(freq: int = 20, eval_from: str = "2021-01-04",
     if freq < 1:
         raise ValueError("freq must be positive")
 
-    prepare.remote(force=True)
+    prepare.remote(force=True, market=market)
     try:
         vol.reload()
     except Exception:
@@ -830,31 +1310,15 @@ def execution_attribution_driver(freq: int = 20, eval_from: str = "2021-01-04",
     if start_i >= len(cal) - 1 or cal[start_i] != eval_from:
         raise ValueError("eval_from must be a trading day with a following execution day")
 
-    jobs = []
-    i = start_i
-    while i < len(cal) - 1:
-        signal_end_i = min(i + freq - 1, len(cal) - 1)
-        jobs.append({
-            "freq": freq,
-            "retrain_asof": cal[i],
-            "signal_end": cal[signal_end_i],
-            "market": market,
-            "topk": int(topk),
-            "nd": nd,
-        })
-        i += freq
+    manifest = _runtime_repro_manifest(market, cal[-1])
+    _publish_snapshot_manifest(manifest)
+    jobs = _phase_jobs(cal, start_i, freq, 0, market, int(topk), int(nd))
+    for job in jobs:
+        job["snapshot_token"] = manifest["snapshot_token"]
 
     print(f"[attrib] freq={freq}: train {len(jobs)} model windows once")
     outs = list(freq_window.map(jobs))
-    chunks = []
-    for o in sorted(outs, key=lambda x: x["retrain_asof"]):
-        chunks.append(pickle.loads(zlib.decompress(o["pred_zlib_pickle"])))
-    if not chunks:
-        raise RuntimeError("no signal chunks")
-
-    signal = pd.concat(chunks).sort_index()
-    if signal.index.has_duplicates:
-        raise RuntimeError("duplicate signal rows across retrain chunks")
+    signal, chunk_meta = _assemble_signal(outs)
     if str(signal.index.get_level_values(0).min())[:10] != cal[start_i]:
         raise RuntimeError("missing attribution bootstrap signal")
 
@@ -934,13 +1398,16 @@ def execution_attribution_driver(freq: int = 20, eval_from: str = "2021-01-04",
     }
 
     payload = {
-        "protocol": "execution_attribution_v2_cny_tick",
+        "protocol": "execution_attribution_v3_repro",
         "market": market,
         "freq": freq,
         "topk": int(topk),
         "n_drop": int(nd),
         "window": f"{execution_start}~{execution_end}",
         "signal_rows": int(len(signal)),
+        "signal_sha256": _signal_sha256(signal),
+        "chunk_predictions": chunk_meta,
+        "reproducibility": manifest,
         "n_retrains": len(jobs),
         "results": results,
         "attribution_pp": attribution,

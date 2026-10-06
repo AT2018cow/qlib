@@ -22,6 +22,39 @@ MODEL_CACHE_VERSION = 3
 RETRAIN_ORIGIN = "2026-09-18"
 
 
+LGB_REPRO_PARAMS = {
+    # Explicitly pin LightGBM's historical default sub-seeds so enabling
+    # deterministic execution does not silently select a new stochastic path.
+    "seed": 0,
+    "data_random_seed": 1,
+    "feature_fraction_seed": 2,
+    "bagging_seed": 3,
+    "drop_seed": 4,
+    "objective_seed": 5,
+    "extra_seed": 6,
+    "deterministic": True,
+    "force_col_wise": True,
+}
+
+
+def apply_lgb_reproducibility(cfg: dict) -> dict:
+    """Mutate an LGBModel config to a CPU-deterministic, auditable setup.
+
+    The helper is intentionally shared by research and production config
+    builders.  It keeps the existing model hyperparameters and only fixes the
+    randomness / histogram-execution controls needed for repeatability.
+    """
+    model = cfg.get("task", {}).get("model", {})
+    if model.get("class") != "LGBModel":
+        return cfg
+    kwargs = model.setdefault("kwargs", {})
+    kwargs.update(LGB_REPRO_PARAMS)
+    # force_col_wise and force_row_wise are mutually exclusive.
+    kwargs.pop("force_row_wise", None)
+    return cfg
+
+
+
 def retrain_due_calendar(calendar: list[str], data_bar: str,
                          interval: int = RETRAIN_EVERY_SESSIONS,
                          origin: str = RETRAIN_ORIGIN) -> bool:

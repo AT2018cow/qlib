@@ -29,10 +29,12 @@ class ReviewRegressionTests(unittest.TestCase):
 
     def test_frequency_driver_runs_one_continuous_account(self):
         src = function_source("freq_experiment.py", "freq_driver")
-        self.assertIn("pd.concat(chunks)", src)
+        self.assertIn("_assemble_signal(outs)", src)
         self.assertIn("execution_start = cal[start_i + 1]", src)
-        self.assertIn('"protocol": "continuous_account_board_aware_v4_cny_tick"', src)
-        self.assertEqual(src.count("normal_backtest("), 1)
+        self.assertIn('"protocol": "continuous_account_board_aware_v5_repro"', src)
+        self.assertEqual(src.count("_run_signal_backtest("), 1)
+        helper = function_source("freq_experiment.py", "_run_signal_backtest")
+        self.assertEqual(helper.count("normal_backtest("), 1)
 
     def test_independent_recheck_has_its_own_maturity_guard(self):
         src = function_source("modal_qlib_cn_a10g.py", "independent_recheck")
@@ -47,7 +49,7 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn('"num_leaves": 250', src)
         self.assertIn('"CSZScoreNorm"', src)
         self.assertNotIn('"CSRankNorm"', src)
-        self.assertIn('"board_aware_open_bootstrap_v4_cny_tick"', src)
+        self.assertIn('"board_aware_open_bootstrap_v5_repro"', src)
         self.assertIn("unanchored_pending_batch_c_rerun", src)
         self.assertNotIn("expected_excess = -0.0223", src)
         # Alpha158 类默认 infer 处理器必须镜像（review 2026-10-05：[] 与生产不符）
@@ -119,9 +121,9 @@ class ReviewRegressionTests(unittest.TestCase):
 
     def test_batch_c_artifact_has_board_aware_protocol(self):
         src = function_source("modal_qlib_cn_a10g.py", "batch_c")
-        self.assertIn('"protocol": "board_aware_open_bootstrap_v4_cny_tick"', src)
+        self.assertIn('"protocol": "board_aware_open_bootstrap_v5_repro"', src)
         worker = function_source("modal_qlib_cn_a10g.py", "batch_c_window")
-        self.assertIn('"protocol": "board_aware_open_bootstrap_v4_cny_tick"', worker)
+        self.assertIn('"protocol": "board_aware_open_bootstrap_v5_repro"', worker)
 
     def test_execution_attribution_reuses_frozen_signal(self):
         src = function_source("freq_experiment.py", "execution_attribution_driver")
@@ -132,7 +134,7 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn("C_BOARD_AWARE", src)
         self.assertIn("D_BOARD_AWARE_HIGH_OPEN_5", src)
         self.assertIn("E_BOARD_AWARE_NO_CHINEXT_STAR", src)
-        self.assertIn('"protocol": "execution_attribution_v2_cny_tick"', src)
+        self.assertIn('"protocol": "execution_attribution_v3_repro"', src)
 
     def test_execution_attribution_defines_clean_deltas(self):
         src = function_source("freq_experiment.py", "_run_execution_protocol")
@@ -142,6 +144,58 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn("_filter_signal_excluding_growth_boards", src)
 
 
+
+    def test_pre_tuner_audit_matrix_includes_all_three_frozen_pools(self):
+        src = (ROOT / "freq_experiment.py").read_text()
+        self.assertIn('"csi1000": {"topk": 20, "nd": 2}', src)
+        self.assertIn('"chinext": {"topk": 20, "nd": 3}', src)
+        self.assertIn('"star": {"topk": 50, "nd": 2}', src)
+        helper = function_source("freq_experiment.py", "pre_tuner_audit_matrix")
+        self.assertIn('"screening_phases": [0, 5, 10, 15]', helper)
+
+    def test_custom_pool_prepare_rebuilds_equal_weight_benchmark(self):
+        src = function_source("freq_experiment.py", "prepare")
+        self.assertIn('market not in ("star_chn", "chinext", "star")', src)
+        self.assertIn("build_custom_instruments", src)
+        self.assertIn("build_ew_bench_files", src)
+        self.assertIn("reuse committed provider snapshot", src)
+
+    def test_repro_gate_double_fits_and_requires_exact_hashes(self):
+        src = function_source("freq_experiment.py", "reproducibility_gate_driver")
+        self.assertIn("for repeat in (0, 1)", src)
+        self.assertIn("prediction chunk mismatch", src)
+        self.assertIn("concatenated signal hash mismatch", src)
+        self.assertIn("portfolio report content hash mismatch", src)
+        self.assertIn('"passed": True', src)
+        self.assertIn("phase0_double_fit_v1", src)
+
+    def test_worker_reloads_volume_and_checks_snapshot_token(self):
+        src = function_source("freq_experiment.py", "freq_window")
+        self.assertIn("_worker_assert_snapshot(args)", src)
+        self.assertIn('"prediction_sha256": prediction_sha', src)
+        helper = function_source("freq_experiment.py", "_worker_assert_snapshot")
+        self.assertIn("vol.reload()", helper)
+        self.assertIn("worker provider snapshot mismatch", helper)
+
+    def test_phase_audit_requires_gate_and_reuses_phase_zero(self):
+        src = function_source("freq_experiment.py", "retrain_phase_sensitivity_driver")
+        self.assertIn("prepare.remote(force=False, market=market)", src)
+        self.assertIn("phase audit requires a passing reproducibility_gate_driver baseline", src)
+        self.assertIn('if phase == 0:', src)
+        self.assertIn('"source": "repro_gate_baseline_reuse"', src)
+        self.assertIn("_load_signal_artifact", src)
+        self.assertIn("baseline.get(\"reproducibility\") != current_manifest", src)
+
+    def test_frequency_results_are_market_scoped(self):
+        src = function_source("freq_experiment.py", "freq_driver")
+        self.assertIn('f"results_{market}.json"', src)
+        self.assertIn('if market == "csi1000"', src)
+        self.assertIn('"benchmark": _bench_of(market)', src)
+        self.assertIn('"reproducibility": manifest', src)
+
+    def test_production_config_applies_shared_lgb_reproducibility(self):
+        src = function_source("modal_qlib_cn_a10g.py", "_load_and_patch_cfg")
+        self.assertIn("apply_lgb_reproducibility(cfg)", src)
 
     def test_paper_execution_uses_factor_and_no_high_open_overlay(self):
         src = function_source("modal_qlib_cn_a10g.py", "_paper_execution_context")
