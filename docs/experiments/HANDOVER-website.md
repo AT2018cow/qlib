@@ -1,5 +1,8 @@
 # 网站交接文档——每日选股展示站（后续优化/扩展用）
 
+> **2026-10-07 研究证据更新**：网站的双池展示/历史信号留痕是已部署工程状态，不等同于当前 alpha 认证。最新 corrected audit 以 [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md) 为准：CSI1000 为当前主调优线；ChiNext frozen baseline 在 deterministic 4-phase screen 中全部负相对超额，仅作为研究/救援线；STAR corrected alpha 因 reproducibility gate 未通过而未知。网站方法论页不得继续把旧 +11.6%/+11.5% 或“STAR 已证伪”作为当前证据。
+
+
 > 面向新对话：网站已上线且全自动运行。本文档说明当前架构、已实现功能、已知设计决策、以及后续优化的起点。
 
 ## 一、当前系统状态（2026-09-20 上线；2026-10-02 双池化）
@@ -118,6 +121,7 @@ modal run modal_qlib_cn_a10g.py::backfill_signals --dates "2026-10-09" --market 
 ## 七、关联文档
 
 - 系统总交接：`docs/experiments/HANDOVER.md`
-- 终审结论：`docs/experiments/05-final-audit.md`（+11.6% 基线）
+- 当前研究结论：`docs/experiments/14-pre-tuner-stage-summary-20261007.md`
+- 历史终审记录：`docs/experiments/05-final-audit.md`（旧协议，已 superseded）
 - 新增股票池交接：`docs/experiments/HANDOVER-universe-expansion.md`
 - 上游 fork 说明：`AGENTS.md`（本 fork 扩展层段落）

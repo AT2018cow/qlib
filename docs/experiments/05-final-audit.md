@@ -1,5 +1,8 @@
 # 终审报告（2026-09-18）——最终计算结果、分析过程与操作启示
 
+> **Historical final audit — no longer the current baseline (2026-10-07):** This report is preserved for provenance. Its +7.5%/+11.6% era results predate the corrected execution attribution, canonical portfolio metrics, deterministic double-fit gate, and retraining-phase audit. Current authority: [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md).
+
+
 > **声明**：本研究及其产出仅为学术实验性质，不构成投资建议（research-only, not investment advice）。
 >
 > **口径切换注记（2026-09-19）**：审计 PR（fix/qlib-audit-20260919）已合并——训练/验证边界全面 purge

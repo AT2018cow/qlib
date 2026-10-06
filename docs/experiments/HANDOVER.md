@@ -1,5 +1,12 @@
 # 工作交接文档（2026-09-19）——面向下一步 RD-Agent / 消息面工作
 
+> **2026-10-07 状态更新 / superseded notice**：本文记录 2026-09/10-02 的历史交接与当时生产状态，**不再是当前研究结论入口**。下一阶段请先读 [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md)。当前权威状态：CSI1000 reproducibility PASS + corrected phase-0 relative CAGR 约 5.29%，进入主调优线；ChiNext gate PASS 但 frozen 0/5/10/15 screen 全部负相对超额，仅保留 bounded rescue；STAR gate 在 prediction reproducibility 处失败，alpha 尚不可判。下文 +11.6% / +11.5% 等旧数字和“终审候选/关闭”措辞仅作历史记录。
+
+> **Superseded handoff:** this was the 2026-09/early-10 handoff. For any new session, read [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md) first.
+>
+> Current pool status: **CSI1000 = primary tuner line; ChiNext = reproducible but current frozen baseline weak, bounded rescue only; STAR = reproducibility blocked, alpha unknown.** The +11% historical figures below are preserved only as historical evidence.
+
+
 > 本文档面向新对话的接手者，概括本对话完成的全部工作、当前系统状态、已固化的结论、以及下一步（P3）的启动要点。
 
 ## 一、项目概览

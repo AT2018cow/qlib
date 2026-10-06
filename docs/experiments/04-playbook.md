@@ -1,5 +1,8 @@
 # 实盘操作手册（含预期管理）
 
+> **Historical operating note — superseded for research conclusions (2026-10-07):** The return expectations and discretionary execution rules below predate the corrected v5 reproducibility/canonical-execution stack. Use [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md) for current evidence. In particular, the current research protocol is T-close scoring -> T+1-open execution with **no 5% high-open overlay**; this file should not be treated as a current production-trading recommendation.
+
+
 > **免责声明**：本手册仅为工程验证（paper trading）的操作记录规范，不构成投资建议。
 > 文中任何信号、清单、数字不得作为投资决策依据；据此操作风险自负。
 

@@ -1,5 +1,8 @@
 # 12 - Pre-tuner Audit (2026-10-06)
 
+> **Stage completion update (2026-10-07):** The pre-tuner audit described here has now produced corrected evidence for CSI1000 and ChiNext; STAR remains blocked by a failed prediction-chunk reproducibility gate. The authoritative stage summary and next-stage modes are in [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md).
+
+
 ## Scope
 
 This audit is intentionally before any tuner redesign. It fixes execution correctness,
@@ -370,13 +373,23 @@ signal identity.
 - CSI1000 relative CAGR / IR are versus the CSI1000 **price index**, not a total-return index;
 - this audit does not tune LightGBM hyperparameters, TopK/n_drop, target, or ensemble.
 
-## Gate before nested tuning
+## Gate before next-stage tuning
 
-Do not start the production-aligned nested walk-forward tuner until:
+The original all-pools gate requirement has been replaced by an **asymmetric per-pool**
+rule. One unresolved satellite pool does not block a validated core pool.
 
-1. the required pool passes `reproducibility_gate_driver`;
-2. its corrected v5 baseline artifacts are retained;
-3. its planned phase screen/full grid completes on the exact same manifest;
-4. any material phase dispersion is investigated rather than selecting the best phase;
-5. the STAR production decision is revisited from corrected reproducible evidence rather
-   than legacy `no_bootstrap_v1` results.
+Current entry conditions:
+
+1. **CSI1000** may enter the primary production-aligned tuner because its corrected v5
+   gate passed and its phase sensitivity has been investigated. Candidate selection must
+   include temporal-fold and selected-calendar robustness; do not choose the best phase.
+2. **ChiNext** may enter only a bounded rescue screen. Its v5 gate passed, but the frozen
+   0/5/10/15 baseline had negative relative CAGR in every sampled phase.
+3. **STAR** remains blocked from performance tuning until prediction-chunk reproducibility
+   is repaired and the exact gate passes.
+4. Any new protocol version must retain raw prediction/signal/report artifacts and
+   canonical metrics so results remain independently auditable.
+
+A full corrected 20-phase CSI1000 grid is deferred to final production-risk certification
+or a direct staggered/multi-phase ensemble decision; it is not a prerequisite for the
+next tuner stage.

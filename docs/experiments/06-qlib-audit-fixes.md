@@ -1,5 +1,8 @@
 # Qlib 审计修复：实现状态与验收条件
 
+> **Historical implementation note:** The branch described below has long since been merged and superseded by later execution/reproducibility work. Current audit state and unresolved items are summarized in [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md). Do not follow the old "user approval before merge" or "+7.5% must be rerun" instructions as current workflow.
+
+
 本分支基于 `main` 的 `f0f770965b0ca21522b9d0df65e3130912523d85`。**两个源文件已在本分支实际修改；不可在这个分支再次运行 `--apply`。** 请先审核代码、在真实数据上测试后再考虑合并或部署。
 
 ## 检查已修复的分支

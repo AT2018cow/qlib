@@ -1,8 +1,8 @@
-# 每日选股：参数搜索对齐与每 20 交易日重训（待实测）
+# 每日选股：参数搜索对齐与每 20 交易日重训（历史设计说明）
 
 ## 适用范围与状态
 
-本改动仅适用于 `daily_standalone()` 的生产候选 `LightGBM + Alpha158 + 20 日标签 + csi1000 + top20/nd2`，**不自动改变**其他 Modal 研究任务、默认 YAML 超参数或股票池。`main` 尚未合并。单元测试/源码语法通过也不能代替真实 Modal 运行、实际交易和样本外检验。
+本文记录的是 2026-09 的重训/缓存设计演进，相关代码早已合并并继续扩展。当前研究权威状态见 `14-pre-tuner-stage-summary-20261007.md`。现行研究基线仍使用 20-session retrain，但生产/研究还加入了 deterministic LightGBM、reproducibility manifest、phase audit，以及双池缓存隔离/同步时钟等后续机制；不要把本文的早期 tuner 或 close-price 模拟描述当作当前最终协议。
 
 ## 超参数搜索：修复模型与评价口径错位
 

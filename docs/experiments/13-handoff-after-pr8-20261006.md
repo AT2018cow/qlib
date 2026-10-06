@@ -1,5 +1,8 @@
 # 13 - Work Handoff After PR #8 (2026-10-06)
 
+> **Superseded handoff (2026-10-07):** This handoff ended at PR #8 and is preserved for audit history. PR #9-#13 and subsequent experiments materially changed the project state. New work must start from [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md), then consult this file only for PR #8-era context.
+
+
 ## Purpose
 
 This document is the handoff point for continuing the Qlib stock-selection audit/tuning work in a new conversation.
