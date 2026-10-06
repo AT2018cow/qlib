@@ -3,6 +3,9 @@
 > Qlib A 股日频量化研究（2026-09）。本项目在 microsoft/qlib 之上构建了 Modal 云端研究管道，
 > 完成了从信号验证到滚动终局评估的完整闭环。所有结论均基于实测数据，可复现。
 
+> **2026-10-07 下一对话启动入口**：[Next-Conversation Work Handoff](15-next-conversation-handoff-20261007.md)
+> 新对话应先读 15，再读 14/12/AGENTS.md；15 已基于 PR #14 合并后的 main 整理当前三池状态、权威结果、下一阶段实现顺序与禁止回退的旧结论。
+
 > **2026-10-07 当前权威阶段入口**：[Pre-Tuner Stage Summary and Next-Stage Baseline](14-pre-tuner-stage-summary-20261007.md)
 > 已汇总 PR #5-#13、修正后的 CSI1000/ChiNext/STAR 证据、被 supersede 的旧结论和下一阶段三池不对称并进计划。
 > 后续调优/审计应先读 14；下方 2026-09 “终审版”及 11%+ 历史数字仅保留为历史记录，不再代表当前生产证据。
@@ -42,6 +45,7 @@
 | [07-live-retrain.md](07-live-retrain.md) | 每 20 交易日重训与模型缓存机制 |
 | [08-stock-selection-review-20261003.md](08-stock-selection-review-20261003.md) | 当前选股逻辑审阅：23项问题及优化建议、证据、优先级、验收和复现样例 |
 | [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md) | **当前权威阶段总结**：PR #5-#13、三池最新证据、superseded 结论、下一阶段三池不对称并进基线 |
+| [15-next-conversation-handoff-20261007.md](15-next-conversation-handoff-20261007.md) | **下一对话启动入口**：当前 main、三池状态、已完成实验、下一阶段 tuner/rescue/STAR repair 工作顺序 |
 
 ## 数据
 
