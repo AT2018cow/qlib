@@ -27,7 +27,11 @@ VOL_NAME = "qlib-cn-data"
 VOL_ROOT = Path("/vol")
 
 vol = modal.Volume.from_name(VOL_NAME, create_if_missing=False)
-image = modal.Image.debian_slim(python_version="3.11")
+image = modal.Image.debian_slim(python_version="3.11").add_local_file(
+    "satellite_audit_core.py",
+    remote_path="/root/satellite_audit_core.py",
+    copy=True,
+)
 app = modal.App(APP_NAME, image=image)
 
 
@@ -35,6 +39,36 @@ def _load_json(path: Path) -> dict:
     if not path.is_file():
         raise FileNotFoundError(path)
     return json.loads(path.read_text())
+
+
+@app.function(volumes={str(VOL_ROOT): vol}, timeout=15 * 60)
+def read_and_validate_gate(
+    market: str,
+    freq: int,
+    eval_from: str,
+):
+    """Validate the gate before any phase-screen model fits are launched."""
+    vol.reload()
+    cfg = frozen_audit_config(market)
+    topk, nd = int(cfg["topk"]), int(cfg["nd"])
+    gate_path = VOL_ROOT / "freq_experiment" / f"results_{market}.json"
+    gate = _load_json(gate_path)
+    validate_gate_payload(
+        gate,
+        market=market,
+        freq=freq,
+        eval_from=eval_from,
+        topk=topk,
+        nd=nd,
+    )
+    return {
+        "market": market,
+        "freq": int(freq),
+        "snapshot_token": gate["reproducibility"]["snapshot_token"],
+        "provider_fingerprint": gate["reproducibility"]["provider_fingerprint"],
+        "gate_version": gate["reproducibility_gate"]["gate_version"],
+        "phase0_signal_sha256": gate["results"][str(freq)]["signal_sha256"],
+    }
 
 
 @app.function(volumes={str(VOL_ROOT): vol}, timeout=15 * 60)
@@ -125,6 +159,16 @@ def run(
         str(nd),
     ]
     _run_checked(gate_cmd)
+
+    gate_check = read_and_validate_gate.remote(
+        market=market,
+        freq=freq,
+        eval_from=eval_from,
+    )
+    print(
+        "[satellite-audit] gate artifact validated "
+        f"snapshot={gate_check['snapshot_token']}"
+    )
 
     # The phase extension entrypoint validates the just-written gate before any
     # non-zero phase fits and preserves canonical freq_experiment.py unchanged.
