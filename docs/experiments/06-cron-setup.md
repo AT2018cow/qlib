@@ -1,15 +1,19 @@
 # 每日信号自动运行（Modal Cron 部署指南）
 
-> 2026-09-19 起生效。`--best --daily` 已配置为云端定时任务：每个交易日次日早上自动执行并推送 GitHub，无需本地机器。
+> 2026-09-19 起生效；2026-10-02 扩展为双池信号发布。该 cron 是 paper/research 信号基础设施，不代表所有发布池都已通过当前投资研究审计。当前池状态见 `14-pre-tuner-stage-summary-20261007.md`。
 
 ## 架构
 
 ```
 Modal Cron（每个 A 股交易日 07:00 北京时间）
-  → daily_standalone：下载 chenditc 最新数据（565MB，必然最新）
-  → 训练终审候选（LGB + Alpha158 + 20日标签 + csi1000 + top20 + nd2）
-  → 涨跌停过滤（当日涨幅口径）
-  → GitHub API 直接写入 results/signals/（无需 git 客户端）
+  → daily_standalone：下载 chenditc 最新数据
+  → csi1000（top20/nd2）与 chinext（top20/nd3）分别训练/复用缓存并生成 ranking-only 信号
+  → 板块/日期感知涨跌停过滤
+  → GitHub API 单次 commit 写入两池 CSV + chart
+  → 网站展示 / paper-trading 留痕
+
+注意：当前 corrected research audit 只把 CSI1000 视为 primary validated baseline；
+ChiNext 继续发布仅表示基础设施保留，不表示其 frozen baseline 已获生产资金批准。
 ```
 
 ## 一次性部署步骤
@@ -50,6 +54,9 @@ modal app logs <app名>
 
 # 确认 GitHub 上自动出现当日文件
 # results/signals/<日期>_top20_lgb158.csv
+# results/signals/<日期>_top20_lgb158_chinext.csv
+# results/signals/<日期>_chart.json
+# results/signals/<日期>_chart_chinext.json
 ```
 
 ## 多余依赖说明（已知且接受）
