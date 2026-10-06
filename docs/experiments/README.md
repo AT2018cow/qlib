@@ -3,6 +3,10 @@
 > Qlib A 股日频量化研究（2026-09）。本项目在 microsoft/qlib 之上构建了 Modal 云端研究管道，
 > 完成了从信号验证到滚动终局评估的完整闭环。所有结论均基于实测数据，可复现。
 
+> **2026-10-07 当前权威阶段入口**：[Pre-Tuner Stage Summary and Next-Stage Baseline](14-pre-tuner-stage-summary-20261007.md)
+> 已汇总 PR #5-#13、修正后的 CSI1000/ChiNext/STAR 证据、被 supersede 的旧结论和下一阶段三池不对称并进计划。
+> 后续调优/审计应先读 14；下方 2026-09 “终审版”及 11%+ 历史数字仅保留为历史记录，不再代表当前生产证据。
+
 > **2026-10-03 审阅补充**：[当前选股逻辑问题与优化建议](08-stock-selection-review-20261003.md)
 > 汇总两轮审阅的23项问题、证据状态、修复优先级和验收建议。当前独立复算、数据修订审计、
 > 回测与生产一致性仍有待修复事项；下文历史验证记录须结合该审阅理解，不能直接证明当前生产协议已完整验证。
@@ -37,6 +41,7 @@
 | [06-qlib-audit-fixes.md](06-qlib-audit-fixes.md) | 审计 PR：泄漏修复清单与验收条件 |
 | [07-live-retrain.md](07-live-retrain.md) | 每 20 交易日重训与模型缓存机制 |
 | [08-stock-selection-review-20261003.md](08-stock-selection-review-20261003.md) | 当前选股逻辑审阅：23项问题及优化建议、证据、优先级、验收和复现样例 |
+| [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md) | **当前权威阶段总结**：PR #5-#13、三池最新证据、superseded 结论、下一阶段三池不对称并进基线 |
 
 ## 数据
 
