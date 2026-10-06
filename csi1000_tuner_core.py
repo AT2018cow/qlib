@@ -15,7 +15,7 @@ from copy import deepcopy
 from statistics import median
 from typing import Any, Iterable
 
-PROTOCOL_VERSION = "csi1000_lgb_stage_a_v1"
+PROTOCOL_VERSION = "csi1000_lgb_stage_a_v2"
 MARKET = "csi1000"
 TARGET = "raw_20d"
 LABEL_HORIZON = 20
