@@ -45,7 +45,7 @@ image = (
     )
     .run_commands(
         "cd /root/qlib && pip install . --no-build-isolation --no-deps",
-        "cp /root/qlib/freq_experiment.py /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live.py /root/",
+        "cp /root/qlib/freq_experiment.py /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/",
     )
     .run_commands("cp /root/qlib/freq_experiment.py /root/qlib/qlib_audit_fixes.py /root/")
 )
