@@ -21,9 +21,9 @@ Invalid/missing factors on rows that require a statutory limit calculation fail 
 
 Protocol versions after this correction:
 
-- continuous frequency: `continuous_account_board_aware_v4_cny_tick`
-- Batch C: `board_aware_open_bootstrap_v4_cny_tick`
-- execution attribution: `execution_attribution_v2_cny_tick`
+- continuous frequency: `continuous_account_board_aware_v5_repro`
+- Batch C: `board_aware_open_bootstrap_v5_repro`
+- execution attribution: `execution_attribution_v3_repro`
 
 Any v3 board-aware result remains historical evidence but is superseded for execution-sensitive conclusions.
 
@@ -105,3 +105,42 @@ Do not start the production-aligned nested walk-forward tuner until:
 2. the full 20-phase audit has completed;
 3. raw report artifacts and summary JSON have been retained;
 4. any large phase dispersion has been investigated rather than selecting the best-looking phase.
+
+
+## 6. Reproducibility gate before phase sensitivity
+
+The v4 CSI1000 reruns exposed a phase-0 inconsistency: the standalone baseline
+and phase-audit phase 0 used the same dates/configuration but produced different
+signal and portfolio paths.  The pre-tuner audit therefore has a mandatory
+reproducibility gate before any further phase grid.
+
+LightGBM retraining now uses a shared deterministic CPU policy:
+`deterministic=true`, `force_col_wise=true`, and explicit historical default
+sub-seeds.  Warm Modal workers reload the committed Volume before reading data.
+
+Run this first for each pool:
+
+```bash
+modal run freq_experiment.py::reproducibility_gate_driver --freq 20 --eval-from 2021-01-04 --market csi1000 --topk 20 --nd 2
+modal run freq_experiment.py::reproducibility_gate_driver --freq 20 --eval-from 2021-01-04 --market chinext --topk 20 --nd 3
+modal run freq_experiment.py::reproducibility_gate_driver --freq 20 --eval-from 2021-01-04 --market star --topk 50 --nd 2
+```
+
+The gate trains the identical phase-0 lineage twice.  It fails unless every
+retrain chunk prediction hash, the concatenated signal hash, and the canonical
+portfolio-report hash match exactly.  It also records the provider prefix
+fingerprint, model-config hash, runtime versions, and source hash.
+
+A passing gate writes the canonical phase-0 baseline and signal artifact.
+`retrain_phase_sensitivity_driver` then reuses that phase-0 signal and refuses
+to launch expensive phase fits if the provider/runtime/source manifest changed.
+
+For ChiNext and STAR, use the four-phase screen first:
+
+```bash
+modal run freq_experiment.py::retrain_phase_sensitivity_driver --freq 20 --eval-from 2021-01-04 --market chinext --topk 20 --nd 3 --phases 0,5,10,15
+modal run freq_experiment.py::retrain_phase_sensitivity_driver --freq 20 --eval-from 2021-01-04 --market star --topk 50 --nd 2 --phases 0,5,10,15
+```
+
+Only expand a pool to all 20 phases when the screen shows material phase risk or
+when a full distribution is required for a production decision.
