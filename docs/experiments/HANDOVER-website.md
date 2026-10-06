@@ -2,8 +2,6 @@
 
 > **2026-10-07 研究证据更新**：网站的双池展示/历史信号留痕是已部署工程状态，不等同于当前 alpha 认证。最新 corrected audit 以 [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md) 为准：CSI1000 为当前主调优线；ChiNext frozen baseline 在 deterministic 4-phase screen 中全部负相对超额，仅作为研究/救援线；STAR corrected alpha 因 reproducibility gate 未通过而未知。网站方法论页不得继续把旧 +11.6%/+11.5% 或“STAR 已证伪”作为当前证据。
 
-> **Research-status note (2026-10-07):** Website/cron support for multiple pools is publication infrastructure, not a statement that every displayed pool is currently production-approved. Current research authority is [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md): CSI1000 is the primary validated baseline; ChiNext's corrected frozen baseline is weak; STAR is reproducibility-blocked.
-
 
 > 面向新对话：网站已上线且全自动运行。本文档说明当前架构、已实现功能、已知设计决策、以及后续优化的起点。
 
