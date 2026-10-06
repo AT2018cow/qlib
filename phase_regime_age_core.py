@@ -411,21 +411,41 @@ def decision_summary(pairwise_windows: dict[str, dict]) -> dict:
         target = result["regime_years"]
         age_rows = target["by_dimension"]["relative_age_state"]
         stress_rows = target["by_dimension"]["stress_regime"]
-        worst_age = min(age_rows, key=lambda row: row["net_log_gap"])
-        worst_stress = min(stress_rows, key=lambda row: row["net_log_gap"])
+
+        age_contribution = min(age_rows, key=lambda row: row["net_log_gap"])
+        age_intensity = min(age_rows, key=lambda row: row["mean_daily_net_log_gap"])
+        stress_contribution = min(stress_rows, key=lambda row: row["net_log_gap"])
+        stress_intensity = min(
+            stress_rows, key=lambda row: row["mean_daily_net_log_gap"]
+        )
+
         out[str(comparator)] = {
             "regime_year_share_of_full_net_gap": target[
                 "share_of_full_net_log_gap"
             ],
-            "worst_relative_age_state": worst_age["relative_age_state"],
-            "worst_relative_age_state_net_log_gap": worst_age["net_log_gap"],
-            "worst_relative_age_state_negative_gap_share": worst_age[
+            "dominant_negative_age_state": age_contribution["relative_age_state"],
+            "dominant_negative_age_state_net_log_gap": age_contribution[
+                "net_log_gap"
+            ],
+            "dominant_negative_age_state_share": age_contribution[
                 "negative_gap_share"
             ],
-            "worst_stress_state": worst_stress["stress_regime"],
-            "worst_stress_state_net_log_gap": worst_stress["net_log_gap"],
-            "worst_stress_state_negative_gap_share": worst_stress[
+            "worst_mean_daily_age_state": age_intensity["relative_age_state"],
+            "worst_mean_daily_age_state_gap": age_intensity[
+                "mean_daily_net_log_gap"
+            ],
+            "dominant_negative_stress_state": stress_contribution[
+                "stress_regime"
+            ],
+            "dominant_negative_stress_state_net_log_gap": stress_contribution[
+                "net_log_gap"
+            ],
+            "dominant_negative_stress_state_share": stress_contribution[
                 "negative_gap_share"
+            ],
+            "worst_mean_daily_stress_state": stress_intensity["stress_regime"],
+            "worst_mean_daily_stress_state_gap": stress_intensity[
+                "mean_daily_net_log_gap"
             ],
         }
     return out
