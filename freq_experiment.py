@@ -203,10 +203,77 @@ def freq_window(args: dict):
     payload = zlib.compress(pickle.dumps(pred, protocol=pickle.HIGHEST_PROTOCOL), level=6)
     return {
         "freq": args["freq"],
+        "phase": args.get("phase"),
         "retrain_asof": args["retrain_asof"],
         "signal_end": args["signal_end"],
         "n_rows": int(len(pred)),
         "pred_zlib_pickle": payload,
+    }
+
+
+
+def _write_report_artifact(report, path: Path) -> dict:
+    """Persist the raw daily Qlib report and return reproducibility metadata."""
+    import hashlib
+
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    report.sort_index().to_parquet(path, index=True)
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    return {
+        "path": str(path),
+        "sha256": digest,
+        "rows": int(len(report)),
+        "columns": [str(x) for x in report.columns],
+    }
+
+
+def _phase_jobs(calendar: list[str], start_i: int, freq: int, phase: int,
+                market: str, topk: int, nd: int) -> list[dict]:
+    """Build one retraining lineage with a fixed phase and common eval window.
+
+    phase=0 reproduces the historical freq_driver anchor (first retrain exactly
+    on eval_from).  phase=p starts the already-active lineage p sessions before
+    eval_from, while every phase is evaluated from the same eval_from+1 date.
+    """
+    if freq < 1:
+        raise ValueError("freq must be positive")
+    if phase < 0 or phase >= freq:
+        raise ValueError(f"phase must be in [0, {freq - 1}]")
+    first_i = start_i - phase
+    if first_i < 0:
+        raise ValueError("insufficient calendar history for requested phase")
+    jobs = []
+    i = first_i
+    while i < len(calendar) - 1:
+        signal_end_i = min(i + freq - 1, len(calendar) - 1)
+        jobs.append({
+            "freq": freq,
+            "phase": phase,
+            "retrain_asof": calendar[i],
+            "signal_end": calendar[signal_end_i],
+            "market": market,
+            "topk": topk,
+            "nd": nd,
+        })
+        i += freq
+    return jobs
+
+
+def _phase_metric_summary(results: dict, field: str) -> dict:
+    import numpy as np
+
+    vals = [float(v[field]) for v in results.values() if v.get(field) is not None]
+    if not vals:
+        return {"n": 0, "min": None, "q25": None, "median": None, "q75": None, "max": None}
+    arr = np.asarray(vals, dtype=float)
+    return {
+        "n": int(len(arr)),
+        "min": round(float(np.min(arr)), 6),
+        "q25": round(float(np.quantile(arr, 0.25)), 6),
+        "median": round(float(np.median(arr)), 6),
+        "q75": round(float(np.quantile(arr, 0.75)), 6),
+        "max": round(float(np.max(arr)), 6),
     }
 
 
@@ -239,6 +306,9 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
     if start_i >= len(cal) - 1 or cal[start_i] != eval_from:
         raise ValueError("eval_from must be a trading day with a following execution day")
 
+    out = VOL_ROOT / "freq_experiment"
+    reports_dir = out / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
     results = {}
     for freq in [int(x) for x in freqs.split(",")]:
         if freq < 1:
@@ -312,8 +382,14 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
             backtest_start=execution_start,
         )
         x = excess.to_numpy(dtype=float)
+        report_artifact = _write_report_artifact(
+            rep,
+            reports_dir / (
+                f"report_{market}_freq{freq}_{execution_start}_{execution_end}.parquet"
+            ),
+        )
         results[str(freq)] = {
-            "protocol": "continuous_account_board_aware_v3",
+            "protocol": "continuous_account_board_aware_v4_cny_tick",
             "metric_version": perf["metric_version"],
             "n_retrains": len(jobs),
             "n_errors": 0,
@@ -331,6 +407,7 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
             "information_ratio": perf["information_ratio"],
             "annual_volatility": perf["annual_volatility"],
             "account_return_max_error": perf["account_return_max_error"],
+            "report_artifact": report_artifact,
             "legacy_ann_excess_arithmetic": round(float(x.mean() * 238), 4),
             "legacy_ir_arithmetic": (
                 round(float(x.mean() / x.std(ddof=1) * (238 ** 0.5)), 3)
@@ -341,11 +418,9 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
         }
         print(f"[freq] freq={freq}: {results[str(freq)]}")
 
-    out = VOL_ROOT / "freq_experiment"
-    out.mkdir(parents=True, exist_ok=True)
     with (out / "results.json").open("w") as f:
         _json.dump({
-            "protocol": "continuous_account_board_aware_v3",
+            "protocol": "continuous_account_board_aware_v4_cny_tick",
             "window": f"{eval_from}~{cal[-1]}",
             "market": market,
             "results": results,
@@ -353,6 +428,211 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
     vol.commit()
     return results
 
+
+
+@app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=24 * 3600)
+def retrain_phase_sensitivity_driver(
+    freq: int = 20,
+    eval_from: str = "2021-01-04",
+    market: str = "csi1000",
+    topk: int = 20,
+    nd: int = 2,
+    phases: str = "all",
+):
+    """Evaluate retraining-calendar phase sensitivity under one fixed protocol.
+
+    All phases share the exact same execution window.  phase=0 reproduces the
+    historical freq-driver schedule.  phase=1..freq-1 means the model lineage
+    was already active that many sessions before eval_from.
+
+    This is an audit, not a tuner: no phase is selected or deployed.
+    """
+    import json as _json
+    import pickle
+    import zlib
+
+    import pandas as pd
+    import qlib
+    from qlib.backtest import backtest as normal_backtest
+
+    from qlib_audit_fixes import read_trading_calendar
+    from portfolio_performance import portfolio_performance
+
+    if freq < 2:
+        raise ValueError("phase sensitivity requires freq >= 2")
+    if phases == "all":
+        phase_list = list(range(freq))
+    else:
+        phase_list = sorted({int(x.strip()) for x in phases.split(",") if x.strip()})
+        if not phase_list:
+            raise ValueError("phases is empty")
+        if phase_list[0] < 0 or phase_list[-1] >= freq:
+            raise ValueError(f"phases must be within 0..{freq - 1}")
+
+    prepare.remote(force=True)
+    try:
+        vol.reload()
+    except Exception:
+        pass
+
+    cal = read_trading_calendar(DATA_DIR)
+    start_i = bisect_left(cal, eval_from)
+    if start_i >= len(cal) - 1 or cal[start_i] != eval_from:
+        raise ValueError("eval_from must be a trading day with a following execution day")
+    if start_i - max(phase_list) < 0:
+        raise ValueError("insufficient pre-evaluation calendar for requested phases")
+
+    all_jobs = []
+    jobs_by_phase = {}
+    for phase in phase_list:
+        jobs = _phase_jobs(cal, start_i, freq, phase, market, topk, nd)
+        jobs_by_phase[phase] = jobs
+        all_jobs.extend(jobs)
+    print(
+        f"[phase] freq={freq} phases={phase_list}: "
+        f"{len(all_jobs)} total model fits"
+    )
+
+    outs = list(freq_window.map(all_jobs))
+    outs_by_phase = {phase: [] for phase in phase_list}
+    for out in outs:
+        phase = out.get("phase")
+        if phase not in outs_by_phase:
+            raise RuntimeError(f"unexpected phase output: {phase}")
+        outs_by_phase[phase].append(out)
+
+    execution_start = cal[start_i + 1]
+    execution_end = cal[-1]
+    qlib.init(**{**_load_task(market)["qlib_init"], "skip_if_reg": True})
+    if market in ("star_chn", "chinext", "star"):
+        from board_rules import star_chn_backtest_guard
+        star_chn_backtest_guard(execution_start)
+
+    executor = {
+        "class": "SimulatorExecutor",
+        "module_path": "qlib.backtest.executor",
+        "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
+    }
+    report_root = VOL_ROOT / "freq_phase_sensitivity" / "reports"
+    report_root.mkdir(parents=True, exist_ok=True)
+    results = {}
+
+    for phase in phase_list:
+        chunks = []
+        phase_outs = sorted(outs_by_phase[phase], key=lambda x: x["retrain_asof"])
+        for out in phase_outs:
+            chunks.append(pickle.loads(zlib.decompress(out["pred_zlib_pickle"])))
+        if not chunks:
+            raise RuntimeError(f"phase={phase}: no prediction chunks")
+        signal = pd.concat(chunks).sort_index()
+        if signal.index.has_duplicates:
+            raise RuntimeError(f"phase={phase}: duplicate signal rows")
+        signal_days = {str(x)[:10] for x in signal.index.get_level_values(0).unique()}
+        if eval_from not in signal_days:
+            raise RuntimeError(f"phase={phase}: bootstrap signal missing for {eval_from}")
+        if cal[-2] not in signal_days:
+            raise RuntimeError(f"phase={phase}: final executable signal day missing")
+
+        strategy = {
+            "class": "TopkDropoutStrategy",
+            "module_path": "qlib.contrib.strategy",
+            "kwargs": {
+                "signal": signal,
+                "topk": topk,
+                "n_drop": nd,
+                "forbid_all_trade_at_limit": False,
+            },
+        }
+        pm, _ = normal_backtest(
+            strategy=strategy,
+            executor=executor,
+            start_time=execution_start,
+            end_time=execution_end,
+            account=100000000,
+            benchmark=_bench_of(market),
+            exchange_kwargs=research_exchange(
+                execution_start, execution_end, codes=market
+            ),
+        )
+        rep = pm["1day"][0]
+        perf = portfolio_performance(
+            rep,
+            initial_cash=100000000,
+            backtest_start=execution_start,
+        )
+        report_artifact = _write_report_artifact(
+            rep,
+            report_root / (
+                f"report_{market}_freq{freq}_phase{phase:02d}_"
+                f"{execution_start}_{execution_end}.parquet"
+            ),
+        )
+        results[str(phase)] = {
+            "phase": phase,
+            "first_retrain_asof": jobs_by_phase[phase][0]["retrain_asof"],
+            "n_retrains": len(jobs_by_phase[phase]),
+            "strategy_cagr": perf["strategy_cagr"],
+            "benchmark_cagr": perf["benchmark_cagr"],
+            "relative_excess_cagr": perf["relative_excess_cagr"],
+            "strategy_max_drawdown": perf["strategy_max_drawdown"],
+            "relative_max_drawdown": perf["relative_max_drawdown"],
+            "sharpe": perf["sharpe"],
+            "information_ratio": perf["information_ratio"],
+            "account_return_max_error": perf["account_return_max_error"],
+            "report_artifact": report_artifact,
+            "performance": perf,
+        }
+        print(
+            f"[phase] {phase:02d}: CAGR={perf['strategy_cagr']:.4f} "
+            f"rel={perf['relative_excess_cagr']:.4f} "
+            f"MDD={perf['strategy_max_drawdown']:.4f} "
+            f"Sharpe={perf['sharpe']}"
+        )
+
+    complete_grid = phase_list == list(range(freq))
+    metric_fields = [
+        "strategy_cagr",
+        "relative_excess_cagr",
+        "strategy_max_drawdown",
+        "relative_max_drawdown",
+        "sharpe",
+        "information_ratio",
+    ]
+    summary = {
+        field: _phase_metric_summary(results, field) for field in metric_fields
+    }
+    summary["strategy_cagr_range_pp"] = round(
+        (summary["strategy_cagr"]["max"] - summary["strategy_cagr"]["min"]) * 100,
+        3,
+    )
+    summary["relative_excess_cagr_range_pp"] = round(
+        (
+            summary["relative_excess_cagr"]["max"]
+            - summary["relative_excess_cagr"]["min"]
+        ) * 100,
+        3,
+    )
+    payload = {
+        "protocol": "retrain_phase_sensitivity_v1_cny_tick",
+        "purpose": "audit_only_do_not_select_best_phase",
+        "market": market,
+        "freq": freq,
+        "topk": topk,
+        "n_drop": nd,
+        "eval_from": eval_from,
+        "execution_start": execution_start,
+        "execution_end": execution_end,
+        "phases": phase_list,
+        "complete_phase_grid": complete_grid,
+        "results": results,
+        "summary": summary,
+    }
+    out = VOL_ROOT / "freq_phase_sensitivity"
+    out.mkdir(parents=True, exist_ok=True)
+    with (out / f"phase_{market}_freq{freq}.json").open("w") as fh:
+        _json.dump(payload, fh, indent=2, ensure_ascii=False)
+    vol.commit()
+    return payload
 
 
 def _filter_signal_excluding_growth_boards(signal):
@@ -654,7 +934,7 @@ def execution_attribution_driver(freq: int = 20, eval_from: str = "2021-01-04",
     }
 
     payload = {
-        "protocol": "execution_attribution_v1",
+        "protocol": "execution_attribution_v2_cny_tick",
         "market": market,
         "freq": freq,
         "topk": topk,
