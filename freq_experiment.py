@@ -253,7 +253,7 @@ def _phase_jobs(calendar: list[str], start_i: int, freq: int, phase: int,
             "retrain_asof": calendar[i],
             "signal_end": calendar[signal_end_i],
             "market": market,
-            "topk": topk,
+            "topk": int(topk),
             "nd": nd,
         })
         i += freq
@@ -324,7 +324,7 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
                 "retrain_asof": cal[i],
                 "signal_end": cal[signal_end_i],
                 "market": market,
-                "topk": topk,
+                "topk": int(topk),
                 "nd": nd,
             })
             i += freq
@@ -361,7 +361,7 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
         strategy = {
             "class": "TopkDropoutStrategy",
             "module_path": "qlib.contrib.strategy",
-            "kwargs": {"signal": signal, "topk": topk, "n_drop": nd, "forbid_all_trade_at_limit": False},
+            "kwargs": {"signal": signal, "topk": int(topk), "n_drop": int(nd), "forbid_all_trade_at_limit": False},
         }
         pm, _ = normal_backtest(
             strategy=strategy,
@@ -538,8 +538,8 @@ def retrain_phase_sensitivity_driver(
             "module_path": "qlib.contrib.strategy",
             "kwargs": {
                 "signal": signal,
-                "topk": topk,
-                "n_drop": nd,
+                "topk": int(topk),
+                "n_drop": int(nd),
                 "forbid_all_trade_at_limit": False,
             },
         }
@@ -617,8 +617,8 @@ def retrain_phase_sensitivity_driver(
         "purpose": "audit_only_do_not_select_best_phase",
         "market": market,
         "freq": freq,
-        "topk": topk,
-        "n_drop": nd,
+        "topk": int(topk),
+        "n_drop": int(nd),
         "eval_from": eval_from,
         "execution_start": execution_start,
         "execution_end": execution_end,
@@ -714,8 +714,8 @@ def _run_execution_protocol(signal, *, protocol: str, execution_start: str,
         "module_path": "qlib.contrib.strategy",
         "kwargs": {
             "signal": sig,
-            "topk": topk,
-            "n_drop": nd,
+            "topk": int(topk),
+            "n_drop": int(nd),
             "forbid_all_trade_at_limit": forbid_all,
         },
     }
@@ -839,7 +839,7 @@ def execution_attribution_driver(freq: int = 20, eval_from: str = "2021-01-04",
             "retrain_asof": cal[i],
             "signal_end": cal[signal_end_i],
             "market": market,
-            "topk": topk,
+            "topk": int(topk),
             "nd": nd,
         })
         i += freq
@@ -937,8 +937,8 @@ def execution_attribution_driver(freq: int = 20, eval_from: str = "2021-01-04",
         "protocol": "execution_attribution_v2_cny_tick",
         "market": market,
         "freq": freq,
-        "topk": topk,
-        "n_drop": nd,
+        "topk": int(topk),
+        "n_drop": int(nd),
         "window": f"{execution_start}~{execution_end}",
         "signal_rows": int(len(signal)),
         "n_retrains": len(jobs),
