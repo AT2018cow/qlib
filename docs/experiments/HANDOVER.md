@@ -1,5 +1,10 @@
 # 工作交接文档（2026-09-19）——面向下一步 RD-Agent / 消息面工作
 
+> **Superseded handoff:** this was the 2026-09/early-10 handoff. For any new session, read [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md) first.
+>
+> Current pool status: **CSI1000 = primary tuner line; ChiNext = reproducible but current frozen baseline weak, bounded rescue only; STAR = reproducibility blocked, alpha unknown.** The +11% historical figures below are preserved only as historical evidence.
+
+
 > 本文档面向新对话的接手者，概括本对话完成的全部工作、当前系统状态、已固化的结论、以及下一步（P3）的启动要点。
 
 ## 一、项目概览
