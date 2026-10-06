@@ -52,6 +52,45 @@ class BoardThresholdTests(unittest.TestCase):
         self.assertTrue(lb[0])   # exact rounded limit price
         self.assertFalse(lb[1])  # +9.6% is legal and must not be treated as limit-up
 
+
+    def test_statutory_tick_rounding_uses_original_cny_scale(self):
+        # Qlib stores normalized adjusted prices.  Here factor=0.01 means
+        # adjusted price / factor reconstructs the original RMB price.
+        # Raw previous reference=10.01 -> 10% upper limit=11.01 after 0.01 tick
+        # rounding.  Raw open=11.00 must remain tradable.  Rounding 0.1001 on
+        # the adjusted scale would incorrectly produce 0.11 and block it.
+        lb, ls = compute_limit_masks(
+            ["SH600519"],
+            ["2026-09-15"],
+            [0.1100],
+            [0.1001],
+            [False],
+            factors=[0.01],
+        )
+        self.assertFalse(lb[0])
+        self.assertFalse(ls[0])
+
+        lb2, _ = compute_limit_masks(
+            ["SH600519"],
+            ["2026-09-15"],
+            [0.1101],
+            [0.1001],
+            [False],
+            factors=[0.01],
+        )
+        self.assertTrue(lb2[0])
+
+    def test_invalid_factor_fails_closed_for_statutory_rows(self):
+        with self.assertRaises(ValueError):
+            compute_limit_masks(
+                ["SH600519"],
+                ["2026-09-15"],
+                [1.1],
+                [1.0],
+                [False],
+                factors=[np.nan],
+            )
+
     def test_limit_down_blocks_sell(self):
         lb, ls = compute_limit_masks(["SZ300750"], ["2026-09-15"], [7.9], [10.0], [False])
         # -21% 越过 -19.5% 阈值 → 跌停卖被阻（-19.5% 恰在阈值边缘属模糊区，不用作测试点）
