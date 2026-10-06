@@ -541,109 +541,73 @@ def _phase_metric_summary(results: dict, field: str) -> dict:
 
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=8 * 3600)
 def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20, nd=2):
-    """连续账户重训频率实验。
+    """Single-pass continuous-account baseline under a fingerprinted provider snapshot.
 
-    每个 worker 只负责一个模型谱系区间的预测；driver 拼接全部预测后只运行一次
-    TopkDropoutStrategy 回测。这样重训只替换模型，不清空持仓，也保证首个执行日
-    使用 retrain_asof 当日收盘生成的上一交易步信号。
+    This driver is deterministic but is *not* the reproducibility gate because it
+    trains each lineage only once.  Run reproducibility_gate_driver before an
+    expensive phase audit.
     """
     import json as _json
-    import pickle
-    import zlib
 
-    import pandas as pd
-    import qlib
-    from qlib.backtest import backtest as normal_backtest
+    import numpy as np
 
     from qlib_audit_fixes import read_trading_calendar
     from portfolio_performance import portfolio_performance
 
     prepare.remote(force=True, market=market)
-    try:
-        vol.reload()
-    except Exception:
-        pass
+    vol.reload()
     cal = read_trading_calendar(DATA_DIR)
     start_i = bisect_left(cal, eval_from)
     if start_i >= len(cal) - 1 or cal[start_i] != eval_from:
         raise ValueError("eval_from must be a trading day with a following execution day")
 
+    manifest = _runtime_repro_manifest(market, cal[-1])
+    _publish_snapshot_manifest(manifest)
+
     out = VOL_ROOT / "freq_experiment"
     reports_dir = out / "reports"
+    signals_dir = out / "signals"
     reports_dir.mkdir(parents=True, exist_ok=True)
+    signals_dir.mkdir(parents=True, exist_ok=True)
     results = {}
+
     for freq in [int(x) for x in freqs.split(",")]:
         if freq < 1:
             raise ValueError("retraining frequency must be positive")
-        jobs = []
-        i = start_i
-        while i < len(cal) - 1:
-            # Model trained after bar i scores bar i itself; those scores execute on i+1.
-            # Stop its signal responsibility the day before the next retrain to avoid overlap.
-            signal_end_i = min(i + freq - 1, len(cal) - 1)
-            jobs.append({
-                "freq": freq,
-                "retrain_asof": cal[i],
-                "signal_end": cal[signal_end_i],
-                "market": market,
-                "topk": int(topk),
-                "nd": nd,
-            })
-            i += freq
-        print(f"[freq] freq={freq}: {len(jobs)} 个重训点")
+        jobs = _phase_jobs(cal, start_i, freq, 0, market, int(topk), int(nd))
+        for job in jobs:
+            job["snapshot_token"] = manifest["snapshot_token"]
+        print(f"[freq] freq={freq}: {len(jobs)} deterministic retrain points")
 
         outs = list(freq_window.map(jobs))
-        chunks = []
-        for o in sorted(outs, key=lambda x: x["retrain_asof"]):
-            raw = zlib.decompress(o["pred_zlib_pickle"])
-            pred = pickle.loads(raw)
-            chunks.append(pred)
-        if not chunks:
-            raise RuntimeError(f"freq={freq}: no prediction chunks")
-
-        signal = pd.concat(chunks).sort_index()
-        if signal.index.has_duplicates:
-            raise RuntimeError(f"freq={freq}: duplicate signal rows across retrain chunks")
-        signal_days = signal.index.get_level_values(0)
+        signal, chunk_meta = _assemble_signal(outs)
         expected_signal_start = cal[start_i]
-        if str(signal_days.min())[:10] != expected_signal_start:
+        if str(signal.index.get_level_values(0).min())[:10] != expected_signal_start:
             raise RuntimeError("missing bootstrap signal on retrain/eval anchor")
 
         execution_start = cal[start_i + 1]
         execution_end = cal[-1]
-        qlib.init(**{**_load_task(market)["qlib_init"], "skip_if_reg": True})
-        if market in ("star_chn", "chinext", "star"):
-            from board_rules import star_chn_backtest_guard
-            star_chn_backtest_guard(execution_start)
-        executor = {
-            "class": "SimulatorExecutor",
-            "module_path": "qlib.backtest.executor",
-            "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
-        }
-        strategy = {
-            "class": "TopkDropoutStrategy",
-            "module_path": "qlib.contrib.strategy",
-            "kwargs": {"signal": signal, "topk": int(topk), "n_drop": int(nd), "forbid_all_trade_at_limit": False},
-        }
-        pm, _ = normal_backtest(
-            strategy=strategy,
-            executor=executor,
-            start_time=execution_start,
-            end_time=execution_end,
-            account=100000000,
-            benchmark=_bench_of(market),
-            exchange_kwargs=research_exchange(execution_start, execution_end, codes=market),
+        rep = _run_signal_backtest(
+            signal,
+            execution_start=execution_start,
+            execution_end=execution_end,
+            market=market,
+            topk=int(topk),
+            nd=int(nd),
         )
-        rep = pm["1day"][0]
         excess = (rep["return"] - rep["bench"] - rep["cost"]).dropna()
         if excess.empty:
             raise RuntimeError(f"freq={freq}: empty continuous-account report")
         perf = portfolio_performance(
-            rep,
-            initial_cash=100000000,
-            backtest_start=execution_start,
+            rep, initial_cash=100000000, backtest_start=execution_start
         )
         x = excess.to_numpy(dtype=float)
+        signal_artifact = _write_signal_artifact(
+            signal,
+            signals_dir / (
+                f"signal_{market}_freq{freq}_phase00_{expected_signal_start}_{cal[-2]}.parquet"
+            ),
+        )
         report_artifact = _write_report_artifact(
             rep,
             reports_dir / (
@@ -659,6 +623,9 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
             "signal_start": expected_signal_start,
             "execution_start": execution_start,
             "execution_end": execution_end,
+            "signal_sha256": signal_artifact["content_sha256"],
+            "signal_artifact": signal_artifact,
+            "chunk_predictions": chunk_meta,
             "strategy_cagr": perf["strategy_cagr"],
             "benchmark_cagr": perf["benchmark_cagr"],
             "relative_excess_cagr": perf["relative_excess_cagr"],
@@ -678,18 +645,240 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
             "positive_ratio": round(float((x > 0).mean()), 3),
             "performance": perf,
         }
-        print(f"[freq] freq={freq}: {results[str(freq)]}")
 
-    with (out / "results.json").open("w") as f:
-        _json.dump({
-            "protocol": "continuous_account_board_aware_v5_repro",
-            "window": f"{eval_from}~{cal[-1]}",
-            "market": market,
-            "results": results,
-        }, f, indent=2)
+    payload = {
+        "protocol": "continuous_account_board_aware_v5_repro",
+        "window": f"{eval_from}~{cal[-1]}",
+        "market": market,
+        "topk": int(topk),
+        "n_drop": int(nd),
+        "benchmark": _bench_of(market),
+        "reproducibility": manifest,
+        "reproducibility_gate": {
+            "passed": False,
+            "reason": "single-pass baseline; run reproducibility_gate_driver",
+        },
+        "results": results,
+    }
+    market_path = out / f"results_{market}.json"
+    market_path.write_text(_json.dumps(payload, indent=2, ensure_ascii=False))
+    if market == "csi1000":
+        (out / "results.json").write_text(
+            _json.dumps(payload, indent=2, ensure_ascii=False)
+        )
     vol.commit()
-    return results
+    return payload
 
+
+def pre_tuner_audit_matrix() -> dict:
+    """Frozen three-pool audit matrix used before any nested tuning."""
+    from board_rules import EW_BENCH
+
+    out = {}
+    for market, cfg in PRE_TUNER_AUDIT_CONFIGS.items():
+        out[market] = {
+            **cfg,
+            "benchmark": _bench_of(market),
+            "phase_count": 20,
+            "screening_phases": [0, 5, 10, 15],
+            "eval_from": "2021-01-04",
+        }
+    if out["chinext"]["benchmark"] != EW_BENCH["chinext"]:
+        raise RuntimeError("chinext audit benchmark drift")
+    if out["star"]["benchmark"] != EW_BENCH["star"]:
+        raise RuntimeError("star audit benchmark drift")
+    return out
+
+
+@app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=12 * 3600)
+def reproducibility_gate_driver(
+    freq: int = 20,
+    eval_from: str = "2021-01-04",
+    market: str = "csi1000",
+    topk: int = 20,
+    nd: int = 2,
+):
+    """Train the identical phase-0 lineage twice and require byte-level identities.
+
+    The two repeats are submitted together to exercise independent workers and
+    scheduling.  The gate passes only if every prediction chunk hash, the
+    concatenated signal hash, and two portfolio report content hashes match.
+    A passing gate also writes the canonical phase-0 baseline and signal
+    artifact consumed by retrain_phase_sensitivity_driver.
+    """
+    import json as _json
+
+    import numpy as np
+
+    from qlib_audit_fixes import read_trading_calendar
+    from portfolio_performance import portfolio_performance
+
+    if freq < 1:
+        raise ValueError("freq must be positive")
+    prepare.remote(force=True, market=market)
+    vol.reload()
+    cal = read_trading_calendar(DATA_DIR)
+    start_i = bisect_left(cal, eval_from)
+    if start_i >= len(cal) - 1 or cal[start_i] != eval_from:
+        raise ValueError("eval_from must be a trading day with a following execution day")
+
+    manifest = _runtime_repro_manifest(market, cal[-1])
+    _publish_snapshot_manifest(manifest)
+    base_jobs = _phase_jobs(cal, start_i, freq, 0, market, int(topk), int(nd))
+    jobs = []
+    for repeat in (0, 1):
+        for original in base_jobs:
+            job = dict(original)
+            job["repeat"] = repeat
+            job["snapshot_token"] = manifest["snapshot_token"]
+            jobs.append(job)
+    print(
+        f"[repro] {market} freq={freq}: {len(base_jobs)} retrains x2 = {len(jobs)} fits"
+    )
+
+    outs = list(freq_window.map(jobs))
+    by_repeat = {0: [], 1: []}
+    for out in outs:
+        repeat = out.get("repeat")
+        if repeat not in by_repeat:
+            raise RuntimeError(f"unexpected repeat id: {repeat}")
+        by_repeat[repeat].append(out)
+
+    signal_a, chunks_a = _assemble_signal(by_repeat[0])
+    signal_b, chunks_b = _assemble_signal(by_repeat[1])
+    hashes_a = [(x["retrain_asof"], x["prediction_sha256"]) for x in chunks_a]
+    hashes_b = [(x["retrain_asof"], x["prediction_sha256"]) for x in chunks_b]
+    if hashes_a != hashes_b:
+        mismatches = [
+            {"a": a, "b": b}
+            for a, b in zip(hashes_a, hashes_b)
+            if a != b
+        ][:10]
+        raise RuntimeError(f"repro gate failed: prediction chunk mismatch {mismatches}")
+
+    signal_hash_a = _signal_sha256(signal_a)
+    signal_hash_b = _signal_sha256(signal_b)
+    if signal_hash_a != signal_hash_b:
+        raise RuntimeError("repro gate failed: concatenated signal hash mismatch")
+
+    execution_start = cal[start_i + 1]
+    execution_end = cal[-1]
+    rep_a = _run_signal_backtest(
+        signal_a,
+        execution_start=execution_start,
+        execution_end=execution_end,
+        market=market,
+        topk=int(topk),
+        nd=int(nd),
+    )
+    rep_b = _run_signal_backtest(
+        signal_b,
+        execution_start=execution_start,
+        execution_end=execution_end,
+        market=market,
+        topk=int(topk),
+        nd=int(nd),
+    )
+    report_hash_a = _frame_sha256(rep_a)
+    report_hash_b = _frame_sha256(rep_b)
+    if report_hash_a != report_hash_b:
+        raise RuntimeError("repro gate failed: portfolio report content hash mismatch")
+
+    perf = portfolio_performance(
+        rep_a, initial_cash=100000000, backtest_start=execution_start
+    )
+    excess = (rep_a["return"] - rep_a["bench"] - rep_a["cost"]).dropna()
+    x = excess.to_numpy(dtype=float)
+
+    out = VOL_ROOT / "freq_experiment"
+    signals_dir = out / "signals"
+    reports_dir = out / "reports"
+    signal_artifact = _write_signal_artifact(
+        signal_a,
+        signals_dir / (
+            f"signal_{market}_freq{freq}_phase00_{eval_from}_{cal[-2]}.parquet"
+        ),
+    )
+    report_artifact = _write_report_artifact(
+        rep_a,
+        reports_dir / (
+            f"report_{market}_freq{freq}_{execution_start}_{execution_end}.parquet"
+        ),
+    )
+    result = {
+        "protocol": "continuous_account_board_aware_v5_repro",
+        "metric_version": perf["metric_version"],
+        "n_retrains": len(base_jobs),
+        "n_errors": 0,
+        "n_days": int(len(excess)),
+        "signal_start": eval_from,
+        "execution_start": execution_start,
+        "execution_end": execution_end,
+        "signal_sha256": signal_hash_a,
+        "signal_artifact": signal_artifact,
+        "chunk_predictions": chunks_a,
+        "strategy_cagr": perf["strategy_cagr"],
+        "benchmark_cagr": perf["benchmark_cagr"],
+        "relative_excess_cagr": perf["relative_excess_cagr"],
+        "strategy_max_drawdown": perf["strategy_max_drawdown"],
+        "benchmark_max_drawdown": perf["benchmark_max_drawdown"],
+        "relative_max_drawdown": perf["relative_max_drawdown"],
+        "sharpe": perf["sharpe"],
+        "information_ratio": perf["information_ratio"],
+        "annual_volatility": perf["annual_volatility"],
+        "account_return_max_error": perf["account_return_max_error"],
+        "report_artifact": report_artifact,
+        "legacy_ann_excess_arithmetic": round(float(x.mean() * 238), 4),
+        "legacy_ir_arithmetic": (
+            round(float(x.mean() / x.std(ddof=1) * (238 ** 0.5)), 3)
+            if len(x) > 1 and x.std(ddof=1) > 0 else None
+        ),
+        "positive_ratio": round(float((x > 0).mean()), 3),
+        "performance": perf,
+    }
+    gate = {
+        "passed": True,
+        "gate_version": "phase0_double_fit_v1",
+        "prediction_chunks_match": True,
+        "signal_hash_match": True,
+        "report_hash_match": True,
+        "repeat_a_signal_sha256": signal_hash_a,
+        "repeat_b_signal_sha256": signal_hash_b,
+        "repeat_a_report_content_sha256": report_hash_a,
+        "repeat_b_report_content_sha256": report_hash_b,
+        "n_retrains_per_repeat": len(base_jobs),
+    }
+    payload = {
+        "protocol": "continuous_account_board_aware_v5_repro",
+        "window": f"{eval_from}~{cal[-1]}",
+        "market": market,
+        "topk": int(topk),
+        "n_drop": int(nd),
+        "benchmark": _bench_of(market),
+        "reproducibility": manifest,
+        "reproducibility_gate": gate,
+        "results": {str(freq): result},
+    }
+
+    out.mkdir(parents=True, exist_ok=True)
+    (out / f"results_{market}.json").write_text(
+        _json.dumps(payload, indent=2, ensure_ascii=False)
+    )
+    if market == "csi1000":
+        (out / "results.json").write_text(
+            _json.dumps(payload, indent=2, ensure_ascii=False)
+        )
+    gate_dir = VOL_ROOT / "freq_repro"
+    gate_dir.mkdir(parents=True, exist_ok=True)
+    (gate_dir / f"gate_{market}_freq{freq}.json").write_text(
+        _json.dumps(payload, indent=2, ensure_ascii=False)
+    )
+    vol.commit()
+    print(
+        f"[repro] PASS signal={signal_hash_a[:12]} report={report_hash_a[:12]} "
+        f"CAGR={perf['strategy_cagr']:.4f}"
+    )
+    return payload
 
 
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=24 * 3600)
