@@ -69,6 +69,26 @@ def _ensure_custom_pool(market: str) -> None:
 
 BENCH_BY_MARKET = {"csi1000": "SH000852", "csi500": "SH000905", "csi300": "SH000300"}
 
+# Frozen pre-tuner audit configurations.  These reproduce the latest accepted
+# portfolio construction for each pool; the audit must not retune them.
+PRE_TUNER_AUDIT_CONFIGS = {
+    "csi1000": {"topk": 20, "nd": 2},
+    "chinext": {"topk": 20, "nd": 3},
+    # Historical STAR terminal configuration was top50/nd2.  Its old
+    # no_bootstrap_v1 result is legacy and is deliberately recomputed here
+    # under the corrected v4 execution protocol.
+    "star": {"topk": 50, "nd": 2},
+}
+
+
+def pre_tuner_audit_config(market: str) -> dict:
+    """Return the frozen portfolio config for the pre-tuner audit."""
+    if market not in PRE_TUNER_AUDIT_CONFIGS:
+        raise ValueError(
+            f"pre-tuner audit market must be one of {sorted(PRE_TUNER_AUDIT_CONFIGS)}"
+        )
+    return dict(PRE_TUNER_AUDIT_CONFIGS[market])
+
 
 def _bench_of(market: str) -> str:
     """新池用各自等权合成基准（board_rules.EW_BENCH，需先构造）；csi 池用中证系。"""
@@ -428,6 +448,29 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
     vol.commit()
     return results
 
+
+
+def pre_tuner_audit_matrix() -> dict:
+    """Frozen three-pool audit matrix used before any nested tuning.
+
+    Kept as executable metadata so docs, tests and manual Modal commands cannot
+    silently drift on TopK/n_drop.
+    """
+    from board_rules import EW_BENCH
+
+    out = {}
+    for market, cfg in PRE_TUNER_AUDIT_CONFIGS.items():
+        out[market] = {
+            **cfg,
+            "benchmark": _bench_of(market),
+            "phase_count": 20,
+            "eval_from": "2021-01-04",
+        }
+    if out["chinext"]["benchmark"] != EW_BENCH["chinext"]:
+        raise RuntimeError("chinext audit benchmark drift")
+    if out["star"]["benchmark"] != EW_BENCH["star"]:
+        raise RuntimeError("star audit benchmark drift")
+    return out
 
 
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=24 * 3600)
