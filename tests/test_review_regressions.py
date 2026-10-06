@@ -252,13 +252,26 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn("_same_phase_context(", src)
         self.assertIn('payload.get("reproducibility") == baseline.get("reproducibility")', src)
         self.assertIn('result.get("source") != "deterministic_refit"', src)
+        self.assertIn("phase_{market}_freq{freq}.reuse_source.json", src)
         self.assertIn("reusable =", src)
         self.assertIn("missing =", src)
         self.assertIn("run_phases = sorted(set([0] + missing))", src)
-        self.assertIn("retrain_phase_sensitivity_driver.remote(", src)
-        self.assertIn('"extension_version": "reuse_missing_phases_v1"', src)
+        self.assertIn('"extension_version": "local_orchestration_v2"', src)
         self.assertIn('"reused_phases": reusable', src)
         self.assertIn('"computed_phases": missing', src)
+
+    def test_phase_extension_runs_canonical_app_only_from_local_entrypoint(self):
+        src = (ROOT / "phase_audit_extend.py").read_text()
+        entry = function_source("phase_audit_extend.py", "extend_phase_sensitivity_driver")
+        self.assertIn("@app.local_entrypoint()", src)
+        self.assertIn('"run"', entry)
+        self.assertIn('"freq_experiment.py::retrain_phase_sensitivity_driver"', entry)
+        self.assertIn("subprocess.run(", entry)
+        self.assertIn("prepare_phase_extension.remote(", entry)
+        self.assertIn("merge_phase_extension.remote(", entry)
+        self.assertNotIn("get_raw_f()", src)
+        self.assertNotIn("run_canonical_phase_driver", src)
+        self.assertNotIn("retrain_phase_sensitivity_driver.remote(", src)
 
     def test_phase_extension_verifies_reports_and_adds_turnover_cost(self):
         src = (ROOT / "phase_audit_extend.py").read_text()
@@ -270,11 +283,13 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn('"benchmark_max_drawdown"', src)
         self.assertIn('"annual_volatility"', src)
 
-    def test_phase_extension_keeps_canonical_manifest_source_unchanged(self):
+    def test_phase_extension_uses_real_gate_baseline_and_preserves_source_hash(self):
         src = (ROOT / "phase_audit_extend.py").read_text()
-        self.assertIn("leaves freq_experiment.py unchanged", src)
-        self.assertIn("reproducibility manifest", src)
-        self.assertIn("phase 0", src)
+        self.assertIn("freq_experiment.py is intentionally left unchanged", src)
+        self.assertIn("_baseline_path(market)", src)
+        self.assertIn("_validate_baseline(", src)
+        self.assertIn("baseline_reproducibility", src)
+        self.assertIn("baseline_gate", src)
         canonical = function_source("freq_experiment.py", "retrain_phase_sensitivity_driver")
         self.assertIn('baseline.get("reproducibility") != current_manifest', canonical)
 

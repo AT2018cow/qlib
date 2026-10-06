@@ -1,13 +1,13 @@
 """Cost-aware extension driver for deterministic retraining-phase audits.
 
-This module deliberately leaves freq_experiment.py unchanged because that file's
-SHA256 is part of the reproducibility manifest. It reuses already-validated
-non-zero phase results when their experiment context exactly matches the passing
-gate, runs only missing phases through the canonical driver, then merges and
-enriches the final audit artifact.
+The canonical phase audit must run inside the Modal app defined by
+freq_experiment.py because that driver calls sibling Modal functions
+(prepare.remote and freq_window.map). This module therefore keeps orchestration
+local: remote helpers only inspect/merge the shared Volume, while the local
+entrypoint launches the canonical app with a normal `modal run` subprocess.
 
-Standalone: defines its own image/app to avoid cross-file import issues
-on Modal containers (freq_experiment.py excludes itself from add_local_dir).
+freq_experiment.py is intentionally left unchanged because its SHA256 is part
+of the passing reproducibility manifest.
 """
 
 from pathlib import Path
@@ -17,51 +17,46 @@ import modal
 APP_NAME = "phase-audit-extend"
 VOL_NAME = "qlib-cn-data"
 VOL_ROOT = Path("/vol")
-DATA_DIR = VOL_ROOT / "cn"
 
 vol = modal.Volume.from_name(VOL_NAME, create_if_missing=True)
-
 image = (
     modal.Image.debian_slim(python_version="3.11")
-    .apt_install("build-essential")
-    .env({"MLFLOW_ALLOW_FILE_STORE": "true"})
-    .pip_install(
-        "numpy==1.26.4", "cython", "pandas==2.2.3", "pyyaml", "ruamel.yaml", "fire", "lightgbm", "mlflow",
-        "dill", "filelock", "tqdm", "loguru", "joblib", "pyarrow", "pydantic-settings", "redis",
-        "python-redis-lock", "pymongo", "gym", "cvxpy", "matplotlib", "jupyter", "nbconvert",
-        "setuptools-scm", "akshare",
-    )
-    .pip_install("torch")
-    .add_local_dir(
-        ".",
-        remote_path="/root/qlib",
-        copy=True,
-        ignore=lambda path: (
-            str(path).endswith((".cpp", ".so"))
-            or any(part in str(path) for part in (".venv", "mlruns", "__pycache__"))
-            or str(path).startswith(".git/")
-            or "/.git/" in str(path)
-        ),
-    )
-    .run_commands(
-        "cd /root/qlib && pip install . --no-build-isolation --no-deps",
-        # Build Cy extensions in-place so freq_experiment.py's import of qlib.data works
-        "cd /root/qlib && python -c \"from setuptools import setup, Extension; from Cython.Build import cythonize; import numpy; extensions = [Extension('qlib.data._libs.rolling', ['qlib/data/_libs/rolling.pyx'], language='c++', include_dirs=[numpy.get_include()]), Extension('qlib.data._libs.expanding', ['qlib/data/_libs/expanding.pyx'], language='c++', include_dirs=[numpy.get_include()])]; setup(ext_modules=cythonize(extensions, language_level='3'), script_args=['build_ext', '--inplace'])\"",
-        "cp /root/qlib/freq_experiment.py /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/qlib/board_rules.py /root/qlib/board_execution.py /root/",
-    )
+    .pip_install("numpy==1.26.4", "pandas==2.2.3", "pyarrow")
 )
-
 app = modal.App(APP_NAME, image=image)
-
-# Import from freq_experiment at runtime (inside functions, after image is built)
-# so that the module is available from /root/ on the container.
 
 
 def _load_json(path):
     import json
-    if not Path(path).is_file():
+
+    path = Path(path)
+    if not path.is_file():
         return None
-    return json.loads(Path(path).read_text())
+    return json.loads(path.read_text())
+
+
+def _baseline_path(market):
+    path = VOL_ROOT / "freq_experiment" / f"results_{market}.json"
+    if not path.is_file() and market == "csi1000":
+        path = VOL_ROOT / "freq_experiment" / "results.json"
+    return path
+
+
+def _validate_baseline(baseline, *, freq, market, topk, nd):
+    if not baseline:
+        raise RuntimeError("missing reproducibility-gate baseline")
+    if baseline.get("protocol") != "continuous_account_board_aware_v5_repro":
+        raise RuntimeError("baseline protocol is not v5 reproducible protocol")
+    if baseline.get("market") != market:
+        raise RuntimeError("baseline market mismatch")
+    if int(baseline.get("topk", -1)) != int(topk) or int(
+        baseline.get("n_drop", -1)
+    ) != int(nd):
+        raise RuntimeError("baseline topk/n_drop mismatch")
+    if not (baseline.get("reproducibility_gate") or {}).get("passed"):
+        raise RuntimeError("phase extension requires a passing reproducibility gate")
+    if str(freq) not in (baseline.get("results") or {}):
+        raise RuntimeError(f"baseline missing freq={freq}")
 
 
 def _same_phase_context(payload, baseline, *, freq, eval_from, market, topk, nd):
@@ -93,15 +88,27 @@ def _is_reusable_phase(result):
     )
 
 
+def _frame_sha256(frame):
+    """Match freq_experiment._frame_sha256 without importing its Modal app."""
+    import hashlib
+
+    text = frame.sort_index().to_csv(
+        index=True,
+        float_format="%.17g",
+        date_format="%Y-%m-%dT%H:%M:%S.%f",
+    )
+    return hashlib.sha256(text.encode()).hexdigest()
+
+
 def _enrich_phase_result(result):
     import pandas as pd
-    from freq_experiment import _frame_sha256
 
     enriched = dict(result)
     perf = enriched.get("performance") or {}
     for key in ("benchmark_max_drawdown", "annual_volatility"):
         if key in perf:
             enriched[key] = perf[key]
+
     artifact = enriched.get("report_artifact") or {}
     path = Path(artifact.get("path", ""))
     if not path.is_file():
@@ -110,187 +117,321 @@ def _enrich_phase_result(result):
     expected_content_hash = artifact.get("content_sha256")
     if not expected_content_hash or _frame_sha256(report) != expected_content_hash:
         raise RuntimeError(f"phase report content hash mismatch: {path}")
+
+    turnover_col = next(
+        (name for name in ("turnover", "total_turnover") if name in report.columns),
+        None,
+    )
+    if turnover_col is None:
+        raise RuntimeError(f"phase report missing turnover column: {path}")
+    turnover = report[turnover_col].dropna()
+    cost = report["cost"].dropna() if "cost" in report.columns else None
+    if turnover.empty:
+        raise RuntimeError(f"phase report has empty turnover series: {path}")
+    if cost is None or cost.empty:
+        raise RuntimeError(f"phase report has empty cost series: {path}")
+
+    enriched["mean_turnover"] = round(float(turnover.mean()), 6)
+    enriched["turnover_source"] = turnover_col
+    enriched["total_cost_sum"] = round(float(cost.sum()), 6)
     return enriched
 
 
 def _phase_metric_summary(results, field):
     import numpy as np
 
-    values = [r.get(field) for r in results.values() if isinstance(r, dict) and r.get(field) is not None]
-    if not values:
-        return {}
+    vals = [float(v[field]) for v in results.values() if v.get(field) is not None]
+    if not vals:
+        return {
+            "n": 0,
+            "min": None,
+            "q25": None,
+            "median": None,
+            "q75": None,
+            "max": None,
+        }
+    arr = np.asarray(vals, dtype=float)
     return {
-        "n": len(values),
-        "min": round(min(values), 6),
-        "q25": round(float(np.percentile(values, 25)), 6),
-        "median": round(float(np.median(values)), 6),
-        "q75": round(float(np.percentile(values, 75)), 6),
-        "max": round(max(values), 6),
+        "n": int(len(arr)),
+        "min": round(float(np.min(arr)), 6),
+        "q25": round(float(np.quantile(arr, 0.25)), 6),
+        "median": round(float(np.median(arr)), 6),
+        "q75": round(float(np.quantile(arr, 0.75)), 6),
+        "max": round(float(np.max(arr)), 6),
     }
 
 
-@app.function(volumes={str(VOL_ROOT): vol}, timeout=4 * 3600)
-def run_canonical_phase_driver(freq: int, eval_from: str, market: str,
-                               topk: int, nd: int, phases: str):
-    """Run the canonical retrain-phase driver logic locally in this container.
+@app.function(volumes={str(VOL_ROOT): vol}, timeout=15 * 60)
+def prepare_phase_extension(freq: int, eval_from: str, market: str,
+                            topk: int, nd: int, phases: str):
+    """Choose and snapshot reusable results before the canonical subset run."""
+    import json
 
-    freq_experiment.py is available at /root/ so its module and helpers can be
-    imported. The raw function is accessed via get_raw_f() which returns the
-    undecorated Python callable without needing the other app to be running.
-    """
-    import sys as _sys
-
-    _sys.path.insert(0, "/root")
-    _sys.path.insert(0, "/root/qlib")
-    import freq_experiment as _fe
-
-    # Run the canonical driver as a subprocess to avoid cross-app Modal hydration issues.
-    # freq_experiment.py is at /root/ and its module-level code works in this container.
-    import subprocess as _sp
-    import json as _json_mod
-    _script = (
-        "import sys, json\n"
-        "sys.path.insert(0, '/root')\n"
-        "sys.path.insert(0, '/root/qlib')\n"
-        "from freq_experiment import retrain_phase_sensitivity_driver\n"
-        "# Access raw function directly (avoids hydration check that\n"
-        "# requires the defining app to be running)\n"
-        "_mf = retrain_phase_sensitivity_driver\n"
-        "raw_f = None\n"
-        "for attr in ('_user_function', '__wrapped__', '_fn', '_f'):\n"
-        "    v = getattr(_mf, attr, None)\n"
-        "    if v is not None and callable(v):\n"
-        "        raw_f = v\n"
-        "        break\n"
-        "if raw_f is None:\n"
-        "    raw_f = _mf.get_raw_f()\n"
-        f"result = raw_f(\n"
-        f"    freq={freq}, eval_from='{eval_from}', market='{market}',\n"
-        f"    topk={topk}, nd={nd}, phases='{phases}', require_repro_gate=True\n"
-        ")\n"
-        "print(json.dumps(result))\n"
-    )
-    proc = _sp.run([_sys.executable, "-c", _script], capture_output=True, text=True, timeout=3600)
-    if proc.returncode != 0:
-        raise RuntimeError(f"canonical driver subprocess failed: {proc.stderr[-500:]}")
-    fresh = _json_mod.loads(proc.stdout.strip().split("\n")[-1])
-    return fresh
-
-
-@app.function(volumes={str(VOL_ROOT): vol}, timeout=4 * 3600)
-def extend_phase_sensitivity_driver(freq: int = 20, eval_from: str = "2021-01-04",
-                                     market: str = "csi1000", topk: int = 20, nd: int = 2,
-                                     phases: str = "all", require_repro_gate: bool = True):
-    """Cost-aware incremental phase audit.
-
-    Reuses completed phases when context matches, computes only missing phases
-    through the canonical driver, always validates phase 0.
-    """
-    import json as _json
-    import sys as _sys
-
-    _sys.path.insert(0, "/root")
-    _sys.path.insert(0, "/root/qlib")
-    from freq_experiment import retrain_phase_sensitivity_driver as _canonical_driver
-    from freq_experiment import vol as _vol
-
-    if freq < 2:
-        raise ValueError("phase sensitivity requires freq >= 2")
-    phase_list = sorted({int(x.strip()) for x in phases.split(",") if x.strip()})
-    if not phase_list:
+    vol.reload()
+    requested = sorted({int(x.strip()) for x in phases.split(",") if x.strip()})
+    if not requested:
         raise ValueError("phases is empty")
-    if phase_list[0] < 0 or phase_list[-1] >= freq:
+    if requested[0] < 0 or requested[-1] >= freq:
         raise ValueError(f"phases must be within 0..{freq - 1}")
 
-    try:
-        _vol.reload()
-    except Exception:
-        pass
+    baseline_path = _baseline_path(market)
+    baseline = _load_json(baseline_path)
+    _validate_baseline(
+        baseline, freq=freq, market=market, topk=topk, nd=nd
+    )
 
     phase_root = VOL_ROOT / "freq_phase_sensitivity"
     phase_path = phase_root / f"phase_{market}_freq{freq}.json"
-    existing = _load_json(phase_path)
-    baseline = existing if existing else {}
+    preextend_path = phase_root / f"phase_{market}_freq{freq}.preextend.json"
 
-    context_ok = _same_phase_context(existing, baseline, freq=freq, eval_from=eval_from,
-                                     market=market, topk=topk, nd=nd)
-    if not context_ok:
-        existing = None
-        print("[phase-extend] existing artifact context mismatch; computing all requested phases fresh")
+    candidates = []
+    for priority, path in enumerate((phase_path, preextend_path)):
+        payload = _load_json(path)
+        if not _same_phase_context(
+            payload,
+            baseline,
+            freq=freq,
+            eval_from=eval_from,
+            market=market,
+            topk=topk,
+            nd=nd,
+        ):
+            continue
+        results = payload.get("results") or {}
+        reusable = sorted(
+            phase
+            for phase in requested
+            if phase != 0 and _is_reusable_phase(results.get(str(phase)))
+        )
+        candidates.append((len(reusable), -priority, path, payload, reusable))
 
-    existing_results = (existing or {}).get("results") or {}
-    reusable = sorted(
-        int(phase) for phase in phase_list
-        if phase != 0 and _is_reusable_phase(existing_results.get(str(phase)))
-    )
-    missing = [phase for phase in phase_list if phase != 0 and phase not in reusable]
+    if candidates:
+        _, _, source_path, source_payload, reusable = max(candidates, key=lambda x: (x[0], x[1]))
+    else:
+        source_path, source_payload, reusable = None, None, []
 
-    if existing:
-        phase_root.mkdir(parents=True, exist_ok=True)
-        backup_path = phase_root / f"phase_{market}_freq{freq}.preextend.json"
-        backup_path.write_text(_json.dumps(existing, indent=2, ensure_ascii=False))
-        _vol.commit()
-
+    missing = [phase for phase in requested if phase != 0 and phase not in reusable]
     run_phases = sorted(set([0] + missing))
-    print(f"[phase-extend] requested={phase_list} reusable={reusable} compute={missing} validation=[0]")
-    fresh = run_canonical_phase_driver.remote(
-        freq=freq, eval_from=eval_from, market=market, topk=topk, nd=nd,
-        phases=",".join(str(x) for x in run_phases),
-    )
-    try:
-        _vol.reload()
-    except Exception:
-        pass
 
-    if fresh.get("reproducibility") != baseline.get("reproducibility"):
-        raise RuntimeError("canonical phase run no longer matches gate reproducibility manifest")
+    phase_root.mkdir(parents=True, exist_ok=True)
+    reuse_snapshot_path = phase_root / f"phase_{market}_freq{freq}.reuse_source.json"
+    if source_payload is not None:
+        reuse_snapshot_path.write_text(
+            json.dumps(source_payload, indent=2, ensure_ascii=False)
+        )
+    elif reuse_snapshot_path.exists():
+        reuse_snapshot_path.unlink()
+
+    plan = {
+        "requested_phases": requested,
+        "reused_phases": reusable,
+        "computed_phases": missing,
+        "validation_phases": [0],
+        "run_phases": run_phases,
+        "reuse_source": str(source_path) if source_path else None,
+        "reuse_snapshot": str(reuse_snapshot_path) if source_payload is not None else None,
+        "baseline_reproducibility": baseline.get("reproducibility"),
+        "baseline_gate": baseline.get("reproducibility_gate"),
+    }
+    plan_path = phase_root / f"phase_{market}_freq{freq}.extend_plan.json"
+    plan_path.write_text(json.dumps(plan, indent=2, ensure_ascii=False))
+    vol.commit()
+    return plan
+
+
+@app.function(volumes={str(VOL_ROOT): vol}, timeout=15 * 60)
+def merge_phase_extension(freq: int, eval_from: str, market: str,
+                          topk: int, nd: int, phases: str):
+    """Merge the canonical fresh subset with the snapshotted reusable phases."""
+    import json
+
+    vol.reload()
+    requested = sorted({int(x.strip()) for x in phases.split(",") if x.strip()})
+    phase_root = VOL_ROOT / "freq_phase_sensitivity"
+    phase_path = phase_root / f"phase_{market}_freq{freq}.json"
+    plan_path = phase_root / f"phase_{market}_freq{freq}.extend_plan.json"
+
+    plan = _load_json(plan_path)
+    if not plan or plan.get("requested_phases") != requested:
+        raise RuntimeError("phase extension plan missing or does not match request")
+
+    baseline = _load_json(_baseline_path(market))
+    _validate_baseline(
+        baseline, freq=freq, market=market, topk=topk, nd=nd
+    )
+    if plan.get("baseline_reproducibility") != baseline.get("reproducibility"):
+        raise RuntimeError("baseline reproducibility changed during phase extension")
+    if plan.get("baseline_gate") != baseline.get("reproducibility_gate"):
+        raise RuntimeError("reproducibility gate changed during phase extension")
+
+    fresh = _load_json(phase_path)
+    if not _same_phase_context(
+        fresh,
+        baseline,
+        freq=freq,
+        eval_from=eval_from,
+        market=market,
+        topk=topk,
+        nd=nd,
+    ):
+        raise RuntimeError("fresh canonical phase artifact context mismatch")
 
     fresh_results = fresh.get("results") or {}
-    existing_results = (existing or {}).get("results") or {}
+    run_phases = plan.get("run_phases") or []
+    if sorted(int(x) for x in fresh.get("phases", [])) != sorted(run_phases):
+        raise RuntimeError(
+            f"fresh canonical phases mismatch: got={fresh.get('phases')} expected={run_phases}"
+        )
+
+    reuse = None
+    if plan.get("reuse_snapshot"):
+        reuse = _load_json(Path(plan["reuse_snapshot"]))
+        if not _same_phase_context(
+            reuse,
+            baseline,
+            freq=freq,
+            eval_from=eval_from,
+            market=market,
+            topk=topk,
+            nd=nd,
+        ):
+            raise RuntimeError("reusable phase snapshot context mismatch")
+    reuse_results = (reuse or {}).get("results") or {}
+
+    reusable = [int(x) for x in plan.get("reused_phases", [])]
+    missing = [int(x) for x in plan.get("computed_phases", [])]
     merged_results = {}
-    for phase in phase_list:
+    for phase in requested:
         key = str(phase)
-        if phase in reusable:
-            result = existing_results.get(key)
-        else:
-            result = fresh_results.get(key)
+        result = reuse_results.get(key) if phase in reusable else fresh_results.get(key)
         if result is None:
             raise RuntimeError(f"missing requested phase result after extension: {phase}")
         merged_results[key] = _enrich_phase_result(result)
 
+    metric_fields = [
+        "strategy_cagr",
+        "benchmark_cagr",
+        "relative_excess_cagr",
+        "strategy_max_drawdown",
+        "benchmark_max_drawdown",
+        "relative_max_drawdown",
+        "sharpe",
+        "information_ratio",
+        "annual_volatility",
+        "mean_turnover",
+        "total_cost_sum",
+    ]
     summary = {
-        field: _phase_metric_summary(merged_results, field)
-        for field in ["strategy_cagr", "relative_excess_cagr", "strategy_max_drawdown",
-                      "sharpe", "information_ratio"]
+        field: _phase_metric_summary(merged_results, field) for field in metric_fields
     }
+    summary["strategy_cagr_range_pp"] = round(
+        (summary["strategy_cagr"]["max"] - summary["strategy_cagr"]["min"]) * 100,
+        3,
+    )
     summary["relative_excess_cagr_range_pp"] = round(
-        (summary["relative_excess_cagr"]["max"] - summary["relative_excess_cagr"]["min"]) * 100, 3,
+        (
+            summary["relative_excess_cagr"]["max"]
+            - summary["relative_excess_cagr"]["min"]
+        )
+        * 100,
+        3,
     )
 
     payload = dict(fresh)
-    payload.update({
-        "phases": phase_list,
-        "complete_phase_grid": phase_list == list(range(freq)),
-        "reused_phases": reusable,
-        "computed_phases": missing,
-        "validation_phases": [0],
-        "new_model_fits": sum(int(merged_results[str(p)]["n_retrains"]) for p in missing),
-        "results": merged_results,
-        "summary": summary,
-    })
-    phase_root.mkdir(parents=True, exist_ok=True)
-    phase_path.write_text(_json.dumps(payload, indent=2, ensure_ascii=False))
-    _vol.commit()
-    print(f"[phase-extend] merged phases={phase_list}; reused={reusable}; computed={missing}")
+    payload.update(
+        {
+            "phases": requested,
+            "complete_phase_grid": requested == list(range(freq)),
+            "phase0_reused_from_repro_gate": 0 in requested,
+            "extension_version": "local_orchestration_v2",
+            "reused_phases": reusable,
+            "computed_phases": missing,
+            "validation_phases": [0],
+            "new_model_fits": sum(
+                int(merged_results[str(phase)]["n_retrains"]) for phase in missing
+            ),
+            "results": merged_results,
+            "summary": summary,
+        }
+    )
+    phase_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False))
+    vol.commit()
     return payload
 
 
 @app.local_entrypoint()
-def main(freq: int = 20, eval_from: str = "2021-01-04", market: str = "csi1000",
-         topk: int = 20, nd: int = 2, phases: str = "all"):
+def extend_phase_sensitivity_driver(
+    freq: int = 20,
+    eval_from: str = "2021-01-04",
+    market: str = "csi1000",
+    topk: int = 20,
+    nd: int = 2,
+    phases: str = "0,4,6,10,15",
+):
+    """Orchestrate the extension locally so each Modal app hydrates normally."""
     import json
-    result = extend_phase_sensitivity_driver.remote(
-        freq=freq, eval_from=eval_from, market=market, topk=topk, nd=nd, phases=phases,
+    import shutil
+    import subprocess
+
+    plan = prepare_phase_extension.remote(
+        freq=freq,
+        eval_from=eval_from,
+        market=market,
+        topk=topk,
+        nd=nd,
+        phases=phases,
+    )
+    print(
+        "[phase-extend] "
+        f"requested={plan['requested_phases']} "
+        f"reusable={plan['reused_phases']} "
+        f"compute={plan['computed_phases']} "
+        "validation=[0]"
+    )
+
+    modal_bin = shutil.which("modal")
+    if not modal_bin:
+        raise RuntimeError("modal CLI not found in local PATH")
+
+    canonical_phases = ",".join(str(x) for x in plan["run_phases"])
+    command = [
+        modal_bin,
+        "run",
+        "freq_experiment.py::retrain_phase_sensitivity_driver",
+        "--freq",
+        str(freq),
+        "--eval-from",
+        eval_from,
+        "--market",
+        market,
+        "--topk",
+        str(topk),
+        "--nd",
+        str(nd),
+        "--phases",
+        canonical_phases,
+    ]
+    print(
+        "[phase-extend] launching canonical app for phases="
+        f"{canonical_phases}; this is the only model-fitting step"
+    )
+    subprocess.run(
+        command,
+        cwd=str(Path(__file__).resolve().parent),
+        check=True,
+    )
+
+    result = merge_phase_extension.remote(
+        freq=freq,
+        eval_from=eval_from,
+        market=market,
+        topk=topk,
+        nd=nd,
+        phases=phases,
     )
     print(json.dumps(result.get("summary", {}), indent=2))
-    print(f"reused={result.get('reused_phases')} computed={result.get('computed_phases')}")
+    print(
+        f"reused={result.get('reused_phases')} "
+        f"computed={result.get('computed_phases')} "
+        f"new_model_fits={result.get('new_model_fits')}"
+    )

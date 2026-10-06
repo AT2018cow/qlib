@@ -147,11 +147,16 @@ modal run phase_audit_extend.py::extend_phase_sensitivity_driver \
 The extension driver leaves `freq_experiment.py` unchanged so the gate's recorded
 source hash remains valid. It reuses an existing non-zero phase only when protocol,
 market, frequency, portfolio parameters, evaluation window, reproducibility manifest,
-and gate payload all match. It validates the saved report content hash, runs only
-missing phases through the canonical phase driver, then merges the requested phases.
-The merged result also records mean turnover, turnover source, total cost, benchmark
-MaxDD, and annual volatility. A `.preextend.json` backup is retained before the
-canonical subset run overwrites the phase JSON.
+and gate payload all match. Orchestration happens in a Modal `local_entrypoint`:
+remote helpers only inspect/snapshot/merge the shared Volume, while the local process
+launches the canonical `freq_experiment.py::retrain_phase_sensitivity_driver` with a
+normal nested `modal run`. This is intentional because the canonical driver itself
+calls sibling Modal functions (`prepare.remote` and `freq_window.map`) and therefore
+must execute inside its own Modal app rather than as a raw function inside another
+remote container. The merged result also records mean turnover, turnover source,
+total cost, benchmark MaxDD, and annual volatility. Reusable phase results are copied
+to a dedicated `.reuse_source.json` snapshot before the canonical subset run can
+overwrite the phase JSON.
 
 
 A full grid remains available:
