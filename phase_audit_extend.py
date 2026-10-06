@@ -130,6 +130,25 @@ def _phase_metric_summary(results, field):
 
 
 @app.function(volumes={str(VOL_ROOT): vol}, timeout=4 * 3600)
+def run_canonical_phase_driver(freq: int, eval_from: str, market: str,
+                               topk: int, nd: int, phases: str):
+    """Run the canonical retrain-phase driver logic locally in this container.
+
+    freq_experiment.py is available at /root/ so its module and helpers can be
+    imported. The raw function is accessed via get_raw_f() which returns the
+    undecorated Python callable without needing the other app to be running.
+    """
+    import sys as _sys
+
+    _sys.path.insert(0, "/root")
+    _sys.path.insert(0, "/root/qlib")
+    import freq_experiment as _fe
+
+    raw = _fe.retrain_phase_sensitivity_driver.get_raw_f()
+    return raw(freq=freq, eval_from=eval_from, market=market, topk=topk, nd=nd, phases=phases)
+
+
+@app.function(volumes={str(VOL_ROOT): vol}, timeout=4 * 3600)
 def extend_phase_sensitivity_driver(freq: int = 20, eval_from: str = "2021-01-04",
                                      market: str = "csi1000", topk: int = 20, nd: int = 2,
                                      phases: str = "all", require_repro_gate: bool = True):
@@ -185,13 +204,9 @@ def extend_phase_sensitivity_driver(freq: int = 20, eval_from: str = "2021-01-04
 
     run_phases = sorted(set([0] + missing))
     print(f"[phase-extend] requested={phase_list} reusable={reusable} compute={missing} validation=[0]")
-    # Call the canonical driver as a LOCAL function (we're already in a container
-    # with the correct image; cross-app .remote() fails because the other app
-    # is not running). Access the raw function via Modal's get_raw_f().
-    raw_driver = _canonical_driver.get_raw_f()
-    fresh = raw_driver(
+    fresh = run_canonical_phase_driver.remote(
         freq=freq, eval_from=eval_from, market=market, topk=topk, nd=nd,
-        phases=",".join(str(x) for x in run_phases), require_repro_gate=True,
+        phases=",".join(str(x) for x in run_phases),
     )
     try:
         _vol.reload()
