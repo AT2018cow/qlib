@@ -165,6 +165,14 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn("high_open_block=None", src)
         self.assertNotIn("high_open_block=0.05", src)
 
+    def test_frequency_results_are_market_scoped(self):
+        src = function_source("freq_experiment.py", "freq_driver")
+        self.assertIn('f"results_{market}.json"', src)
+        self.assertIn('if market == "csi1000"', src)
+        self.assertIn('"topk": int(topk)', src)
+        self.assertIn('"n_drop": int(nd)', src)
+        self.assertIn('"benchmark": _bench_of(market)', src)
+
     def test_frequency_driver_persists_raw_daily_report(self):
         src = function_source("freq_experiment.py", "freq_driver")
         self.assertIn("_write_report_artifact(", src)
