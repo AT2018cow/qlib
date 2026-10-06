@@ -1290,7 +1290,7 @@ def _paper_execution_context(data_dir, market: str, calendar: list[str], asof: s
 
     df = D.features(
         sorted(symbols),
-        ["$open", "Ref($close,1)", "$close"],
+        ["$open", "Ref($close,1)", "$close", "$factor"],
         start_time=execution_date,
         end_time=execution_date,
         freq="day",
@@ -1301,16 +1301,18 @@ def _paper_execution_context(data_dir, market: str, calendar: list[str], asof: s
         rows[inst] = row
 
     insts = sorted(symbols)
-    opens, prevs, close_na = [], [], []
+    opens, prevs, close_na, factors = [], [], [], []
     open_prices = {}
     for inst in insts:
         row = rows.get(inst)
         op = float(row["$open"]) if row is not None and _pd.notna(row["$open"]) else _np.nan
         prev = float(row["Ref($close,1)"]) if row is not None and _pd.notna(row["Ref($close,1)"]) else _np.nan
         close = float(row["$close"]) if row is not None and _pd.notna(row["$close"]) else _np.nan
+        factor = float(row["$factor"]) if row is not None and _pd.notna(row["$factor"]) else _np.nan
         opens.append(op)
         prevs.append(prev)
         close_na.append(not _np.isfinite(close))
+        factors.append(factor)
         if _np.isfinite(op):
             open_prices[inst] = op
 
@@ -1321,9 +1323,10 @@ def _paper_execution_context(data_dir, market: str, calendar: list[str], asof: s
         opens,
         prevs,
         close_na,
-        high_open_block=0.05,
+        high_open_block=None,
         listing_dates=listing,
         calendar=calendar,
+        factors=factors,
     )
     return {
         "status": "ready",
