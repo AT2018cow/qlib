@@ -165,7 +165,7 @@ def extend_phase_sensitivity_driver(
         ]
     missing = [phase for phase in requested if phase != 0 and phase not in reusable]
 
-    if existing and reusable:
+    if existing:
         phase_root.mkdir(parents=True, exist_ok=True)
         backup_path = phase_root / f"phase_{market}_freq{freq}.preextend.json"
         backup_path.write_text(json.dumps(existing, indent=2, ensure_ascii=False))
