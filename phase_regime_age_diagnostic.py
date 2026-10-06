@@ -237,7 +237,7 @@ def regime_model_age_driver(
         "purpose": "diagnose_phase_x_regime_and_model_age_mechanism",
         "zero_model_fits": True,
         "zero_signal_generation": True,
-        "zero_backtests": True,
+        "zero_new_backtests": True,
         "market": market,
         "freq": int(freq),
         "phases": requested,
