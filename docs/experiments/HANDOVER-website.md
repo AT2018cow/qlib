@@ -123,6 +123,7 @@ modal run modal_qlib_cn_a10g.py::backfill_signals --dates "2026-10-09" --market 
 ## 七、关联文档
 
 - 系统总交接：`docs/experiments/HANDOVER.md`
-- 终审结论：`docs/experiments/05-final-audit.md`（+11.6% 基线）
+- 当前研究结论：`docs/experiments/14-pre-tuner-stage-summary-20261007.md`
+- 历史终审记录：`docs/experiments/05-final-audit.md`（旧协议，已 superseded）
 - 新增股票池交接：`docs/experiments/HANDOVER-universe-expansion.md`
 - 上游 fork 说明：`AGENTS.md`（本 fork 扩展层段落）
