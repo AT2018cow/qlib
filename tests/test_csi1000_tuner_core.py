@@ -1,23 +1,47 @@
+import ast
+from pathlib import Path
 import unittest
+
+ROOT = Path(__file__).resolve().parents[1]
 
 from csi1000_tuner_core import (
     BASELINE_TUNABLE_PARAMS,
     REFERENCE_PHASES,
+    RETRAIN_FREQUENCY,
+    SCREEN_EXECUTION_SESSIONS,
     build_candidate_spec,
     build_stage_a_folds,
     expanded_candidate_specs,
     frozen_protocol,
     rank_candidates,
+    ranking_contract,
     reserved_tail,
     select_stage_b_candidates,
     smoke_candidate_specs,
     summarize_candidate,
+    validate_reproducibility_pairs,
 )
 
 
 def _calendar():
     # Synthetic daily trading calendar is sufficient for boundary arithmetic tests.
     return [f"2026-{month:02d}-{day:02d}" for month in range(1, 13) for day in range(1, 29)]
+
+
+def _repro_row(fold_id, *, signal="a", report="b", best_iteration=123):
+    candidate = build_candidate_spec(dict(BASELINE_TUNABLE_PARAMS))
+    return {
+        "candidate_id": candidate["candidate_id"],
+        "candidate": candidate,
+        "snapshot_token": "s" * 64,
+        "fold_id": fold_id,
+        "fold": {"fold_id": fold_id},
+        "model_config_sha256": "m" * 64,
+        "best_iteration": best_iteration,
+        "signal_sha256": signal * 64,
+        "report_artifact": {"content_sha256": report * 64},
+        "account_return_max_error": 0.0,
+    }
 
 
 def _metric_row(identifier, rel, *, kind="fold", error=0.0, turnover=0.05, cost=0.02):
@@ -56,6 +80,9 @@ class CSI1000TunerCoreTests(unittest.TestCase):
         self.assertEqual(protocol["retrain_frequency"], 20)
         self.assertEqual(protocol["portfolio"], {"topk": 20, "n_drop": 2})
         self.assertEqual(protocol["execution"], "t_close_t1_open")
+        self.assertEqual(RETRAIN_FREQUENCY, 20)
+        self.assertEqual(SCREEN_EXECUTION_SESSIONS, RETRAIN_FREQUENCY)
+        self.assertEqual(protocol["screen_execution_sessions"], 20)
 
     def test_candidate_identity_is_order_independent(self):
         a = self.candidate()
@@ -107,6 +134,15 @@ class CSI1000TunerCoreTests(unittest.TestCase):
             last_execution_cutoff="D1000",
         )
         self.assertEqual(len(folds), 4)
+        for fold in folds:
+            signal_start = int(fold["signal"][0][1:])
+            signal_end = int(fold["signal"][1][1:])
+            execution_start = int(fold["execution"][0][1:])
+            execution_end = int(fold["execution"][1][1:])
+            self.assertEqual(signal_end - signal_start + 1, 100)
+            self.assertEqual(execution_end - execution_start + 1, 100)
+            self.assertEqual(execution_start, signal_start + 1)
+            self.assertEqual(execution_end, signal_end + 1)
         for previous, current in zip(folds, folds[1:]):
             self.assertLess(previous["execution"][1], current["execution"][0])
             self.assertLess(previous["signal"][1], current["signal"][0])
@@ -146,6 +182,45 @@ class CSI1000TunerCoreTests(unittest.TestCase):
         ranked = rank_candidates([fold_winner, robust], stage="final")
         self.assertEqual(ranked[0]["candidate_id"], robust["candidate_id"])
 
+    def test_ranking_contract_is_worst_fold_first_and_machine_derived(self):
+        contract = ranking_contract("screen")
+        self.assertEqual(contract["primary_scope"], "temporal_folds")
+        self.assertEqual(
+            contract["order"][:3],
+            [
+                {"field": "relative_excess_cagr_worst", "direction": "higher"},
+                {"field": "relative_excess_cagr_q25", "direction": "higher"},
+                {"field": "relative_excess_cagr_median", "direction": "higher"},
+            ],
+        )
+        self.assertEqual(
+            contract["order"][-2:],
+            [
+                {"field": "mean_turnover_median", "direction": "lower"},
+                {"field": "total_cost_sum_median", "direction": "lower"},
+            ],
+        )
+
+    def test_double_fit_reproducibility_gate_requires_exact_hashes(self):
+        repeat_a = [_repro_row(f"fold{i}") for i in range(1, 5)]
+        repeat_b = [_repro_row(f"fold{i}") for i in range(1, 5)]
+        gate = validate_reproducibility_pairs(repeat_a, repeat_b)
+        self.assertTrue(gate["passed"])
+        self.assertEqual(gate["fits_per_repeat"], 4)
+        self.assertEqual(gate["total_gate_fits"], 8)
+
+        bad = [_repro_row(f"fold{i}") for i in range(1, 5)]
+        bad[2]["signal_sha256"] = "z" * 64
+        with self.assertRaises(RuntimeError):
+            validate_reproducibility_pairs(repeat_a, bad)
+
+    def test_double_fit_reproducibility_gate_rejects_bad_account(self):
+        repeat_a = [_repro_row(f"fold{i}") for i in range(1, 5)]
+        repeat_b = [_repro_row(f"fold{i}") for i in range(1, 5)]
+        repeat_b[0]["account_return_max_error"] = 1e-6
+        with self.assertRaises(ValueError):
+            validate_reproducibility_pairs(repeat_a, repeat_b)
+
     def test_account_consistency_fails_closed(self):
         candidate = self.candidate()
         folds = [_metric_row(f"fold{i + 1}", 0.03) for i in range(4)]
@@ -159,6 +234,14 @@ class CSI1000TunerCoreTests(unittest.TestCase):
         phases = [_metric_row(phase, 0.02, kind="phase") for phase in REFERENCE_PHASES[:-1]]
         with self.assertRaises(ValueError):
             summarize_candidate(candidate, folds, phase_results=phases)
+
+    def test_runner_syntax_and_audit_hooks_are_present(self):
+        source = (ROOT / "csi1000_tuner.py").read_text()
+        ast.parse(source)
+        self.assertIn('validate_reproducibility_pairs(repeat_a, repeat_b)', source)
+        self.assertIn('_assert_reusable_metrics(payload, report, args["fold"])', source)
+        self.assertIn('"ranking_contract": ranking_contract("screen")', source)
+        self.assertNotIn('"relative_excess_cagr_q25",\n                "relative_excess_cagr_median"', source)
 
     def test_stage_b_selection_retains_baseline(self):
         summaries = []

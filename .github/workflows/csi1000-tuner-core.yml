@@ -1,0 +1,33 @@
+name: CSI1000 tuner core checks
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'csi1000_tuner.py'
+      - 'csi1000_tuner_core.py'
+      - 'tests/test_csi1000_tuner_core.py'
+      - 'docs/experiments/16-csi1000-stage-a-tuning-contract-20261007.md'
+      - '.github/workflows/csi1000-tuner-core.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'csi1000_tuner.py'
+      - 'csi1000_tuner_core.py'
+      - 'tests/test_csi1000_tuner_core.py'
+      - '.github/workflows/csi1000-tuner-core.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run CSI1000 Stage-A contract tests
+        run: python -m unittest tests/test_csi1000_tuner_core.py

@@ -15,7 +15,7 @@ from copy import deepcopy
 from statistics import median
 from typing import Any, Iterable
 
-PROTOCOL_VERSION = "csi1000_lgb_stage_a_v1"
+PROTOCOL_VERSION = "csi1000_lgb_stage_a_v2"
 MARKET = "csi1000"
 TARGET = "raw_20d"
 LABEL_HORIZON = 20
@@ -26,13 +26,26 @@ EXECUTION = "t_close_t1_open"
 TRAIN_START = "2016-01-01"
 VALIDATION_SESSIONS = 252
 SCREEN_FOLDS = 4
-SCREEN_EXECUTION_SESSIONS = 60
+SCREEN_EXECUTION_SESSIONS = RETRAIN_FREQUENCY
 SCREEN_SIGNAL_ANCHOR = "2021-01-04"
 SCREEN_LAST_EXECUTION_CUTOFF = "2024-12-31"
 REFERENCE_PHASES = (0, 4, 6, 10, 15)
 ACCOUNT_ERROR_TOLERANCE = 1e-12
 METRIC_VERSION = "portfolio_compound_v1"
 EXPANDED_SEARCH_SEED = 20261007
+REPRO_GATE_VERSION = "baseline_double_fit_4fold_v1"
+
+SCREEN_RANK_SPECS = (
+    ("relative_excess_cagr_worst", 1),
+    ("relative_excess_cagr_q25", 1),
+    ("relative_excess_cagr_median", 1),
+    ("positive_ratio", 1),
+    ("information_ratio_median", 1),
+    ("sharpe_median", 1),
+    ("strategy_max_drawdown_worst", 1),
+    ("mean_turnover_median", -1),
+    ("total_cost_sum_median", -1),
+)
 
 BASELINE_TUNABLE_PARAMS = {
     "learning_rate": 0.1,
@@ -326,9 +339,11 @@ def build_stage_a_folds(
     """Build four cheap, regime-spread one-fit folds with a reserved recent tail.
 
     Anchors are spread deterministically from 2021 through the end of 2024.
-    Each model is evaluated for roughly one quarter rather than a full year,
-    limiting stale-model distortion in this cheap proxy screen. The folds are
-    independent accounts and must never be concatenated into a headline return.
+    Each model is evaluated for exactly one production retrain interval
+    (20 execution sessions). This keeps the cheap one-fit screen aligned with
+    freq20 instead of letting a stale model survive beyond its production age.
+    The folds are independent accounts and must never be concatenated into a
+    headline return.
     """
     if not calendar or calendar != sorted(set(calendar)):
         raise ValueError("trading calendar must be sorted, unique, and non-empty")
@@ -358,7 +373,9 @@ def build_stage_a_folds(
     for fold_index, signal_start_i in enumerate(anchor_indices):
         execution_start_i = signal_start_i + 1
         execution_end_i = signal_start_i + execution_sessions
-        signal_end_i = execution_end_i
+        # T-close signal at t executes at t+1 open. A freq20 model therefore
+        # owns exactly 20 signal dates: anchor .. anchor+19.
+        signal_end_i = execution_end_i - 1
 
         valid_end_i = signal_start_i - horizon - 1
         valid_start_i = valid_end_i - validation_sessions + 1
@@ -519,37 +536,133 @@ def summarize_candidate(
     }
 
 
-def _screen_rank_tuple(summary: dict) -> tuple[float, ...]:
-    fold = summary["fold_summary"]
-    return (
-        fold["relative_excess_cagr_worst"],
-        fold["relative_excess_cagr_q25"],
-        fold["relative_excess_cagr_median"],
-        fold["positive_ratio"],
-        fold["information_ratio_median"],
-        fold["sharpe_median"],
-        fold["strategy_max_drawdown_worst"],
-        -fold["mean_turnover_median"],
-        -fold["total_cost_sum_median"],
+def _rank_vector(metric_summary: dict) -> tuple[float, ...]:
+    return tuple(
+        float(metric_summary[field]) * direction
+        for field, direction in SCREEN_RANK_SPECS
     )
+
+
+def ranking_contract(stage: str = "screen") -> dict:
+    """Machine-readable ranking metadata derived from the actual rank spec."""
+    if stage not in {"screen", "final"}:
+        raise ValueError("stage must be 'screen' or 'final'")
+    order = [
+        {
+            "field": field,
+            "direction": "higher" if direction > 0 else "lower",
+        }
+        for field, direction in SCREEN_RANK_SPECS
+    ]
+    if stage == "screen":
+        return {
+            "primary_scope": "temporal_folds",
+            "order": order,
+            "selection": "lexicographic",
+            "single_fold_winner_allowed": False,
+        }
+    return {
+        "primary_scope": "calendar_phases",
+        "phase_order": order,
+        "fold_tiebreak_order": order,
+        "selection": "lexicographic",
+        "single_phase_winner_allowed": False,
+    }
+
+
+def _screen_rank_tuple(summary: dict) -> tuple[float, ...]:
+    return _rank_vector(summary["fold_summary"])
 
 
 def _final_rank_tuple(summary: dict) -> tuple[float, ...]:
     phase = summary.get("phase_summary")
     if phase is None or int(phase.get("n", 0)) != len(REFERENCE_PHASES):
         raise ValueError("final ranking requires the fixed phase robustness set")
-    return (
-        phase["relative_excess_cagr_worst"],
-        phase["relative_excess_cagr_q25"],
-        phase["relative_excess_cagr_median"],
-        phase["positive_ratio"],
-        phase["information_ratio_median"],
-        phase["sharpe_median"],
-        phase["strategy_max_drawdown_worst"],
-        -phase["mean_turnover_median"],
-        -phase["total_cost_sum_median"],
-        *_screen_rank_tuple(summary),
-    )
+    return (*_rank_vector(phase), *_screen_rank_tuple(summary))
+
+
+def validate_reproducibility_pairs(
+    repeat_a: Iterable[dict],
+    repeat_b: Iterable[dict],
+) -> dict:
+    """Require exact baseline signal/report identities across two independent fits."""
+    expected_folds = {f"fold{i + 1}" for i in range(SCREEN_FOLDS)}
+
+    def index(rows: Iterable[dict], label: str) -> dict[str, dict]:
+        out = {}
+        for raw in rows:
+            fold_id = str(raw.get("fold_id", "")).strip()
+            if not fold_id or fold_id in out:
+                raise ValueError(f"{label}: duplicate or missing fold_id {fold_id!r}")
+            out[fold_id] = deepcopy(raw)
+        if set(out) != expected_folds:
+            raise ValueError(
+                f"{label}: fold set {sorted(out)} != {sorted(expected_folds)}"
+            )
+        return out
+
+    left = index(repeat_a, "repeat_a")
+    right = index(repeat_b, "repeat_b")
+    details = {}
+    candidate_id = None
+    snapshot_token = None
+    for fold_id in sorted(expected_folds):
+        a = left[fold_id]
+        b = right[fold_id]
+        for row, label in ((a, "repeat_a"), (b, "repeat_b")):
+            if not (row.get("candidate") or {}).get("is_baseline"):
+                raise ValueError(f"{label} {fold_id}: reproducibility gate requires baseline")
+            error = _finite_number(
+                row.get("account_return_max_error"),
+                label=f"{label} {fold_id}.account_return_max_error",
+            )
+            if abs(error) > ACCOUNT_ERROR_TOLERANCE:
+                raise ValueError(f"{label} {fold_id}: account consistency failed")
+
+        if a.get("candidate_id") != b.get("candidate_id"):
+            raise RuntimeError(f"{fold_id}: candidate identity mismatch")
+        if a.get("snapshot_token") != b.get("snapshot_token"):
+            raise RuntimeError(f"{fold_id}: provider snapshot mismatch")
+        if a.get("fold") != b.get("fold"):
+            raise RuntimeError(f"{fold_id}: fold definition mismatch")
+
+        comparisons = {
+            "model_config_sha256": (a.get("model_config_sha256"), b.get("model_config_sha256")),
+            "best_iteration": (a.get("best_iteration"), b.get("best_iteration")),
+            "signal_sha256": (a.get("signal_sha256"), b.get("signal_sha256")),
+            "report_content_sha256": (
+                (a.get("report_artifact") or {}).get("content_sha256"),
+                (b.get("report_artifact") or {}).get("content_sha256"),
+            ),
+        }
+        mismatches = [
+            key for key, (value_a, value_b) in comparisons.items()
+            if value_a is None or value_a != value_b
+        ]
+        if mismatches:
+            raise RuntimeError(
+                f"{fold_id}: reproducibility mismatch in {mismatches}"
+            )
+
+        candidate_id = candidate_id or a["candidate_id"]
+        snapshot_token = snapshot_token or a["snapshot_token"]
+        if candidate_id != a["candidate_id"] or snapshot_token != a["snapshot_token"]:
+            raise RuntimeError("reproducibility gate mixes candidate or snapshot lineages")
+        details[fold_id] = {
+            "best_iteration": a.get("best_iteration"),
+            "signal_sha256": a["signal_sha256"],
+            "report_content_sha256": a["report_artifact"]["content_sha256"],
+        }
+
+    return {
+        "passed": True,
+        "gate_version": REPRO_GATE_VERSION,
+        "candidate_id": candidate_id,
+        "snapshot_token": snapshot_token,
+        "folds": details,
+        "fits_per_repeat": SCREEN_FOLDS,
+        "total_gate_fits": 2 * SCREEN_FOLDS,
+    }
 
 
 def rank_candidates(summaries: Iterable[dict], *, stage: str = "screen") -> list[dict]:
