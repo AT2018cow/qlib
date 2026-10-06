@@ -69,6 +69,23 @@ def _ensure_custom_pool(market: str) -> None:
 
 BENCH_BY_MARKET = {"csi1000": "SH000852", "csi500": "SH000905", "csi300": "SH000300"}
 
+# Frozen pre-tuner audit configurations. These are baselines, not tuned optima.
+PRE_TUNER_AUDIT_CONFIGS = {
+    "csi1000": {"topk": 20, "nd": 2},
+    "chinext": {"topk": 20, "nd": 3},
+    "star": {"topk": 50, "nd": 2},
+}
+
+
+def pre_tuner_audit_config(market: str) -> dict:
+    if market not in PRE_TUNER_AUDIT_CONFIGS:
+        raise ValueError(
+            f"pre-tuner audit market must be one of {sorted(PRE_TUNER_AUDIT_CONFIGS)}"
+        )
+    return dict(PRE_TUNER_AUDIT_CONFIGS[market])
+
+
+
 
 def _bench_of(market: str) -> str:
     """新池用各自等权合成基准（board_rules.EW_BENCH，需先构造）；csi 池用中证系。"""
@@ -95,20 +112,39 @@ def _load_task(market: str) -> dict:
         "class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
         "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-freq"},
     }
+    from qlib_live_retrain import apply_lgb_reproducibility
+    apply_lgb_reproducibility(cfg)
     return cfg
 
 
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=4 * 3600)
-def prepare(force: bool = True):
-    """确保 Volume 数据最新（infi Volume 可能是旧版本）。"""
+def prepare(force: bool = True, market: str = ""):
+    """确保 Volume 数据快照，并为 custom pool 重建派生等权基准。"""
     import shutil
     import tarfile
 
     import requests
 
     marker = DATA_DIR / ".chenditc"
+
+    def _ensure_market_artifacts():
+        if market not in ("star_chn", "chinext", "star"):
+            return None
+        from board_rules import POOL_BOARDS, build_custom_instruments, build_ew_bench_files
+        pool_txt = DATA_DIR / "instruments" / f"{market}.txt"
+        build_custom_instruments(
+            DATA_DIR / "instruments" / "all.txt",
+            pool_txt,
+            boards=POOL_BOARDS[market],
+        )
+        return build_ew_bench_files(DATA_DIR, market)
+
     if not force and marker.exists():
-        print("[data] skip")
+        bench_report = _ensure_market_artifacts()
+        if bench_report is not None:
+            print(f"[data] ensured custom benchmark: {bench_report}")
+            vol.commit()
+        print("[data] reuse committed provider snapshot")
         return
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     url = "https://github.com/chenditc/investment_data/releases/latest/download/qlib_bin.tar.gz"
@@ -136,6 +172,9 @@ def prepare(force: bool = True):
             shutil.rmtree(p)
         shutil.copytree(base / name, p)
     marker.write_text("latest")
+    bench_report = _ensure_market_artifacts()
+    if bench_report is not None:
+        print(f"[data] rebuilt custom benchmark: {bench_report}")
     vol.commit()
     cal = (DATA_DIR / "calendars" / "day.txt").read_text().strip().splitlines()
     print(f"[data] 就绪，日历至 {cal[-1]}")
@@ -296,7 +335,7 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
     from qlib_audit_fixes import read_trading_calendar
     from portfolio_performance import portfolio_performance
 
-    prepare.remote(force=True)
+    prepare.remote(force=True, market=market)
     try:
         vol.reload()
     except Exception:
@@ -389,7 +428,7 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
             ),
         )
         results[str(freq)] = {
-            "protocol": "continuous_account_board_aware_v4_cny_tick",
+            "protocol": "continuous_account_board_aware_v5_repro",
             "metric_version": perf["metric_version"],
             "n_retrains": len(jobs),
             "n_errors": 0,
@@ -420,7 +459,7 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
 
     with (out / "results.json").open("w") as f:
         _json.dump({
-            "protocol": "continuous_account_board_aware_v4_cny_tick",
+            "protocol": "continuous_account_board_aware_v5_repro",
             "window": f"{eval_from}~{cal[-1]}",
             "market": market,
             "results": results,
@@ -469,7 +508,7 @@ def retrain_phase_sensitivity_driver(
         if phase_list[0] < 0 or phase_list[-1] >= freq:
             raise ValueError(f"phases must be within 0..{freq - 1}")
 
-    prepare.remote(force=True)
+    prepare.remote(force=True, market=market)
     try:
         vol.reload()
     except Exception:
@@ -613,7 +652,7 @@ def retrain_phase_sensitivity_driver(
         3,
     )
     payload = {
-        "protocol": "retrain_phase_sensitivity_v1_cny_tick",
+        "protocol": "retrain_phase_sensitivity_v2_repro",
         "purpose": "audit_only_do_not_select_best_phase",
         "market": market,
         "freq": freq,
@@ -819,7 +858,7 @@ def execution_attribution_driver(freq: int = 20, eval_from: str = "2021-01-04",
     if freq < 1:
         raise ValueError("freq must be positive")
 
-    prepare.remote(force=True)
+    prepare.remote(force=True, market=market)
     try:
         vol.reload()
     except Exception:
@@ -934,7 +973,7 @@ def execution_attribution_driver(freq: int = 20, eval_from: str = "2021-01-04",
     }
 
     payload = {
-        "protocol": "execution_attribution_v2_cny_tick",
+        "protocol": "execution_attribution_v3_repro",
         "market": market,
         "freq": freq,
         "topk": int(topk),
