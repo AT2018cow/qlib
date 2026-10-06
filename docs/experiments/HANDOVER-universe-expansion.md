@@ -1,5 +1,10 @@
 # 交接文档——新增股票候选池（Universe Expansion）
 
+> **Current-status override (2026-10-07):** The Batch A/B/C universe-expansion experiments below are historical. The corrected v5 reproducibility audit supersedes their production conclusions. See [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md).
+>
+> Current result: ChiNext top20/nd3 passes the reproducibility gate but has negative relative CAGR in all sampled phases 0/5/10/15; it is a bounded-rescue research line, not a validated peer of CSI1000. STAR failed the corrected reproducibility gate, so its alpha is **unknown**, not proven absent.
+
+
 > 面向新对话：目标是把当前 csi1000-only 的信号系统扩展到更多候选池（如 csi800/全市场/自定义池），以及随之而来的参数重选、训练、回测验证工作。
 
 ## 一、当前基线（出发点）
