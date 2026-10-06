@@ -1,5 +1,8 @@
 # 网站交接文档——每日选股展示站（后续优化/扩展用）
 
+> **Research-status note (2026-10-07):** Website/cron support for multiple pools is publication infrastructure, not a statement that every displayed pool is currently production-approved. Current research authority is [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md): CSI1000 is the primary validated baseline; ChiNext's corrected frozen baseline is weak; STAR is reproducibility-blocked.
+
+
 > 面向新对话：网站已上线且全自动运行。本文档说明当前架构、已实现功能、已知设计决策、以及后续优化的起点。
 
 ## 一、当前系统状态（2026-09-20 上线；2026-10-02 双池化）
