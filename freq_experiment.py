@@ -1310,31 +1310,15 @@ def execution_attribution_driver(freq: int = 20, eval_from: str = "2021-01-04",
     if start_i >= len(cal) - 1 or cal[start_i] != eval_from:
         raise ValueError("eval_from must be a trading day with a following execution day")
 
-    jobs = []
-    i = start_i
-    while i < len(cal) - 1:
-        signal_end_i = min(i + freq - 1, len(cal) - 1)
-        jobs.append({
-            "freq": freq,
-            "retrain_asof": cal[i],
-            "signal_end": cal[signal_end_i],
-            "market": market,
-            "topk": int(topk),
-            "nd": nd,
-        })
-        i += freq
+    manifest = _runtime_repro_manifest(market, cal[-1])
+    _publish_snapshot_manifest(manifest)
+    jobs = _phase_jobs(cal, start_i, freq, 0, market, int(topk), int(nd))
+    for job in jobs:
+        job["snapshot_token"] = manifest["snapshot_token"]
 
     print(f"[attrib] freq={freq}: train {len(jobs)} model windows once")
     outs = list(freq_window.map(jobs))
-    chunks = []
-    for o in sorted(outs, key=lambda x: x["retrain_asof"]):
-        chunks.append(pickle.loads(zlib.decompress(o["pred_zlib_pickle"])))
-    if not chunks:
-        raise RuntimeError("no signal chunks")
-
-    signal = pd.concat(chunks).sort_index()
-    if signal.index.has_duplicates:
-        raise RuntimeError("duplicate signal rows across retrain chunks")
+    signal, chunk_meta = _assemble_signal(outs)
     if str(signal.index.get_level_values(0).min())[:10] != cal[start_i]:
         raise RuntimeError("missing attribution bootstrap signal")
 
@@ -1421,6 +1405,9 @@ def execution_attribution_driver(freq: int = 20, eval_from: str = "2021-01-04",
         "n_drop": int(nd),
         "window": f"{execution_start}~{execution_end}",
         "signal_rows": int(len(signal)),
+        "signal_sha256": _signal_sha256(signal),
+        "chunk_predictions": chunk_meta,
+        "reproducibility": manifest,
         "n_retrains": len(jobs),
         "results": results,
         "attribution_pp": attribution,
