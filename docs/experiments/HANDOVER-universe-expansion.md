@@ -1,5 +1,7 @@
 # 交接文档——新增股票候选池（Universe Expansion）
 
+> **2026-10-07 当前证据更新**：本文的 Batch A/B/C 与 10-02 双池生产化记录保留为历史工程记录，但其中的策略结论已被 v5 reproducible/canonical audit supersede。当前请以 [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md) 为准：ChiNext 的 deterministic gate PASS，但 top20/nd3 在 phases 0/5/10/15 的 relative CAGR 全为负，因此当前 frozen baseline 不进入主 tuner；STAR 不是“已证伪/已关闭”，而是 prediction reproducibility gate 未通过，corrected alpha 尚不可判。网站/cron 是否继续发布旧部署的 paper ranking 与研究结论是两件事。
+
 > **Current-status override (2026-10-07):** The Batch A/B/C universe-expansion experiments below are historical. The corrected v5 reproducibility audit supersedes their production conclusions. See [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md).
 >
 > Current result: ChiNext top20/nd3 passes the reproducibility gate but has negative relative CAGR in all sampled phases 0/5/10/15; it is a bounded-rescue research line, not a validated peer of CSI1000. STAR failed the corrected reproducibility gate, so its alpha is **unknown**, not proven absent.
