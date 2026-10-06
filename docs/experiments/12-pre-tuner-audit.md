@@ -213,6 +213,86 @@ This diagnostic remains audit-only and must not be used to select the historical
 best phase.
 
 
+### Post-attribution result and zero-fit regime × model-age follow-up
+
+The retained 5-phase CSI1000 attribution established the following on the same frozen
+v2_repro manifest:
+
+- differential transaction costs explain only about 4.9%–20.5% of phase 4's pairwise
+  net gap (median about 6.5%);
+- phase 4's average turnover is materially higher, but its T+1 through T+5 retrain
+  event window is **not** a turnover spike: event-window turnover is slightly below
+  its non-event turnover;
+- 2022–2023 account for roughly 84%–94%+ of the negative pairwise gap contribution.
+
+The supported conclusion is therefore **phase × market-regime interaction**. Do not
+overstate this as proof that phase 4 is "non-structural": the current evidence shows
+that its underperformance is not persistent across calendar years, while a structural
+interaction between retraining calendar and fast-changing regimes remains possible.
+
+Before paying for the remaining full 20-phase grid, run the next zero-fit mechanism
+diagnostic:
+
+```bash
+modal run phase_regime_age_diagnostic.py \
+  --market csi1000 \
+  --freq 20 \
+  --phases 0,4,6,10,15 \
+  --focus-phase 4 \
+  --regime-years 2022,2023 \
+  --lookback 20
+```
+
+This path performs **zero model fits, zero signal generation, and zero new backtests**.
+It reads only the retained raw reports, the trading calendar, and the existing
+chunk-level retrain lineage.
+
+Model age is defined on the signal day T used for execution on T+1, measured in
+trading sessions since the active retrain. For freq=20 the resulting age bins are
+0–4, 5–9, 10–14, and 15–19 sessions.
+
+Market-regime labels are deliberately fixed ex ante and use only benchmark information
+available through the prior execution session:
+
+- 20-session trend: <= -5%, between -5% and +5%, or >= +5%;
+- annualized 20-session volatility: <20%, 20%–30%, or >=30%;
+- prior benchmark drawdown: <10%, 10%–20%, or >=20%;
+- composite stress: any of down <= -5%, vol >=30%, or drawdown >=20%.
+
+Do not tune these thresholds from the observed phase gap. They are coarse diagnostic
+bins, not production parameters.
+
+The diagnostic writes:
+
+```text
+results/freq_phase_regime_age/phase_csi1000_freq20_regime_age_zero_fit.json
+```
+
+For phase 4 versus each comparator it reports:
+
+- full-sample and 2022–2023 net/gross/cost log-gap;
+- attribution by focus model-age bin, comparator age bin, and relative-age state;
+- attribution by trend, volatility, drawdown, and composite stress regime;
+- interactions between relative model age and market regime;
+- both total negative-gap contribution and mean-daily gap intensity, so a regime with
+  many observations is not confused with a regime that is intrinsically more adverse.
+
+Decision rule:
+
+1. if phase 4's deficit is concentrated when it is materially older than the
+   comparator, the mechanism is consistent with stale-model exposure during regime
+   changes; investigate retraining-frequency robustness before a full phase grid;
+2. if the deficit is concentrated in stress/downtrend/high-volatility buckets
+   regardless of relative age, treat the mechanism primarily as regime sensitivity;
+3. if age × regime interactions dominate, tuner validation must explicitly include
+   calendar/age robustness across fast regime transitions;
+4. if none of these dimensions explains the 2022–2023 concentration, the mechanism
+   remains unresolved and a full 20-phase distribution becomes more justified.
+
+This follow-up remains audit-only and must not be used to select a historically
+favorable retraining phase.
+
+
 A full grid remains available:
 
 ```bash
