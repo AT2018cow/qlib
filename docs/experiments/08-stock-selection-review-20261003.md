@@ -1,5 +1,8 @@
 # 当前选股逻辑审阅：问题与优化建议（2026-10-03）
 
+> **Post-review status (2026-10-07):** This review was the issue inventory that triggered the corrected execution, portfolio-metric, reproducibility, phase-sensitivity, and satellite-pool work. Many P0 items have since been fixed or re-tested. For current status, use [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md); this document remains the provenance record for why those fixes were required.
+
+
 ## 1. 范围与结论边界
 
 本文汇总本次对话两轮审阅发现的全部问题及优化建议，供后续修复、实验与验收使用。
