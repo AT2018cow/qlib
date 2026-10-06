@@ -1,0 +1,154 @@
+{
+  "market": "chinext",
+  "freq": 20,
+  "gate_passed": true,
+  "gate_version": "phase0_double_fit_v1",
+  "snapshot_token": "051bf31c124199c2a4fb1130bfa0654f7b532bec3769c534a185b4cfa63ac65d",
+  "provider_fingerprint": "e1e098785f4c8cd12e5486760a4c215ad6df06f6ed9abe608290ffa75f485c10",
+  "phase0_signal_sha256": "461bef28c7241ccf57d5b320762814bd03d5068788b09ba08be5df65111d1239",
+  "screen_phases": [
+    0,
+    5,
+    10,
+    15
+  ],
+  "new_model_fits": 212,
+  "summary": {
+    "strategy_cagr": {
+      "n": 4,
+      "min": -0.027838,
+      "q25": -0.012819,
+      "median": 0.020901,
+      "q75": 0.057041,
+      "max": 0.079319
+    },
+    "benchmark_cagr": {
+      "n": 4,
+      "min": 0.090167,
+      "q25": 0.090167,
+      "median": 0.090167,
+      "q75": 0.090167,
+      "max": 0.090167
+    },
+    "relative_excess_cagr": {
+      "n": 4,
+      "min": -0.108245,
+      "q25": -0.094469,
+      "median": -0.063537,
+      "q75": -0.030386,
+      "max": -0.009951
+    },
+    "strategy_max_drawdown": {
+      "n": 4,
+      "min": -0.495764,
+      "q25": -0.477907,
+      "median": -0.460088,
+      "q75": -0.443093,
+      "max": -0.427708
+    },
+    "benchmark_max_drawdown": {
+      "n": 4,
+      "min": -0.439882,
+      "q25": -0.439882,
+      "median": -0.439882,
+      "q75": -0.439882,
+      "max": -0.439882
+    },
+    "relative_max_drawdown": {
+      "n": 4,
+      "min": -0.587311,
+      "q25": -0.527913,
+      "median": -0.486341,
+      "q75": -0.442576,
+      "max": -0.376602
+    },
+    "sharpe": {
+      "n": 4,
+      "min": 0.065776,
+      "q25": 0.107324,
+      "median": 0.215217,
+      "q75": 0.331131,
+      "max": 0.39674
+    },
+    "information_ratio": {
+      "n": 4,
+      "min": -0.641486,
+      "q25": -0.599456,
+      "median": -0.376631,
+      "q75": -0.130632,
+      "max": -0.019081
+    },
+    "annual_volatility": {
+      "n": 4,
+      "min": 0.293067,
+      "q25": 0.304978,
+      "median": 0.31096,
+      "q75": 0.314193,
+      "max": 0.317856
+    },
+    "mean_turnover": {
+      "n": 4,
+      "min": 0.090846,
+      "q25": 0.100211,
+      "median": 0.110187,
+      "q75": 0.122358,
+      "max": 0.13831
+    },
+    "total_cost_sum": {
+      "n": 4,
+      "min": 0.126021,
+      "q25": 0.139064,
+      "median": 0.152958,
+      "q75": 0.16991,
+      "max": 0.192126
+    },
+    "strategy_cagr_range_pp": 10.716,
+    "relative_excess_cagr_range_pp": 9.829
+  },
+  "phases": {
+    "0": {
+      "strategy_cagr": 0.079319,
+      "benchmark_cagr": 0.090167,
+      "relative_excess_cagr": -0.009951,
+      "strategy_max_drawdown": -0.448221,
+      "sharpe": 0.39674,
+      "information_ratio": -0.019081,
+      "annual_volatility": 0.312972,
+      "mean_turnover": 0.090846,
+      "total_cost_sum": 0.126021
+    },
+    "5": {
+      "strategy_cagr": 0.049615,
+      "benchmark_cagr": 0.090167,
+      "relative_excess_cagr": -0.037198,
+      "strategy_max_drawdown": -0.471955,
+      "sharpe": 0.309261,
+      "information_ratio": -0.167816,
+      "annual_volatility": 0.317856,
+      "mean_turnover": 0.117041,
+      "total_cost_sum": 0.162505
+    },
+    "10": {
+      "strategy_cagr": -0.007813,
+      "benchmark_cagr": 0.090167,
+      "relative_excess_cagr": -0.089877,
+      "strategy_max_drawdown": -0.427708,
+      "sharpe": 0.121173,
+      "information_ratio": -0.585446,
+      "annual_volatility": 0.293067,
+      "mean_turnover": 0.103333,
+      "total_cost_sum": 0.143412
+    },
+    "15": {
+      "strategy_cagr": -0.027838,
+      "benchmark_cagr": 0.090167,
+      "relative_excess_cagr": -0.108245,
+      "strategy_max_drawdown": -0.495764,
+      "sharpe": 0.065776,
+      "information_ratio": -0.641486,
+      "annual_volatility": 0.308949,
+      "mean_turnover": 0.13831,
+      "total_cost_sum": 0.192126
+    }
+  }
+}
