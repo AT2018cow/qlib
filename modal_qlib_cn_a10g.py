@@ -25,6 +25,7 @@ from qlib_live_retrain import (
     retrain_due_calendar,
     RETRAIN_EVERY_SESSIONS,
     provider_training_fingerprint,
+    apply_lgb_reproducibility,
 )
 from board_execution import compute_limit_masks, research_exchange
 from board_rules import (
@@ -305,12 +306,13 @@ def _load_and_patch_cfg(
         "module_path": "qlib.workflow.expm",
         "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-daily"},
     }
-    # 3) LightGBM 统一使用 canonical num_threads，避免与 n_jobs 别名并存导致实际线程数不清晰。
+    # 3) LightGBM 统一使用 canonical num_threads，并启用共享的可复现训练策略。
     try:
         _model_kw = cfg["task"]["model"]["kwargs"]
         if "num_threads" in _model_kw or cfg["task"]["model"].get("class") == "LGBModel":
             _model_kw["num_threads"] = CPU_COUNT
             _model_kw.pop("n_jobs", None)
+        apply_lgb_reproducibility(cfg)
     except KeyError:
         pass
     # 4) 烟雾：只跑 2 个 epoch 验证 CUDA+数据链路
