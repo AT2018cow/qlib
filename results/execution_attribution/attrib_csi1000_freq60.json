@@ -1,0 +1,282 @@
+{
+  "protocol": "execution_attribution_v1",
+  "market": "csi1000",
+  "freq": 60,
+  "topk": 20,
+  "n_drop": 2,
+  "window": "2021-01-05~2026-09-30",
+  "signal_rows": 1392761,
+  "n_retrains": 24,
+  "results": {
+    "REF_LEGACY_EXACT": {
+      "protocol": "REF_LEGACY_EXACT",
+      "n_days": 1392,
+      "ann_excess": 0.1305,
+      "ir": 0.835,
+      "max_drawdown_excess": -0.3336,
+      "strategy_total_return_sum": 1.2817,
+      "total_cost_sum": 0.268,
+      "mean_turnover": 0.192761,
+      "turnover_source": "turnover",
+      "annual_excess": {
+        "2021": {
+          "excess_sum": 0.3688,
+          "ann_excess_from_daily_mean": 0.3627,
+          "n_days": 242
+        },
+        "2022": {
+          "excess_sum": 0.076,
+          "ann_excess_from_daily_mean": 0.0748,
+          "n_days": 242
+        },
+        "2023": {
+          "excess_sum": 0.0929,
+          "ann_excess_from_daily_mean": 0.0913,
+          "n_days": 242
+        },
+        "2024": {
+          "excess_sum": 0.0005,
+          "ann_excess_from_daily_mean": 0.0005,
+          "n_days": 242
+        },
+        "2025": {
+          "excess_sum": 0.0545,
+          "ann_excess_from_daily_mean": 0.0534,
+          "n_days": 243
+        },
+        "2026": {
+          "excess_sum": 0.1705,
+          "ann_excess_from_daily_mean": 0.2242,
+          "n_days": 181
+        }
+      }
+    },
+    "A_LEGACY_ORACLE_CURRENT_DIRECTION": {
+      "protocol": "A_LEGACY_ORACLE_CURRENT_DIRECTION",
+      "n_days": 1392,
+      "ann_excess": 0.0519,
+      "ir": 0.34,
+      "max_drawdown_excess": -0.3951,
+      "strategy_total_return_sum": 0.8302,
+      "total_cost_sum": 0.276,
+      "mean_turnover": 0.198529,
+      "turnover_source": "turnover",
+      "annual_excess": {
+        "2021": {
+          "excess_sum": 0.1878,
+          "ann_excess_from_daily_mean": 0.1847,
+          "n_days": 242
+        },
+        "2022": {
+          "excess_sum": 0.0586,
+          "ann_excess_from_daily_mean": 0.0576,
+          "n_days": 242
+        },
+        "2023": {
+          "excess_sum": 0.0289,
+          "ann_excess_from_daily_mean": 0.0284,
+          "n_days": 242
+        },
+        "2024": {
+          "excess_sum": -0.0846,
+          "ann_excess_from_daily_mean": -0.0832,
+          "n_days": 242
+        },
+        "2025": {
+          "excess_sum": -0.0211,
+          "ann_excess_from_daily_mean": -0.0207,
+          "n_days": 243
+        },
+        "2026": {
+          "excess_sum": 0.1342,
+          "ann_excess_from_daily_mean": 0.1764,
+          "n_days": 181
+        }
+      }
+    },
+    "B_UNIFORM_OPEN_095": {
+      "protocol": "B_UNIFORM_OPEN_095",
+      "n_days": 1392,
+      "ann_excess": 0.0021,
+      "ir": 0.012,
+      "max_drawdown_excess": -0.6467,
+      "strategy_total_return_sum": 0.2983,
+      "total_cost_sum": 0.0355,
+      "mean_turnover": 0.025871,
+      "turnover_source": "turnover",
+      "annual_excess": {
+        "2021": {
+          "excess_sum": 0.194,
+          "ann_excess_from_daily_mean": 0.1908,
+          "n_days": 242
+        },
+        "2022": {
+          "excess_sum": 0.1506,
+          "ann_excess_from_daily_mean": 0.1481,
+          "n_days": 242
+        },
+        "2023": {
+          "excess_sum": -0.0528,
+          "ann_excess_from_daily_mean": -0.052,
+          "n_days": 242
+        },
+        "2024": {
+          "excess_sum": -0.1017,
+          "ann_excess_from_daily_mean": -0.1,
+          "n_days": 242
+        },
+        "2025": {
+          "excess_sum": -0.1034,
+          "ann_excess_from_daily_mean": -0.1013,
+          "n_days": 243
+        },
+        "2026": {
+          "excess_sum": -0.0744,
+          "ann_excess_from_daily_mean": -0.0978,
+          "n_days": 181
+        }
+      }
+    },
+    "C_BOARD_AWARE": {
+      "protocol": "C_BOARD_AWARE",
+      "n_days": 1392,
+      "ann_excess": 0.0084,
+      "ir": 0.048,
+      "max_drawdown_excess": -0.6532,
+      "strategy_total_return_sum": 0.3356,
+      "total_cost_sum": 0.0358,
+      "mean_turnover": 0.026096,
+      "turnover_source": "turnover",
+      "annual_excess": {
+        "2021": {
+          "excess_sum": 0.2348,
+          "ann_excess_from_daily_mean": 0.2309,
+          "n_days": 242
+        },
+        "2022": {
+          "excess_sum": 0.1492,
+          "ann_excess_from_daily_mean": 0.1467,
+          "n_days": 242
+        },
+        "2023": {
+          "excess_sum": -0.0508,
+          "ann_excess_from_daily_mean": -0.05,
+          "n_days": 242
+        },
+        "2024": {
+          "excess_sum": -0.1041,
+          "ann_excess_from_daily_mean": -0.1024,
+          "n_days": 242
+        },
+        "2025": {
+          "excess_sum": -0.1075,
+          "ann_excess_from_daily_mean": -0.1053,
+          "n_days": 243
+        },
+        "2026": {
+          "excess_sum": -0.0722,
+          "ann_excess_from_daily_mean": -0.095,
+          "n_days": 181
+        }
+      }
+    },
+    "D_BOARD_AWARE_HIGH_OPEN_5": {
+      "protocol": "D_BOARD_AWARE_HIGH_OPEN_5",
+      "n_days": 1392,
+      "ann_excess": 0.0021,
+      "ir": 0.012,
+      "max_drawdown_excess": -0.6467,
+      "strategy_total_return_sum": 0.2983,
+      "total_cost_sum": 0.0355,
+      "mean_turnover": 0.025871,
+      "turnover_source": "turnover",
+      "annual_excess": {
+        "2021": {
+          "excess_sum": 0.194,
+          "ann_excess_from_daily_mean": 0.1908,
+          "n_days": 242
+        },
+        "2022": {
+          "excess_sum": 0.1506,
+          "ann_excess_from_daily_mean": 0.1481,
+          "n_days": 242
+        },
+        "2023": {
+          "excess_sum": -0.0528,
+          "ann_excess_from_daily_mean": -0.052,
+          "n_days": 242
+        },
+        "2024": {
+          "excess_sum": -0.1017,
+          "ann_excess_from_daily_mean": -0.1,
+          "n_days": 242
+        },
+        "2025": {
+          "excess_sum": -0.1034,
+          "ann_excess_from_daily_mean": -0.1013,
+          "n_days": 243
+        },
+        "2026": {
+          "excess_sum": -0.0744,
+          "ann_excess_from_daily_mean": -0.0978,
+          "n_days": 181
+        }
+      }
+    },
+    "E_BOARD_AWARE_NO_CHINEXT_STAR": {
+      "protocol": "E_BOARD_AWARE_NO_CHINEXT_STAR",
+      "n_days": 1392,
+      "ann_excess": 0.0346,
+      "ir": 0.199,
+      "max_drawdown_excess": -0.579,
+      "strategy_total_return_sum": 0.4746,
+      "total_cost_sum": 0.0221,
+      "mean_turnover": 0.016222,
+      "turnover_source": "turnover",
+      "annual_excess": {
+        "2021": {
+          "excess_sum": 0.093,
+          "ann_excess_from_daily_mean": 0.0915,
+          "n_days": 242
+        },
+        "2022": {
+          "excess_sum": 0.2149,
+          "ann_excess_from_daily_mean": 0.2113,
+          "n_days": 242
+        },
+        "2023": {
+          "excess_sum": 0.056,
+          "ann_excess_from_daily_mean": 0.0551,
+          "n_days": 242
+        },
+        "2024": {
+          "excess_sum": 0.0072,
+          "ann_excess_from_daily_mean": 0.0071,
+          "n_days": 242
+        },
+        "2025": {
+          "excess_sum": -0.2303,
+          "ann_excess_from_daily_mean": -0.2256,
+          "n_days": 243
+        },
+        "2026": {
+          "excess_sum": 0.0613,
+          "ann_excess_from_daily_mean": 0.0807,
+          "n_days": 181
+        }
+      }
+    }
+  },
+  "attribution_pp": {
+    "REF_to_A_direction_semantics_pp": -7.86,
+    "A_to_B_same_day_close_oracle_pp": -4.98,
+    "B_to_C_board_rule_pp": 0.63,
+    "C_to_D_high_open_5_pp": -0.63,
+    "C_to_E_exclude_growth_boards_pp": 2.62
+  },
+  "notes": {
+    "REF_LEGACY_EXACT": "legacy same-day $change oracle; diagnostic only",
+    "D_BOARD_AWARE_HIGH_OPEN_5": "diagnostic conditional on observed open; not automatically an implementable opening-auction execution protocol",
+    "E_BOARD_AWARE_NO_CHINEXT_STAR": "same trained signal; filters ChiNext/STAR after scoring, no retraining"
+  }
+}
