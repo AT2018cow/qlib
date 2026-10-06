@@ -79,14 +79,8 @@ footer {
             <li>信号发布：每个交易日 07:00（北京时间），基于前一交易日收盘数据生成</li>
             <li>研究回测执行时点：T 收盘形成分数，T+1 开盘调整组合</li>
             <li>当前 corrected research protocol 不使用 5% 高开过滤叠加；榜单是 research/paper ranking，不是可执行订单</li>
-            <li>风控三件套（主池 · 中证 1000 口径）：
-                <ol style="padding-left:20px;margin-top:4px;">
-                    <li>单票止损 -8% ~ -10%（硬止损）</li>
-                    <li>中证 1000 MA20 大盘门控（跌破减半仓或空仓）</li>
-                    <li>Size 风格门控（中证 1000/沪深 300 相对强弱转负时降仓）</li>
-                </ol>
-            </li>
-            <li class="note">卫星池（创业板）沿用同一执行协议框架；其大盘门控基准（等权合成指数 MA20）与止损细则在正式执行前需单独确认</li>
+            <li><strong>Canonical research backtest</strong>：仅包含已审计的 T+1 open、连续账户、TopkDropout、板块/日期感知涨跌停和交易成本；不把 MA20 门控、size 门控或单票硬止损混入当前基线收益。</li>
+            <li class="note">历史 paper/操作层曾记录 MA20、size 风格门控与单票止损等风险规则；它们属于独立的操作性风控假设，尚未作为当前 canonical backtest 的已验证增益，因此不得用来解释上表 corrected CAGR。</li>
         </ul>
     </div>
 
