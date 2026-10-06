@@ -159,6 +159,60 @@ to a dedicated `.reuse_source.json` snapshot before the canonical subset run can
 overwrite the phase JSON.
 
 
+### Zero-fit phase attribution before any full 20-phase grid
+
+When a deterministic phase screen already shows material dispersion, diagnose the
+existing retained reports before spending more model fits:
+
+```bash
+modal run phase_attribution_diagnostic.py \
+  --market csi1000 \
+  --freq 20 \
+  --phases 0,4,6,10,15 \
+  --focus-phase 4 \
+  --event-window 5
+```
+
+This path performs **zero model fits**. It reads the retained raw Parquet reports,
+verifies every report content hash, independently recomputes net strategy CAGR and
+relative CAGR, and fails closed if the recomputed canonical metrics do not match the
+saved phase results.
+
+The local entrypoint writes:
+
+```text
+results/freq_phase_attribution/phase_csi1000_freq20_zero_fit.json
+```
+
+For every retained phase it reports full-window gross/net and relative performance,
+calendar-year attribution, turnover/cost, and a retrain-event study covering execution
+day T+1 through T+5 versus non-event days.
+
+For the focus phase (CSI1000 phase 4 by default), it additionally compares each other
+retained phase and reports:
+
+- gross NAV gap versus net NAV gap;
+- the log-gap contribution from differential transaction costs and its share of the
+  final net gap;
+- annual net log-gap contributions and the one/two/three-year concentration of negative
+  gaps;
+- the first dates when 25% / 50% / 75% of the final gap formed;
+- maximum historical advantage and disadvantage.
+
+Interpretation rule:
+
+1. if the phase-4 deficit is mostly cost-driven and concentrated immediately after
+   retrains, investigate signal/turnover instability before expanding the grid;
+2. if the deficit is concentrated in one or two market years, treat phase risk as
+   regime-dependent and inspect those periods first;
+3. if the deficit is broad across years and differential costs explain only a minority,
+   the five-phase screen has established structural calendar-phase sensitivity and a
+   full 20-phase distribution is justified for robust lower-tail/median estimates.
+
+This diagnostic remains audit-only and must not be used to select the historically
+best phase.
+
+
 A full grid remains available:
 
 ```bash
