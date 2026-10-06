@@ -26,8 +26,9 @@ EXECUTION = "t_close_t1_open"
 TRAIN_START = "2016-01-01"
 VALIDATION_SESSIONS = 252
 SCREEN_FOLDS = 4
-SCREEN_EXECUTION_SESSIONS = 238
+SCREEN_EXECUTION_SESSIONS = 60
 SCREEN_SIGNAL_ANCHOR = "2021-01-04"
+SCREEN_LAST_EXECUTION_CUTOFF = "2024-12-31"
 REFERENCE_PHASES = (0, 4, 6, 10, 15)
 ACCOUNT_ERROR_TOLERANCE = 1e-12
 METRIC_VERSION = "portfolio_compound_v1"
@@ -185,6 +186,7 @@ def frozen_protocol() -> dict:
         "screen_folds": SCREEN_FOLDS,
         "screen_execution_sessions": SCREEN_EXECUTION_SESSIONS,
         "screen_signal_anchor": SCREEN_SIGNAL_ANCHOR,
+        "screen_last_execution_cutoff": SCREEN_LAST_EXECUTION_CUTOFF,
         "reference_phases": list(REFERENCE_PHASES),
     }
 
@@ -300,6 +302,16 @@ def _calendar_index(calendar: list[str], date: str) -> int:
     return i
 
 
+def _calendar_index_on_or_before(calendar: list[str], date: str) -> int:
+    i = bisect_left(calendar, str(date)[:10])
+    if i < len(calendar) and calendar[i] == str(date)[:10]:
+        return i
+    i -= 1
+    if i < 0:
+        raise ValueError(f"no trading session on or before {date!r}")
+    return i
+
+
 def build_stage_a_folds(
     calendar: list[str],
     *,
@@ -309,14 +321,14 @@ def build_stage_a_folds(
     validation_sessions: int = VALIDATION_SESSIONS,
     horizon: int = LABEL_HORIZON,
     train_start: str = TRAIN_START,
+    last_execution_cutoff: str = SCREEN_LAST_EXECUTION_CUTOFF,
 ) -> list[dict]:
-    """Build four cheap one-fit folds with a reserved recent tail.
+    """Build four cheap, regime-spread one-fit folds with a reserved recent tail.
 
-    Each fold trains once at its signal anchor and predicts through that
-    fold's execution end, matching the canonical continuous-backtest signal
-    coverage. Adjacent folds share one boundary signal date but their execution
-    windows never overlap. Fold NAVs must never be concatenated into a headline
-    portfolio result.
+    Anchors are spread deterministically from 2021 through the end of 2024.
+    Each model is evaluated for roughly one quarter rather than a full year,
+    limiting stale-model distortion in this cheap proxy screen. The folds are
+    independent accounts and must never be concatenated into a headline return.
     """
     if not calendar or calendar != sorted(set(calendar)):
         raise ValueError("trading calendar must be sorted, unique, and non-empty")
@@ -324,18 +336,26 @@ def build_stage_a_folds(
         raise ValueError("invalid fold geometry")
 
     anchor_i = _calendar_index(calendar, signal_anchor)
+    cutoff_i = _calendar_index_on_or_before(calendar, last_execution_cutoff)
+    latest_signal_i = cutoff_i - execution_sessions
     train_start_i = bisect_left(calendar, train_start)
     if train_start_i >= len(calendar):
         raise ValueError("train_start is after the provider calendar")
+    if latest_signal_i <= anchor_i:
+        raise ValueError("screen cutoff leaves no room for regime-spread folds")
+    if cutoff_i + 1 >= len(calendar):
+        raise ValueError("provider calendar leaves no reserved tail after the screen cutoff")
 
-    last_exec_i = anchor_i + n_folds * execution_sessions
-    # Preserve at least one session after the screen for a genuinely untouched tail.
-    if last_exec_i + 1 >= len(calendar):
-        raise ValueError("provider calendar is too short for the screen plus reserved tail")
+    span = latest_signal_i - anchor_i
+    anchor_indices = [
+        round(anchor_i + span * fold_index / (n_folds - 1))
+        for fold_index in range(n_folds)
+    ]
+    if len(set(anchor_indices)) != n_folds:
+        raise ValueError("fold anchors collapsed; increase screen span")
 
     folds = []
-    for fold_index in range(n_folds):
-        signal_start_i = anchor_i + fold_index * execution_sessions
+    for fold_index, signal_start_i in enumerate(anchor_indices):
         execution_start_i = signal_start_i + 1
         execution_end_i = signal_start_i + execution_sessions
         signal_end_i = execution_end_i
@@ -363,8 +383,8 @@ def build_stage_a_folds(
     for previous, current in zip(folds, folds[1:]):
         if previous["execution"][1] >= current["execution"][0]:
             raise AssertionError("fold execution windows overlap")
-        if previous["signal"][1] != current["signal"][0]:
-            raise AssertionError("adjacent folds must share exactly one boundary signal date")
+        if previous["signal"][1] >= current["signal"][0]:
+            raise AssertionError("fold signal windows overlap")
     return folds
 
 
