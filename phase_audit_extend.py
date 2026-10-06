@@ -185,7 +185,11 @@ def extend_phase_sensitivity_driver(freq: int = 20, eval_from: str = "2021-01-04
 
     run_phases = sorted(set([0] + missing))
     print(f"[phase-extend] requested={phase_list} reusable={reusable} compute={missing} validation=[0]")
-    fresh = _canonical_driver.remote(
+    # Call the canonical driver as a LOCAL function (we're already in a container
+    # with the correct image; cross-app .remote() fails because the other app
+    # is not running). Access the raw function via Modal's _function attribute.
+    raw_driver = _canonical_driver._function
+    fresh = raw_driver(
         freq=freq, eval_from=eval_from, market=market, topk=topk, nd=nd,
         phases=",".join(str(x) for x in run_phases), require_repro_gate=True,
     )
