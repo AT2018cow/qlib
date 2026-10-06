@@ -82,8 +82,8 @@ The old daily-mean × 238 active-return annualization is retained only under exp
 2. Do not tune thresholds based on this comparison and then call the same history independent OOS.
 3. If D or E appears materially better under relative excess CAGR, also inspect strategy CAGR, MaxDD and Sharpe before treating it as a useful risk-overlay hypothesis.
 4. Historical Batch C and frequency artifacts produced under the scalar-limit protocol remain legacy evidence.
-5. The committed pre-fix Batch C artifacts are v3 historical baselines; the next corrected rerun will use `board_aware_open_bootstrap_v4_cny_tick`.
-6. The committed pre-fix frequency artifact is `continuous_account_board_aware_v3`; the next corrected rerun will use `continuous_account_board_aware_v4_cny_tick`.
+5. The committed pre-fix Batch C artifacts are v3 historical baselines; the next corrected rerun will use `board_aware_open_bootstrap_v5_repro`.
+6. The committed pre-fix frequency artifact is `continuous_account_board_aware_v3`; the next corrected rerun will use `continuous_account_board_aware_v5_repro`.
 
 
 ## Pre-tuner execution correction (2026-10-06)
