@@ -1,0 +1,30 @@
+name: Verify pre-tuner audit extended pools
+
+on:
+  push:
+    branches:
+      - fix/pre-tuner-audit-20261006
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install focused dependencies
+        run: pip install numpy==1.26.4 pandas==2.2.3 pyarrow
+      - name: Compile changed code
+        run: |
+          python -m py_compile board_execution.py freq_experiment.py modal_qlib_cn_a10g.py portfolio_performance.py paper_portfolio.py tests/test_board_execution.py tests/test_review_regressions.py
+      - name: Run focused regressions
+        run: |
+          PYTHONPATH=. python -m unittest tests.test_review_regressions tests.test_portfolio_performance tests.test_paper_portfolio -v
+      - name: Diff whitespace check
+        run: git diff --check origin/main...HEAD
