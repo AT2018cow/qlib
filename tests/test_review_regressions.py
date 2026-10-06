@@ -31,7 +31,7 @@ class ReviewRegressionTests(unittest.TestCase):
         src = function_source("freq_experiment.py", "freq_driver")
         self.assertIn("pd.concat(chunks)", src)
         self.assertIn("execution_start = cal[start_i + 1]", src)
-        self.assertIn('"protocol": "continuous_account_board_aware_v4_cny_tick"', src)
+        self.assertIn('"protocol": "continuous_account_board_aware_v5_repro"', src)
         self.assertEqual(src.count("normal_backtest("), 1)
 
     def test_independent_recheck_has_its_own_maturity_guard(self):
@@ -47,7 +47,7 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn('"num_leaves": 250', src)
         self.assertIn('"CSZScoreNorm"', src)
         self.assertNotIn('"CSRankNorm"', src)
-        self.assertIn('"board_aware_open_bootstrap_v4_cny_tick"', src)
+        self.assertIn('"board_aware_open_bootstrap_v5_repro"', src)
         self.assertIn("unanchored_pending_batch_c_rerun", src)
         self.assertNotIn("expected_excess = -0.0223", src)
         # Alpha158 类默认 infer 处理器必须镜像（review 2026-10-05：[] 与生产不符）
@@ -119,9 +119,9 @@ class ReviewRegressionTests(unittest.TestCase):
 
     def test_batch_c_artifact_has_board_aware_protocol(self):
         src = function_source("modal_qlib_cn_a10g.py", "batch_c")
-        self.assertIn('"protocol": "board_aware_open_bootstrap_v4_cny_tick"', src)
+        self.assertIn('"protocol": "board_aware_open_bootstrap_v5_repro"', src)
         worker = function_source("modal_qlib_cn_a10g.py", "batch_c_window")
-        self.assertIn('"protocol": "board_aware_open_bootstrap_v4_cny_tick"', worker)
+        self.assertIn('"protocol": "board_aware_open_bootstrap_v5_repro"', worker)
 
     def test_execution_attribution_reuses_frozen_signal(self):
         src = function_source("freq_experiment.py", "execution_attribution_driver")
@@ -132,7 +132,7 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn("C_BOARD_AWARE", src)
         self.assertIn("D_BOARD_AWARE_HIGH_OPEN_5", src)
         self.assertIn("E_BOARD_AWARE_NO_CHINEXT_STAR", src)
-        self.assertIn('"protocol": "execution_attribution_v2_cny_tick"', src)
+        self.assertIn('"protocol": "execution_attribution_v3_repro"', src)
 
     def test_execution_attribution_defines_clean_deltas(self):
         src = function_source("freq_experiment.py", "_run_execution_protocol")
