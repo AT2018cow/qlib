@@ -161,6 +161,10 @@ def _execution_dates_for_retrains(
     execution_dates = []
     for value in retrain_dates:
         retrain = pd.Timestamp(value)
+        # A retrain well before the retained report window already executed
+        # before attribution starts. Do not map it spuriously to report day 1.
+        if retrain < idx[0] and (idx[0] - retrain).days > 3:
+            continue
         pos = int(idx.searchsorted(retrain, side="right"))
         if pos < len(idx):
             execution_dates.append(idx[pos])
