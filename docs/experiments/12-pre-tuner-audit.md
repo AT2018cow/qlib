@@ -132,6 +132,28 @@ modal run freq_experiment.py::retrain_phase_sensitivity_driver --freq 20 --eval-
 Only expand a pool to all 20 phases when the screen shows material phase risk or a full
 phase distribution is needed for a production decision.
 
+
+When extending a **partially completed** deterministic phase audit on the same frozen
+manifest, use the cost-aware extension driver instead of rerunning already-completed
+non-zero phases:
+
+```bash
+modal run phase_audit_extend.py::extend_phase_sensitivity_driver \
+  --freq 20 --eval-from 2021-01-04 \
+  --market csi1000 --topk 20 --nd 2 \
+  --phases 0,4,6,10,15
+```
+
+The extension driver leaves `freq_experiment.py` unchanged so the gate's recorded
+source hash remains valid. It reuses an existing non-zero phase only when protocol,
+market, frequency, portfolio parameters, evaluation window, reproducibility manifest,
+and gate payload all match. It validates the saved report content hash, runs only
+missing phases through the canonical phase driver, then merges the requested phases.
+The merged result also records mean turnover, turnover source, total cost, benchmark
+MaxDD, and annual volatility. A `.preextend.json` backup is retained before the
+canonical subset run overwrites the phase JSON.
+
+
 A full grid remains available:
 
 ```bash
