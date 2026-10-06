@@ -1,5 +1,7 @@
 # 09 - Remaining Qlib Wrapper / Execution Issues (2026-10-05)
 
+> **2026-10-07 stage boundary:** This note records the execution-wrapper transition and remains useful for implementation history, but the current research protocol and pool decisions are governed by [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md). The 5% high-open rule is **not** part of the current research baseline; it was isolated as a diagnostic overlay and disabled. Current reproducibility/pool status should be taken from docs 12/14.
+
 > **Status update (2026-10-07):** This is a historical remaining-issues list from before PR #5-#13. R24/R25-era mixed-board and execution-timing issues were addressed by the board-aware T+1-open audit stack; paper/research execution and canonical metrics were subsequently aligned. Consult [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md) and [10-execution-attribution.md](10-execution-attribution.md) before treating any item below as still open.
 
 
