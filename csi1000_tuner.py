@@ -25,10 +25,12 @@ from csi1000_tuner_core import (
     expanded_candidate_specs,
     frozen_protocol,
     rank_candidates,
+    ranking_contract,
     reserved_tail,
     select_stage_b_candidates,
     smoke_candidate_specs,
     summarize_candidate,
+    validate_reproducibility_pairs,
 )
 
 APP_NAME = "qlib-csi1000-stage-a-tuner"
@@ -363,6 +365,58 @@ def _turnover_cost_summary(report) -> dict:
     }
 
 
+def _recompute_result_metrics(report, fold: dict) -> dict:
+    """Recompute every reusable metric from the verified raw report."""
+    from portfolio_performance import portfolio_performance
+
+    perf = portfolio_performance(
+        report,
+        initial_cash=100000000,
+        backtest_start=fold["execution"][0],
+    )
+    if (
+        perf["account_return_max_error"] is None
+        or abs(float(perf["account_return_max_error"])) > 1e-12
+    ):
+        raise RuntimeError("reusable report fails account consistency")
+    return {**perf, **_turnover_cost_summary(report)}
+
+
+def _metric_values_match(saved, recomputed) -> bool:
+    import math
+
+    if saved is None or recomputed is None:
+        return saved is None and recomputed is None
+    if (
+        isinstance(saved, (int, float))
+        and not isinstance(saved, bool)
+        and isinstance(recomputed, (int, float))
+        and not isinstance(recomputed, bool)
+    ):
+        return math.isclose(
+            float(saved),
+            float(recomputed),
+            rel_tol=0.0,
+            abs_tol=1e-12,
+        )
+    return saved == recomputed
+
+
+def _assert_reusable_metrics(payload: dict, report, fold: dict) -> dict:
+    """Fail closed if result.json disagrees with independently recomputed metrics."""
+    recomputed = _recompute_result_metrics(report, fold)
+    mismatches = []
+    for key, value in recomputed.items():
+        if key not in payload or not _metric_values_match(payload.get(key), value):
+            mismatches.append(key)
+    if mismatches:
+        raise RuntimeError(
+            "reusable result metadata disagrees with raw report for "
+            f"{fold['fold_id']}: {mismatches}"
+        )
+    return recomputed
+
+
 def _result_dir(snapshot_token: str, candidate_id: str, fold_id: str) -> Path:
     return ARTIFACT_ROOT / snapshot_token / candidate_id / fold_id
 
@@ -419,7 +473,10 @@ def _load_reusable_result(args: dict):
         return None
     if _frame_sha256(report) != report_meta["content_sha256"]:
         return None
-    payload["source"] = "artifact_reuse"
+
+    recomputed = _assert_reusable_metrics(payload, report, args["fold"])
+    payload.update(recomputed)
+    payload["source"] = "artifact_reuse_verified"
     return payload
 
 
@@ -554,6 +611,28 @@ def stage_a_screen_driver(
             raise ValueError("smoke screen is frozen at exactly 12 candidates")
         candidates = smoke_candidate_specs()
 
+    baseline = next((candidate for candidate in candidates if candidate["is_baseline"]), None)
+    if baseline is None:
+        raise RuntimeError("Stage-A candidate set is missing the frozen baseline")
+
+    gate_jobs = [
+        {
+            "candidate": baseline,
+            "fold": fold,
+            "snapshot_token": manifest["snapshot_token"],
+            "resume": False,
+        }
+        for fold in folds
+    ]
+    print(
+        f"[stage-a] reproducibility preflight: baseline x {len(folds)} folds x2"
+    )
+    repeat_a = list(stage_a_fold_worker.map(gate_jobs))
+    repeat_b = list(stage_a_fold_worker.map(gate_jobs))
+    reproducibility_gate = validate_reproducibility_pairs(repeat_a, repeat_b)
+
+    # The second baseline repeat is now the canonical retained baseline result.
+    # Avoid a third baseline fit; all remaining candidates follow normal resume policy.
     jobs = [
         {
             "candidate": candidate,
@@ -562,14 +641,16 @@ def stage_a_screen_driver(
             "resume": bool(resume),
         }
         for candidate in candidates
+        if candidate["candidate_id"] != baseline["candidate_id"]
         for fold in folds
     ]
+    max_new_fits = reproducibility_gate["total_gate_fits"] + len(jobs)
     print(
         f"[stage-a] candidates={len(candidates)} folds={len(folds)} "
-        f"fits<= {len(jobs)} snapshot={manifest['snapshot_token'][:12]}"
+        f"fits<= {max_new_fits} snapshot={manifest['snapshot_token'][:12]}"
     )
 
-    outputs = list(stage_a_fold_worker.map(jobs))
+    outputs = list(repeat_b) + list(stage_a_fold_worker.map(jobs))
     by_candidate = {candidate["candidate_id"]: [] for candidate in candidates}
     for result in outputs:
         candidate_id = result["candidate_id"]
@@ -596,23 +677,9 @@ def stage_a_screen_driver(
         "reserved_tail": tail,
         "candidate_count": len(candidates),
         "fold_count": len(folds),
-        "max_new_fits": len(jobs),
-        "ranking_contract": {
-            "order": [
-                "relative_excess_cagr_q25",
-                "relative_excess_cagr_median",
-                "relative_excess_cagr_worst",
-                "positive_fold_ratio",
-                "information_ratio_median",
-                "sharpe_median",
-                "strategy_max_drawdown_worst",
-                "lower_mean_turnover_median",
-                "lower_total_cost_sum_median",
-            ],
-            "selection": "lexicographic_descending",
-            "single_fold_winner_allowed": False,
-            "single_phase_winner_allowed": False,
-        },
+        "max_new_fits": max_new_fits,
+        "reproducibility_gate": reproducibility_gate,
+        "ranking_contract": ranking_contract("screen"),
         "ranked_candidates": ranked,
         "stage_b_preview": stage_b,
     }
