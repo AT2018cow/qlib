@@ -271,15 +271,21 @@ def pairwise_gap_attribution(
     if len(common) != len(focus) or len(common) != len(comparator):
         raise ValueError("pairwise reports do not have the same daily index")
 
-    focus_net = focus.loc[common, "return"].astype(float) - focus.loc[common, "cost"].astype(float)
-    comp_net = (
-        comparator.loc[common, "return"].astype(float)
-        - comparator.loc[common, "cost"].astype(float)
+    focus_gross = focus.loc[common, "return"].astype(float)
+    comp_gross = comparator.loc[common, "return"].astype(float)
+    focus_net = focus_gross - focus.loc[common, "cost"].astype(float)
+    comp_net = comp_gross - comparator.loc[common, "cost"].astype(float)
+
+    daily_gross_log_gap = (
+        np.log1p(focus_gross.to_numpy()) - np.log1p(comp_gross.to_numpy())
     )
     daily_log_gap = np.log1p(focus_net.to_numpy()) - np.log1p(comp_net.to_numpy())
     cumulative_log_gap = np.cumsum(daily_log_gap)
+    final_gross_log_gap = float(daily_gross_log_gap.sum())
     final_log_gap = float(cumulative_log_gap[-1])
     final_ratio = float(math.exp(final_log_gap) - 1.0)
+    gross_ratio = float(math.exp(final_gross_log_gap) - 1.0)
+    cost_effect_log_gap = final_log_gap - final_gross_log_gap
 
     annual = []
     years = pd.Index(common.year).unique().tolist()
@@ -327,8 +333,16 @@ def pairwise_gap_attribution(
     max_pos = int(np.argmax(cumulative_log_gap))
     return {
         "n_days": int(len(common)),
-        "final_log_gap": round(final_log_gap, 8),
-        "final_focus_vs_comparator_nav_ratio_gap": round(final_ratio, 8),
+        "final_gross_log_gap": round(final_gross_log_gap, 8),
+        "final_net_log_gap": round(final_log_gap, 8),
+        "final_focus_vs_comparator_gross_nav_ratio_gap": round(gross_ratio, 8),
+        "final_focus_vs_comparator_net_nav_ratio_gap": round(final_ratio, 8),
+        "cost_effect_log_gap": round(cost_effect_log_gap, 8),
+        "cost_effect_share_of_net_gap": round(
+            cost_effect_log_gap / final_log_gap, 6
+        )
+        if final_log_gap
+        else None,
         "annual": annual,
         "negative_gap_concentration": concentration,
         "gap_formation_milestones": milestones,
