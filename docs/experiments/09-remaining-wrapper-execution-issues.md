@@ -1,5 +1,8 @@
 # 09 - Remaining Qlib Wrapper / Execution Issues (2026-10-05)
 
+> **Status update (2026-10-07):** This is a historical remaining-issues list from before PR #5-#13. R24/R25-era mixed-board and execution-timing issues were addressed by the board-aware T+1-open audit stack; paper/research execution and canonical metrics were subsequently aligned. Consult [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md) and [10-execution-attribution.md](10-execution-attribution.md) before treating any item below as still open.
+
+
 This note records the issues intentionally **not** fixed in PR #3 because they change backtest semantics, execution assumptions, benchmark definition, or production portfolio behavior and therefore require separate historical validation.
 
 ## Status update — 2026-10-05 follow-up review
