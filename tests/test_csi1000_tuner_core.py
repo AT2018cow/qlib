@@ -1,4 +1,8 @@
+import ast
+from pathlib import Path
 import unittest
+
+ROOT = Path(__file__).resolve().parents[1]
 
 from csi1000_tuner_core import (
     BASELINE_TUNABLE_PARAMS,
@@ -130,6 +134,15 @@ class CSI1000TunerCoreTests(unittest.TestCase):
             last_execution_cutoff="D1000",
         )
         self.assertEqual(len(folds), 4)
+        for fold in folds:
+            signal_start = int(fold["signal"][0][1:])
+            signal_end = int(fold["signal"][1][1:])
+            execution_start = int(fold["execution"][0][1:])
+            execution_end = int(fold["execution"][1][1:])
+            self.assertEqual(signal_end - signal_start + 1, 100)
+            self.assertEqual(execution_end - execution_start + 1, 100)
+            self.assertEqual(execution_start, signal_start + 1)
+            self.assertEqual(execution_end, signal_end + 1)
         for previous, current in zip(folds, folds[1:]):
             self.assertLess(previous["execution"][1], current["execution"][0])
             self.assertLess(previous["signal"][1], current["signal"][0])
@@ -221,6 +234,14 @@ class CSI1000TunerCoreTests(unittest.TestCase):
         phases = [_metric_row(phase, 0.02, kind="phase") for phase in REFERENCE_PHASES[:-1]]
         with self.assertRaises(ValueError):
             summarize_candidate(candidate, folds, phase_results=phases)
+
+    def test_runner_syntax_and_audit_hooks_are_present(self):
+        source = (ROOT / "csi1000_tuner.py").read_text()
+        ast.parse(source)
+        self.assertIn('validate_reproducibility_pairs(repeat_a, repeat_b)', source)
+        self.assertIn('_assert_reusable_metrics(payload, report, args["fold"])', source)
+        self.assertIn('"ranking_contract": ranking_contract("screen")', source)
+        self.assertNotIn('"relative_excess_cagr_q25",\n                "relative_excess_cagr_median"', source)
 
     def test_stage_b_selection_retains_baseline(self):
         summaries = []
