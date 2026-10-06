@@ -258,7 +258,7 @@ def _runtime_manifest(cutoff: str) -> dict:
     source_path = Path(__file__)
     core_path = Path(csi1000_tuner_core.__file__)
     manifest = {
-        "manifest_version": "csi1000_tuner_repro_v1",
+        "manifest_version": "csi1000_tuner_repro_v2",
         "protocol": frozen_protocol(),
         "provider_cutoff": cutoff,
         "provider_fingerprint": provider_training_fingerprint(DATA_DIR, MARKET, cutoff),
