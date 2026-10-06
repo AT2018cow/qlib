@@ -144,8 +144,26 @@ def run_canonical_phase_driver(freq: int, eval_from: str, market: str,
     _sys.path.insert(0, "/root/qlib")
     import freq_experiment as _fe
 
-    raw = _fe.retrain_phase_sensitivity_driver.get_raw_f()
-    return raw(freq=freq, eval_from=eval_from, market=market, topk=topk, nd=nd, phases=phases)
+    # Run the canonical driver as a subprocess to avoid cross-app Modal hydration issues.
+    # freq_experiment.py is at /root/ and its module-level code works in this container.
+    import subprocess as _sp
+    import json as _json_mod
+    _script = (
+        "import sys, json\n"
+        "sys.path.insert(0, '/root')\n"
+        "sys.path.insert(0, '/root/qlib')\n"
+        "from freq_experiment import retrain_phase_sensitivity_driver\n"
+        f"result = retrain_phase_sensitivity_driver.get_raw_f()(\n"
+        f"    freq={freq}, eval_from='{eval_from}', market='{market}',\n"
+        f"    topk={topk}, nd={nd}, phases='{phases}', require_repro_gate=True\n"
+        ")\n"
+        "print(json.dumps(result))\n"
+    )
+    proc = _sp.run([_sys.executable, "-c", _script], capture_output=True, text=True, timeout=3600)
+    if proc.returncode != 0:
+        raise RuntimeError(f"canonical driver subprocess failed: {proc.stderr[-500:]}")
+    fresh = _json_mod.loads(proc.stdout.strip().split("\n")[-1])
+    return fresh
 
 
 @app.function(volumes={str(VOL_ROOT): vol}, timeout=4 * 3600)
