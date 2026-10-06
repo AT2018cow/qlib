@@ -312,9 +312,11 @@ def build_stage_a_folds(
 ) -> list[dict]:
     """Build four cheap one-fit folds with a reserved recent tail.
 
-    Each fold trains once at its signal anchor, predicts the sessions needed
-    for a following execution window, and is scored as an independent account.
-    Fold NAVs must never be concatenated into a headline portfolio result.
+    Each fold trains once at its signal anchor and predicts through that
+    fold's execution end, matching the canonical continuous-backtest signal
+    coverage. Adjacent folds share one boundary signal date but their execution
+    windows never overlap. Fold NAVs must never be concatenated into a headline
+    portfolio result.
     """
     if not calendar or calendar != sorted(set(calendar)):
         raise ValueError("trading calendar must be sorted, unique, and non-empty")
@@ -336,7 +338,7 @@ def build_stage_a_folds(
         signal_start_i = anchor_i + fold_index * execution_sessions
         execution_start_i = signal_start_i + 1
         execution_end_i = signal_start_i + execution_sessions
-        signal_end_i = execution_end_i - 1
+        signal_end_i = execution_end_i
 
         valid_end_i = signal_start_i - horizon - 1
         valid_start_i = valid_end_i - validation_sessions + 1
@@ -361,8 +363,8 @@ def build_stage_a_folds(
     for previous, current in zip(folds, folds[1:]):
         if previous["execution"][1] >= current["execution"][0]:
             raise AssertionError("fold execution windows overlap")
-        if previous["signal"][1] >= current["signal"][0]:
-            raise AssertionError("fold signal windows overlap")
+        if previous["signal"][1] != current["signal"][0]:
+            raise AssertionError("adjacent folds must share exactly one boundary signal date")
     return folds
 
 
