@@ -2,123 +2,94 @@
 
 ## Scope
 
-This audit is intentionally before any tuner redesign. It changes execution correctness and robustness evidence only; it does not search or deploy new model parameters.
+This audit is intentionally before any tuner redesign. It fixes execution correctness,
+reproducibility, and baseline evidence only; it does not search or deploy new model
+parameters.
 
 ## 1. Statutory limit-price tick on original CNY scale
 
-Qlib CN daily prices are normalized adjusted prices. The statutory 0.01 CNY price tick therefore must not be applied directly to `$open` or `Ref($close,1)`.
+Qlib CN daily prices are normalized adjusted prices. The statutory 0.01 CNY price tick
+must therefore be applied after reconstructing the original-RMB price scale with
+`$factor`, not directly to normalized `$open` or `Ref($close,1)`.
 
-`BoardAwareExchange` now subscribes to `$factor` and reconstructs the original-RMB scale:
+The corrected board-aware execution remains T-close signal -> T+1 open, direction-aware,
+with no 5% high-open production overlay.
 
-```text
-raw_open = adjusted_open / factor
-raw_reference = adjusted_previous_close / current_factor
-```
+Current protocol versions:
 
-The exact 10/20/30/5% board threshold is applied to `raw_reference`, then rounded half-up to the 0.01 CNY tick before comparing with `raw_open`.
+- continuous frequency baseline: `continuous_account_board_aware_v5_repro`;
+- phase sensitivity: `retrain_phase_sensitivity_v2_repro`;
+- Batch C: `board_aware_open_bootstrap_v5_repro`;
+- execution attribution: `execution_attribution_v3_repro`.
 
-Invalid/missing factors on rows that require a statutory limit calculation fail closed with an exception rather than silently reverting to normalized-price rounding.
+Earlier v3/v4 artifacts remain historical evidence but are superseded for future
+execution-sensitive and phase-sensitivity conclusions.
 
-Protocol versions after this correction:
+## 2. Frozen three-pool baseline matrix
 
-- continuous frequency: `continuous_account_board_aware_v5_repro`
-- Batch C: `board_aware_open_bootstrap_v5_repro`
-- execution attribution: `execution_attribution_v3_repro`
+The pre-tuner gate covers all three pools whose prior conclusions matter:
 
-Any v3 board-aware result remains historical evidence but is superseded for execution-sensitive conclusions.
+| market | frozen portfolio config | benchmark | reason |
+|---|---|---|---|
+| `csi1000` | top20 / nd2 | SH000852 | production core |
+| `chinext` | top20 / nd3 | SZ399998 equal-weight | production satellite |
+| `star` | top50 / nd2 | SZ399997 equal-weight | previously rejected using legacy evidence; must be recalculated |
 
-## 2. Research / paper execution parity
+These are frozen **baseline** configurations, not claims of optimality.
 
-The canonical production/research baseline is:
+Fresh chenditc bundles do not contain the synthetic ChiNext/STAR equal-weight
+benchmarks. `prepare(..., market=...)` rebuilds the requested custom pool and benchmark
+after a forced refresh. A non-forced prepare only ensures those derived files and does
+not download a newer provider snapshot.
 
-```text
-T close signal -> T+1 open execution
-board/date-aware statutory price limits
-direction-aware limit semantics
-no 5% high-open overlay
-```
-
-The paper portfolio now requests `$factor` and uses the same limit-mask inputs as the research exchange. The previous `high_open_block=0.05` call has been removed from the paper baseline.
-
-The 5% high-open rule remains available only as an attribution diagnostic because it conditions on the realised opening print and then assumes execution at that same open.
-
-## 3. Retraining phase sensitivity
-
-`retrain_phase_sensitivity_driver` evaluates all calendar phases for a fixed retraining interval without selecting a best phase.
-
-For `freq=20`, phase 0 reproduces the historical frequency experiment anchor: first retrain exactly on `eval_from`. Phase `p` means the active lineage was first retrained `p` trading sessions before `eval_from`. Every phase is evaluated over the exact same execution window beginning on `eval_from + 1 trading session`.
-
-Default full audit:
-
-```bash
-modal run freq_experiment.py::retrain_phase_sensitivity_driver \
-  --freq 20 \
-  --eval-from 2021-01-04 \
-  --market csi1000 \
-  --topk 20 \
-  --nd 2 \
-  --phases all
-```
-
-For staged compute, a subset can be supplied, for example `--phases 0,5,10,15`; subset output is explicitly marked `complete_phase_grid=false` and must not be treated as the final phase audit.
-
-The full output reports min / q25 / median / q75 / max across phases for:
-
-- strategy CAGR
-- relative excess CAGR
-- strategy MaxDD
-- relative MaxDD
-- Sharpe
-- information ratio
-
-It also reports the full range in percentage points for strategy CAGR and relative excess CAGR.
-
-This experiment is **audit-only**. The best phase must not be selected for production because that would itself be a tuning step.
-
-## 4. Reproducible raw reports
-
-Standard frequency runs now persist the complete Qlib daily portfolio report as Parquet under:
+Frequency summaries are market-scoped:
 
 ```text
-/vol/freq_experiment/reports/
+/vol/freq_experiment/results_csi1000.json
+/vol/freq_experiment/results_chinext.json
+/vol/freq_experiment/results_star.json
 ```
 
-Phase sensitivity persists one report per phase under:
+CSI1000 additionally updates the legacy `results.json` alias.
+
+## 3. Why the reproducibility gate is mandatory
+
+The first v4 CSI1000 audit exposed a phase-0 contradiction: the standalone baseline and
+phase-audit phase 0 used the same dates and portfolio configuration but produced
+different signal/portfolio paths. Therefore the old 20-phase dispersion cannot be
+interpreted as pure calendar-phase sensitivity.
+
+LightGBM retraining now uses one shared deterministic CPU policy in research and
+production:
 
 ```text
-/vol/freq_phase_sensitivity/reports/
+seed = 0
+data_random_seed = 1
+feature_fraction_seed = 2
+bagging_seed = 3
+drop_seed = 4
+objective_seed = 5
+extra_seed = 6
+deterministic = true
+force_col_wise = true
 ```
 
-Each result records the report path, row count, columns, and SHA256 of the Parquet bytes. This allows CAGR / MaxDD / Sharpe / IR to be independently recomputed from the daily `account`, `return`, `cost`, and `bench` series.
+The explicit sub-seeds preserve LightGBM's historical default seed choices while the
+execution controls remove thread/histogram nondeterminism. Warm Modal workers call
+`vol.reload()` before reading data.
 
-## 5. What this audit does not fix
+The runtime manifest records:
 
-- historical point-in-time ST status remains incomplete;
-- CSI1000 benchmark is still a price-index benchmark, so relative CAGR / IR should be described as relative to the CSI1000 price index rather than pure total-return alpha;
-- this audit does not tune LightGBM, TopK/n_drop, target, or ensemble parameters.
+- provider prefix fingerprint through the evaluation cutoff;
+- model-config SHA256;
+- LightGBM reproducibility parameters;
+- Python / pyqlib / LightGBM / NumPy / pandas versions;
+- `freq_experiment.py` source SHA256;
+- one derived snapshot token used by every worker.
 
-## Gate before nested tuning
+## 4. Reproducibility gate
 
-Do not start the production-aligned nested walk-forward tuner until:
-
-1. the corrected phase-0 frequency run has been regenerated under the v4 CNY-tick protocol;
-2. the full 20-phase audit has completed;
-3. raw report artifacts and summary JSON have been retained;
-4. any large phase dispersion has been investigated rather than selecting the best-looking phase.
-
-
-## 6. Reproducibility gate before phase sensitivity
-
-The v4 CSI1000 reruns exposed a phase-0 inconsistency: the standalone baseline
-and phase-audit phase 0 used the same dates/configuration but produced different
-signal and portfolio paths.  The pre-tuner audit therefore has a mandatory
-reproducibility gate before any further phase grid.
-
-LightGBM retraining now uses a shared deterministic CPU policy:
-`deterministic=true`, `force_col_wise=true`, and explicit historical default
-sub-seeds.  Warm Modal workers reload the committed Volume before reading data.
-
-Run this first for each pool:
+Run this **before** phase sensitivity:
 
 ```bash
 modal run freq_experiment.py::reproducibility_gate_driver --freq 20 --eval-from 2021-01-04 --market csi1000 --topk 20 --nd 2
@@ -126,21 +97,72 @@ modal run freq_experiment.py::reproducibility_gate_driver --freq 20 --eval-from 
 modal run freq_experiment.py::reproducibility_gate_driver --freq 20 --eval-from 2021-01-04 --market star --topk 50 --nd 2
 ```
 
-The gate trains the identical phase-0 lineage twice.  It fails unless every
-retrain chunk prediction hash, the concatenated signal hash, and the canonical
-portfolio-report hash match exactly.  It also records the provider prefix
-fingerprint, model-config hash, runtime versions, and source hash.
+The gate submits the identical phase-0 lineage twice. It fails unless:
 
-A passing gate writes the canonical phase-0 baseline and signal artifact.
-`retrain_phase_sensitivity_driver` then reuses that phase-0 signal and refuses
-to launch expensive phase fits if the provider/runtime/source manifest changed.
+1. every retrain chunk has the same prediction content SHA256 in repeat A and B;
+2. the concatenated signal SHA256 is identical;
+3. two independent portfolio backtests have the same canonical report-content SHA256;
+4. all workers see the same committed provider snapshot token.
 
-For ChiNext and STAR, use the four-phase screen first:
+A passing gate writes the canonical phase-0 baseline, raw daily report, signal artifact,
+chunk hashes, and runtime/provider manifest. This replaces a separate single-pass
+baseline run for pre-tuner audit purposes.
+
+## 5. Phase sensitivity after the gate
+
+`retrain_phase_sensitivity_driver` defaults to requiring the passing gate. Before
+launching model fits it re-computes the provider/runtime/source manifest and fails if it
+differs from the gate manifest.
+
+Phase 0 is loaded from the gate's saved signal artifact, not trained a third time. Thus
+phase 0 in the phase JSON is **identical by construction** to the independently
+double-fitted baseline that passed the reproducibility gate.
+
+For CSI1000, the previous full-grid result is invalid for pure phase attribution because
+it predates this gate; rerun it only after the gate if a full distribution is still
+required.
+
+For ChiNext and STAR, start with the lower-cost four-phase screen:
 
 ```bash
 modal run freq_experiment.py::retrain_phase_sensitivity_driver --freq 20 --eval-from 2021-01-04 --market chinext --topk 20 --nd 3 --phases 0,5,10,15
 modal run freq_experiment.py::retrain_phase_sensitivity_driver --freq 20 --eval-from 2021-01-04 --market star --topk 50 --nd 2 --phases 0,5,10,15
 ```
 
-Only expand a pool to all 20 phases when the screen shows material phase risk or
-when a full distribution is required for a production decision.
+Only expand a pool to all 20 phases when the screen shows material phase risk or a full
+phase distribution is needed for a production decision.
+
+A full grid remains available:
+
+```bash
+modal run freq_experiment.py::retrain_phase_sensitivity_driver --freq 20 --eval-from 2021-01-04 --market csi1000 --topk 20 --nd 2 --phases all
+```
+
+The phase experiment remains audit-only: never select the historically best phase for
+production.
+
+## 6. Recomputable artifacts
+
+Raw Qlib daily reports are stored as Parquet with both byte SHA256 and canonical
+content SHA256. Baseline signals are also stored as Parquet with byte and content
+hashes. Result JSON records the full chunk-level prediction lineage.
+
+This allows independent recomputation of CAGR, portfolio MaxDD, Sharpe, IR, and exact
+signal identity.
+
+## 7. Remaining limitations
+
+- historical point-in-time ST status remains incomplete;
+- CSI1000 relative CAGR / IR are versus the CSI1000 **price index**, not a total-return index;
+- this audit does not tune LightGBM hyperparameters, TopK/n_drop, target, or ensemble.
+
+## Gate before nested tuning
+
+Do not start the production-aligned nested walk-forward tuner until:
+
+1. the required pool passes `reproducibility_gate_driver`;
+2. its corrected v5 baseline artifacts are retained;
+3. its planned phase screen/full grid completes on the exact same manifest;
+4. any material phase dispersion is investigated rather than selecting the best phase;
+5. the STAR production decision is revisited from corrected reproducible evidence rather
+   than legacy `no_bootstrap_v1` results.
