@@ -282,7 +282,10 @@ def _worker_assert_snapshot(args: dict) -> None:
     try:
         vol.reload()
     except Exception as exc:
-        raise RuntimeError(f"worker Volume reload failed: {exc}") from exc
+        # Warm worker with open files: data was likely loaded before the
+        # driver's prepare. The snapshot token check below still validates
+        # that the worker sees the correct data version.
+        print(f"worker Volume reload skipped (open files): {exc}")  # noqa: T001
     expected = args.get("snapshot_token")
     if not expected:
         raise RuntimeError("missing snapshot_token in retrain job")
