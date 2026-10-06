@@ -32,9 +32,9 @@ Candidate selection is lexicographic rather than a hand-tuned scalar score.
 
 For the cheap fold screen, higher is better in this order:
 
-1. q25 relative excess CAGR across folds;
-2. median relative excess CAGR;
-3. worst-fold relative excess CAGR;
+1. worst-fold relative excess CAGR;
+2. q25 relative excess CAGR across folds;
+3. median relative excess CAGR;
 4. positive-fold ratio;
 5. median information ratio;
 6. median Sharpe;
@@ -42,7 +42,9 @@ For the cheap fold screen, higher is better in this order:
 8. lower median turnover;
 9. lower median total cost.
 
-This prevents one unusually strong fold from compensating for a weak lower tail.
+Worst-fold comes first because with only four folds a linearly interpolated q25 can
+still be positive when one fold is catastrophic. This ordering prevents three strong
+folds from masking one severe failure.
 
 Equal ranking vectors are broken deterministically by candidate content hash.
 
@@ -74,7 +76,7 @@ Each fold:
 - enforces the 20-session label-maturity purge at train -> validation and
   validation -> signal boundaries;
 - fits one model;
-- evaluates roughly 60 execution sessions;
+- evaluates exactly 20 execution sessions, matching one production freq20 model lifespan;
 - uses the canonical CSI1000 T-close -> T+1-open backtest;
 - starts an independent account for that fold.
 
@@ -129,10 +131,20 @@ It includes the current baseline explicitly and spans:
 - feature fractions from 0.7 to 1.0;
 - regularization from near-zero through the current high-L1/high-L2 baseline.
 
-Compute envelope:
+Result grid:
 
 ```text
-12 candidates x 4 folds = at most 48 new fits
+12 candidates x 4 folds = 48 candidate-fold results
+```
+
+Before the normal screen, the frozen baseline is independently fit twice on all four
+folds. The second repeat becomes the retained canonical baseline, so the first smoke
+run has the following worst-case compute envelope:
+
+```text
+baseline reproducibility gate  4 folds x 2 repeats = 8 fits
+remaining 11 candidates        11 x 4             = 44 fits
+maximum new fits                                   = 52
 ```
 
 This is intentionally small enough to validate:
@@ -144,7 +156,8 @@ This is intentionally small enough to validate:
 - T+1-open execution;
 - artifact retention;
 - turnover/cost extraction;
-- resumability.
+- resumability;
+- exact baseline double-fit prediction/report reproducibility.
 
 Do not expand the search if the smoke artifacts fail any of these checks.
 
@@ -218,11 +231,13 @@ tests/test_csi1000_tuner_core.py
 `csi1000_tuner.py` is the Modal execution layer. It:
 
 - creates one provider snapshot for the run;
+- requires a baseline 4-fold double-fit reproducibility gate before candidate ranking;
 - fingerprints provider/config/runtime/source lineage;
 - runs candidate-fold jobs;
 - saves signal/report Parquet artifacts and hashes;
 - validates exact account consistency;
-- reuses valid candidate-fold artifacts on rerun;
+- reuses valid candidate-fold artifacts on rerun only after independently recomputing
+  canonical metrics and turnover/cost from the hash-verified raw report;
 - exports a local JSON summary for review.
 
 It does not import or modify `freq_experiment.py`.
@@ -253,7 +268,7 @@ identity produces a different snapshot token and therefore a separate artifact l
 Do not expand beyond the 12-candidate smoke if any of the following occurs:
 
 - fold chronology or purge assertion fails;
-- baseline candidate does not execute reproducibly;
+- baseline double-fit prediction/report hashes do not match exactly;
 - canonical account consistency is not exact within tolerance;
 - a signal/report hash cannot be independently reloaded;
 - turnover or cost is missing;
