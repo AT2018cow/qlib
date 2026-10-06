@@ -82,5 +82,17 @@ The old daily-mean × 238 active-return annualization is retained only under exp
 2. Do not tune thresholds based on this comparison and then call the same history independent OOS.
 3. If D or E appears materially better under relative excess CAGR, also inspect strategy CAGR, MaxDD and Sharpe before treating it as a useful risk-overlay hypothesis.
 4. Historical Batch C and frequency artifacts produced under the scalar-limit protocol remain legacy evidence.
-5. Current Batch C artifacts are versioned as `board_aware_open_bootstrap_v3`.
-6. Current standard frequency artifacts are versioned as `continuous_account_board_aware_v3`.
+5. Current Batch C artifacts are versioned as `board_aware_open_bootstrap_v4_cny_tick`.
+6. Current standard frequency artifacts are versioned as `continuous_account_board_aware_v4_cny_tick`.
+
+
+## Pre-tuner execution correction (2026-10-06)
+
+`BoardAwareExchange` now reconstructs original-RMB prices with Qlib `$factor`
+before applying the statutory 0.01 CNY limit-price tick.  Earlier v3 artifacts
+rounded normalized adjusted prices directly and are therefore superseded for
+execution-sensitive conclusions.
+
+The 5% high-open protocol remains attribution-only.  The production paper
+baseline no longer applies that overlay, so protocol C and paper execution use
+the same board-aware T+1-open rule.
