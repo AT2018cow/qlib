@@ -454,15 +454,24 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
         }
         print(f"[freq] freq={freq}: {results[str(freq)]}")
 
-    with (out / "results.json").open("w") as f:
-        _json.dump({
-            "protocol": "continuous_account_board_aware_v4_cny_tick",
-            "window": f"{eval_from}~{cal[-1]}",
-            "market": market,
-            "results": results,
-        }, f, indent=2)
+    payload = {
+        "protocol": "continuous_account_board_aware_v4_cny_tick",
+        "window": f"{eval_from}~{cal[-1]}",
+        "market": market,
+        "topk": int(topk),
+        "n_drop": int(nd),
+        "benchmark": _bench_of(market),
+        "results": results,
+    }
+    market_path = out / f"results_{market}.json"
+    with market_path.open("w") as f:
+        _json.dump(payload, f, indent=2)
+    # Backward-compatible alias for the long-standing CSI1000 artifact only.
+    if market == "csi1000":
+        with (out / "results.json").open("w") as f:
+            _json.dump(payload, f, indent=2)
     vol.commit()
-    return results
+    return payload
 
 
 
