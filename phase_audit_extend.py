@@ -11,6 +11,7 @@ from pathlib import Path
 
 from freq_experiment import (
     VOL_ROOT,
+    _frame_sha256,
     _phase_metric_summary,
     app,
     retrain_phase_sensitivity_driver,
@@ -74,6 +75,9 @@ def _enrich_phase_result(result: dict) -> dict:
         raise RuntimeError(f"phase report artifact missing: {path}")
 
     report = pd.read_parquet(path)
+    expected_content_hash = artifact.get("content_sha256")
+    if not expected_content_hash or _frame_sha256(report) != expected_content_hash:
+        raise RuntimeError(f"phase report content hash mismatch: {path}")
     turnover_col = next(
         (name for name in ("turnover", "total_turnover") if name in report.columns),
         None,
@@ -112,6 +116,7 @@ def extend_phase_sensitivity_driver(
     """
     import json
 
+    vol.reload()
     requested = sorted({int(x.strip()) for x in phases.split(",") if x.strip()})
     if not requested:
         raise ValueError("phases is empty")
@@ -213,6 +218,7 @@ def extend_phase_sensitivity_driver(
         "information_ratio",
         "annual_volatility",
         "mean_turnover",
+        "total_cost_sum",
     ]
     summary = {
         field: _phase_metric_summary(merged_results, field) for field in metric_fields
