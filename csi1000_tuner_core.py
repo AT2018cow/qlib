@@ -373,7 +373,9 @@ def build_stage_a_folds(
     for fold_index, signal_start_i in enumerate(anchor_indices):
         execution_start_i = signal_start_i + 1
         execution_end_i = signal_start_i + execution_sessions
-        signal_end_i = execution_end_i
+        # T-close signal at t executes at t+1 open. A freq20 model therefore
+        # owns exactly 20 signal dates: anchor .. anchor+19.
+        signal_end_i = execution_end_i - 1
 
         valid_end_i = signal_start_i - horizon - 1
         valid_start_i = valid_end_i - validation_sessions + 1
