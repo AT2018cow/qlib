@@ -42,22 +42,38 @@ The paper portfolio now requests `$factor` and uses the same limit-mask inputs a
 
 The 5% high-open rule remains available only as an attribution diagnostic because it conditions on the realised opening print and then assumes execution at that same open.
 
-## 3. Retraining phase sensitivity
+## 3. Three-pool corrected rerun + retraining phase sensitivity
+
+The pre-tuner gate covers all three pools whose prior conclusions matter:
+
+| market | frozen portfolio config | benchmark | reason |
+|---|---|---|---|
+| `csi1000` | top20 / nd2 | SH000852 | production core |
+| `chinext` | top20 / nd3 | SZ399998 equal-weight | production satellite |
+| `star` | top50 / nd2 | SZ399997 equal-weight | previously rejected on legacy weak results; must be recomputed under corrected execution |
+
+The STAR configuration is intentionally the historical terminal configuration (`top50/nd2`); this audit does not retune it. The old `rolling5y_star_t50nd2.json` artifact used `no_bootstrap_v1` and is not sufficient to decide whether STAR should remain excluded from production.
+
+Fresh chenditc bundles do not contain the synthetic `SZ399998/SZ399997` benchmarks. `freq_experiment.prepare(..., market=...)` now rebuilds the requested custom pool and its point-in-time equal-weight benchmark after every forced data refresh, so ChiNext/STAR reruns do not depend on stale Modal Volume residue.
 
 `retrain_phase_sensitivity_driver` evaluates all calendar phases for a fixed retraining interval without selecting a best phase.
 
 For `freq=20`, phase 0 reproduces the historical frequency experiment anchor: first retrain exactly on `eval_from`. Phase `p` means the active lineage was first retrained `p` trading sessions before `eval_from`. Every phase is evaluated over the exact same execution window beginning on `eval_from + 1 trading session`.
 
-Default full audit:
+Corrected baselines:
 
 ```bash
-modal run freq_experiment.py::retrain_phase_sensitivity_driver \
-  --freq 20 \
-  --eval-from 2021-01-04 \
-  --market csi1000 \
-  --topk 20 \
-  --nd 2 \
-  --phases all
+modal run freq_experiment.py::freq_driver --freqs 20 --eval-from 2021-01-04 --market csi1000 --topk 20 --nd 2
+modal run freq_experiment.py::freq_driver --freqs 20 --eval-from 2021-01-04 --market chinext --topk 20 --nd 3
+modal run freq_experiment.py::freq_driver --freqs 20 --eval-from 2021-01-04 --market star --topk 50 --nd 2
+```
+
+Full 20-phase audits:
+
+```bash
+modal run freq_experiment.py::retrain_phase_sensitivity_driver --freq 20 --eval-from 2021-01-04 --market csi1000 --topk 20 --nd 2 --phases all
+modal run freq_experiment.py::retrain_phase_sensitivity_driver --freq 20 --eval-from 2021-01-04 --market chinext --topk 20 --nd 3 --phases all
+modal run freq_experiment.py::retrain_phase_sensitivity_driver --freq 20 --eval-from 2021-01-04 --market star --topk 50 --nd 2 --phases all
 ```
 
 For staged compute, a subset can be supplied, for example `--phases 0,5,10,15`; subset output is explicitly marked `complete_phase_grid=false` and must not be treated as the final phase audit.
@@ -101,7 +117,8 @@ Each result records the report path, row count, columns, and SHA256 of the Parqu
 
 Do not start the production-aligned nested walk-forward tuner until:
 
-1. the corrected phase-0 frequency run has been regenerated under the v4 CNY-tick protocol;
-2. the full 20-phase audit has completed;
+1. corrected v4 baseline runs have been regenerated for CSI1000, ChiNext, and STAR with the frozen configs above;
+2. the full 20-phase audit has completed for all three pools;
 3. raw report artifacts and summary JSON have been retained;
-4. any large phase dispersion has been investigated rather than selecting the best-looking phase.
+4. any large phase dispersion has been investigated rather than selecting the best-looking phase;
+5. the STAR production decision has been revisited from the corrected v4 continuous-account evidence rather than the legacy `no_bootstrap_v1` result.
