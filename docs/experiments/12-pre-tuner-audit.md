@@ -122,12 +122,65 @@ For CSI1000, the previous full-grid result is invalid for pure phase attribution
 it predates this gate; rerun it only after the gate if a full distribution is still
 required.
 
-For ChiNext and STAR, start with the lower-cost four-phase screen:
+For ChiNext and STAR, use the fail-closed satellite wrapper. It runs the canonical
+double-fit gate first, validates the committed gate artifact, and only then launches
+the 0/5/10/15 phase screen through the existing cost-aware phase extension path.
+
+Run the pools separately:
 
 ```bash
-modal run freq_experiment.py::retrain_phase_sensitivity_driver --freq 20 --eval-from 2021-01-04 --market chinext --topk 20 --nd 3 --phases 0,5,10,15
-modal run freq_experiment.py::retrain_phase_sensitivity_driver --freq 20 --eval-from 2021-01-04 --market star --topk 50 --nd 2 --phases 0,5,10,15
+modal run satellite_pre_tuner_audit.py --market chinext
+modal run satellite_pre_tuner_audit.py --market star
 ```
+
+Frozen configurations are enforced by the wrapper:
+
+```text
+chinext  top20 / nd3
+star     top50 / nd2
+freq     20
+phases   0,5,10,15
+```
+
+The wrapper does **not** import or call the canonical Modal functions cross-app. It
+launches the existing CLI entrypoints so `freq_experiment.py` keeps its exact source
+identity. The sequence is:
+
+```text
+canonical reproducibility gate
+  -> strict gate artifact validation
+  -> canonical 0/5/10/15 screen
+  -> strict gate/screen manifest + hash validation
+  -> local JSON export
+```
+
+If the gate fails or its artifact is inconsistent, the phase screen is not launched.
+
+Each successful run writes local JSONs suitable for review/push:
+
+```text
+results/freq_experiment/results_<market>.json
+results/freq_phase_sensitivity/phase_<market>_freq20.json
+results/satellite_pre_tuner/<market>_freq20_gate_screen.json
+```
+
+The compact summary is convenience output only; the market-scoped gate and phase JSONs
+remain authoritative.
+
+The four-phase screen is a **robustness screen**, not a phase-selection exercise. Do
+not select phase 5/10/15 for production based on historical performance. Its purpose is
+to answer whether the frozen baseline has enough reproducible, calendar-robust evidence
+to keep the pool in the production-aligned tuning path.
+
+Current priority after the completed CSI1000 diagnostics is:
+
+1. ChiNext gate + 0/5/10/15 screen;
+2. STAR gate + 0/5/10/15 screen;
+3. compare the three pools under the same canonical metrics;
+4. move into production-aligned model/portfolio tuning for pools that remain credible.
+
+The deferred CSI1000 full 20-phase grid is a later production-risk audit, not a blocker
+for these satellite screens or the next tuning stage.
 
 Only expand a pool to all 20 phases when the screen shows material phase risk or a full
 phase distribution is needed for a production decision.
