@@ -93,11 +93,16 @@ This experiment is **audit-only**. The best phase must not be selected for produ
 
 ## 4. Reproducible raw reports
 
-Standard frequency runs now persist the complete Qlib daily portfolio report as Parquet under:
+Standard frequency runs now persist one market-specific summary plus the complete Qlib daily portfolio report:
 
 ```text
+/vol/freq_experiment/results_csi1000.json
+/vol/freq_experiment/results_chinext.json
+/vol/freq_experiment/results_star.json
 /vol/freq_experiment/reports/
 ```
+
+For backward compatibility, CSI1000 also updates `/vol/freq_experiment/results.json`. ChiNext/STAR never overwrite that alias.
 
 Phase sensitivity persists one report per phase under:
 
