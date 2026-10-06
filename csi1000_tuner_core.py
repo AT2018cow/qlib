@@ -522,9 +522,9 @@ def summarize_candidate(
 def _screen_rank_tuple(summary: dict) -> tuple[float, ...]:
     fold = summary["fold_summary"]
     return (
+        fold["relative_excess_cagr_worst"],
         fold["relative_excess_cagr_q25"],
         fold["relative_excess_cagr_median"],
-        fold["relative_excess_cagr_worst"],
         fold["positive_ratio"],
         fold["information_ratio_median"],
         fold["sharpe_median"],
@@ -539,9 +539,9 @@ def _final_rank_tuple(summary: dict) -> tuple[float, ...]:
     if phase is None or int(phase.get("n", 0)) != len(REFERENCE_PHASES):
         raise ValueError("final ranking requires the fixed phase robustness set")
     return (
+        phase["relative_excess_cagr_worst"],
         phase["relative_excess_cagr_q25"],
         phase["relative_excess_cagr_median"],
-        phase["relative_excess_cagr_worst"],
         phase["positive_ratio"],
         phase["information_ratio_median"],
         phase["sharpe_median"],
