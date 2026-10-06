@@ -21,6 +21,10 @@ metrics            portfolio_compound_v1
 
 Stage A changes only a bounded LightGBM parameter subset.
 
+The corrected implementation uses protocol `csi1000_lgb_stage_a_v2`. Any artifact
+created under the merged PR #15 `v1` implementation is superseded because v1 used a
+60-session one-fit fold and the pre-fix ranking/reproducibility contract.
+
 ChiNext rescue and STAR reproducibility repair remain valid later workstreams, but they
 are intentionally outside this implementation.
 
