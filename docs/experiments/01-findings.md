@@ -1,5 +1,8 @@
 # 研究结论全记录
 
+> **Historical experiment ledger (current-status override 2026-10-07):** This file intentionally preserves the chronological P0/P1/P2/Batch A/B/C record. Many headline conclusions below predate the corrected execution attribution, canonical portfolio metrics, deterministic double-fit gate, and phase audit. Use [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md) for current pool status and production-aligned evidence; do not promote old "optimal" TopK/n_drop or 11%+ figures into the next tuner without revalidation.
+
+
 > 按时间线保留各阶段实验的完整结论。所有回测区间与数据包日期均显式标注（比较必须统一区间）。
 
 ## 环境与数据
