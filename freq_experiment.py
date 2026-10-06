@@ -180,6 +180,223 @@ def prepare(force: bool = True, market: str = ""):
     print(f"[data] 就绪，日历至 {cal[-1]}")
 
 
+
+def _stable_json_sha256(obj) -> str:
+    import hashlib
+    import json
+    return hashlib.sha256(
+        json.dumps(obj, sort_keys=True, separators=(",", ":"), default=str).encode()
+    ).hexdigest()
+
+
+def _signal_sha256(signal) -> str:
+    """Canonical content hash for a prediction Series, independent of pickle bytes."""
+    import hashlib
+    import struct
+
+    s = signal.sort_index()
+    h = hashlib.sha256()
+    h.update(b"qlib-signal-v1\n")
+    for idx, value in s.items():
+        parts = idx if isinstance(idx, tuple) else (idx,)
+        for part in parts:
+            h.update(str(part).encode())
+            h.update(b"\x1f")
+        h.update(struct.pack("!d", float(value)))
+        h.update(b"\n")
+    return h.hexdigest()
+
+
+def _frame_sha256(frame) -> str:
+    """Canonical content hash for a numeric daily report."""
+    import hashlib
+
+    text = frame.sort_index().to_csv(
+        index=True,
+        float_format="%.17g",
+        date_format="%Y-%m-%dT%H:%M:%S.%f",
+    )
+    return hashlib.sha256(text.encode()).hexdigest()
+
+
+def _runtime_repro_manifest(market: str, cutoff: str) -> dict:
+    """Fingerprint provider, model semantics, code, and key runtime versions."""
+    import hashlib
+    import importlib.metadata as metadata
+    import platform
+
+    from qlib_live_retrain import LGB_REPRO_PARAMS, provider_training_fingerprint
+
+    cfg = _load_task(market)
+    model_cfg = cfg["task"]["model"]
+
+    def version(name):
+        try:
+            return metadata.version(name)
+        except metadata.PackageNotFoundError:
+            return "unknown"
+
+    source_path = Path(__file__)
+    source_sha = (
+        hashlib.sha256(source_path.read_bytes()).hexdigest()
+        if source_path.is_file() else "unavailable"
+    )
+    provider_fp = provider_training_fingerprint(DATA_DIR, market, cutoff)
+    manifest = {
+        "manifest_version": "freq_repro_v1",
+        "market": market,
+        "provider_cutoff": cutoff,
+        "provider_fingerprint": provider_fp,
+        "model_config_sha256": _stable_json_sha256(model_cfg),
+        "lgb_repro_params": dict(LGB_REPRO_PARAMS),
+        "runtime": {
+            "python": platform.python_version(),
+            "pyqlib": version("pyqlib"),
+            "lightgbm": version("lightgbm"),
+            "numpy": version("numpy"),
+            "pandas": version("pandas"),
+        },
+        "freq_experiment_source_sha256": source_sha,
+    }
+    manifest["snapshot_token"] = _stable_json_sha256(manifest)
+    return manifest
+
+
+def _snapshot_manifest_path(market: str) -> Path:
+    return VOL_ROOT / "freq_repro" / f"provider_snapshot_{market}.json"
+
+
+def _publish_snapshot_manifest(manifest: dict) -> None:
+    import json
+
+    path = _snapshot_manifest_path(manifest["market"])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(manifest, indent=2, sort_keys=True))
+    vol.commit()
+
+
+def _worker_assert_snapshot(args: dict) -> None:
+    """Warm Modal workers must reload the Volume and see the driver's snapshot token."""
+    import json
+
+    try:
+        vol.reload()
+    except Exception as exc:
+        raise RuntimeError(f"worker Volume reload failed: {exc}") from exc
+    expected = args.get("snapshot_token")
+    if not expected:
+        raise RuntimeError("missing snapshot_token in retrain job")
+    path = _snapshot_manifest_path(args["market"])
+    if not path.is_file():
+        raise RuntimeError(f"provider snapshot manifest missing: {path}")
+    actual = json.loads(path.read_text()).get("snapshot_token")
+    if actual != expected:
+        raise RuntimeError(
+            f"worker provider snapshot mismatch: expected={expected} actual={actual}"
+        )
+
+
+def _assemble_signal(outs):
+    import pickle
+    import zlib
+
+    import pandas as pd
+
+    chunks = []
+    chunk_meta = []
+    for out in sorted(outs, key=lambda x: x["retrain_asof"]):
+        pred = pickle.loads(zlib.decompress(out["pred_zlib_pickle"]))
+        actual_hash = _signal_sha256(pred)
+        if actual_hash != out.get("prediction_sha256"):
+            raise RuntimeError(
+                f"prediction payload hash mismatch at {out['retrain_asof']}"
+            )
+        chunks.append(pred)
+        chunk_meta.append({
+            "repeat": out.get("repeat"),
+            "phase": out.get("phase"),
+            "retrain_asof": out["retrain_asof"],
+            "signal_end": out["signal_end"],
+            "n_rows": out["n_rows"],
+            "prediction_sha256": actual_hash,
+        })
+    if not chunks:
+        raise RuntimeError("no prediction chunks")
+    signal = pd.concat(chunks).sort_index()
+    if signal.index.has_duplicates:
+        raise RuntimeError("duplicate signal rows across retrain chunks")
+    return signal, chunk_meta
+
+
+def _write_signal_artifact(signal, path: Path) -> dict:
+    import hashlib
+
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    signal.sort_index().rename("score").to_frame().to_parquet(path, index=True)
+    return {
+        "path": str(path),
+        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "content_sha256": _signal_sha256(signal),
+        "rows": int(len(signal)),
+    }
+
+
+def _load_signal_artifact(meta: dict):
+    import hashlib
+
+    import pandas as pd
+
+    path = Path(meta["path"])
+    if not path.is_file():
+        raise RuntimeError(f"baseline signal artifact missing: {path}")
+    if hashlib.sha256(path.read_bytes()).hexdigest() != meta["sha256"]:
+        raise RuntimeError("baseline signal artifact byte hash mismatch")
+    frame = pd.read_parquet(path)
+    if "score" not in frame.columns:
+        raise RuntimeError("baseline signal artifact missing score column")
+    signal = frame["score"].sort_index()
+    if _signal_sha256(signal) != meta["content_sha256"]:
+        raise RuntimeError("baseline signal artifact content hash mismatch")
+    return signal
+
+
+def _run_signal_backtest(signal, *, execution_start: str, execution_end: str,
+                         market: str, topk: int, nd: int):
+    import qlib
+    from qlib.backtest import backtest as normal_backtest
+
+    qlib.init(**{**_load_task(market)["qlib_init"], "skip_if_reg": True})
+    if market in ("star_chn", "chinext", "star"):
+        from board_rules import star_chn_backtest_guard
+        star_chn_backtest_guard(execution_start)
+    executor = {
+        "class": "SimulatorExecutor",
+        "module_path": "qlib.backtest.executor",
+        "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
+    }
+    strategy = {
+        "class": "TopkDropoutStrategy",
+        "module_path": "qlib.contrib.strategy",
+        "kwargs": {
+            "signal": signal,
+            "topk": int(topk),
+            "n_drop": int(nd),
+            "forbid_all_trade_at_limit": False,
+        },
+    }
+    pm, _ = normal_backtest(
+        strategy=strategy,
+        executor=executor,
+        start_time=execution_start,
+        end_time=execution_end,
+        account=100000000,
+        benchmark=_bench_of(market),
+        exchange_kwargs=research_exchange(execution_start, execution_end, codes=market),
+    )
+    return pm["1day"][0]
+
+
 @app.function(
     volumes={str(VOL_ROOT): vol},
     cpu=8,
