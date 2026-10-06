@@ -1,5 +1,8 @@
 # 工作路线图（最终状态，2026-09-17）
 
+> **Current-status override (2026-10-07):** This document is retained as historical/project context. Current research conclusions and next-stage priorities are governed by [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md). Any older 11%+ excess-return claim, ChiNext equivalence claim, STAR-closed claim, or pre-v5 execution/metric conclusion is superseded unless doc 14 explicitly revalidates it.
+
+
 > 资源口径：Modal Starter（并发容器 100 / GPU 并发 10 / 月免费 $30）。
 
 ## P0 — 信号证据补强 ✅ 完成（~$0.6）
