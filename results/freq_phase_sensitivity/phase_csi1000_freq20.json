@@ -1,5 +1,5 @@
 {
-  "protocol": "retrain_phase_sensitivity_v1_cny_tick",
+  "protocol": "retrain_phase_sensitivity_v2_repro",
   "purpose": "audit_only_do_not_select_best_phase",
   "market": "csi1000",
   "freq": 20,
@@ -10,43 +10,75 @@
   "execution_end": "2026-09-30",
   "phases": [
     0,
-    1,
-    2,
-    3,
     4,
-    5,
-    6,
-    7,
-    8,
-    9,
-    10,
-    11,
-    12,
-    13,
-    14,
-    15,
-    16,
-    17,
-    18,
-    19
+    6
   ],
-  "complete_phase_grid": true,
+  "complete_phase_grid": false,
+  "phase0_reused_from_repro_gate": true,
+  "reproducibility": {
+    "manifest_version": "freq_repro_v1",
+    "market": "csi1000",
+    "provider_cutoff": "2026-09-30",
+    "provider_fingerprint": "cd2e68f571c6bd19fbb2b79089e891bb1c43b96ab1fcdb4d2b2a9b1fdd9ce5d5",
+    "model_config_sha256": "198a17ebd3ef271ad41393b688169afd0ae88f5f9989f500c30bfde9a6811df5",
+    "lgb_repro_params": {
+      "seed": 0,
+      "data_random_seed": 1,
+      "feature_fraction_seed": 2,
+      "bagging_seed": 3,
+      "drop_seed": 4,
+      "objective_seed": 5,
+      "extra_seed": 6,
+      "deterministic": true,
+      "force_col_wise": true
+    },
+    "runtime": {
+      "python": "3.11.12",
+      "pyqlib": "0.9.8.dev32",
+      "lightgbm": "4.7.0",
+      "numpy": "1.26.4",
+      "pandas": "2.2.3"
+    },
+    "freq_experiment_source_sha256": "90544a7de171b2fcb8b6a18893a5b5cbf62c54be06cc1d9bb17141a0f41e20db",
+    "snapshot_token": "57b2c7752dbb4b92366fab104575c0fd5cf8fbf8b7b1b37a8e111daafa7acbd7"
+  },
+  "reproducibility_gate": {
+    "passed": true,
+    "gate_version": "phase0_double_fit_v1",
+    "prediction_chunks_match": true,
+    "signal_hash_match": true,
+    "report_hash_match": true,
+    "repeat_a_signal_sha256": "0e077cdd969a48d23ea87d6570db60a01966251dcc7d40f2d791a40d7b1cbefb",
+    "repeat_b_signal_sha256": "0e077cdd969a48d23ea87d6570db60a01966251dcc7d40f2d791a40d7b1cbefb",
+    "repeat_a_report_content_sha256": "a5a0128719b8bca0b062e736064d94e0086aa5e842b854994d397a8834d67dbf",
+    "repeat_b_report_content_sha256": "a5a0128719b8bca0b062e736064d94e0086aa5e842b854994d397a8834d67dbf",
+    "n_retrains_per_repeat": 70
+  },
   "results": {
     "0": {
       "phase": 0,
+      "source": "repro_gate_baseline_reuse",
       "first_retrain_asof": "2021-01-04",
       "n_retrains": 70,
-      "strategy_cagr": 0.064095,
+      "signal_sha256": "0e077cdd969a48d23ea87d6570db60a01966251dcc7d40f2d791a40d7b1cbefb",
+      "signal_artifact": {
+        "path": "/vol/freq_experiment/signals/signal_csi1000_freq20_phase00_2021-01-04_2026-09-29.parquet",
+        "sha256": "ab3d6a32efe7a54c5ec8436c00e07a9b006b25dd4ab8cca586ea492898fa8d5f",
+        "content_sha256": "0e077cdd969a48d23ea87d6570db60a01966251dcc7d40f2d791a40d7b1cbefb",
+        "rows": 1392761
+      },
+      "strategy_cagr": 0.068369,
       "benchmark_cagr": 0.014697,
-      "relative_excess_cagr": 0.048683,
+      "relative_excess_cagr": 0.052895,
       "strategy_max_drawdown": -0.243053,
-      "relative_max_drawdown": -0.494839,
-      "sharpe": 0.521121,
-      "information_ratio": 0.136779,
+      "relative_max_drawdown": -0.486271,
+      "sharpe": 0.549893,
+      "information_ratio": 0.157536,
       "account_return_max_error": 0.0,
       "report_artifact": {
-        "path": "/vol/freq_phase_sensitivity/reports/report_csi1000_freq20_phase00_2021-01-05_2026-09-30.parquet",
-        "sha256": "3ca5ea8d3b131e97b1414d0280a3058f6e13cc8c8e2f9ba1a796fec263f76d5b",
+        "path": "/vol/freq_experiment/reports/report_csi1000_freq20_2021-01-05_2026-09-30.parquet",
+        "sha256": "a69887cdc537bb28fa2845d4167f1315a64898124096664f9e8c836b75384fe3",
+        "content_sha256": "a5a0128719b8bca0b062e736064d94e0086aa5e842b854994d397a8834d67dbf",
         "rows": 1392,
         "columns": [
           "account",
@@ -66,191 +98,603 @@
         "end": "2026-09-30",
         "years": 5.733177,
         "n_days": 1392,
-        "strategy_total_return": 0.427854,
-        "strategy_cagr": 0.064095,
+        "strategy_total_return": 0.461044,
+        "strategy_cagr": 0.068369,
         "benchmark_total_return": 0.087243,
         "benchmark_cagr": 0.014697,
-        "relative_total_return": 0.31328,
-        "relative_excess_cagr": 0.048683,
+        "relative_total_return": 0.343806,
+        "relative_excess_cagr": 0.052895,
         "strategy_max_drawdown": -0.243053,
         "benchmark_max_drawdown": -0.467084,
-        "relative_max_drawdown": -0.494839,
-        "sharpe": 0.521121,
-        "information_ratio": 0.136779,
-        "annual_volatility": 0.134122,
-        "mean_daily_net_return": 0.00029367,
-        "mean_daily_active_return": 0.00011378,
-        "account_return_max_error": 0.0
-      }
-    },
-    "1": {
-      "phase": 1,
-      "first_retrain_asof": "2020-12-31",
-      "n_retrains": 70,
-      "strategy_cagr": 0.079003,
-      "benchmark_cagr": 0.014697,
-      "relative_excess_cagr": 0.063375,
-      "strategy_max_drawdown": -0.230661,
-      "relative_max_drawdown": -0.497317,
-      "sharpe": 0.671955,
-      "information_ratio": 0.191961,
-      "account_return_max_error": 0.0,
-      "report_artifact": {
-        "path": "/vol/freq_phase_sensitivity/reports/report_csi1000_freq20_phase01_2021-01-05_2026-09-30.parquet",
-        "sha256": "4bc4d6dc41fd9681d0c3e6f84487c2440fbbd8d0ecf44bf2614bcb8e54ee2277",
-        "rows": 1392,
-        "columns": [
-          "account",
-          "return",
-          "total_turnover",
-          "turnover",
-          "total_cost",
-          "cost",
-          "value",
-          "cash",
-          "bench"
-        ]
-      },
-      "performance": {
-        "metric_version": "portfolio_compound_v1",
-        "start": "2021-01-05",
-        "end": "2026-09-30",
-        "years": 5.733177,
-        "n_days": 1392,
-        "strategy_total_return": 0.546412,
-        "strategy_cagr": 0.079003,
-        "benchmark_total_return": 0.087243,
-        "benchmark_cagr": 0.014697,
-        "relative_total_return": 0.422324,
-        "relative_excess_cagr": 0.063375,
-        "strategy_max_drawdown": -0.230661,
-        "benchmark_max_drawdown": -0.467084,
-        "relative_max_drawdown": -0.497317,
-        "sharpe": 0.671955,
-        "information_ratio": 0.191961,
-        "annual_volatility": 0.122004,
-        "mean_daily_net_return": 0.00034446,
-        "mean_daily_active_return": 0.00016457,
-        "account_return_max_error": 0.0
-      }
-    },
-    "2": {
-      "phase": 2,
-      "first_retrain_asof": "2020-12-30",
-      "n_retrains": 70,
-      "strategy_cagr": 0.100168,
-      "benchmark_cagr": 0.014697,
-      "relative_excess_cagr": 0.084233,
-      "strategy_max_drawdown": -0.248683,
-      "relative_max_drawdown": -0.473455,
-      "sharpe": 0.765415,
-      "information_ratio": 0.302248,
-      "account_return_max_error": 0.0,
-      "report_artifact": {
-        "path": "/vol/freq_phase_sensitivity/reports/report_csi1000_freq20_phase02_2021-01-05_2026-09-30.parquet",
-        "sha256": "dfae4a239668c5b4ab0c41fb3fb220d9811da85d361f4037f231dff4c1eaba99",
-        "rows": 1392,
-        "columns": [
-          "account",
-          "return",
-          "total_turnover",
-          "turnover",
-          "total_cost",
-          "cost",
-          "value",
-          "cash",
-          "bench"
-        ]
-      },
-      "performance": {
-        "metric_version": "portfolio_compound_v1",
-        "start": "2021-01-05",
-        "end": "2026-09-30",
-        "years": 5.733177,
-        "n_days": 1392,
-        "strategy_total_return": 0.728587,
-        "strategy_cagr": 0.100168,
-        "benchmark_total_return": 0.087243,
-        "benchmark_cagr": 0.014697,
-        "relative_total_return": 0.589881,
-        "relative_excess_cagr": 0.084233,
-        "strategy_max_drawdown": -0.248683,
-        "benchmark_max_drawdown": -0.467084,
-        "relative_max_drawdown": -0.473455,
-        "sharpe": 0.765415,
-        "information_ratio": 0.302248,
-        "annual_volatility": 0.133988,
-        "mean_daily_net_return": 0.00043091,
-        "mean_daily_active_return": 0.00025102,
-        "account_return_max_error": 0.0
-      }
-    },
-    "3": {
-      "phase": 3,
-      "first_retrain_asof": "2020-12-29",
-      "n_retrains": 70,
-      "strategy_cagr": 0.075376,
-      "benchmark_cagr": 0.014697,
-      "relative_excess_cagr": 0.0598,
-      "strategy_max_drawdown": -0.240468,
-      "relative_max_drawdown": -0.465248,
-      "sharpe": 0.601362,
-      "information_ratio": 0.19027,
-      "account_return_max_error": 0.0,
-      "report_artifact": {
-        "path": "/vol/freq_phase_sensitivity/reports/report_csi1000_freq20_phase03_2021-01-05_2026-09-30.parquet",
-        "sha256": "f124619312e7393a1e4f9cf1cbd0fad0068416b7bf8dee417552bd5b6107c07d",
-        "rows": 1392,
-        "columns": [
-          "account",
-          "return",
-          "total_turnover",
-          "turnover",
-          "total_cost",
-          "cost",
-          "value",
-          "cash",
-          "bench"
-        ]
-      },
-      "performance": {
-        "metric_version": "portfolio_compound_v1",
-        "start": "2021-01-05",
-        "end": "2026-09-30",
-        "years": 5.733177,
-        "n_days": 1392,
-        "strategy_total_return": 0.516842,
-        "strategy_cagr": 0.075376,
-        "benchmark_total_return": 0.087243,
-        "benchmark_cagr": 0.014697,
-        "relative_total_return": 0.395127,
-        "relative_excess_cagr": 0.0598,
-        "strategy_max_drawdown": -0.240468,
-        "benchmark_max_drawdown": -0.467084,
-        "relative_max_drawdown": -0.465248,
-        "sharpe": 0.601362,
-        "information_ratio": 0.19027,
-        "annual_volatility": 0.133193,
-        "mean_daily_net_return": 0.00033654,
-        "mean_daily_active_return": 0.00015666,
+        "relative_max_drawdown": -0.486271,
+        "sharpe": 0.549893,
+        "information_ratio": 0.157536,
+        "annual_volatility": 0.134292,
+        "mean_daily_net_return": 0.00031028,
+        "mean_daily_active_return": 0.00013039,
         "account_return_max_error": 0.0
       }
     },
     "4": {
       "phase": 4,
+      "source": "deterministic_refit",
       "first_retrain_asof": "2020-12-28",
       "n_retrains": 70,
-      "strategy_cagr": 0.029038,
+      "signal_sha256": "7d570a88367ed65a97d46130de632f19656ed537642ba6e11953552531d75d48",
+      "chunk_predictions": [
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2020-12-28",
+          "signal_end": "2021-01-25",
+          "n_rows": 20000,
+          "prediction_sha256": "45bb097f309f91d526d937159334e683d9df175bc06287e6fa4df3c3fb772edd"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2021-01-26",
+          "signal_end": "2021-03-01",
+          "n_rows": 20000,
+          "prediction_sha256": "8a32fc27e797cff55952ea178a0d23a3c9f2a6677f9f03923f90118ec5aaf4d9"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2021-03-02",
+          "signal_end": "2021-03-29",
+          "n_rows": 20000,
+          "prediction_sha256": "7defde4fb8c72837fe8014f599777b38e3146ce74136212183fe47cab4824bdd"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2021-03-30",
+          "signal_end": "2021-04-27",
+          "n_rows": 20000,
+          "prediction_sha256": "f79fe89ea8036bd0b23dc2b4bf033eee4fa55179ec6551cb763b524245402cc5"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2021-04-28",
+          "signal_end": "2021-05-28",
+          "n_rows": 20000,
+          "prediction_sha256": "80bebac82a657b61220b577d582c9704490d4a455f47c7c5043b69703f125970"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2021-05-31",
+          "signal_end": "2021-06-28",
+          "n_rows": 20000,
+          "prediction_sha256": "23668c1fe73105a0019d94aa1ba46edd0faff235027243dfcb494c646d57c750"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2021-06-29",
+          "signal_end": "2021-07-26",
+          "n_rows": 20000,
+          "prediction_sha256": "d31bcc8dd48c0b31707a8cd57dca844e9f3fd12c4caf80076951e88447af6cef"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2021-07-27",
+          "signal_end": "2021-08-23",
+          "n_rows": 20000,
+          "prediction_sha256": "389182ecf76b5566150167f3aa1a8de9f6154e56b3e450801d82de4f288fdaad"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2021-08-24",
+          "signal_end": "2021-09-22",
+          "n_rows": 20000,
+          "prediction_sha256": "bab7d376ae5b3233f2ccf03cea306990dfef6e7af025feb8e37bde4d958a4d9d"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2021-09-23",
+          "signal_end": "2021-10-27",
+          "n_rows": 20000,
+          "prediction_sha256": "8982c253338cfa91488f90b78101e62a10a9977b1360aedf87c47b539b5a1d27"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2021-10-28",
+          "signal_end": "2021-11-24",
+          "n_rows": 20000,
+          "prediction_sha256": "5a506b8889b608378dc87c2deac996a1c6609627dfaf486faec8c9b761b351bc"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2021-11-25",
+          "signal_end": "2021-12-22",
+          "n_rows": 20000,
+          "prediction_sha256": "813820f44d67af8b6eeb57f23c25eee37f9721bea0ec2f0c8cd308fb1a879d76"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2021-12-23",
+          "signal_end": "2022-01-20",
+          "n_rows": 20000,
+          "prediction_sha256": "7083161ad2690a7a67d801c9c179d571e45b98a034c6b009a27df42d7f2d1a40"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2022-01-21",
+          "signal_end": "2022-02-24",
+          "n_rows": 20000,
+          "prediction_sha256": "845f2e00e309f3ab561b5ce9b8fe8c6a1dac83fdad51d87aa431d775a8a9cf52"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2022-02-25",
+          "signal_end": "2022-03-24",
+          "n_rows": 20000,
+          "prediction_sha256": "feaf75a1408df4693140516d98d4922946c6cec364dc37ebd55a109feb63920f"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2022-03-25",
+          "signal_end": "2022-04-25",
+          "n_rows": 20000,
+          "prediction_sha256": "24ba0a23d871e7c20414a2afa48da1b225904c9ee233ec958fcff1a303fdecee"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2022-04-26",
+          "signal_end": "2022-05-26",
+          "n_rows": 20000,
+          "prediction_sha256": "4b0e1c65c0c824dbcf0708a85f308abce5ad4c4dec782f37599f73aa265058fd"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2022-05-27",
+          "signal_end": "2022-06-24",
+          "n_rows": 20000,
+          "prediction_sha256": "9981723319080726f194bab6bd88ffbaaa0a39b7cbfa2dc5506afc246747a086"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2022-06-27",
+          "signal_end": "2022-07-22",
+          "n_rows": 20000,
+          "prediction_sha256": "377c84deb90c2a711c6d042db637c4fa88836bcfc2989ea1a388bce582b8a858"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2022-07-25",
+          "signal_end": "2022-08-19",
+          "n_rows": 20000,
+          "prediction_sha256": "90ec7ba188f26cbabef95492aa55b2b84b14ed657561afba63917bd41f0cb959"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2022-08-22",
+          "signal_end": "2022-09-19",
+          "n_rows": 20000,
+          "prediction_sha256": "ee313a81b66ab009817feb4606c09f0dc5806edb9a7f97b368d09eb9e77db14c"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2022-09-20",
+          "signal_end": "2022-10-24",
+          "n_rows": 20000,
+          "prediction_sha256": "2afebefc178b91cd534b55d4b14c87d789d23950479f5a73afd0f597e18fc14e"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2022-10-25",
+          "signal_end": "2022-11-21",
+          "n_rows": 20000,
+          "prediction_sha256": "6c0186591c5e0bd1592b3fe8c1f537702d88bb811ef2b04b7288da655bd4c3ff"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2022-11-22",
+          "signal_end": "2022-12-19",
+          "n_rows": 20000,
+          "prediction_sha256": "9f76a88cf809ffe7473cc3143bba768d467a3e159a29b9bdaf0dd68ed96a056a"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2022-12-20",
+          "signal_end": "2023-01-17",
+          "n_rows": 20000,
+          "prediction_sha256": "e74817002fe2c899e644e6eaf39578eaf71cac90ed934c8ebffaebff3f7fc0a9"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2023-01-18",
+          "signal_end": "2023-02-21",
+          "n_rows": 20000,
+          "prediction_sha256": "04058c8b2351c7b1e80a36039ffc3721a22377accbd94110fece992b541dafff"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2023-02-22",
+          "signal_end": "2023-03-21",
+          "n_rows": 20000,
+          "prediction_sha256": "4c5a3b9e509bfcf70892aba2f86317f95384a3d9512efda23ffc4248b7cae610"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2023-03-22",
+          "signal_end": "2023-04-19",
+          "n_rows": 20000,
+          "prediction_sha256": "c6d85449bc3d562b038a16300d60062a2b43c5a104d99104dbb7eed1513708bf"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2023-04-20",
+          "signal_end": "2023-05-22",
+          "n_rows": 20000,
+          "prediction_sha256": "c5ce24f6387759e7afa68b1a606a9db84bb365e5cce00e027e60885d0ff113dc"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2023-05-23",
+          "signal_end": "2023-06-19",
+          "n_rows": 19982,
+          "prediction_sha256": "62720c9ee51c333f5c1c55c32ea5125764dac622aef50b62a29d12ef3098fd62"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2023-06-20",
+          "signal_end": "2023-07-19",
+          "n_rows": 19994,
+          "prediction_sha256": "b0481581cbd7a0c1bf82d4c41b8dfdea94a7ffac219947dae0d94610c9b814dd"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2023-07-20",
+          "signal_end": "2023-08-16",
+          "n_rows": 20000,
+          "prediction_sha256": "75c02736371897a319ba74afe0724a4cbc44f444b3e8c2dc59c15b8652e41899"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2023-08-17",
+          "signal_end": "2023-09-13",
+          "n_rows": 20000,
+          "prediction_sha256": "7086610e1a99f735497a661cc43fb7d295e1b2f0221578fa4157139032b68ef5"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2023-09-14",
+          "signal_end": "2023-10-19",
+          "n_rows": 20000,
+          "prediction_sha256": "ed6bb16ae9e5e1f6f19fb2e39bacfeb6da0d9696e017ab6e66c15cceba04d3af"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2023-10-20",
+          "signal_end": "2023-11-16",
+          "n_rows": 20000,
+          "prediction_sha256": "2799b6f87cb270d2eb6455150e6f91d45cb52af349ef4d5705da7d6c02cdb19f"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2023-11-17",
+          "signal_end": "2023-12-14",
+          "n_rows": 20000,
+          "prediction_sha256": "04558ff89971ad6bd7cd60a9807f0f0d2e2ead882be4e98218e41dd916b822a0"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2023-12-15",
+          "signal_end": "2024-01-12",
+          "n_rows": 20000,
+          "prediction_sha256": "e293283f0b0e680ff458a86ef04fb6e45d3e9b3b259b36576e1f7332fa94b5f7"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2024-01-15",
+          "signal_end": "2024-02-19",
+          "n_rows": 20000,
+          "prediction_sha256": "6842e7ce49a6f52b350db43b39cb80ef0b247dc3995d4bcf8b79775c8510402b"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2024-02-20",
+          "signal_end": "2024-03-18",
+          "n_rows": 20000,
+          "prediction_sha256": "8de5f6df228f1cfe1b442e6ab3cc35ef50f9f6373cf257fcf1d1fe394070b7c1"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2024-03-19",
+          "signal_end": "2024-04-17",
+          "n_rows": 20000,
+          "prediction_sha256": "d9fb34afe3fea2b3fe506b1ac1e24b6efc589e8a8de5b6610ef3d5ec93d1af51"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2024-04-18",
+          "signal_end": "2024-05-20",
+          "n_rows": 20000,
+          "prediction_sha256": "a0301e14018e082dab3f7201a5b759503bc9c9c764a4041bf1204e204ac60ff5"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2024-05-21",
+          "signal_end": "2024-06-18",
+          "n_rows": 20000,
+          "prediction_sha256": "5dc3abe164baa347353db1c0bd162509d04353125a746f199a41973faaef467c"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2024-06-19",
+          "signal_end": "2024-07-16",
+          "n_rows": 19972,
+          "prediction_sha256": "713029e45819c103fa880a3af0cd3aeff5d2013326a001d29ebfb815487b3c98"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2024-07-17",
+          "signal_end": "2024-08-13",
+          "n_rows": 19961,
+          "prediction_sha256": "f24df19d5716b0911fe94efce90eb1d717132f09bf49cc6b0a56c28d88a4b1d4"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2024-08-14",
+          "signal_end": "2024-09-10",
+          "n_rows": 19976,
+          "prediction_sha256": "384c590a73c6b20afbb2dee07433b9923bd479a6e76bfae085a59500701fe85d"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2024-09-11",
+          "signal_end": "2024-10-17",
+          "n_rows": 20000,
+          "prediction_sha256": "e4d2da7e001aff7bed7f0c352897608b6b40ea0c923f44bbce3b9ef52badb37f"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2024-10-18",
+          "signal_end": "2024-11-14",
+          "n_rows": 20000,
+          "prediction_sha256": "3002930d9ee8d1f22f75adbf378d8272a53f2daec71ce01a354e3d37891adb6d"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2024-11-15",
+          "signal_end": "2024-12-12",
+          "n_rows": 20000,
+          "prediction_sha256": "1e932fa5196767052b1f23c7585c5b0eb1b20941d4b9495c647d9f5266b0d419"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2024-12-13",
+          "signal_end": "2025-01-10",
+          "n_rows": 20000,
+          "prediction_sha256": "6d362c53375f680f66d0c5186f897f805e9297efceb8743febb88854c443071e"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2025-01-13",
+          "signal_end": "2025-02-17",
+          "n_rows": 20000,
+          "prediction_sha256": "af9f07fe726c9408dff62e0995ee989dec8862257ef87302f6cf8cccb2c7e464"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2025-02-18",
+          "signal_end": "2025-03-17",
+          "n_rows": 20000,
+          "prediction_sha256": "5f029aead4bb54520601b897e4060cd21b2ec6582471967e060b86ae311460c6"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2025-03-18",
+          "signal_end": "2025-04-15",
+          "n_rows": 19987,
+          "prediction_sha256": "1eae9ef5f892fcbd3516fa62bf1fecc89ec04dc17fcfc9ac4cf3aacfb041d3ea"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2025-04-16",
+          "signal_end": "2025-05-16",
+          "n_rows": 19980,
+          "prediction_sha256": "e77aa107e676879ed93161b4e09c9cd40d738de5b33873076f9d234a35208734"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2025-05-19",
+          "signal_end": "2025-06-16",
+          "n_rows": 19991,
+          "prediction_sha256": "6fbb7f8e9183104e39652ba230ad9b7321f50667ac9c77d1d073e500aeca184c"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2025-06-17",
+          "signal_end": "2025-07-14",
+          "n_rows": 20000,
+          "prediction_sha256": "1465aeed57217c69d7342e32b258d3b42953b18c6be4d6b147f6c0cafd4b1e62"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2025-07-15",
+          "signal_end": "2025-08-11",
+          "n_rows": 20000,
+          "prediction_sha256": "a1805886615ccb12dd7e90c44f8156011ce73c670369aa286db597ca618a41c8"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2025-08-12",
+          "signal_end": "2025-09-08",
+          "n_rows": 20000,
+          "prediction_sha256": "7568223ab4ec6fb13f9817b526b8503b7d79489eab801b116053cae2c11d8ddc"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2025-09-09",
+          "signal_end": "2025-10-14",
+          "n_rows": 20000,
+          "prediction_sha256": "7c108321b99b14fe75eb23773a6bcc75b86003d469e2ed0e4f0591e9a293f901"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2025-10-15",
+          "signal_end": "2025-11-11",
+          "n_rows": 20000,
+          "prediction_sha256": "bc02aa280f344e695935a007c993e4fbe4c03f2963c74f3b4e440f93391e4df6"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2025-11-12",
+          "signal_end": "2025-12-09",
+          "n_rows": 20000,
+          "prediction_sha256": "41e2876ab230352d07f489d134fc8463c08dc39a57beefc5e82353e019442c9b"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2025-12-10",
+          "signal_end": "2026-01-08",
+          "n_rows": 20000,
+          "prediction_sha256": "74b405ac87b734244b22c9bb3de5ee8882d0dfdddb417600fc2c11e05d50c4ec"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2026-01-09",
+          "signal_end": "2026-02-05",
+          "n_rows": 19988,
+          "prediction_sha256": "ec81393b9a74e42414b292d4a543136660bdb8adfa24da7bd9ec18c53ca4f06e"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2026-02-06",
+          "signal_end": "2026-03-13",
+          "n_rows": 19980,
+          "prediction_sha256": "2b81133767fbcc845bf13c090efa72a1159c34a971c5cd43a6af77235556929a"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2026-03-16",
+          "signal_end": "2026-04-13",
+          "n_rows": 19980,
+          "prediction_sha256": "b127cbcb609175d94866883300fd59141826eac76c7b01e2cf55d023273f2b32"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2026-04-14",
+          "signal_end": "2026-05-14",
+          "n_rows": 19980,
+          "prediction_sha256": "a6614edd89a591cb8c00af049d136e2eaca8bd542d1877d7c6b2951b9a3fa358"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2026-05-15",
+          "signal_end": "2026-06-11",
+          "n_rows": 19990,
+          "prediction_sha256": "ac01c9fbced4504f3b539bcc65232509a7b259d901459b15cabfaebffb9630f0"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2026-06-12",
+          "signal_end": "2026-07-10",
+          "n_rows": 20000,
+          "prediction_sha256": "eec69ab8c4e815deeae2aec0ec5c30fd435edd05b4ddaebbdab7d7edc356a58f"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2026-07-13",
+          "signal_end": "2026-08-07",
+          "n_rows": 20000,
+          "prediction_sha256": "d311981007e7c5306e08bd05bf82f9f729c00d16fb1af4f80c3aa17cbab782f2"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2026-08-10",
+          "signal_end": "2026-09-04",
+          "n_rows": 20000,
+          "prediction_sha256": "1257d5626e987a8da37644a5580309721d321e023049875159445d8e0a734f9c"
+        },
+        {
+          "repeat": null,
+          "phase": 4,
+          "retrain_asof": "2026-09-07",
+          "signal_end": "2026-09-30",
+          "n_rows": 17000,
+          "prediction_sha256": "c1a775b6d5a2b2568cfb304705c57c12120935b9b1ab7e7876381a8e83f78650"
+        }
+      ],
+      "strategy_cagr": 0.056896,
       "benchmark_cagr": 0.014697,
-      "relative_excess_cagr": 0.014134,
-      "strategy_max_drawdown": -0.389843,
-      "relative_max_drawdown": -0.370282,
-      "sharpe": 0.256787,
-      "information_ratio": -0.014244,
+      "relative_excess_cagr": 0.041588,
+      "strategy_max_drawdown": -0.30772,
+      "relative_max_drawdown": -0.381389,
+      "sharpe": 0.429829,
+      "information_ratio": 0.139084,
       "account_return_max_error": 0.0,
       "report_artifact": {
         "path": "/vol/freq_phase_sensitivity/reports/report_csi1000_freq20_phase04_2021-01-05_2026-09-30.parquet",
-        "sha256": "faff648e714e88ac8d3bf9f18a545444b2b94e4cfbef53d89854413b4d95541c",
+        "sha256": "6fcd22b5f1a4841ec10677db834413890b43e626086afa4a64d92c8b7202ff83",
+        "content_sha256": "cc52dfa3ee9b3a0ea2391c1cf4c7c35c2f08d7d6694ac469a4a9c3515e6a3e51",
         "rows": 1392,
         "columns": [
           "account",
@@ -270,89 +714,603 @@
         "end": "2026-09-30",
         "years": 5.733177,
         "n_days": 1392,
-        "strategy_total_return": 0.178344,
-        "strategy_cagr": 0.029038,
+        "strategy_total_return": 0.37335,
+        "strategy_cagr": 0.056896,
         "benchmark_total_return": 0.087243,
         "benchmark_cagr": 0.014697,
-        "relative_total_return": 0.083791,
-        "relative_excess_cagr": 0.014134,
-        "strategy_max_drawdown": -0.389843,
+        "relative_total_return": 0.263149,
+        "relative_excess_cagr": 0.041588,
+        "strategy_max_drawdown": -0.30772,
         "benchmark_max_drawdown": -0.467084,
-        "relative_max_drawdown": -0.370282,
-        "sharpe": 0.256787,
-        "information_ratio": -0.014244,
-        "annual_volatility": 0.157737,
-        "mean_daily_net_return": 0.00017019,
-        "mean_daily_active_return": -9.7e-06,
-        "account_return_max_error": 0.0
-      }
-    },
-    "5": {
-      "phase": 5,
-      "first_retrain_asof": "2020-12-25",
-      "n_retrains": 70,
-      "strategy_cagr": 0.070853,
-      "benchmark_cagr": 0.014697,
-      "relative_excess_cagr": 0.055343,
-      "strategy_max_drawdown": -0.239056,
-      "relative_max_drawdown": -0.501078,
-      "sharpe": 0.548517,
-      "information_ratio": 0.172886,
-      "account_return_max_error": 0.0,
-      "report_artifact": {
-        "path": "/vol/freq_phase_sensitivity/reports/report_csi1000_freq20_phase05_2021-01-05_2026-09-30.parquet",
-        "sha256": "937c4f41eded89f684fa09a7f74758463e58f683942309e900621951ba6ad291",
-        "rows": 1392,
-        "columns": [
-          "account",
-          "return",
-          "total_turnover",
-          "turnover",
-          "total_cost",
-          "cost",
-          "value",
-          "cash",
-          "bench"
-        ]
-      },
-      "performance": {
-        "metric_version": "portfolio_compound_v1",
-        "start": "2021-01-05",
-        "end": "2026-09-30",
-        "years": 5.733177,
-        "n_days": 1392,
-        "strategy_total_return": 0.480626,
-        "strategy_cagr": 0.070853,
-        "benchmark_total_return": 0.087243,
-        "benchmark_cagr": 0.014697,
-        "relative_total_return": 0.361817,
-        "relative_excess_cagr": 0.055343,
-        "strategy_max_drawdown": -0.239056,
-        "benchmark_max_drawdown": -0.467084,
-        "relative_max_drawdown": -0.501078,
-        "sharpe": 0.548517,
-        "information_ratio": 0.172886,
-        "annual_volatility": 0.140261,
-        "mean_daily_net_return": 0.00032326,
-        "mean_daily_active_return": 0.00014337,
+        "relative_max_drawdown": -0.381389,
+        "sharpe": 0.429829,
+        "information_ratio": 0.139084,
+        "annual_volatility": 0.15366,
+        "mean_daily_net_return": 0.00027751,
+        "mean_daily_active_return": 9.762e-05,
         "account_return_max_error": 0.0
       }
     },
     "6": {
       "phase": 6,
+      "source": "deterministic_refit",
       "first_retrain_asof": "2020-12-24",
       "n_retrains": 70,
-      "strategy_cagr": 0.109334,
+      "signal_sha256": "f8c3f4d4eb9901fbb3995a1dd34826113af8c754012e7719379314fb1efd7610",
+      "chunk_predictions": [
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2020-12-24",
+          "signal_end": "2021-01-21",
+          "n_rows": 20000,
+          "prediction_sha256": "ee6650b883f5cc5070e08f24e7876d4b7a43fb98a883bcc02b13bb5bda56b028"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2021-01-22",
+          "signal_end": "2021-02-25",
+          "n_rows": 20000,
+          "prediction_sha256": "8af93b5a41c7af4feb43ebf2483069c7f47ab6a6591817fa7ba0e5600645400c"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2021-02-26",
+          "signal_end": "2021-03-25",
+          "n_rows": 20000,
+          "prediction_sha256": "3b3a87ae456ddf3de191268edd026e1414839907f40c3af613736ce50be7d4f5"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2021-03-26",
+          "signal_end": "2021-04-23",
+          "n_rows": 20000,
+          "prediction_sha256": "7cf7319c681bb1dd7a6925bfd17020de82f6470ec83c2e2b8e1356122803091c"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2021-04-26",
+          "signal_end": "2021-05-26",
+          "n_rows": 20000,
+          "prediction_sha256": "9f5d9edb19c5a6063ca6e88ec8b67d48d4987c8e8d7e58a1538a60608ad11943"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2021-05-27",
+          "signal_end": "2021-06-24",
+          "n_rows": 20000,
+          "prediction_sha256": "53bbad1422a8573a9ef034f942853b8735cab019e19f9644d058d450bc2fdd95"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2021-06-25",
+          "signal_end": "2021-07-22",
+          "n_rows": 20000,
+          "prediction_sha256": "464a7f660e0c14f73273eca0417469056f3f6c782fbe8b08ef58499bfb148412"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2021-07-23",
+          "signal_end": "2021-08-19",
+          "n_rows": 20000,
+          "prediction_sha256": "68ca0ff5cb667857bf5ecbd7cb6c046a1e041b5c70110112403b53a6ec6f91a4"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2021-08-20",
+          "signal_end": "2021-09-16",
+          "n_rows": 20000,
+          "prediction_sha256": "179ccda20f05c37fd076173020e316a1bd225c63e25aaee90ec3901e1fa4a6cd"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2021-09-17",
+          "signal_end": "2021-10-25",
+          "n_rows": 20000,
+          "prediction_sha256": "ca132b3b6d5be9eee467697497bb3d127ce9b38634e69cd21e6a7d6fb6137124"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2021-10-26",
+          "signal_end": "2021-11-22",
+          "n_rows": 20000,
+          "prediction_sha256": "25ca56979bec5f8ce164a5b8c30228f9809933858b8aa4d7a3bdabf164aa7d0d"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2021-11-23",
+          "signal_end": "2021-12-20",
+          "n_rows": 20000,
+          "prediction_sha256": "8386c937647c4ed51fd151441aa95f3bcd0225769f63282d85491e6243b61117"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2021-12-21",
+          "signal_end": "2022-01-18",
+          "n_rows": 20000,
+          "prediction_sha256": "92fb02b453f0a94235f4e5cc56f632b330300747d7074852dd78cf386fd90b2e"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2022-01-19",
+          "signal_end": "2022-02-22",
+          "n_rows": 20000,
+          "prediction_sha256": "a901019647128a40e93ce20660bf30851a767f2edb7fc3882eab8c7840a3a632"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2022-02-23",
+          "signal_end": "2022-03-22",
+          "n_rows": 20000,
+          "prediction_sha256": "93c3829ce732a9728b1eed3590bd093ce6dcb07bcb974ff4ec3746029bcac005"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2022-03-23",
+          "signal_end": "2022-04-21",
+          "n_rows": 20000,
+          "prediction_sha256": "ca201b5fb1c5163b822628406a8a7ee59b35a6b18ec1f3c38a26a4c005b72475"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2022-04-22",
+          "signal_end": "2022-05-24",
+          "n_rows": 20000,
+          "prediction_sha256": "75b1e40d683aec4dcba51abbc3992c428815df91aed186f4bbfea0d92910322d"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2022-05-25",
+          "signal_end": "2022-06-22",
+          "n_rows": 20000,
+          "prediction_sha256": "ca186ae8aca44b73c8d18ac79c8c1d6f69c2ecdf8324a8aba04bff39085e6485"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2022-06-23",
+          "signal_end": "2022-07-20",
+          "n_rows": 20000,
+          "prediction_sha256": "89aa307be2987e14c0bc1aad1f9a959c79e585e176ead1b07b70f9f188ef4535"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2022-07-21",
+          "signal_end": "2022-08-17",
+          "n_rows": 20000,
+          "prediction_sha256": "6d059e5deaa1d9e499578dd6b0b9af6c2222083af97bc9fc0031446baaa8c725"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2022-08-18",
+          "signal_end": "2022-09-15",
+          "n_rows": 20000,
+          "prediction_sha256": "1d1f1ae9fe143d5b19bfd9719e77f0c84202e9247ecf6cfcb9fed8c282c6672c"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2022-09-16",
+          "signal_end": "2022-10-20",
+          "n_rows": 20000,
+          "prediction_sha256": "5ac5bc7571ba242ce9aba67c3f99da836ac5a33b2b7383ee909143e1b6b43720"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2022-10-21",
+          "signal_end": "2022-11-17",
+          "n_rows": 20000,
+          "prediction_sha256": "354234f784009b8ed485b6d69959fbbbe3c5bb1c483db329c16f13c58ad1f110"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2022-11-18",
+          "signal_end": "2022-12-15",
+          "n_rows": 20000,
+          "prediction_sha256": "e04fd7b3d1a19c1b68a78c14a43dda170025f0916c5c56033d3805cef3c86d17"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2022-12-16",
+          "signal_end": "2023-01-13",
+          "n_rows": 20000,
+          "prediction_sha256": "5be51f7915d775f4be786f083eb72788d42adc2fb9d9fde83c62a70351208b2e"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2023-01-16",
+          "signal_end": "2023-02-17",
+          "n_rows": 20000,
+          "prediction_sha256": "ed9951bd1c7a225941fbb41bc520742df9dab2af2faa3bdb85977684139730c4"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2023-02-20",
+          "signal_end": "2023-03-17",
+          "n_rows": 20000,
+          "prediction_sha256": "6d71a3a9e2e75e567698b5207a9dc0290c202f09c5c2b93517306a6c03405eb0"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2023-03-20",
+          "signal_end": "2023-04-17",
+          "n_rows": 20000,
+          "prediction_sha256": "cec14bb3ad3b5def5705cb405a29234f9f0f620c17fdab4664a9a9ec25d382e0"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2023-04-18",
+          "signal_end": "2023-05-18",
+          "n_rows": 20000,
+          "prediction_sha256": "fbb7c239d8b78743003d2f7efbae88ea8bcedf7370125ec7e5096d20dc22ebd7"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2023-05-19",
+          "signal_end": "2023-06-15",
+          "n_rows": 19984,
+          "prediction_sha256": "603b5a92f743dcdff62ef96cfd18084b2b7d9bd4d58d569e27f57f2f1a19b996"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2023-06-16",
+          "signal_end": "2023-07-17",
+          "n_rows": 19992,
+          "prediction_sha256": "e130e3ed0f29a35181bcb0587c92911e20a9ed31240245a0eee1d2694367e6bf"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2023-07-18",
+          "signal_end": "2023-08-14",
+          "n_rows": 20000,
+          "prediction_sha256": "8517c111ddae9654c06dca66f6f4e7e21fdab55ac3459abb6f8ebe4ac6f8a548"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2023-08-15",
+          "signal_end": "2023-09-11",
+          "n_rows": 20000,
+          "prediction_sha256": "e3abab2e4998f7e03f63ed0b3df5da8af9f6c1479ef3efd4b7e1214e55255d11"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2023-09-12",
+          "signal_end": "2023-10-17",
+          "n_rows": 20000,
+          "prediction_sha256": "3c8128549ed4548837e3d2047e2e5e2b2d8961df824bcb63c0ea9bb263c35423"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2023-10-18",
+          "signal_end": "2023-11-14",
+          "n_rows": 20000,
+          "prediction_sha256": "82cb19cc471f2d3173226b54c8aa66d219bd4344b8bdd91b22450e2813c0ffaa"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2023-11-15",
+          "signal_end": "2023-12-12",
+          "n_rows": 20000,
+          "prediction_sha256": "3a9d8e8b26f484da9a016fc5ed7d0fa7594b3a11fa734ee5dea8fbe32266a544"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2023-12-13",
+          "signal_end": "2024-01-10",
+          "n_rows": 20000,
+          "prediction_sha256": "48103c5271bcdcc6d778293f8b6c2348a6d37e177534226a31f44f5429d2d7ab"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2024-01-11",
+          "signal_end": "2024-02-07",
+          "n_rows": 20000,
+          "prediction_sha256": "869cce406bc9db55958f549d02b4d47a6a06e2ae7f0611f358c950ff5a39a3de"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2024-02-08",
+          "signal_end": "2024-03-14",
+          "n_rows": 20000,
+          "prediction_sha256": "877991355fac6a15ebd956076f8c599da38da3ea0029f5c8f01a57187f70b2c1"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2024-03-15",
+          "signal_end": "2024-04-15",
+          "n_rows": 20000,
+          "prediction_sha256": "99b508718838d7b756831dd6beb0b0ea5c63baca38eedffd9153b866cac36894"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2024-04-16",
+          "signal_end": "2024-05-16",
+          "n_rows": 20000,
+          "prediction_sha256": "8a0a069ea92b7ab4bc2683c8e30e6d8b4bdc16451efdd4429c42014cd882ea0a"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2024-05-17",
+          "signal_end": "2024-06-14",
+          "n_rows": 20000,
+          "prediction_sha256": "ef5cc305b9f3e1b99bee1af43710f1f9c56160e8b79e6c925c75db2b4c994974"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2024-06-17",
+          "signal_end": "2024-07-12",
+          "n_rows": 19974,
+          "prediction_sha256": "afd92b242e249c51d242514abdb006299873de73e8f440d6c14f1e358eb3d066"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2024-07-15",
+          "signal_end": "2024-08-09",
+          "n_rows": 19963,
+          "prediction_sha256": "9578b82715b294149e41e915815568f718fc2e86be7137a93dbf67eb64962a43"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2024-08-12",
+          "signal_end": "2024-09-06",
+          "n_rows": 19972,
+          "prediction_sha256": "6ab45bbdb8be224a27e41819efca9531a82a94f589994c988855032fbe9e9424"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2024-09-09",
+          "signal_end": "2024-10-15",
+          "n_rows": 20000,
+          "prediction_sha256": "5ca91ef031037f7227d8a41ef0cf5ac3f5f109a75688b5564e14b8bbf15afbf6"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2024-10-16",
+          "signal_end": "2024-11-12",
+          "n_rows": 20000,
+          "prediction_sha256": "79702bf9a657494a0b21cd40c0c4e8e005af6b3a95df281de783ce62df8a38e3"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2024-11-13",
+          "signal_end": "2024-12-10",
+          "n_rows": 20000,
+          "prediction_sha256": "1e88fdf7bcd1793d5fcda38c30c273dba334b4a727ad4581dd974b806d5627f1"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2024-12-11",
+          "signal_end": "2025-01-08",
+          "n_rows": 20000,
+          "prediction_sha256": "8d3150364a9f4191befdc470d49a826109d090c494cde5d3ca745792259aa59f"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2025-01-09",
+          "signal_end": "2025-02-13",
+          "n_rows": 20000,
+          "prediction_sha256": "c027ee5d02c002babc5701fe42b34a5ccd121d3d3847ae7cc4f626b3f2a6598f"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2025-02-14",
+          "signal_end": "2025-03-13",
+          "n_rows": 20000,
+          "prediction_sha256": "f41697814be183af115dcb90b08cb8a1aa24e865b4e29d29f19c56b2013ab4bd"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2025-03-14",
+          "signal_end": "2025-04-11",
+          "n_rows": 19989,
+          "prediction_sha256": "be2df9afdfd865bcf603b093ada2bb3e73a7fb90fdf87ab34a41dae1f3bfe175"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2025-04-14",
+          "signal_end": "2025-05-14",
+          "n_rows": 19980,
+          "prediction_sha256": "29d3a2343a417708b1864b47a10fec88307e43186300e6bd0fc7d69c698db79b"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2025-05-15",
+          "signal_end": "2025-06-12",
+          "n_rows": 19989,
+          "prediction_sha256": "b8b2758a2848c66711a23da8d646a776272d034d9267ab3de9a9f67d97175c28"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2025-06-13",
+          "signal_end": "2025-07-10",
+          "n_rows": 20000,
+          "prediction_sha256": "97dccc643dd101f3e83cab99a6851635380ebd36b4aa40deb90d9d21c8a6ae62"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2025-07-11",
+          "signal_end": "2025-08-07",
+          "n_rows": 20000,
+          "prediction_sha256": "663e34da6b6406884df459105dfa237dc0395921684819c7e9dc3806a7b1c352"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2025-08-08",
+          "signal_end": "2025-09-04",
+          "n_rows": 20000,
+          "prediction_sha256": "c802582463223a6e6fdea81d0833fd08f4ecde818f624c459937e959a1183c05"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2025-09-05",
+          "signal_end": "2025-10-10",
+          "n_rows": 20000,
+          "prediction_sha256": "2e8bb018a4e00d191ff298c9eb2b0a115041d09f4508dd05d5c542201e66f483"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2025-10-13",
+          "signal_end": "2025-11-07",
+          "n_rows": 20000,
+          "prediction_sha256": "329b012c8223eb0e67867d2482b4d879d7bc4794282c6dcb25e90239b7e8a1ee"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2025-11-10",
+          "signal_end": "2025-12-05",
+          "n_rows": 20000,
+          "prediction_sha256": "48660f60168f9ef9b5586aead505b9e570c489845e31b3a89e014c51694f06f2"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2025-12-08",
+          "signal_end": "2026-01-06",
+          "n_rows": 20000,
+          "prediction_sha256": "bc44730284f36da13c6206f18861c290dad31f4e6ca65c895f21bce73bec6d46"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2026-01-07",
+          "signal_end": "2026-02-03",
+          "n_rows": 19990,
+          "prediction_sha256": "7417deac58a03b1c01794dee63c5383be077a73cb01c08f1c72926c935cbf554"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2026-02-04",
+          "signal_end": "2026-03-11",
+          "n_rows": 19980,
+          "prediction_sha256": "7865f4dc4e82e70a566874602c3f1463d090929ab078a7ff80b0f36d1f5db49a"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2026-03-12",
+          "signal_end": "2026-04-09",
+          "n_rows": 19980,
+          "prediction_sha256": "25223dee8d6b5d3099a2fbf30ad09b24ea3e49834015442309519fabc2097b03"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2026-04-10",
+          "signal_end": "2026-05-12",
+          "n_rows": 19980,
+          "prediction_sha256": "26ee7585961d552a1e85861648a28b0820c5b35b6027720d18e9dffe4f7f2aeb"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2026-05-13",
+          "signal_end": "2026-06-09",
+          "n_rows": 19988,
+          "prediction_sha256": "59e1dd0f78b67696598fcee8246a150cf31c982172c67ba91c2fdb88fef46797"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2026-06-10",
+          "signal_end": "2026-07-08",
+          "n_rows": 20000,
+          "prediction_sha256": "64c264963cadb304427b66f3f7a9b52bd3e5bc87d90487b9733bfc4f4b968b6e"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2026-07-09",
+          "signal_end": "2026-08-05",
+          "n_rows": 20000,
+          "prediction_sha256": "a68f12cff7d3cd740818b6d66c32da7e13ce4a821e4447bb518f2fbba295a8e5"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2026-08-06",
+          "signal_end": "2026-09-02",
+          "n_rows": 20000,
+          "prediction_sha256": "3bcd43ea7c8235cddd232e62d71208e82bec58b3a230e6d036fa00d8c090d3bd"
+        },
+        {
+          "repeat": null,
+          "phase": 6,
+          "retrain_asof": "2026-09-03",
+          "signal_end": "2026-09-30",
+          "n_rows": 19000,
+          "prediction_sha256": "9d57a27e7667e343f8f934bde42614c2b50467d295239ef239f20bc143abe637"
+        }
+      ],
+      "strategy_cagr": 0.105483,
       "benchmark_cagr": 0.014697,
-      "relative_excess_cagr": 0.093266,
-      "strategy_max_drawdown": -0.224614,
-      "relative_max_drawdown": -0.483264,
-      "sharpe": 0.837551,
-      "information_ratio": 0.337403,
+      "relative_excess_cagr": 0.089471,
+      "strategy_max_drawdown": -0.224388,
+      "relative_max_drawdown": -0.486755,
+      "sharpe": 0.813036,
+      "information_ratio": 0.319212,
       "account_return_max_error": 0.0,
       "report_artifact": {
         "path": "/vol/freq_phase_sensitivity/reports/report_csi1000_freq20_phase06_2021-01-05_2026-09-30.parquet",
-        "sha256": "a5d9d23133fbfc66399e0a9844676a2ac19bd9ee776600c9eb7c194a70c2bffc",
+        "sha256": "72b89ad9b50ed424f2965340bf7ae961c9db39f4dd4741942d26fca25e711c48",
+        "content_sha256": "13612bdc03cec431cb10a26bf37aaf06badee7f87c862bae546198fc70152229",
         "rows": 1392,
         "columns": [
           "account",
@@ -372,737 +1330,74 @@
         "end": "2026-09-30",
         "years": 5.733177,
         "n_days": 1392,
-        "strategy_total_return": 0.812798,
-        "strategy_cagr": 0.109334,
+        "strategy_total_return": 0.777015,
+        "strategy_cagr": 0.105483,
         "benchmark_total_return": 0.087243,
         "benchmark_cagr": 0.014697,
-        "relative_total_return": 0.667335,
-        "relative_excess_cagr": 0.093266,
-        "strategy_max_drawdown": -0.224614,
+        "relative_total_return": 0.634424,
+        "relative_excess_cagr": 0.089471,
+        "strategy_max_drawdown": -0.224388,
         "benchmark_max_drawdown": -0.467084,
-        "relative_max_drawdown": -0.483264,
-        "sharpe": 0.837551,
-        "information_ratio": 0.337403,
-        "annual_volatility": 0.131818,
-        "mean_daily_net_return": 0.00046388,
-        "mean_daily_active_return": 0.000284,
-        "account_return_max_error": 0.0
-      }
-    },
-    "7": {
-      "phase": 7,
-      "first_retrain_asof": "2020-12-23",
-      "n_retrains": 70,
-      "strategy_cagr": 0.095064,
-      "benchmark_cagr": 0.014697,
-      "relative_excess_cagr": 0.079204,
-      "strategy_max_drawdown": -0.225637,
-      "relative_max_drawdown": -0.445185,
-      "sharpe": 0.597449,
-      "information_ratio": 0.337297,
-      "account_return_max_error": 0.0,
-      "report_artifact": {
-        "path": "/vol/freq_phase_sensitivity/reports/report_csi1000_freq20_phase07_2021-01-05_2026-09-30.parquet",
-        "sha256": "cf172b073c3e10ee61fde6798c10b70ea843c2e0c52cbe3ebcc26050bb75bda7",
-        "rows": 1392,
-        "columns": [
-          "account",
-          "return",
-          "total_turnover",
-          "turnover",
-          "total_cost",
-          "cost",
-          "value",
-          "cash",
-          "bench"
-        ]
-      },
-      "performance": {
-        "metric_version": "portfolio_compound_v1",
-        "start": "2021-01-05",
-        "end": "2026-09-30",
-        "years": 5.733177,
-        "n_days": 1392,
-        "strategy_total_return": 0.683118,
-        "strategy_cagr": 0.095064,
-        "benchmark_total_return": 0.087243,
-        "benchmark_cagr": 0.014697,
-        "relative_total_return": 0.548061,
-        "relative_excess_cagr": 0.079204,
-        "strategy_max_drawdown": -0.225637,
-        "benchmark_max_drawdown": -0.467084,
-        "relative_max_drawdown": -0.445185,
-        "sharpe": 0.597449,
-        "information_ratio": 0.337297,
-        "annual_volatility": 0.173844,
-        "mean_daily_net_return": 0.0004364,
-        "mean_daily_active_return": 0.00025651,
-        "account_return_max_error": 0.0
-      }
-    },
-    "8": {
-      "phase": 8,
-      "first_retrain_asof": "2020-12-22",
-      "n_retrains": 70,
-      "strategy_cagr": 0.044261,
-      "benchmark_cagr": 0.014697,
-      "relative_excess_cagr": 0.029137,
-      "strategy_max_drawdown": -0.270679,
-      "relative_max_drawdown": -0.515062,
-      "sharpe": 0.396224,
-      "information_ratio": 0.039496,
-      "account_return_max_error": 0.0,
-      "report_artifact": {
-        "path": "/vol/freq_phase_sensitivity/reports/report_csi1000_freq20_phase08_2021-01-05_2026-09-30.parquet",
-        "sha256": "58879808f398189c05734732bf78461af0f9efeec5f86a3650acac44064474b0",
-        "rows": 1392,
-        "columns": [
-          "account",
-          "return",
-          "total_turnover",
-          "turnover",
-          "total_cost",
-          "cost",
-          "value",
-          "cash",
-          "bench"
-        ]
-      },
-      "performance": {
-        "metric_version": "portfolio_compound_v1",
-        "start": "2021-01-05",
-        "end": "2026-09-30",
-        "years": 5.733177,
-        "n_days": 1392,
-        "strategy_total_return": 0.281848,
-        "strategy_cagr": 0.044261,
-        "benchmark_total_return": 0.087243,
-        "benchmark_cagr": 0.014697,
-        "relative_total_return": 0.17899,
-        "relative_excess_cagr": 0.029137,
-        "strategy_max_drawdown": -0.270679,
-        "benchmark_max_drawdown": -0.467084,
-        "relative_max_drawdown": -0.515062,
-        "sharpe": 0.396224,
-        "information_ratio": 0.039496,
-        "annual_volatility": 0.127719,
-        "mean_daily_net_return": 0.00021263,
-        "mean_daily_active_return": 3.274e-05,
-        "account_return_max_error": 0.0
-      }
-    },
-    "9": {
-      "phase": 9,
-      "first_retrain_asof": "2020-12-21",
-      "n_retrains": 71,
-      "strategy_cagr": 0.062003,
-      "benchmark_cagr": 0.014697,
-      "relative_excess_cagr": 0.046622,
-      "strategy_max_drawdown": -0.231862,
-      "relative_max_drawdown": -0.479612,
-      "sharpe": 0.513392,
-      "information_ratio": 0.13029,
-      "account_return_max_error": 0.0,
-      "report_artifact": {
-        "path": "/vol/freq_phase_sensitivity/reports/report_csi1000_freq20_phase09_2021-01-05_2026-09-30.parquet",
-        "sha256": "53befb27851113b07489e53861c4f3b1f7e200b37b8a88f70866b1efb176545c",
-        "rows": 1392,
-        "columns": [
-          "account",
-          "return",
-          "total_turnover",
-          "turnover",
-          "total_cost",
-          "cost",
-          "value",
-          "cash",
-          "bench"
-        ]
-      },
-      "performance": {
-        "metric_version": "portfolio_compound_v1",
-        "start": "2021-01-05",
-        "end": "2026-09-30",
-        "years": 5.733177,
-        "n_days": 1392,
-        "strategy_total_return": 0.411836,
-        "strategy_cagr": 0.062003,
-        "benchmark_total_return": 0.087243,
-        "benchmark_cagr": 0.014697,
-        "relative_total_return": 0.298547,
-        "relative_excess_cagr": 0.046622,
-        "strategy_max_drawdown": -0.231862,
-        "benchmark_max_drawdown": -0.467084,
-        "relative_max_drawdown": -0.479612,
-        "sharpe": 0.513392,
-        "information_ratio": 0.13029,
-        "annual_volatility": 0.131761,
-        "mean_daily_net_return": 0.00028422,
-        "mean_daily_active_return": 0.00010434,
-        "account_return_max_error": 0.0
-      }
-    },
-    "10": {
-      "phase": 10,
-      "first_retrain_asof": "2020-12-18",
-      "n_retrains": 71,
-      "strategy_cagr": 0.087352,
-      "benchmark_cagr": 0.014697,
-      "relative_excess_cagr": 0.071603,
-      "strategy_max_drawdown": -0.246219,
-      "relative_max_drawdown": -0.49576,
-      "sharpe": 0.692583,
-      "information_ratio": 0.2408,
-      "account_return_max_error": 0.0,
-      "report_artifact": {
-        "path": "/vol/freq_phase_sensitivity/reports/report_csi1000_freq20_phase10_2021-01-05_2026-09-30.parquet",
-        "sha256": "84e0181c2b1c8163f3ccb94c862b4179f307cc2ccf194f5d98910e0dc38e9358",
-        "rows": 1392,
-        "columns": [
-          "account",
-          "return",
-          "total_turnover",
-          "turnover",
-          "total_cost",
-          "cost",
-          "value",
-          "cash",
-          "bench"
-        ]
-      },
-      "performance": {
-        "metric_version": "portfolio_compound_v1",
-        "start": "2021-01-05",
-        "end": "2026-09-30",
-        "years": 5.733177,
-        "n_days": 1392,
-        "strategy_total_return": 0.616281,
-        "strategy_cagr": 0.087352,
-        "benchmark_total_return": 0.087243,
-        "benchmark_cagr": 0.014697,
-        "relative_total_return": 0.486587,
-        "relative_excess_cagr": 0.071603,
-        "strategy_max_drawdown": -0.246219,
-        "benchmark_max_drawdown": -0.467084,
-        "relative_max_drawdown": -0.49576,
-        "sharpe": 0.692583,
-        "information_ratio": 0.2408,
-        "annual_volatility": 0.130898,
-        "mean_daily_net_return": 0.00038091,
-        "mean_daily_active_return": 0.00020103,
-        "account_return_max_error": 0.0
-      }
-    },
-    "11": {
-      "phase": 11,
-      "first_retrain_asof": "2020-12-17",
-      "n_retrains": 71,
-      "strategy_cagr": 0.054063,
-      "benchmark_cagr": 0.014697,
-      "relative_excess_cagr": 0.038796,
-      "strategy_max_drawdown": -0.255472,
-      "relative_max_drawdown": -0.429478,
-      "sharpe": 0.397302,
-      "information_ratio": 0.132974,
-      "account_return_max_error": 0.0,
-      "report_artifact": {
-        "path": "/vol/freq_phase_sensitivity/reports/report_csi1000_freq20_phase11_2021-01-05_2026-09-30.parquet",
-        "sha256": "d0b238e514116cfe913f5826dec8da0ec12ac616babb5fc009341d3fc73ae799",
-        "rows": 1392,
-        "columns": [
-          "account",
-          "return",
-          "total_turnover",
-          "turnover",
-          "total_cost",
-          "cost",
-          "value",
-          "cash",
-          "bench"
-        ]
-      },
-      "performance": {
-        "metric_version": "portfolio_compound_v1",
-        "start": "2021-01-05",
-        "end": "2026-09-30",
-        "years": 5.733177,
-        "n_days": 1392,
-        "strategy_total_return": 0.352377,
-        "strategy_cagr": 0.054063,
-        "benchmark_total_return": 0.087243,
-        "benchmark_cagr": 0.014697,
-        "relative_total_return": 0.243859,
-        "relative_excess_cagr": 0.038796,
-        "strategy_max_drawdown": -0.255472,
-        "benchmark_max_drawdown": -0.467084,
-        "relative_max_drawdown": -0.429478,
-        "sharpe": 0.397302,
-        "information_ratio": 0.132974,
-        "annual_volatility": 0.163551,
-        "mean_daily_net_return": 0.00027302,
-        "mean_daily_active_return": 9.313e-05,
-        "account_return_max_error": 0.0
-      }
-    },
-    "12": {
-      "phase": 12,
-      "first_retrain_asof": "2020-12-16",
-      "n_retrains": 71,
-      "strategy_cagr": 0.060601,
-      "benchmark_cagr": 0.014697,
-      "relative_excess_cagr": 0.045239,
-      "strategy_max_drawdown": -0.200028,
-      "relative_max_drawdown": -0.4707,
-      "sharpe": 0.51675,
-      "information_ratio": 0.117668,
-      "account_return_max_error": 0.0,
-      "report_artifact": {
-        "path": "/vol/freq_phase_sensitivity/reports/report_csi1000_freq20_phase12_2021-01-05_2026-09-30.parquet",
-        "sha256": "e773c5e8db9b3f148f642e5e7fe696ff8d7c264b11375a15f934f0bdee5770a1",
-        "rows": 1392,
-        "columns": [
-          "account",
-          "return",
-          "total_turnover",
-          "turnover",
-          "total_cost",
-          "cost",
-          "value",
-          "cash",
-          "bench"
-        ]
-      },
-      "performance": {
-        "metric_version": "portfolio_compound_v1",
-        "start": "2021-01-05",
-        "end": "2026-09-30",
-        "years": 5.733177,
-        "n_days": 1392,
-        "strategy_total_return": 0.401181,
-        "strategy_cagr": 0.060601,
-        "benchmark_total_return": 0.087243,
-        "benchmark_cagr": 0.014697,
-        "relative_total_return": 0.288747,
-        "relative_excess_cagr": 0.045239,
-        "strategy_max_drawdown": -0.200028,
-        "benchmark_max_drawdown": -0.467084,
-        "relative_max_drawdown": -0.4707,
-        "sharpe": 0.51675,
-        "information_ratio": 0.117668,
-        "annual_volatility": 0.127258,
-        "mean_daily_net_return": 0.00027631,
-        "mean_daily_active_return": 9.642e-05,
-        "account_return_max_error": 0.0
-      }
-    },
-    "13": {
-      "phase": 13,
-      "first_retrain_asof": "2020-12-15",
-      "n_retrains": 71,
-      "strategy_cagr": 0.072879,
-      "benchmark_cagr": 0.014697,
-      "relative_excess_cagr": 0.057339,
-      "strategy_max_drawdown": -0.231529,
-      "relative_max_drawdown": -0.444641,
-      "sharpe": 0.497801,
-      "information_ratio": 0.236905,
-      "account_return_max_error": 0.0,
-      "report_artifact": {
-        "path": "/vol/freq_phase_sensitivity/reports/report_csi1000_freq20_phase13_2021-01-05_2026-09-30.parquet",
-        "sha256": "7336a6bfd7765dc9e9370f3f1e682563bc409a48bde12f0ca08ad4211694a4b4",
-        "rows": 1392,
-        "columns": [
-          "account",
-          "return",
-          "total_turnover",
-          "turnover",
-          "total_cost",
-          "cost",
-          "value",
-          "cash",
-          "bench"
-        ]
-      },
-      "performance": {
-        "metric_version": "portfolio_compound_v1",
-        "start": "2021-01-05",
-        "end": "2026-09-30",
-        "years": 5.733177,
-        "n_days": 1392,
-        "strategy_total_return": 0.49676,
-        "strategy_cagr": 0.072879,
-        "benchmark_total_return": 0.087243,
-        "benchmark_cagr": 0.014697,
-        "relative_total_return": 0.376657,
-        "relative_excess_cagr": 0.057339,
-        "strategy_max_drawdown": -0.231529,
-        "benchmark_max_drawdown": -0.467084,
-        "relative_max_drawdown": -0.444641,
-        "sharpe": 0.497801,
-        "information_ratio": 0.236905,
-        "annual_volatility": 0.166258,
-        "mean_daily_net_return": 0.00034774,
-        "mean_daily_active_return": 0.00016786,
-        "account_return_max_error": 0.0
-      }
-    },
-    "14": {
-      "phase": 14,
-      "first_retrain_asof": "2020-12-14",
-      "n_retrains": 71,
-      "strategy_cagr": 0.085517,
-      "benchmark_cagr": 0.014697,
-      "relative_excess_cagr": 0.069795,
-      "strategy_max_drawdown": -0.280341,
-      "relative_max_drawdown": -0.456617,
-      "sharpe": 0.635873,
-      "information_ratio": 0.248245,
-      "account_return_max_error": 0.0,
-      "report_artifact": {
-        "path": "/vol/freq_phase_sensitivity/reports/report_csi1000_freq20_phase14_2021-01-05_2026-09-30.parquet",
-        "sha256": "9fab07d68bc3b2802a1df7e8059cc104bebc83fd7ab295ba664747625e2f3f66",
-        "rows": 1392,
-        "columns": [
-          "account",
-          "return",
-          "total_turnover",
-          "turnover",
-          "total_cost",
-          "cost",
-          "value",
-          "cash",
-          "bench"
-        ]
-      },
-      "performance": {
-        "metric_version": "portfolio_compound_v1",
-        "start": "2021-01-05",
-        "end": "2026-09-30",
-        "years": 5.733177,
-        "n_days": 1392,
-        "strategy_total_return": 0.600706,
-        "strategy_cagr": 0.085517,
-        "benchmark_total_return": 0.087243,
-        "benchmark_cagr": 0.014697,
-        "relative_total_return": 0.472262,
-        "relative_excess_cagr": 0.069795,
-        "strategy_max_drawdown": -0.280341,
-        "benchmark_max_drawdown": -0.467084,
-        "relative_max_drawdown": -0.456617,
-        "sharpe": 0.635873,
-        "information_ratio": 0.248245,
-        "annual_volatility": 0.142458,
-        "mean_daily_net_return": 0.00038061,
-        "mean_daily_active_return": 0.00020072,
-        "account_return_max_error": 0.0
-      }
-    },
-    "15": {
-      "phase": 15,
-      "first_retrain_asof": "2020-12-11",
-      "n_retrains": 71,
-      "strategy_cagr": 0.101126,
-      "benchmark_cagr": 0.014697,
-      "relative_excess_cagr": 0.085178,
-      "strategy_max_drawdown": -0.217175,
-      "relative_max_drawdown": -0.441722,
-      "sharpe": 0.746911,
-      "information_ratio": 0.314663,
-      "account_return_max_error": 0.0,
-      "report_artifact": {
-        "path": "/vol/freq_phase_sensitivity/reports/report_csi1000_freq20_phase15_2021-01-05_2026-09-30.parquet",
-        "sha256": "794f4c70dd88dfafa9c18bc5b22b121c81f6dbc684d3d4002ee36880ba7ea410",
-        "rows": 1392,
-        "columns": [
-          "account",
-          "return",
-          "total_turnover",
-          "turnover",
-          "total_cost",
-          "cost",
-          "value",
-          "cash",
-          "bench"
-        ]
-      },
-      "performance": {
-        "metric_version": "portfolio_compound_v1",
-        "start": "2021-01-05",
-        "end": "2026-09-30",
-        "years": 5.733177,
-        "n_days": 1392,
-        "strategy_total_return": 0.737241,
-        "strategy_cagr": 0.101126,
-        "benchmark_total_return": 0.087243,
-        "benchmark_cagr": 0.014697,
-        "relative_total_return": 0.597841,
-        "relative_excess_cagr": 0.085178,
-        "strategy_max_drawdown": -0.217175,
-        "benchmark_max_drawdown": -0.467084,
-        "relative_max_drawdown": -0.441722,
-        "sharpe": 0.746911,
-        "information_ratio": 0.314663,
-        "annual_volatility": 0.139468,
-        "mean_daily_net_return": 0.00043769,
-        "mean_daily_active_return": 0.0002578,
-        "account_return_max_error": 0.0
-      }
-    },
-    "16": {
-      "phase": 16,
-      "first_retrain_asof": "2020-12-10",
-      "n_retrains": 71,
-      "strategy_cagr": 0.055612,
-      "benchmark_cagr": 0.014697,
-      "relative_excess_cagr": 0.040323,
-      "strategy_max_drawdown": -0.282781,
-      "relative_max_drawdown": -0.419632,
-      "sharpe": 0.414945,
-      "information_ratio": 0.130025,
-      "account_return_max_error": 0.0,
-      "report_artifact": {
-        "path": "/vol/freq_phase_sensitivity/reports/report_csi1000_freq20_phase16_2021-01-05_2026-09-30.parquet",
-        "sha256": "9c74897725fa646fcd0e0a8e4ad775a09058942f4acaca4942af57e252b78d57",
-        "rows": 1392,
-        "columns": [
-          "account",
-          "return",
-          "total_turnover",
-          "turnover",
-          "total_cost",
-          "cost",
-          "value",
-          "cash",
-          "bench"
-        ]
-      },
-      "performance": {
-        "metric_version": "portfolio_compound_v1",
-        "start": "2021-01-05",
-        "end": "2026-09-30",
-        "years": 5.733177,
-        "n_days": 1392,
-        "strategy_total_return": 0.363814,
-        "strategy_cagr": 0.055612,
-        "benchmark_total_return": 0.087243,
-        "benchmark_cagr": 0.014697,
-        "relative_total_return": 0.254379,
-        "relative_excess_cagr": 0.040323,
-        "strategy_max_drawdown": -0.282781,
-        "benchmark_max_drawdown": -0.467084,
-        "relative_max_drawdown": -0.419632,
-        "sharpe": 0.414945,
-        "information_ratio": 0.130025,
-        "annual_volatility": 0.157844,
-        "mean_daily_net_return": 0.0002752,
-        "mean_daily_active_return": 9.531e-05,
-        "account_return_max_error": 0.0
-      }
-    },
-    "17": {
-      "phase": 17,
-      "first_retrain_asof": "2020-12-09",
-      "n_retrains": 71,
-      "strategy_cagr": 0.108638,
-      "benchmark_cagr": 0.014697,
-      "relative_excess_cagr": 0.09258,
-      "strategy_max_drawdown": -0.203643,
-      "relative_max_drawdown": -0.483291,
-      "sharpe": 0.830152,
-      "information_ratio": 0.336826,
-      "account_return_max_error": 0.0,
-      "report_artifact": {
-        "path": "/vol/freq_phase_sensitivity/reports/report_csi1000_freq20_phase17_2021-01-05_2026-09-30.parquet",
-        "sha256": "f4d4fa435f4825ad9e97c166ee79a705e43cbc63f66c0f50fe72d4537bcc5e9d",
-        "rows": 1392,
-        "columns": [
-          "account",
-          "return",
-          "total_turnover",
-          "turnover",
-          "total_cost",
-          "cost",
-          "value",
-          "cash",
-          "bench"
-        ]
-      },
-      "performance": {
-        "metric_version": "portfolio_compound_v1",
-        "start": "2021-01-05",
-        "end": "2026-09-30",
-        "years": 5.733177,
-        "n_days": 1392,
-        "strategy_total_return": 0.806287,
-        "strategy_cagr": 0.108638,
-        "benchmark_total_return": 0.087243,
-        "benchmark_cagr": 0.014697,
-        "relative_total_return": 0.661346,
-        "relative_excess_cagr": 0.09258,
-        "strategy_max_drawdown": -0.203643,
-        "benchmark_max_drawdown": -0.467084,
-        "relative_max_drawdown": -0.483291,
-        "sharpe": 0.830152,
-        "information_ratio": 0.336826,
-        "annual_volatility": 0.132324,
-        "mean_daily_net_return": 0.00046155,
-        "mean_daily_active_return": 0.00028167,
-        "account_return_max_error": 0.0
-      }
-    },
-    "18": {
-      "phase": 18,
-      "first_retrain_asof": "2020-12-08",
-      "n_retrains": 71,
-      "strategy_cagr": 0.079409,
-      "benchmark_cagr": 0.014697,
-      "relative_excess_cagr": 0.063775,
-      "strategy_max_drawdown": -0.243193,
-      "relative_max_drawdown": -0.473179,
-      "sharpe": 0.631017,
-      "information_ratio": 0.20781,
-      "account_return_max_error": 0.0,
-      "report_artifact": {
-        "path": "/vol/freq_phase_sensitivity/reports/report_csi1000_freq20_phase18_2021-01-05_2026-09-30.parquet",
-        "sha256": "051ed551d21bb3d3cacedcb667b218f307bceef4081616631103c3096de72f54",
-        "rows": 1392,
-        "columns": [
-          "account",
-          "return",
-          "total_turnover",
-          "turnover",
-          "total_cost",
-          "cost",
-          "value",
-          "cash",
-          "bench"
-        ]
-      },
-      "performance": {
-        "metric_version": "portfolio_compound_v1",
-        "start": "2021-01-05",
-        "end": "2026-09-30",
-        "years": 5.733177,
-        "n_days": 1392,
-        "strategy_total_return": 0.549752,
-        "strategy_cagr": 0.079409,
-        "benchmark_total_return": 0.087243,
-        "benchmark_cagr": 0.014697,
-        "relative_total_return": 0.425396,
-        "relative_excess_cagr": 0.063775,
-        "strategy_max_drawdown": -0.243193,
-        "benchmark_max_drawdown": -0.467084,
-        "relative_max_drawdown": -0.473179,
-        "sharpe": 0.631017,
-        "information_ratio": 0.20781,
-        "annual_volatility": 0.132669,
-        "mean_daily_net_return": 0.00035175,
-        "mean_daily_active_return": 0.00017186,
-        "account_return_max_error": 0.0
-      }
-    },
-    "19": {
-      "phase": 19,
-      "first_retrain_asof": "2020-12-07",
-      "n_retrains": 71,
-      "strategy_cagr": 0.075479,
-      "benchmark_cagr": 0.014697,
-      "relative_excess_cagr": 0.059902,
-      "strategy_max_drawdown": -0.194917,
-      "relative_max_drawdown": -0.476122,
-      "sharpe": 0.572311,
-      "information_ratio": 0.224779,
-      "account_return_max_error": 0.0,
-      "report_artifact": {
-        "path": "/vol/freq_phase_sensitivity/reports/report_csi1000_freq20_phase19_2021-01-05_2026-09-30.parquet",
-        "sha256": "fd3cb70c12e882315cf2b8cec945c8cd3904d586be39ba7df3f54f91cf342a1c",
-        "rows": 1392,
-        "columns": [
-          "account",
-          "return",
-          "total_turnover",
-          "turnover",
-          "total_cost",
-          "cost",
-          "value",
-          "cash",
-          "bench"
-        ]
-      },
-      "performance": {
-        "metric_version": "portfolio_compound_v1",
-        "start": "2021-01-05",
-        "end": "2026-09-30",
-        "years": 5.733177,
-        "n_days": 1392,
-        "strategy_total_return": 0.517679,
-        "strategy_cagr": 0.075479,
-        "benchmark_total_return": 0.087243,
-        "benchmark_cagr": 0.014697,
-        "relative_total_return": 0.395897,
-        "relative_excess_cagr": 0.059902,
-        "strategy_max_drawdown": -0.194917,
-        "benchmark_max_drawdown": -0.467084,
-        "relative_max_drawdown": -0.476122,
-        "sharpe": 0.572311,
-        "information_ratio": 0.224779,
-        "annual_volatility": 0.142323,
-        "mean_daily_net_return": 0.00034224,
-        "mean_daily_active_return": 0.00016235,
+        "relative_max_drawdown": -0.486755,
+        "sharpe": 0.813036,
+        "information_ratio": 0.319212,
+        "annual_volatility": 0.131556,
+        "mean_daily_net_return": 0.00044941,
+        "mean_daily_active_return": 0.00026952,
         "account_return_max_error": 0.0
       }
     }
   },
   "summary": {
     "strategy_cagr": {
-      "n": 20,
-      "min": 0.029038,
-      "q25": 0.061652,
-      "median": 0.075428,
-      "q75": 0.08928,
-      "max": 0.109334
+      "n": 3,
+      "min": 0.056896,
+      "q25": 0.062633,
+      "median": 0.068369,
+      "q75": 0.086926,
+      "max": 0.105483
     },
     "relative_excess_cagr": {
-      "n": 20,
-      "min": 0.014134,
-      "q25": 0.046276,
-      "median": 0.059851,
-      "q75": 0.073503,
-      "max": 0.093266
+      "n": 3,
+      "min": 0.041588,
+      "q25": 0.047241,
+      "median": 0.052895,
+      "q75": 0.071183,
+      "max": 0.089471
     },
     "strategy_max_drawdown": {
-      "n": 20,
-      "min": -0.389843,
-      "q25": -0.25038,
-      "median": -0.239762,
-      "q75": -0.225381,
-      "max": -0.194917
+      "n": 3,
+      "min": -0.30772,
+      "q25": -0.275386,
+      "median": -0.243053,
+      "q75": -0.23372,
+      "max": -0.224388
     },
     "relative_max_drawdown": {
-      "n": 20,
-      "min": -0.515062,
-      "q25": -0.486178,
-      "median": -0.473317,
-      "q75": -0.445049,
-      "max": -0.370282
+      "n": 3,
+      "min": -0.486755,
+      "q25": -0.486513,
+      "median": -0.486271,
+      "q75": -0.43383,
+      "max": -0.381389
     },
     "sharpe": {
-      "n": 20,
-      "min": 0.256787,
-      "q25": 0.509494,
-      "median": 0.58488,
-      "q75": 0.677112,
-      "max": 0.837551
+      "n": 3,
+      "min": 0.429829,
+      "q25": 0.489861,
+      "median": 0.549893,
+      "q75": 0.681464,
+      "max": 0.813036
     },
     "information_ratio": {
-      "n": 20,
-      "min": -0.014244,
-      "q25": 0.132303,
-      "median": 0.199885,
-      "q75": 0.261746,
-      "max": 0.337403
+      "n": 3,
+      "min": 0.139084,
+      "q25": 0.14831,
+      "median": 0.157536,
+      "q75": 0.238374,
+      "max": 0.319212
     },
-    "strategy_cagr_range_pp": 8.03,
-    "relative_excess_cagr_range_pp": 7.913
+    "strategy_cagr_range_pp": 4.859,
+    "relative_excess_cagr_range_pp": 4.788
   }
 }
