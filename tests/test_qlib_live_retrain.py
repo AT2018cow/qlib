@@ -3,7 +3,8 @@ import unittest
 
 from qlib_live_retrain import (configure_asof, should_retrain, cache_signature,
                                retrain_due_calendar, RETRAIN_ORIGIN,
-                               provider_training_fingerprint)
+                               provider_training_fingerprint,
+                               apply_lgb_reproducibility, LGB_REPRO_PARAMS)
 
 
 class LiveRetrainTests(unittest.TestCase):
@@ -57,6 +58,22 @@ class LiveRetrainTests(unittest.TestCase):
         # fail-closed：bar / origin 不在日历
         self.assertRaises(ValueError, retrain_due_calendar, self.cal, "2099-01-01")
         self.assertRaises(ValueError, retrain_due_calendar, self.cal, self.cal[-1], origin="2099-01-01")
+
+    def test_lgb_reproducibility_policy_is_explicit_and_shared(self):
+        cfg = copy.deepcopy(self.cfg)
+        apply_lgb_reproducibility(cfg)
+        kw = cfg["task"]["model"]["kwargs"]
+        for key, value in LGB_REPRO_PARAMS.items():
+            self.assertEqual(kw[key], value)
+        self.assertTrue(kw["deterministic"])
+        self.assertTrue(kw["force_col_wise"])
+        self.assertNotIn("force_row_wise", kw)
+        self.assertEqual(kw["learning_rate"], 0.1)
+
+        non_lgb = {"task": {"model": {"class": "GRU", "kwargs": {"seed": 99}}}}
+        before = copy.deepcopy(non_lgb)
+        apply_lgb_reproducibility(non_lgb)
+        self.assertEqual(non_lgb, before)
 
     def test_cache_signature_stable_dates_not_parameters(self):
         configure_asof(self.cfg, self.cal, self.cal[-1])
