@@ -1,0 +1,489 @@
+{
+  "protocol": "execution_attribution_v1",
+  "market": "csi1000",
+  "freq": 20,
+  "topk": 20,
+  "n_drop": 2,
+  "window": "2021-01-05~2026-09-30",
+  "signal_rows": 1392761,
+  "n_retrains": 70,
+  "results": {
+    "REF_LEGACY_EXACT": {
+      "protocol": "REF_LEGACY_EXACT",
+      "metric_version": "portfolio_compound_v1",
+      "n_days": 1392,
+      "strategy_cagr": 0.171177,
+      "benchmark_cagr": 0.014697,
+      "relative_excess_cagr": 0.154214,
+      "strategy_max_drawdown": -0.447928,
+      "benchmark_max_drawdown": -0.467084,
+      "relative_max_drawdown": -0.223229,
+      "sharpe": 0.74195,
+      "information_ratio": 0.896559,
+      "annual_volatility": 0.251568,
+      "account_return_max_error": 0.0,
+      "legacy_ann_excess_arithmetic": 0.1438,
+      "legacy_ir_arithmetic": 0.897,
+      "legacy_max_drawdown_excess_arithmetic": -0.2615,
+      "strategy_total_return_sum_legacy": 1.3597,
+      "total_cost_sum": 0.268,
+      "mean_turnover": 0.192774,
+      "turnover_source": "turnover",
+      "annual_excess_arithmetic_legacy": {
+        "2021": {
+          "excess_sum": 0.3527,
+          "ann_excess_from_daily_mean": 0.3469,
+          "n_days": 242
+        },
+        "2022": {
+          "excess_sum": 0.0258,
+          "ann_excess_from_daily_mean": 0.0254,
+          "n_days": 242
+        },
+        "2023": {
+          "excess_sum": 0.0816,
+          "ann_excess_from_daily_mean": 0.0802,
+          "n_days": 242
+        },
+        "2024": {
+          "excess_sum": 0.1283,
+          "ann_excess_from_daily_mean": 0.1261,
+          "n_days": 242
+        },
+        "2025": {
+          "excess_sum": 0.0102,
+          "ann_excess_from_daily_mean": 0.01,
+          "n_days": 243
+        },
+        "2026": {
+          "excess_sum": 0.2427,
+          "ann_excess_from_daily_mean": 0.3191,
+          "n_days": 181
+        }
+      },
+      "performance": {
+        "metric_version": "portfolio_compound_v1",
+        "start": "2021-01-05",
+        "end": "2026-09-30",
+        "years": 5.733177,
+        "n_days": 1392,
+        "strategy_total_return": 1.474149,
+        "strategy_cagr": 0.171177,
+        "benchmark_total_return": 0.087243,
+        "benchmark_cagr": 0.014697,
+        "relative_total_return": 1.275617,
+        "relative_excess_cagr": 0.154214,
+        "strategy_max_drawdown": -0.447928,
+        "benchmark_max_drawdown": -0.467084,
+        "relative_max_drawdown": -0.223229,
+        "sharpe": 0.74195,
+        "information_ratio": 0.896559,
+        "annual_volatility": 0.251568,
+        "mean_daily_net_return": 0.00078425,
+        "mean_daily_active_return": 0.00060436,
+        "account_return_max_error": 0.0
+      }
+    },
+    "A_LEGACY_ORACLE_CURRENT_DIRECTION": {
+      "protocol": "A_LEGACY_ORACLE_CURRENT_DIRECTION",
+      "metric_version": "portfolio_compound_v1",
+      "n_days": 1392,
+      "strategy_cagr": 0.096188,
+      "benchmark_cagr": 0.014697,
+      "relative_excess_cagr": 0.080312,
+      "strategy_max_drawdown": -0.477767,
+      "benchmark_max_drawdown": -0.467084,
+      "relative_max_drawdown": -0.267636,
+      "sharpe": 0.483225,
+      "information_ratio": 0.501043,
+      "annual_volatility": 0.252585,
+      "account_return_max_error": 0.0,
+      "legacy_ann_excess_arithmetic": 0.0792,
+      "legacy_ir_arithmetic": 0.501,
+      "legacy_max_drawdown_excess_arithmetic": -0.3207,
+      "strategy_total_return_sum_legacy": 0.9911,
+      "total_cost_sum": 0.2772,
+      "mean_turnover": 0.199415,
+      "turnover_source": "turnover",
+      "annual_excess_arithmetic_legacy": {
+        "2021": {
+          "excess_sum": 0.2188,
+          "ann_excess_from_daily_mean": 0.2152,
+          "n_days": 242
+        },
+        "2022": {
+          "excess_sum": 0.0097,
+          "ann_excess_from_daily_mean": 0.0095,
+          "n_days": 242
+        },
+        "2023": {
+          "excess_sum": 0.0413,
+          "ann_excess_from_daily_mean": 0.0406,
+          "n_days": 242
+        },
+        "2024": {
+          "excess_sum": 0.0474,
+          "ann_excess_from_daily_mean": 0.0466,
+          "n_days": 242
+        },
+        "2025": {
+          "excess_sum": -0.0102,
+          "ann_excess_from_daily_mean": -0.01,
+          "n_days": 243
+        },
+        "2026": {
+          "excess_sum": 0.1565,
+          "ann_excess_from_daily_mean": 0.2058,
+          "n_days": 181
+        }
+      },
+      "performance": {
+        "metric_version": "portfolio_compound_v1",
+        "start": "2021-01-05",
+        "end": "2026-09-30",
+        "years": 5.733177,
+        "n_days": 1392,
+        "strategy_total_return": 0.693047,
+        "strategy_cagr": 0.096188,
+        "benchmark_total_return": 0.087243,
+        "benchmark_cagr": 0.014697,
+        "relative_total_return": 0.557193,
+        "relative_excess_cagr": 0.080312,
+        "strategy_max_drawdown": -0.477767,
+        "benchmark_max_drawdown": -0.467084,
+        "relative_max_drawdown": -0.267636,
+        "sharpe": 0.483225,
+        "information_ratio": 0.501043,
+        "annual_volatility": 0.252585,
+        "mean_daily_net_return": 0.00051284,
+        "mean_daily_active_return": 0.00033295,
+        "account_return_max_error": 0.0
+      }
+    },
+    "B_UNIFORM_OPEN_095": {
+      "protocol": "B_UNIFORM_OPEN_095",
+      "metric_version": "portfolio_compound_v1",
+      "n_days": 1392,
+      "strategy_cagr": 0.062574,
+      "benchmark_cagr": 0.014697,
+      "relative_excess_cagr": 0.047184,
+      "strategy_max_drawdown": -0.243054,
+      "benchmark_max_drawdown": -0.467084,
+      "relative_max_drawdown": -0.486384,
+      "sharpe": 0.509639,
+      "information_ratio": 0.130607,
+      "annual_volatility": 0.134499,
+      "account_return_max_error": 0.0,
+      "legacy_ann_excess_arithmetic": 0.0257,
+      "legacy_ir_arithmetic": 0.131,
+      "legacy_max_drawdown_excess_arithmetic": -0.7482,
+      "strategy_total_return_sum_legacy": 0.4247,
+      "total_cost_sum": 0.0238,
+      "mean_turnover": 0.017432,
+      "turnover_source": "turnover",
+      "annual_excess_arithmetic_legacy": {
+        "2021": {
+          "excess_sum": 0.0076,
+          "ann_excess_from_daily_mean": 0.0075,
+          "n_days": 242
+        },
+        "2022": {
+          "excess_sum": 0.1389,
+          "ann_excess_from_daily_mean": 0.1366,
+          "n_days": 242
+        },
+        "2023": {
+          "excess_sum": 0.292,
+          "ann_excess_from_daily_mean": 0.2872,
+          "n_days": 242
+        },
+        "2024": {
+          "excess_sum": -0.0314,
+          "ann_excess_from_daily_mean": -0.0308,
+          "n_days": 242
+        },
+        "2025": {
+          "excess_sum": -0.2723,
+          "ann_excess_from_daily_mean": -0.2667,
+          "n_days": 243
+        },
+        "2026": {
+          "excess_sum": 0.0156,
+          "ann_excess_from_daily_mean": 0.0205,
+          "n_days": 181
+        }
+      },
+      "performance": {
+        "metric_version": "portfolio_compound_v1",
+        "start": "2021-01-05",
+        "end": "2026-09-30",
+        "years": 5.733177,
+        "n_days": 1392,
+        "strategy_total_return": 0.416191,
+        "strategy_cagr": 0.062574,
+        "benchmark_total_return": 0.087243,
+        "benchmark_cagr": 0.014697,
+        "relative_total_return": 0.302553,
+        "relative_excess_cagr": 0.047184,
+        "strategy_max_drawdown": -0.243054,
+        "benchmark_max_drawdown": -0.467084,
+        "relative_max_drawdown": -0.486384,
+        "sharpe": 0.509639,
+        "information_ratio": 0.130607,
+        "annual_volatility": 0.134499,
+        "mean_daily_net_return": 0.00028801,
+        "mean_daily_active_return": 0.00010812,
+        "account_return_max_error": 0.0
+      }
+    },
+    "C_BOARD_AWARE": {
+      "protocol": "C_BOARD_AWARE",
+      "metric_version": "portfolio_compound_v1",
+      "n_days": 1392,
+      "strategy_cagr": 0.080013,
+      "benchmark_cagr": 0.014697,
+      "relative_excess_cagr": 0.064371,
+      "strategy_max_drawdown": -0.240082,
+      "benchmark_max_drawdown": -0.467084,
+      "relative_max_drawdown": -0.487648,
+      "sharpe": 0.62823,
+      "information_ratio": 0.212625,
+      "annual_volatility": 0.134503,
+      "account_return_max_error": 0.0,
+      "legacy_ann_excess_arithmetic": 0.0417,
+      "legacy_ir_arithmetic": 0.213,
+      "legacy_max_drawdown_excess_arithmetic": -0.7508,
+      "strategy_total_return_sum_legacy": 0.5181,
+      "total_cost_sum": 0.0239,
+      "mean_turnover": 0.017517,
+      "turnover_source": "turnover",
+      "annual_excess_arithmetic_legacy": {
+        "2021": {
+          "excess_sum": 0.0942,
+          "ann_excess_from_daily_mean": 0.0926,
+          "n_days": 242
+        },
+        "2022": {
+          "excess_sum": 0.1774,
+          "ann_excess_from_daily_mean": 0.1744,
+          "n_days": 242
+        },
+        "2023": {
+          "excess_sum": 0.2626,
+          "ann_excess_from_daily_mean": 0.2583,
+          "n_days": 242
+        },
+        "2024": {
+          "excess_sum": -0.0322,
+          "ann_excess_from_daily_mean": -0.0317,
+          "n_days": 242
+        },
+        "2025": {
+          "excess_sum": -0.2723,
+          "ann_excess_from_daily_mean": -0.2667,
+          "n_days": 243
+        },
+        "2026": {
+          "excess_sum": 0.0141,
+          "ann_excess_from_daily_mean": 0.0186,
+          "n_days": 181
+        }
+      },
+      "performance": {
+        "metric_version": "portfolio_compound_v1",
+        "start": "2021-01-05",
+        "end": "2026-09-30",
+        "years": 5.733177,
+        "n_days": 1392,
+        "strategy_total_return": 0.554729,
+        "strategy_cagr": 0.080013,
+        "benchmark_total_return": 0.087243,
+        "benchmark_cagr": 0.014697,
+        "relative_total_return": 0.429974,
+        "relative_excess_cagr": 0.064371,
+        "strategy_max_drawdown": -0.240082,
+        "benchmark_max_drawdown": -0.467084,
+        "relative_max_drawdown": -0.487648,
+        "sharpe": 0.62823,
+        "information_ratio": 0.212625,
+        "annual_volatility": 0.134503,
+        "mean_daily_net_return": 0.00035504,
+        "mean_daily_active_return": 0.00017515,
+        "account_return_max_error": 0.0
+      }
+    },
+    "D_BOARD_AWARE_HIGH_OPEN_5": {
+      "protocol": "D_BOARD_AWARE_HIGH_OPEN_5",
+      "metric_version": "portfolio_compound_v1",
+      "n_days": 1392,
+      "strategy_cagr": 0.062574,
+      "benchmark_cagr": 0.014697,
+      "relative_excess_cagr": 0.047184,
+      "strategy_max_drawdown": -0.243054,
+      "benchmark_max_drawdown": -0.467084,
+      "relative_max_drawdown": -0.486384,
+      "sharpe": 0.509639,
+      "information_ratio": 0.130607,
+      "annual_volatility": 0.134499,
+      "account_return_max_error": 0.0,
+      "legacy_ann_excess_arithmetic": 0.0257,
+      "legacy_ir_arithmetic": 0.131,
+      "legacy_max_drawdown_excess_arithmetic": -0.7482,
+      "strategy_total_return_sum_legacy": 0.4247,
+      "total_cost_sum": 0.0238,
+      "mean_turnover": 0.017432,
+      "turnover_source": "turnover",
+      "annual_excess_arithmetic_legacy": {
+        "2021": {
+          "excess_sum": 0.0076,
+          "ann_excess_from_daily_mean": 0.0075,
+          "n_days": 242
+        },
+        "2022": {
+          "excess_sum": 0.1389,
+          "ann_excess_from_daily_mean": 0.1366,
+          "n_days": 242
+        },
+        "2023": {
+          "excess_sum": 0.292,
+          "ann_excess_from_daily_mean": 0.2872,
+          "n_days": 242
+        },
+        "2024": {
+          "excess_sum": -0.0314,
+          "ann_excess_from_daily_mean": -0.0308,
+          "n_days": 242
+        },
+        "2025": {
+          "excess_sum": -0.2723,
+          "ann_excess_from_daily_mean": -0.2667,
+          "n_days": 243
+        },
+        "2026": {
+          "excess_sum": 0.0156,
+          "ann_excess_from_daily_mean": 0.0205,
+          "n_days": 181
+        }
+      },
+      "performance": {
+        "metric_version": "portfolio_compound_v1",
+        "start": "2021-01-05",
+        "end": "2026-09-30",
+        "years": 5.733177,
+        "n_days": 1392,
+        "strategy_total_return": 0.416191,
+        "strategy_cagr": 0.062574,
+        "benchmark_total_return": 0.087243,
+        "benchmark_cagr": 0.014697,
+        "relative_total_return": 0.302553,
+        "relative_excess_cagr": 0.047184,
+        "strategy_max_drawdown": -0.243054,
+        "benchmark_max_drawdown": -0.467084,
+        "relative_max_drawdown": -0.486384,
+        "sharpe": 0.509639,
+        "information_ratio": 0.130607,
+        "annual_volatility": 0.134499,
+        "mean_daily_net_return": 0.00028801,
+        "mean_daily_active_return": 0.00010812,
+        "account_return_max_error": 0.0
+      }
+    },
+    "E_BOARD_AWARE_NO_CHINEXT_STAR": {
+      "protocol": "E_BOARD_AWARE_NO_CHINEXT_STAR",
+      "metric_version": "portfolio_compound_v1",
+      "n_days": 1392,
+      "strategy_cagr": 0.043624,
+      "benchmark_cagr": 0.014697,
+      "relative_excess_cagr": 0.028509,
+      "strategy_max_drawdown": -0.215318,
+      "benchmark_max_drawdown": -0.467084,
+      "relative_max_drawdown": -0.472554,
+      "sharpe": 0.416483,
+      "information_ratio": 0.031055,
+      "annual_volatility": 0.116917,
+      "account_return_max_error": 0.0,
+      "legacy_ann_excess_arithmetic": 0.0059,
+      "legacy_ir_arithmetic": 0.031,
+      "legacy_max_drawdown_excess_arithmetic": -0.7194,
+      "strategy_total_return_sum_legacy": 0.3076,
+      "total_cost_sum": 0.0228,
+      "mean_turnover": 0.016732,
+      "turnover_source": "turnover",
+      "annual_excess_arithmetic_legacy": {
+        "2021": {
+          "excess_sum": 0.0934,
+          "ann_excess_from_daily_mean": 0.0918,
+          "n_days": 242
+        },
+        "2022": {
+          "excess_sum": 0.1551,
+          "ann_excess_from_daily_mean": 0.1525,
+          "n_days": 242
+        },
+        "2023": {
+          "excess_sum": 0.0603,
+          "ann_excess_from_daily_mean": 0.0593,
+          "n_days": 242
+        },
+        "2024": {
+          "excess_sum": -0.0225,
+          "ann_excess_from_daily_mean": -0.0222,
+          "n_days": 242
+        },
+        "2025": {
+          "excess_sum": -0.268,
+          "ann_excess_from_daily_mean": -0.2625,
+          "n_days": 243
+        },
+        "2026": {
+          "excess_sum": 0.0162,
+          "ann_excess_from_daily_mean": 0.0213,
+          "n_days": 181
+        }
+      },
+      "performance": {
+        "metric_version": "portfolio_compound_v1",
+        "start": "2021-01-05",
+        "end": "2026-09-30",
+        "years": 5.733177,
+        "n_days": 1392,
+        "strategy_total_return": 0.27737,
+        "strategy_cagr": 0.043624,
+        "benchmark_total_return": 0.087243,
+        "benchmark_cagr": 0.014697,
+        "relative_total_return": 0.174871,
+        "relative_excess_cagr": 0.028509,
+        "strategy_max_drawdown": -0.215318,
+        "benchmark_max_drawdown": -0.467084,
+        "relative_max_drawdown": -0.472554,
+        "sharpe": 0.416483,
+        "information_ratio": 0.031055,
+        "annual_volatility": 0.116917,
+        "mean_daily_net_return": 0.0002046,
+        "mean_daily_active_return": 2.471e-05,
+        "account_return_max_error": 0.0
+      }
+    }
+  },
+  "attribution_pp": {
+    "metric": "relative_excess_cagr",
+    "REF_to_A_direction_semantics_pp": -7.39,
+    "A_to_B_same_day_close_oracle_pp": -3.31,
+    "B_to_C_board_rule_pp": 1.72,
+    "C_to_D_high_open_5_pp": -1.72,
+    "C_to_E_exclude_growth_boards_pp": -3.59
+  },
+  "legacy_attribution_arithmetic_pp": {
+    "metric": "legacy_ann_excess_arithmetic",
+    "REF_to_A_direction_semantics_pp": -6.46,
+    "A_to_B_same_day_close_oracle_pp": -5.35,
+    "B_to_C_board_rule_pp": 1.6,
+    "C_to_D_high_open_5_pp": -1.6,
+    "C_to_E_exclude_growth_boards_pp": -3.58
+  },
+  "notes": {
+    "REF_LEGACY_EXACT": "legacy same-day $change oracle; diagnostic only",
+    "D_BOARD_AWARE_HIGH_OPEN_5": "diagnostic conditional on observed open; not automatically an implementable opening-auction execution protocol",
+    "E_BOARD_AWARE_NO_CHINEXT_STAR": "same trained signal; filters ChiNext/STAR after scoring, no retraining"
+  }
+}
