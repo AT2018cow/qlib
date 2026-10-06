@@ -119,8 +119,8 @@ def _load_task(market: str) -> dict:
 
 
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=4 * 3600)
-def prepare(force: bool = True):
-    """确保 Volume 数据最新（infi Volume 可能是旧版本）。"""
+def prepare(force: bool = True, market: str = ""):
+    """确保 Volume 数据最新，并为 custom pool 重建派生等权基准。"""
     import shutil
     import tarfile
 
@@ -156,6 +156,22 @@ def prepare(force: bool = True):
             shutil.rmtree(p)
         shutil.copytree(base / name, p)
     marker.write_text("latest")
+
+    if market in ("star_chn", "chinext", "star"):
+        # Fresh chenditc bundles do not contain our synthetic equal-weight
+        # benchmarks. Rebuild deterministically after every forced refresh so
+        # custom-pool audits never depend on stale Volume residue.
+        from board_rules import POOL_BOARDS, build_custom_instruments, build_ew_bench_files
+
+        pool_txt = DATA_DIR / "instruments" / f"{market}.txt"
+        build_custom_instruments(
+            DATA_DIR / "instruments" / "all.txt",
+            pool_txt,
+            boards=POOL_BOARDS[market],
+        )
+        bench_report = build_ew_bench_files(DATA_DIR, market)
+        print(f"[data] rebuilt custom benchmark: {bench_report}")
+
     vol.commit()
     cal = (DATA_DIR / "calendars" / "day.txt").read_text().strip().splitlines()
     print(f"[data] 就绪，日历至 {cal[-1]}")
@@ -316,7 +332,7 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
     from qlib_audit_fixes import read_trading_calendar
     from portfolio_performance import portfolio_performance
 
-    prepare.remote(force=True)
+    prepare.remote(force=True, market=market)
     try:
         vol.reload()
     except Exception:
@@ -512,7 +528,7 @@ def retrain_phase_sensitivity_driver(
         if phase_list[0] < 0 or phase_list[-1] >= freq:
             raise ValueError(f"phases must be within 0..{freq - 1}")
 
-    prepare.remote(force=True)
+    prepare.remote(force=True, market=market)
     try:
         vol.reload()
     except Exception:
@@ -862,7 +878,7 @@ def execution_attribution_driver(freq: int = 20, eval_from: str = "2021-01-04",
     if freq < 1:
         raise ValueError("freq must be positive")
 
-    prepare.remote(force=True)
+    prepare.remote(force=True, market=market)
     try:
         vol.reload()
     except Exception:
