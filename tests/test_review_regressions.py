@@ -29,10 +29,12 @@ class ReviewRegressionTests(unittest.TestCase):
 
     def test_frequency_driver_runs_one_continuous_account(self):
         src = function_source("freq_experiment.py", "freq_driver")
-        self.assertIn("pd.concat(chunks)", src)
+        self.assertIn("_assemble_signal(outs)", src)
         self.assertIn("execution_start = cal[start_i + 1]", src)
         self.assertIn('"protocol": "continuous_account_board_aware_v5_repro"', src)
-        self.assertEqual(src.count("normal_backtest("), 1)
+        self.assertEqual(src.count("_run_signal_backtest("), 1)
+        helper = function_source("freq_experiment.py", "_run_signal_backtest")
+        self.assertEqual(helper.count("normal_backtest("), 1)
 
     def test_independent_recheck_has_its_own_maturity_guard(self):
         src = function_source("modal_qlib_cn_a10g.py", "independent_recheck")
