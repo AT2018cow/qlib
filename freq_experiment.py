@@ -484,6 +484,7 @@ def _write_report_artifact(report, path: Path) -> dict:
     return {
         "path": str(path),
         "sha256": digest,
+        "content_sha256": _frame_sha256(report),
         "rows": int(len(report)),
         "columns": [str(x) for x in report.columns],
     }
