@@ -1,5 +1,7 @@
 # 当前选股逻辑审阅：问题与优化建议（2026-10-03）
 
+> **2026-10-07 follow-up status:** This review was the input to the subsequent PR #3-#13 audit work. Most P0 execution/reproducibility issues identified here have since been resolved or quantified. Current conclusions are consolidated in [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md); do not treat the 2026-10-03 problem list as the current unresolved-issues list.
+
 > **Post-review status (2026-10-07):** This review was the issue inventory that triggered the corrected execution, portfolio-metric, reproducibility, phase-sensitivity, and satellite-pool work. Many P0 items have since been fixed or re-tested. For current status, use [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md); this document remains the provenance record for why those fixes were required.
 
 
