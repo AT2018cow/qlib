@@ -92,6 +92,17 @@ class PhaseAttributionTests(unittest.TestCase):
         self.assertAlmostEqual(first["mean_turnover"], 0.05, places=8)
         self.assertGreater(out["first_execution_day_turnover_ratio_to_non_event"], 1)
 
+    def test_event_study_skips_stale_pre_window_retrain(self):
+        idx = pd.bdate_range("2024-01-08", periods=6)
+        report = _report(idx, [0.0] * 6, [0.0] * 6)
+        out = retrain_event_study(
+            report,
+            retrain_dates=["2023-12-28", "2024-01-09"],
+            window=1,
+        )
+        self.assertEqual(out["n_retrain_events"], 1)
+        self.assertEqual(out["by_offset"][0]["first_date"], "2024-01-10")
+
     def test_annual_attribution_marks_final_partial_year(self):
         report = _report(
             ["2025-01-02", "2025-12-22", "2026-01-05", "2026-09-30"],
