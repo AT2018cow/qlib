@@ -1,5 +1,8 @@
 # 风险条款、代码审计与资源规范
 
+> **Current-status override (2026-10-07):** The risk lessons remain useful, but several numerical/execution statements below are historical. Current corrected protocol is T-close scoring -> T+1-open execution, continuous-account canonical metrics, board/date-aware statutory limit handling, no 5% high-open overlay, and deterministic reproducibility gating. See [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md). In particular, the old "+0.47% thin signal", close-price execution, and uniform 9.5% mixed-board descriptions are not the current research baseline.
+
+
 ## 已知风险与局限（资金安全相关）
 
 1. **信号期望极薄**【滚动实证】：21 个月滚动年化超额 +0.47%（窗口数字 +9.4% 不可作为预期）。季度波动 ±20%，最差单季 -19.6%。
