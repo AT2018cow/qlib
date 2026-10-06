@@ -143,6 +143,21 @@ class ReviewRegressionTests(unittest.TestCase):
 
 
 
+    def test_pre_tuner_audit_matrix_includes_star_historical_terminal_config(self):
+        src = (ROOT / "freq_experiment.py").read_text()
+        self.assertIn('"csi1000": {"topk": 20, "nd": 2}', src)
+        self.assertIn('"chinext": {"topk": 20, "nd": 3}', src)
+        self.assertIn('"star": {"topk": 50, "nd": 2}', src)
+        helper = function_source("freq_experiment.py", "pre_tuner_audit_matrix")
+        self.assertIn('"benchmark": _bench_of(market)', helper)
+        self.assertIn('"phase_count": 20', helper)
+
+    def test_custom_pool_prepare_rebuilds_equal_weight_benchmark(self):
+        src = function_source("freq_experiment.py", "prepare")
+        self.assertIn('market in ("star_chn", "chinext", "star")', src)
+        self.assertIn("build_custom_instruments", src)
+        self.assertIn("build_ew_bench_files", src)
+
     def test_paper_execution_uses_factor_and_no_high_open_overlay(self):
         src = function_source("modal_qlib_cn_a10g.py", "_paper_execution_context")
         self.assertIn('"$factor"', src)
