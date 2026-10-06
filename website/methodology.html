@@ -62,14 +62,14 @@ footer {
     </div>
 
     <div class="section">
-        <h2>二、股票池与组合构造（双池并行选股）</h2>
+        <h2>二、股票池与当前研究状态</h2>
         <ul>
             <li><strong>主池 · 中证 1000</strong>：成分股含历史真实成分（无幸存者偏差）；执行口径 top20 / nd2（每日换 2 只）</li>
-            <li><strong>卫星池 · 创业板</strong>：全部 300/301/302 前缀（1449 只，2024 后可交易 2042 只历史成分）；等权合成基准；执行口径 top20 / nd3（批次 A 网格 + 批次 C 终审的低换手形态）</li>
+            <li><strong>研究卫星池 · 创业板</strong>：基础设施仍可独立训练/发布 top20/nd3 榜单，但 corrected v5 gate + 0/5/10/15 screen 的相对 CAGR 全为负；当前仅保留为 bounded-rescue 研究线，不视为与主池等价的生产候选</li>
             <li><strong>选股</strong>：各自独立训练/打分排序，各取预测收益率最高的 <strong>top 20</strong> 等权持有；两池榜单互相独立</li>
             <li><strong>调仓</strong>：每日微调（daily rebalance），换掉跌出榜单最差的 nd 只</li>
             <li><strong>涨跌停过滤（板块感知）</strong>：主板/改革前创业板 ±10%（阈值 9.5%）、科创板/改革后创业板 ±20%（阈值 19.5%）、北交所 ±30%；上市前 5 个交易日无涨跌停不剔除；ST ±5% 需外部名单（未接线，已知限制）</li>
-            <li><strong>科创板说明</strong>：独立科创板池经 5.5 年滚动终审无超额（+1.6%，t=0.37）已关闭；688 个股仍在中证 1000 池内正常参与排名</li>
+            <li><strong>科创板说明</strong>：独立 STAR top50/nd2 在 corrected protocol 下尚未通过 prediction-chunk reproducibility gate，因此当前 alpha 结论不可用；688 个股若属于中证 1000 成分，仍在主池中正常参与排名</li>
         </ul>
     </div>
 
@@ -77,8 +77,8 @@ footer {
         <h2>三、执行协议</h2>
         <ul>
             <li>信号发布：每个交易日 07:00（北京时间），基于前一交易日收盘数据生成</li>
-            <li>执行时点：T+1 开盘/收盘按榜单操作</li>
-            <li>执行日保护：跳过 T+1 高开 >5%（排队无意义）和 T+1 停牌股</li>
+            <li>研究回测执行时点：T 收盘形成分数，T+1 开盘调整组合</li>
+            <li>当前 corrected research protocol 不使用 5% 高开过滤叠加；榜单是 research/paper ranking，不是可执行订单</li>
             <li>风控三件套（主池 · 中证 1000 口径）：
                 <ol style="padding-left:20px;margin-top:4px;">
                     <li>单票止损 -8% ~ -10%（硬止损）</li>
@@ -91,17 +91,14 @@ footer {
     </div>
 
     <div class="section">
-        <h2>四、历史回测基准（5.5 年滚动 Walk-Forward，23 个季度窗口，严格无前视）</h2>
+        <h2>四、当前 corrected / reproducible 审计结果</h2>
         <table>
-            <tr><th>指标</th><th>中证 1000 top20/nd2（主池）</th><th>创业板 top20/nd3（卫星池）</th></tr>
-            <tr><td>年化有成本超额</td><td>+11.6%（点估计）</td><td>+11.5%</td></tr>
-            <tr><td>t 统计量</td><td>1.44（p≈0.08，不显著）</td><td>1.12（不显著）</td></tr>
-            <tr><td>正窗口比例</td><td>14/23（61%）</td><td>18/23（78%）</td></tr>
-            <tr><td>最差单季</td><td>-20.0%</td><td>-30.8%（2024Q2）</td></tr>
-            <tr><td>最差年份</td><td>2025 年 -12%</td><td>—</td></tr>
-            <tr><td>基准</td><td>中证 1000 指数</td><td>等权合成指数（纯派生可复算）</td></tr>
+            <tr><th>股票池</th><th>当前证据</th><th>研究状态</th></tr>
+            <tr><td>中证 1000 top20/nd2</td><td>phase 0：策略 CAGR 6.84%，相对 CAGR 5.29%，Sharpe 0.55；5-phase 相对 CAGR 4.16%~8.95%</td><td>reproducibility PASS；主调优线，但存在显著 calendar-phase sensitivity</td></tr>
+            <tr><td>创业板 top20/nd3</td><td>gate PASS；phase 0/5/10/15 相对 CAGR = -1.00% / -3.72% / -8.99% / -10.82%</td><td>当前 frozen baseline 偏弱；仅 bounded-rescue 研究</td></tr>
+            <tr><td>STAR top50/nd2</td><td>prediction-chunk reproducibility gate 未通过</td><td>暂不可评价 alpha；先修复 determinism/data lineage</td></tr>
         </table>
-        <p class="note">⚠️ 两池统计上均"未证伪但未确立"（p > 0.05）——仓位必须按"信号可能无效"定价（卫星仓 ≤ 10~20% 总资金）。创业板尾部更肥（单季 -31%），已知运行间复现方差 ~23pp，单窗口读数按噪声口径解读。</p>
+        <p class="note">旧 +11% 级 Batch C / rolling 数字保留在历史实验文档中，但已被 corrected execution、canonical portfolio metrics 和 deterministic reproducibility gate 所 supersede。当前研究入口：docs/experiments/14-pre-tuner-stage-summary-20261007.md。</p>
     </div>
 
     <div class="section">
