@@ -104,11 +104,12 @@ class CSI1000TunerCoreTests(unittest.TestCase):
             validation_sessions=80,
             horizon=20,
             train_start="D0000",
+            last_execution_cutoff="D1000",
         )
         self.assertEqual(len(folds), 4)
         for previous, current in zip(folds, folds[1:]):
             self.assertLess(previous["execution"][1], current["execution"][0])
-            self.assertEqual(previous["signal"][1], current["signal"][0])
+            self.assertLess(previous["signal"][1], current["signal"][0])
         tail = reserved_tail(calendar, folds)
         self.assertGreater(tail["n_execution_sessions"], 0)
         self.assertGreater(tail["execution_start"], folds[-1]["execution"][1])
