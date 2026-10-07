@@ -134,7 +134,7 @@ def _stable_json_sha256(obj) -> str:
     ).hexdigest()
 
 
-def _load_task(model_params: dict) -> dict:
+def _load_task(model_params: dict | None = None) -> dict:
     from ruamel.yaml import YAML
 
     with open(YAML_PATH) as handle:
@@ -157,11 +157,12 @@ def _load_task(model_params: dict) -> dict:
     from qlib_live_retrain import apply_lgb_reproducibility
 
     apply_lgb_reproducibility(cfg)
-    # Preserve the Stage-A v3 model semantics.  The source YAML supplied
-    # num_threads=20; Modal worker_cpu is an execution resource, not this
-    # LightGBM hyperparameter.
-    cfg["task"]["model"]["kwargs"].update(dict(model_params))
-    apply_lgb_reproducibility(cfg)
+    # Match Stage-A _load_task exactly: the manifest base config is hashed
+    # before any candidate overlay; actual candidate fits then overlay only
+    # the frozen tunable params and re-assert deterministic controls.
+    if model_params is not None:
+        cfg["task"]["model"]["kwargs"].update(dict(model_params))
+        apply_lgb_reproducibility(cfg)
     actual_threads = int(cfg["task"]["model"]["kwargs"].get("num_threads", -1))
     if actual_threads != MODEL_NUM_THREADS:
         raise RuntimeError(
@@ -420,7 +421,19 @@ def _runtime_manifest(calendar: list[str]) -> dict:
     source_path = Path(__file__)
     core_path = Path(csi1000_stage_b_core.__file__)
     strategy_path = Path(deterministic_strategy.__file__)
-    base_model = _load_task(stage_b_candidates()[-1]["model_params"])["task"]["model"]
+
+    # Stage-A manifest base_model_config_sha256 was computed from _load_task()
+    # with no candidate overlay.  Compare the same layer here.  Candidate
+    # configs are intentionally different from the base and are fingerprinted
+    # separately below.
+    base_model = _load_task(None)["task"]["model"]
+    frozen_candidates = stage_b_candidates()
+    candidate_model_config_sha256 = {
+        candidate["candidate_id"]: _stable_json_sha256(
+            _load_task(candidate["model_params"])["task"]["model"]
+        )
+        for candidate in frozen_candidates
+    }
 
     current_runtime = {
         "python": platform.python_version(),
@@ -440,7 +453,9 @@ def _runtime_manifest(calendar: list[str]) -> dict:
     if current_provider_fingerprint != stage_a_manifest.get("provider_fingerprint"):
         raise RuntimeError("Stage-B provider fingerprint differs from frozen Stage-A snapshot")
     if current_base_model_sha != stage_a_manifest.get("base_model_config_sha256"):
-        raise RuntimeError("Stage-B base model config differs from frozen Stage-A config")
+        raise RuntimeError(
+            "Stage-B unoverlaid base model config differs from frozen Stage-A base config"
+        )
     if dict(LGB_REPRO_PARAMS) != (stage_a_manifest.get("lgb_repro_params") or {}):
         raise RuntimeError("Stage-B LightGBM reproducibility controls drifted from Stage A")
     if current_strategy_sha != stage_a_manifest.get(
@@ -471,6 +486,7 @@ def _runtime_manifest(calendar: list[str]) -> dict:
             "runtime_match": True,
         },
         "base_model_config_sha256": current_base_model_sha,
+        "candidate_model_config_sha256": candidate_model_config_sha256,
         "lgb_repro_params": dict(LGB_REPRO_PARAMS),
         "worker_resource_defaults": {
             "cpu_physical_cores": WORKER_CPU,
@@ -633,7 +649,7 @@ def _valid_chunk_result(payload: dict, args: dict) -> bool:
     )
 
 
-def _load_reusable_chunk(args: dict):
+def _load_reusable_chunk(args: dict, manifest: dict):
     result_path = _chunk_dir(
         args["snapshot_token"],
         args["candidate"]["candidate_id"],
@@ -643,6 +659,11 @@ def _load_reusable_chunk(args: dict):
     ) / "result.json"
     payload = _load_json(result_path)
     if not _valid_chunk_result(payload, args):
+        return None
+    expected_model_sha = (manifest.get("candidate_model_config_sha256") or {}).get(
+        args["candidate"]["candidate_id"]
+    )
+    if not expected_model_sha or payload.get("model_config_sha256") != expected_model_sha:
         return None
     _load_verified_series_artifact(payload["prediction_artifact"])
     payload["source"] = "artifact_reuse_verified"
@@ -702,6 +723,17 @@ def stage_b_retrain_worker(args: dict):
     purge_cfg_splits(cfg, calendar, horizon=LABEL_HORIZON)
 
     model_config_sha256 = _stable_json_sha256(cfg["task"]["model"])
+    expected_model_sha256 = (
+        manifest.get("candidate_model_config_sha256") or {}
+    ).get(candidate["candidate_id"])
+    if not expected_model_sha256:
+        raise RuntimeError(
+            f"Stage-B manifest is missing candidate model hash: {candidate['candidate_id']}"
+        )
+    if model_config_sha256 != expected_model_sha256:
+        raise RuntimeError(
+            f"Stage-B candidate model config drift: {candidate['candidate_id']}"
+        )
     model = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
     dataset = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
     model.fit(dataset)
