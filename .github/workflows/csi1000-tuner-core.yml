@@ -14,6 +14,7 @@ on:
       - 'tests/test_csi1000_stage_b_core.py'
       - 'docs/experiments/16-csi1000-stage-a-tuning-contract-20261007.md'
       - 'docs/experiments/17-csi1000-stage-a-expanded-screen-runbook-20261007.md'
+      - 'docs/experiments/18-next-conversation-handoff-stage-b-20261007.md'
       - '.github/workflows/csi1000-tuner-core.yml'
   push:
     branches: [main]
@@ -26,6 +27,8 @@ on:
       - 'csi1000_stage_b_core.py'
       - 'tests/test_csi1000_tuner_core.py'
       - 'tests/test_csi1000_stage_b_core.py'
+      - 'docs/experiments/17-csi1000-stage-a-expanded-screen-runbook-20261007.md'
+      - 'docs/experiments/18-next-conversation-handoff-stage-b-20261007.md'
       - '.github/workflows/csi1000-tuner-core.yml'
   workflow_dispatch:
 
