@@ -1163,6 +1163,8 @@ def _compare_preflight_phase_results(a: dict, b: dict) -> dict:
         "phase_artifacts_durable": bool(
             (a.get("durability_gate") or {}).get("passed")
             and (b.get("durability_gate") or {}).get("passed")
+            and (a.get("driver_durability_gate") or {}).get("passed")
+            and (b.get("driver_durability_gate") or {}).get("passed")
         ),
         "structure_match": True,
         "canonical_metrics_match": True,
@@ -1302,6 +1304,36 @@ def _driver_verify_phase_result(payload: dict) -> dict:
     return payload
 
 
+def _run_phase_verified(args: dict, *, attempts: int = 2) -> dict:
+    """Run/repair only the cheap phase backtest until driver-visible artifacts verify."""
+    last_error = None
+    current = dict(args)
+    for attempt in range(1, attempts + 1):
+        if attempt > 1:
+            current["resume"] = False
+        phase = stage_b_phase_worker.remote(current)
+        try:
+            return _driver_verify_phase_result(phase)
+        except Exception as exc:
+            last_error = exc
+            if attempt < attempts:
+                print(
+                    "[stage-b] driver phase verification retry: "
+                    f"candidate={args['candidate']['candidate_id']} "
+                    f"phase={args['phase']} namespace={args.get('artifact_namespace')} "
+                    f"error={exc}"
+                )
+                continue
+            raise RuntimeError(
+                "Stage-B phase artifacts were not driver-visible after repair"
+            ) from exc
+    raise RuntimeError(f"unreachable phase verification failure: {last_error}")
+
+
+def _public_phase_payload(row: dict) -> dict:
+    return {key: value for key, value in row.items() if not key.startswith("_")}
+
+
 def _jobs_for(candidate: dict, phase: int, calendar: list[str], snapshot: str,
               *, namespace: str | None = None, resume: bool = True) -> list[dict]:
     jobs = []
@@ -1347,9 +1379,16 @@ def stage_b_driver(
     baseline = next(row for row in stage_b_candidates() if row["is_baseline"])
 
     if preflight_only:
+        import uuid
+
+        preflight_run_id = uuid.uuid4().hex[:16]
         repeat_phase_results = []
         for repeat in ("repeat_a", "repeat_b"):
-            namespace = f"_preflight/{repeat}"
+            # Each invocation gets its own namespace.  This prevents an older
+            # detached/preempted preflight from writing the same files as the
+            # current run (Modal Volumes are last-write-wins for same-file
+            # concurrent modification).
+            namespace = f"_preflight/{preflight_run_id}/{repeat}"
             jobs = _jobs_for(
                 baseline,
                 0,
@@ -1359,7 +1398,8 @@ def stage_b_driver(
                 resume=False,
             )
             print(
-                f"[stage-b preflight] {repeat}: {len(jobs)} retrain fits; "
+                f"[stage-b preflight] run={preflight_run_id} {repeat}: "
+                f"{len(jobs)} retrain fits; "
                 f"cpu={worker_cpu_value} memory={worker_memory_value}MiB "
                 f"worker cap={worker_cap}"
             )
@@ -1368,26 +1408,26 @@ def stage_b_driver(
                 memory=worker_memory_value,
                 max_containers=worker_cap,
             ).map(jobs))
-            vol.reload()
-            phase = stage_b_phase_worker.remote(
+            chunks = _verify_and_repair_chunk_batch(
+                chunks,
+                jobs,
+                worker_cpu=worker_cpu_value,
+                worker_memory_mib=worker_memory_value,
+                worker_max_containers=worker_cap,
+            )
+
+            phase = _run_phase_verified(
                 {
                     "candidate": baseline,
                     "phase": 0,
                     "snapshot_token": snapshot,
                     "artifact_namespace": namespace,
                     "resume": False,
+                    "return_report_compare_payload": True,
                     "chunk_results": chunks,
                 }
             )
             repeat_phase_results.append(phase)
-
-            # stage_b_phase_worker writes/commits phase-level artifacts from a
-            # different container. Refresh the driver's Volume view before the
-            # next repeat or the final cross-repeat comparison reads those
-            # artifacts. Without this reload, repeat_b's report can be absent
-            # from the driver's mounted snapshot even though the worker
-            # successfully committed it.
-            vol.reload()
 
         comparison = _compare_preflight_phase_results(
             repeat_phase_results[0], repeat_phase_results[1]
@@ -1402,11 +1442,12 @@ def stage_b_driver(
             "snapshot_token": snapshot,
             "candidate_id": baseline["candidate_id"],
             "phase": 0,
+            "preflight_run_id": preflight_run_id,
             "n_retrains_per_repeat": repeat_phase_results[0]["n_retrains"],
             "total_model_fits": 2 * repeat_phase_results[0]["n_retrains"],
             "execution_resources": execution_resources,
-            "repeat_a": repeat_phase_results[0],
-            "repeat_b": repeat_phase_results[1],
+            "repeat_a": _public_phase_payload(repeat_phase_results[0]),
+            "repeat_b": _public_phase_payload(repeat_phase_results[1]),
             "comparison": comparison,
         }
         path = _preflight_path(snapshot)
@@ -1456,6 +1497,13 @@ def stage_b_driver(
             max_containers=worker_cap,
         ).map(all_retrain_jobs)
     )
+    chunk_results = _verify_and_repair_chunk_batch(
+        chunk_results,
+        all_retrain_jobs,
+        worker_cpu=worker_cpu_value,
+        worker_memory_mib=worker_memory_value,
+        worker_max_containers=worker_cap,
+    )
     vol.reload()
     by_key = {}
     for row in chunk_results:
@@ -1480,12 +1528,33 @@ def stage_b_driver(
                     "snapshot_token": snapshot,
                     "artifact_namespace": None,
                     "resume": bool(resume),
+                    "return_report_compare_payload": False,
                     "chunk_results": chunks,
                 }
             )
 
     phase_results = list(stage_b_phase_worker.map(phase_jobs))
     vol.reload()
+
+    phase_job_by_key = {
+        (job["candidate"]["candidate_id"], int(job["phase"])): job
+        for job in phase_jobs
+    }
+    verified_phase_results = []
+    for row in phase_results:
+        key = (row["candidate_id"], int(row["phase"]))
+        try:
+            verified_phase_results.append(_driver_verify_phase_result(row))
+        except Exception as exc:
+            print(f"[stage-b] repairing phase artifact set {key}: {exc}")
+            repair_args = {
+                **phase_job_by_key[key],
+                "resume": False,
+            }
+            verified_phase_results.append(
+                _run_phase_verified(repair_args)
+            )
+    phase_results = verified_phase_results
 
     # The passing repeat_b is the frozen baseline phase-0 confirmation result.
     baseline_phase0 = dict(preflight["repeat_b"])
