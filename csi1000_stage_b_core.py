@@ -143,6 +143,42 @@ _REQUIRED_PHASE_METRICS = (
 )
 
 
+def validate_worker_resources(
+    *,
+    cpu: float,
+    memory_mib: int,
+    max_containers: int,
+) -> dict:
+    """Validate execution-only Modal resource overrides.
+
+    These settings affect throughput/capacity, not candidate/model semantics.
+    Keep them within the deliberately bounded envelope established for the
+    Stage-B preflight rather than allowing arbitrary large Starter requests.
+    """
+    cpu_value = float(cpu)
+    memory_value = int(memory_mib)
+    container_value = int(max_containers)
+    if not (WORKER_CPU_MIN <= cpu_value <= WORKER_CPU_MAX):
+        raise ValueError(
+            f"worker_cpu must be within {WORKER_CPU_MIN}..{WORKER_CPU_MAX}"
+        )
+    if not (WORKER_MEMORY_MIB_MIN <= memory_value <= WORKER_MEMORY_MIB_MAX):
+        raise ValueError(
+            "worker_memory_mib must be within "
+            f"{WORKER_MEMORY_MIB_MIN}..{WORKER_MEMORY_MIB_MAX}"
+        )
+    if not (1 <= container_value <= STARTER_CONTAINER_LIMIT):
+        raise ValueError(
+            f"worker_max_containers must be within 1..{STARTER_CONTAINER_LIMIT}"
+        )
+    return {
+        "retrain_worker_cpu_physical_cores": cpu_value,
+        "retrain_worker_memory_mib": memory_value,
+        "retrain_worker_max_containers": container_value,
+        "lightgbm_num_threads": MODEL_NUM_THREADS,
+    }
+
+
 def frozen_stage_b_protocol() -> dict:
     return {
         "protocol": STAGE_B_PROTOCOL_VERSION,
