@@ -35,6 +35,25 @@ Read in this order:
 Do not reopen frozen Stage-A choices unless there is concrete evidence of an
 implementation or data-integrity defect.
 
+### Current authoritative state (2026-10-08)
+
+Latest committed research result on `main`:
+
+```text
+6c957f8809a1668c11ad63e6dd2b63c28d193f08
+results: Stage-B preflight gate PASS (44 fits, run e56441cbfd5b4242)
+```
+
+Stage-B implementation hardening through PR #24 is merged. The accepted
+Stage-B runtime snapshot is:
+
+```text
+51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1
+```
+
+The engineering preflight has completed and passed. **The next action is no
+longer another preflight. It is the full Stage-B grid.**
+
 ---
 
 ## 1. Canonical research protocol
@@ -398,105 +417,114 @@ automatically kill remote work.
 
 ---
 
-## 10. First action in the next conversation
+## 10. Stage-B engineering preflight: completed and accepted
 
-After PR #20 is merged, run **only** the engineering preflight first:
+The post-PR #24 engineering preflight has already been run and audited.
 
-```bash
-modal run --detach csi1000_stage_b.py \
-  --preflight-only \
-  --worker-cpu 8 \
-  --worker-memory-mib 16384 \
-  --worker-max-containers 64
-```
-
-It performs:
+Committed result:
 
 ```text
-baseline candidate
-phase 0
-22 rolling retrains
-two independent repeats
-= 44 model fits
+results/csi1000_stage_b/stage_b_preflight_only_51756897fc752304.json
+commit: 6c957f8809a1668c11ad63e6dd2b63c28d193f08
+run id: e56441cbfd5b4242
+snapshot: 51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1
 ```
 
-The gate requires:
-
-- exact retrain schedule;
-- exact model-config identity;
-- exact per-retrain prediction hashes;
-- exact assembled signal hash;
-- exact decision/order hash;
-- report structure equality;
-- numeric report equality within rtol=1e-10 / atol=1e-12;
-- exact canonical metrics under the project's metric rounding.
-
-The preflight is **engineering-only**. Do not use its return/CAGR to alter,
-drop, or add candidates.
-
-PR #23 added the missing driver-side Volume refresh, but a subsequent
-preflight showed that a phase report could still be absent from the durable
-Volume even though the same worker had already created/read it before commit.
-PR #24 therefore hardens the complete artifact transaction instead of relying
-on another trial-and-error path tweak:
-
-- each preflight invocation gets a unique
-  `_preflight/<run-id>/repeat_{a,b}` namespace, preventing detached/retried
-  runs from concurrently modifying the same files;
-- parquet is serialized to memory first and then published as one closed file
-  on the Volume mount;
-- a phase worker writes signal/report/decisions/result, calls
-  `vol.commit()`, then `vol.reload()`, and hash/metric-verifies the complete
-  artifact set before returning;
-- if that durability round trip fails once, the worker republishes the phase
-  artifacts from already-computed in-memory signal/report/decisions and retries
-  persistence without retraining any LightGBM model;
-- the driver independently verifies the committed artifact set from its own
-  refreshed Volume view;
-- the repeat-A/repeat-B semantic report comparison uses the in-memory semantic
-  report payload returned by the phase workers, so the gate no longer depends
-  on opening the report through the driver's mount;
-- retrain chunks are cross-container verified before phase assembly; only a
-  missing/corrupt chunk is refit, rather than restarting the whole run.
-
-The artifact schema itself remains correct and unchanged:
+Execution resources:
 
 ```text
-chunks/<candidate>/phaseXX/<retrain-date>/
-    prediction.parquet
-    result.json
-
-phases/<candidate>/phaseXX/
-    signal.parquet
-    decisions.json
-    report.parquet
-    result.json
+Modal worker CPU       8 physical cores
+worker memory          16384 MiB request
+max containers         64
+LightGBM num_threads   20
 ```
 
-Do not move phase reports into the chunk namespace.
-
-Push the generated:
+Preflight result:
 
 ```text
-results/csi1000_stage_b/stage_b_preflight_only_<token16>.json
+gate                           PASS
+baseline candidate             23b92de05cf3...
+phase                          0
+retrain fits / repeat          22
+independent repeats            2
+total fits                     44
+prediction chunks exact        true
+assembled signal exact         true
+decision/order exact           true
+report structure match         true
+canonical metrics exact        true
+report semantic columns        9 / 9 PASS
+phase artifacts durable        true
+worker durability A/B          PASS / PASS
+driver durability A/B          PASS / PASS
+publish attempt A/B            1 / 1
 ```
 
-and ask the next conversation to audit it before starting the full grid.
+Cross-stage continuity also passed:
+
+```text
+provider fingerprint match             true
+base model config match                true
+LightGBM reproducibility controls      true
+deterministic strategy source match    true
+Python/Qlib/LGB/NumPy/pandas runtime   true
+```
+
+The two repeats produced exact model best-iteration sequences, exact prediction
+content hashes, exact assembled signal hash, and exact decision content hash.
+
+The raw report content hashes are not byte/content identical, but this is the
+already accepted machine-precision behavior. All nine report columns pass the
+frozen semantic gate `rtol=1e-10 / atol=1e-12`; the largest observed relative
+difference is approximately `1.45e-11`. Canonical portfolio metrics are
+identical.
+
+For engineering sanity only, baseline phase-0 canonical metrics were:
+
+```text
+strategy total return       43.4313%
+strategy CAGR               23.0149%
+benchmark total return      24.0726%
+benchmark CAGR              13.1869%
+relative total return       15.6027%
+relative excess CAGR         8.6829%
+strategy MaxDD              -9.6486%
+Sharpe                       1.122058
+information ratio            0.356593
+mean turnover                0.056408
+total cost sum               0.023430
+account return max error     0
+```
+
+These return figures **must not** be used to alter candidates, phases, ranking,
+or any other Stage-B design choice. The preflight was an engineering gate only.
+
+PR #24's durable artifact transaction is therefore empirically validated on
+both repeats: worker-side and driver-side round-trip checks passed on the first
+publication attempt.
 
 ---
 
-## 11. After a passing Stage-B preflight
+## 11. Next action: run full Stage B
 
-Run:
+Start from the latest `main`, verify the worktree is clean, and run exactly
+one full Stage-B instance:
 
 ```bash
+git checkout main
+git pull --ff-only
+git status
+
 modal run --detach csi1000_stage_b.py \
   --worker-cpu 8 \
   --worker-memory-mib 16384 \
   --worker-max-containers 64
 ```
 
-The passing preflight's baseline phase-0 result is reused, so the full run needs:
+Do not launch a second concurrent full run against the same canonical artifact
+paths.
+
+The accepted preflight's baseline phase-0 result is reused, so the full run needs:
 
 ```text
 full grid                         1210 fits
@@ -506,9 +534,15 @@ preflight itself                     44 fits
 total Stage-B compute               1232 fits
 ```
 
-If interrupted, rerun the same command without changing source/provider.
-Completed retrain chunks and completed candidate/phase artifacts are validated
-and reused.
+If interrupted, rerun the **same command** without changing source/provider,
+candidate set, phase set, LightGBM parameters, or execution semantics.
+Completed retrain chunks and completed candidate/phase artifacts are
+hash-validated and reused. PR #24 also cross-container verifies chunks and
+phase artifact sets; only a missing/corrupt chunk or affected phase artifact
+stage should be repaired.
+
+During the full run, do not react to intermediate returns. The first permitted
+research interpretation is after all 11 candidates x 5 phases are complete.
 
 Push the generated:
 
@@ -516,7 +550,18 @@ Push the generated:
 results/csi1000_stage_b/stage_b_full_<token16>.json
 ```
 
-for final audit.
+for final audit. Before any model-selection conclusion, verify:
+
+```text
+11 / 11 frozen candidates complete
+5 / 5 phases per candidate
+55 candidate-phase results
+accepted preflight lineage retained
+baseline phase0 reused correctly
+all chunk/phase durability checks pass
+account_return_max_error within contract
+final rank recomputes from frozen phase-first lower-tail contract
+```
 
 ---
 
@@ -558,3 +603,19 @@ Do not:
 
 If a genuine implementation defect is discovered, version the protocol,
 document the defect, and rerun the necessary gate before trusting new results.
+
+---
+
+## 14. Suggested startup prompt for the next conversation
+
+Use:
+
+> Please take over the CSI1000 Stage-B work in `AT2018cow/qlib`. First read
+> `docs/experiments/18-next-conversation-handoff-stage-b-20261007.md`, then
+> verify the latest `main` and preflight result commit
+> `6c957f8809a1668c11ad63e6dd2b63c28d193f08`. Stage A is frozen and the
+> Stage-B engineering preflight has already passed under snapshot
+> `51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1`.
+> The next action is the full Stage-B run and subsequent audit. Do not reopen
+> frozen Stage-A decisions or redesign Stage B unless there is concrete
+> implementation/data-integrity evidence.
