@@ -32,6 +32,7 @@ from csi1000_stage_b_core import (
     STAGE_A_EXPANDED_AUDIT,
     STAGE_A_EXPANDED_RESULT,
     STAGE_B_PROTOCOL_VERSION,
+    STARTER_CONTAINER_LIMIT,
     TOPK,
     TRAIN_START,
     VALIDATION_SESSIONS,
@@ -429,10 +430,11 @@ def _runtime_manifest(calendar: list[str]) -> dict:
         "stage_a_selection_validation": selection_validation,
         "base_model_config_sha256": _stable_json_sha256(base_model),
         "lgb_repro_params": dict(LGB_REPRO_PARAMS),
-        "worker_resources": {
+        "worker_resource_defaults": {
             "cpu_physical_cores": WORKER_CPU,
             "memory_mib": WORKER_MEMORY_MIB,
             "max_containers": WORKER_MAX_CONTAINERS,
+            "starter_container_limit": STARTER_CONTAINER_LIMIT,
             "retries": WORKER_RETRIES,
             "lightgbm_num_threads": MODEL_NUM_THREADS,
         },
@@ -1031,10 +1033,20 @@ def _jobs_for(candidate: dict, phase: int, calendar: list[str], snapshot: str,
 
 
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=24 * 3600)
-def stage_b_driver(preflight_only: bool = False, resume: bool = True):
+def stage_b_driver(
+    preflight_only: bool = False,
+    resume: bool = True,
+    worker_max_containers: int = WORKER_MAX_CONTAINERS,
+):
     import json
 
     from qlib_audit_fixes import read_trading_calendar
+
+    worker_cap = int(worker_max_containers)
+    if worker_cap < 1 or worker_cap > STARTER_CONTAINER_LIMIT:
+        raise ValueError(
+            f"worker_max_containers must be within 1..{STARTER_CONTAINER_LIMIT}"
+        )
 
     setup = prepare_stage_b.remote()
     vol.reload()
@@ -1057,9 +1069,9 @@ def stage_b_driver(preflight_only: bool = False, resume: bool = True):
             )
             print(
                 f"[stage-b preflight] {repeat}: {len(jobs)} retrain fits; "
-                f"worker cap={WORKER_MAX_CONTAINERS}"
+                f"worker cap={worker_cap}"
             )
-            chunks = list(stage_b_retrain_worker.map(jobs))
+            chunks = list(stage_b_retrain_worker.with_options(max_containers=worker_cap).map(jobs))
             vol.reload()
             phase = stage_b_phase_worker.remote(
                 {
@@ -1103,6 +1115,12 @@ def stage_b_driver(preflight_only: bool = False, resume: bool = True):
             "reserved_tail": setup["reserved_tail"],
             "fit_budget": setup["fit_budget"],
             "preflight": gate,
+            "execution_resources": {
+                "retrain_worker_max_containers": worker_cap,
+                "retrain_worker_cpu_physical_cores": WORKER_CPU,
+                "retrain_worker_memory_mib": WORKER_MEMORY_MIB,
+                "lightgbm_num_threads": MODEL_NUM_THREADS,
+            },
         }
 
     preflight = _load_passing_preflight(snapshot)
@@ -1128,7 +1146,7 @@ def stage_b_driver(preflight_only: bool = False, resume: bool = True):
     print(
         f"[stage-b full] candidates={len(candidates)} phases={len(REFERENCE_PHASES)} "
         f"new/reusable retrain jobs={len(all_retrain_jobs)} "
-        f"worker cap={WORKER_MAX_CONTAINERS}"
+        f"worker cap={worker_cap}"
     )
     chunk_results = list(stage_b_retrain_worker.map(all_retrain_jobs))
     vol.reload()
@@ -1217,6 +1235,12 @@ def stage_b_driver(preflight_only: bool = False, resume: bool = True):
         "reserved_tail_policy": (
             "final_confirmation_only_do_not_retune_on_stage_b_results"
         ),
+        "execution_resources": {
+            "retrain_worker_max_containers": worker_cap,
+            "retrain_worker_cpu_physical_cores": WORKER_CPU,
+            "retrain_worker_memory_mib": WORKER_MEMORY_MIB,
+            "lightgbm_num_threads": MODEL_NUM_THREADS,
+        },
     }
     root = ARTIFACT_ROOT / snapshot
     root.mkdir(parents=True, exist_ok=True)
@@ -1228,12 +1252,17 @@ def stage_b_driver(preflight_only: bool = False, resume: bool = True):
 
 
 @app.local_entrypoint()
-def main(preflight_only: bool = False, resume: bool = True):
+def main(
+    preflight_only: bool = False,
+    resume: bool = True,
+    worker_max_containers: int = WORKER_MAX_CONTAINERS,
+):
     import json
 
     payload = stage_b_driver.remote(
         preflight_only=bool(preflight_only),
         resume=bool(resume),
+        worker_max_containers=int(worker_max_containers),
     )
     out_dir = Path("results") / "csi1000_stage_b"
     out_dir.mkdir(parents=True, exist_ok=True)
