@@ -688,9 +688,9 @@ def stage_b_retrain_worker(args: dict):
 
     from qlib_audit_fixes import last_matured_sample, purge_cfg_splits, read_trading_calendar
 
-    _worker_assert_snapshot(args["snapshot_token"])
+    manifest = _worker_assert_snapshot(args["snapshot_token"])
     if args.get("resume", True):
-        reusable = _load_reusable_chunk(args)
+        reusable = _load_reusable_chunk(args, manifest)
         if reusable is not None:
             return reusable
 
