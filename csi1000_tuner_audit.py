@@ -423,6 +423,12 @@ def main(
         plan_payload = json.loads(Path(plan_path).read_text())
         if plan_payload.get("snapshot_token") != snapshot_token:
             raise ValueError("plan snapshot token does not match requested snapshot")
+        if plan_payload.get("mode") != "plan":
+            raise ValueError("plan_path must reference a plan-mode audit file")
+        if int((plan_payload.get("accounting") or {}).get("candidate_count", -1)) != int(
+            candidate_count
+        ):
+            raise ValueError("plan candidate_count does not match requested expansion")
         planned_entries = _plan_entry_map(plan_payload)
 
     scan = scan_snapshot.remote(
@@ -431,6 +437,16 @@ def main(
         candidates,
         planned_entries,
     )
+    source_kind = scan["source_summary_kind"]
+    if mode == "plan" and source_kind != "smoke":
+        raise RuntimeError(
+            f"reuse plan must be created from the accepted smoke summary, got {source_kind!r}"
+        )
+    if mode == "export" and source_kind != "expanded":
+        raise RuntimeError(
+            f"expanded audit requires a completed expanded summary, got {source_kind!r}"
+        )
+
     rows = scan["rows"]
     nonbaseline_rows = [row for row in rows if not row["is_baseline"]]
     prechecked_reusable = sum(
