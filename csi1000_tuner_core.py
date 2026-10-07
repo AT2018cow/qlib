@@ -33,7 +33,9 @@ REFERENCE_PHASES = (0, 4, 6, 10, 15)
 ACCOUNT_ERROR_TOLERANCE = 1e-12
 METRIC_VERSION = "portfolio_compound_v1"
 EXPANDED_SEARCH_SEED = 20261007
-REPRO_GATE_VERSION = "baseline_double_fit_4fold_v1"
+REPRO_GATE_VERSION = "baseline_double_fit_4fold_v2"
+REPORT_REPRO_RTOL = 1e-10
+REPORT_REPRO_ATOL = 1e-12
 
 SCREEN_RANK_SPECS = (
     ("relative_excess_cagr_worst", 1),
@@ -581,11 +583,92 @@ def _final_rank_tuple(summary: dict) -> tuple[float, ...]:
     return (*_rank_vector(phase), *_screen_rank_tuple(summary))
 
 
+def numeric_reproducibility_diagnostics(
+    values_a: Iterable[Any],
+    values_b: Iterable[Any],
+    *,
+    rtol: float = REPORT_REPRO_RTOL,
+    atol: float = REPORT_REPRO_ATOL,
+) -> dict:
+    """Compare numeric vectors with explicit floating-point diagnostics.
+
+    NaN positions must match exactly. Infinities must match exactly, including sign.
+    Finite values use abs(a-b) <= atol + rtol * max(abs(a), abs(b)).
+    """
+    left = list(values_a)
+    right = list(values_b)
+    if len(left) != len(right):
+        return {
+            "passed": False,
+            "reason": "length_mismatch",
+            "n": max(len(left), len(right)),
+            "mismatch_count": abs(len(left) - len(right)),
+            "max_abs_diff": None,
+            "max_rel_diff": None,
+        }
+    if rtol < 0 or atol < 0:
+        raise ValueError("rtol/atol must be non-negative")
+
+    mismatch_count = 0
+    finite_count = 0
+    max_abs_diff = 0.0
+    max_rel_diff = 0.0
+    exact_match = True
+    for a_raw, b_raw in zip(left, right):
+        try:
+            a = float(a_raw)
+            b = float(b_raw)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("numeric reproducibility inputs must be numeric") from exc
+
+        a_nan = math.isnan(a)
+        b_nan = math.isnan(b)
+        if a_nan or b_nan:
+            if not (a_nan and b_nan):
+                mismatch_count += 1
+                exact_match = False
+            continue
+
+        if math.isinf(a) or math.isinf(b):
+            if a != b:
+                mismatch_count += 1
+                exact_match = False
+            continue
+
+        finite_count += 1
+        diff = abs(a - b)
+        scale = max(abs(a), abs(b))
+        rel = diff / max(scale, 1e-300)
+        max_abs_diff = max(max_abs_diff, diff)
+        max_rel_diff = max(max_rel_diff, rel)
+        if a != b:
+            exact_match = False
+        if diff > float(atol) + float(rtol) * scale:
+            mismatch_count += 1
+
+    return {
+        "passed": mismatch_count == 0,
+        "reason": None if mismatch_count == 0 else "numeric_tolerance_exceeded",
+        "n": len(left),
+        "finite_count": finite_count,
+        "mismatch_count": mismatch_count,
+        "exact_match": exact_match,
+        "rtol": float(rtol),
+        "atol": float(atol),
+        "max_abs_diff": max_abs_diff,
+        "max_rel_diff": max_rel_diff,
+    }
+
+
 def validate_reproducibility_pairs(
     repeat_a: Iterable[dict],
     repeat_b: Iterable[dict],
 ) -> dict:
-    """Require exact baseline signal/report identities across two independent fits."""
+    """Require exact model/prediction identity across two independent baseline fits.
+
+    Raw backtest report bytes are audit evidence, not a bitwise gate. The Modal
+    runner performs a separate structure/numeric/canonical-metric comparison.
+    """
     expected_folds = {f"fold{i + 1}" for i in range(SCREEN_FOLDS)}
 
     def index(rows: Iterable[dict], label: str) -> dict[str, dict]:
@@ -630,10 +713,6 @@ def validate_reproducibility_pairs(
             "model_config_sha256": (a.get("model_config_sha256"), b.get("model_config_sha256")),
             "best_iteration": (a.get("best_iteration"), b.get("best_iteration")),
             "signal_sha256": (a.get("signal_sha256"), b.get("signal_sha256")),
-            "report_content_sha256": (
-                (a.get("report_artifact") or {}).get("content_sha256"),
-                (b.get("report_artifact") or {}).get("content_sha256"),
-            ),
         }
         mismatches = [
             key for key, (value_a, value_b) in comparisons.items()
@@ -648,10 +727,14 @@ def validate_reproducibility_pairs(
         snapshot_token = snapshot_token or a["snapshot_token"]
         if candidate_id != a["candidate_id"] or snapshot_token != a["snapshot_token"]:
             raise RuntimeError("reproducibility gate mixes candidate or snapshot lineages")
+        report_a = (a.get("report_artifact") or {}).get("content_sha256")
+        report_b = (b.get("report_artifact") or {}).get("content_sha256")
         details[fold_id] = {
             "best_iteration": a.get("best_iteration"),
             "signal_sha256": a["signal_sha256"],
-            "report_content_sha256": a["report_artifact"]["content_sha256"],
+            "report_content_sha256_a": report_a,
+            "report_content_sha256_b": report_b,
+            "report_exact_match": bool(report_a and report_a == report_b),
         }
 
     return {
