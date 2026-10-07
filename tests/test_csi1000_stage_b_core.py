@@ -17,6 +17,7 @@ from csi1000_stage_b_core import (
     STAGE_A_EXPANDED_RESULT,
     STAGE_A_SNAPSHOT_TOKEN,
     STAGE_B_PROTOCOL_VERSION,
+    STARTER_CONTAINER_LIMIT,
     WORKER_CPU,
     WORKER_MAX_CONTAINERS,
     WORKER_MEMORY_MIB,
@@ -74,6 +75,7 @@ class CSI1000StageBCoreTests(unittest.TestCase):
         self.assertEqual(WORKER_CPU, 8)
         self.assertEqual(WORKER_MEMORY_MIB, 24576)
         self.assertEqual(WORKER_MAX_CONTAINERS, 64)
+        self.assertEqual(STARTER_CONTAINER_LIMIT, 100)
         self.assertEqual(MODEL_NUM_THREADS, 20)
 
     def test_candidate_manifest_is_top10_plus_baseline_control(self):
@@ -166,6 +168,9 @@ class CSI1000StageBCoreTests(unittest.TestCase):
         self.assertIn("DeterministicTopkDropoutStrategy", source)
         self.assertIn("collect_data(", source)
         self.assertIn("max_containers=WORKER_MAX_CONTAINERS", source)
+        self.assertIn("with_options(max_containers=worker_cap)", source)
+        self.assertIn("worker_max_containers: int = WORKER_MAX_CONTAINERS", source)
+        self.assertIn("worker_max_containers must be within 1..", source)
         self.assertIn("cpu=WORKER_CPU", source)
         self.assertIn("memory=WORKER_MEMORY_MIB", source)
         self.assertIn("retries=WORKER_RETRIES", source)
