@@ -15,7 +15,7 @@ from copy import deepcopy
 from statistics import median
 from typing import Any, Iterable
 
-PROTOCOL_VERSION = "csi1000_lgb_stage_a_v2"
+PROTOCOL_VERSION = "csi1000_lgb_stage_a_v3"
 MARKET = "csi1000"
 TARGET = "raw_20d"
 LABEL_HORIZON = 20
@@ -23,6 +23,7 @@ RETRAIN_FREQUENCY = 20
 TOPK = 20
 N_DROP = 2
 EXECUTION = "t_close_t1_open"
+STRATEGY = "deterministic_topk_dropout_v1"
 TRAIN_START = "2016-01-01"
 VALIDATION_SESSIONS = 252
 SCREEN_FOLDS = 4
@@ -33,7 +34,7 @@ REFERENCE_PHASES = (0, 4, 6, 10, 15)
 ACCOUNT_ERROR_TOLERANCE = 1e-12
 METRIC_VERSION = "portfolio_compound_v1"
 EXPANDED_SEARCH_SEED = 20261007
-REPRO_GATE_VERSION = "baseline_double_fit_4fold_v2"
+REPRO_GATE_VERSION = "baseline_double_fit_4fold_v3"
 REPORT_REPRO_RTOL = 1e-10
 REPORT_REPRO_ATOL = 1e-12
 
@@ -196,6 +197,8 @@ def frozen_protocol() -> dict:
         "retrain_frequency": RETRAIN_FREQUENCY,
         "portfolio": {"topk": TOPK, "n_drop": N_DROP},
         "execution": EXECUTION,
+        "strategy": STRATEGY,
+        "tie_break": "score_desc_instrument_asc",
         "train_start": TRAIN_START,
         "validation_sessions": VALIDATION_SESSIONS,
         "screen_folds": SCREEN_FOLDS,
@@ -204,6 +207,33 @@ def frozen_protocol() -> dict:
         "screen_last_execution_cutoff": SCREEN_LAST_EXECUTION_CUTOFF,
         "reference_phases": list(REFERENCE_PHASES),
     }
+
+
+def deterministic_score_order(items: Iterable[tuple[Any, Any]]) -> list[Any]:
+    """Return instrument ids ordered by score desc, instrument asc for exact ties.
+
+    NaN scores are placed last, matching pandas' default sort_values behavior.
+    The secondary instrument key is explicit so Python hash/set iteration order
+    can never decide a TopK boundary.
+    """
+    rows = []
+    seen = set()
+    for instrument, score_raw in items:
+        key = str(instrument)
+        if key in seen:
+            raise ValueError(f"duplicate instrument in score vector: {key}")
+        seen.add(key)
+        score = float(score_raw)
+        rows.append((key, score, instrument))
+
+    def rank_key(row):
+        key, score, _instrument = row
+        if math.isnan(score):
+            return (1, 0.0, key)
+        return (0, -score, key)
+
+    rows.sort(key=rank_key)
+    return [instrument for _key, _score, instrument in rows]
 
 
 def _stable_json_sha256(obj: Any) -> str:
@@ -713,6 +743,10 @@ def validate_reproducibility_pairs(
             "model_config_sha256": (a.get("model_config_sha256"), b.get("model_config_sha256")),
             "best_iteration": (a.get("best_iteration"), b.get("best_iteration")),
             "signal_sha256": (a.get("signal_sha256"), b.get("signal_sha256")),
+            "decision_content_sha256": (
+                (a.get("decision_artifact") or {}).get("content_sha256"),
+                (b.get("decision_artifact") or {}).get("content_sha256"),
+            ),
         }
         mismatches = [
             key for key, (value_a, value_b) in comparisons.items()
@@ -732,6 +766,7 @@ def validate_reproducibility_pairs(
         details[fold_id] = {
             "best_iteration": a.get("best_iteration"),
             "signal_sha256": a["signal_sha256"],
+            "decision_content_sha256": a["decision_artifact"]["content_sha256"],
             "report_content_sha256_a": report_a,
             "report_content_sha256_b": report_b,
             "report_exact_match": bool(report_a and report_a == report_b),
