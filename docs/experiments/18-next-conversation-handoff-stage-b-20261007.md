@@ -434,6 +434,14 @@ The gate requires:
 The preflight is **engineering-only**. Do not use its return/CAGR to alter,
 drop, or add candidates.
 
+PR #23 fixes a Modal Volume visibility bug in this preflight path. The phase
+worker correctly stores phase-level artifacts under
+`phases/<candidate>/phaseXX/`; retrain prediction chunks remain under
+`chunks/<candidate>/phaseXX/<retrain-date>/`. After each phase worker commits
+its report/signal/decision artifacts, the driver must call `vol.reload()`
+before comparing repeat A and repeat B. Do not "fix" this by moving reports into
+the chunk namespace.
+
 Push the generated:
 
 ```text
