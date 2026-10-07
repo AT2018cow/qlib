@@ -12,6 +12,7 @@ features           Alpha158
 target             raw 20-trading-day forward return
 retrain frequency  20 sessions
 portfolio          top20 / n_drop=2
+tie-break           score desc / instrument asc
 signal timing      T close
 execution          T+1 open
 account semantics  canonical
@@ -170,6 +171,7 @@ This is intentionally small enough to validate:
 - turnover/cost extraction;
 - resumability;
 - exact baseline double-fit model/prediction reproducibility;
+- exact baseline trade-decision/order reproducibility;
 - semantic baseline report reproducibility with retained A/B diagnostics.
 
 Do not expand the search if the smoke artifacts fail any of these checks.
@@ -245,8 +247,11 @@ tests/test_csi1000_tuner_core.py
 
 - creates one provider snapshot for the run;
 - requires a baseline 4-fold double-fit reproducibility gate before candidate ranking;
-- preserves repeat A under `_repro/baseline_double_fit_4fold_v2/repeat_a/` while
+- uses `DeterministicTopkDropoutStrategy` with explicit score/instrument ordering;
+- preserves repeat A under `_repro/baseline_double_fit_4fold_v3/repeat_a/` while
   repeat B remains the canonical baseline artifact;
+- records `decisions.json` for every candidate-fold and requires the baseline A/B
+  decision content hash to match exactly;
 - requires report index/columns/dtypes to match exactly, numeric values to satisfy
   `rtol=1e-10` and `atol=1e-12` (with account normalized by initial cash), and
   recomputed canonical metrics plus turnover/cost to match;
@@ -264,7 +269,18 @@ It does not import or modify `freq_experiment.py`.
 
 ## 8. Intended commands
 
-Smoke screen:
+Baseline reproducibility preflight only:
+
+```bash
+modal run csi1000_tuner.py --preflight-only
+```
+
+This performs only the baseline 4 folds x 2 independent fits (8 fits). It does not
+launch the other 11 smoke candidates. By default the runner now reuses the committed
+provider snapshot when one is already present; pass `--force-data` only when an
+intentional provider refresh is desired.
+
+Smoke screen after the preflight is accepted:
 
 ```bash
 modal run csi1000_tuner.py
@@ -286,7 +302,7 @@ identity produces a different snapshot token and therefore a separate artifact l
 Do not expand beyond the 12-candidate smoke if any of the following occurs:
 
 - fold chronology or purge assertion fails;
-- baseline double-fit model config, best iteration, or prediction signal hashes do not match exactly;
+- baseline double-fit model config, best iteration, prediction signal, or decision/order hashes do not match exactly;
 - baseline A/B report structure, numeric tolerance, canonical metrics, turnover, or cost comparison fails;
 - canonical account consistency is not exact within tolerance;
 - a signal/report hash cannot be independently reloaded;
