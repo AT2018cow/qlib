@@ -326,6 +326,19 @@ class CSI1000TunerCoreTests(unittest.TestCase):
         self.assertIn("deterministic_score_order(score.items())", source)
         self.assertNotIn("np.random", source)
 
+    def test_expanded_audit_sidecar_is_read_only_and_syntax_valid(self):
+        source = (ROOT / "csi1000_tuner_audit.py").read_text()
+        ast.parse(source)
+        self.assertIn('mode not in {"plan", "export"}', source)
+        self.assertIn('"prechecked_reusable_nonbaseline_candidate_folds"', source)
+        self.assertIn('"expected_total_new_fits_if_resume_accepts_precheck"', source)
+        self.assertIn('"leave_one_fold_out_rankings"', source)
+        self.assertIn('"planned_reuse_unchanged"', source)
+        self.assertIn('create_if_missing=False', source)
+        self.assertNotIn("vol.commit()", source)
+        self.assertNotIn("prepare.remote", source)
+        self.assertNotIn("stage_a_fold_worker", source)
+
     def test_stage_b_selection_retains_baseline(self):
         summaries = []
         baseline = self.summary(dict(BASELINE_TUNABLE_PARAMS), [-0.02] * 4)
