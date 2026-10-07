@@ -418,17 +418,55 @@ def _runtime_manifest(calendar: list[str]) -> dict:
     strategy_path = Path(deterministic_strategy.__file__)
     base_model = _load_task(stage_b_candidates()[-1]["model_params"])["task"]["model"]
 
+    current_runtime = {
+        "python": platform.python_version(),
+        "pyqlib": version("pyqlib"),
+        "lightgbm": version("lightgbm"),
+        "numpy": version("numpy"),
+        "pandas": version("pandas"),
+        "modal": version("modal"),
+    }
+    current_provider_fingerprint = provider_training_fingerprint(
+        DATA_DIR, MARKET, RESERVED_EXECUTION_END
+    )
+    current_base_model_sha = _stable_json_sha256(base_model)
+    current_strategy_sha = hashlib.sha256(strategy_path.read_bytes()).hexdigest()
+    stage_a_manifest = expanded.get("manifest") or {}
+
+    if current_provider_fingerprint != stage_a_manifest.get("provider_fingerprint"):
+        raise RuntimeError("Stage-B provider fingerprint differs from frozen Stage-A snapshot")
+    if current_base_model_sha != stage_a_manifest.get("base_model_config_sha256"):
+        raise RuntimeError("Stage-B base model config differs from frozen Stage-A config")
+    if dict(LGB_REPRO_PARAMS) != (stage_a_manifest.get("lgb_repro_params") or {}):
+        raise RuntimeError("Stage-B LightGBM reproducibility controls drifted from Stage A")
+    if current_strategy_sha != stage_a_manifest.get(
+        "deterministic_strategy_source_sha256"
+    ):
+        raise RuntimeError("Stage-B deterministic strategy source drifted from Stage A")
+    for package in ("python", "pyqlib", "lightgbm", "numpy", "pandas"):
+        if current_runtime[package] != (stage_a_manifest.get("runtime") or {}).get(package):
+            raise RuntimeError(
+                f"Stage-B runtime drift for {package}: "
+                f"{current_runtime[package]} != "
+                f"{(stage_a_manifest.get('runtime') or {}).get(package)}"
+            )
+
     manifest = {
         "manifest_version": "csi1000_stage_b_repro_v1",
         "protocol": frozen_stage_b_protocol(),
         "provider_cutoff": RESERVED_EXECUTION_END,
-        "provider_fingerprint": provider_training_fingerprint(
-            DATA_DIR, MARKET, RESERVED_EXECUTION_END
-        ),
+        "provider_fingerprint": current_provider_fingerprint,
         "stage_a_expanded_sha256": hashlib.sha256(expanded_path.read_bytes()).hexdigest(),
         "stage_a_audit_sha256": hashlib.sha256(audit_path.read_bytes()).hexdigest(),
         "stage_a_selection_validation": selection_validation,
-        "base_model_config_sha256": _stable_json_sha256(base_model),
+        "cross_stage_continuity": {
+            "provider_fingerprint_match": True,
+            "base_model_config_match": True,
+            "lgb_repro_params_match": True,
+            "deterministic_strategy_source_match": True,
+            "runtime_match": True,
+        },
+        "base_model_config_sha256": current_base_model_sha,
         "lgb_repro_params": dict(LGB_REPRO_PARAMS),
         "worker_resource_defaults": {
             "cpu_physical_cores": WORKER_CPU,
@@ -438,23 +476,14 @@ def _runtime_manifest(calendar: list[str]) -> dict:
             "retries": WORKER_RETRIES,
             "lightgbm_num_threads": MODEL_NUM_THREADS,
         },
-        "runtime": {
-            "python": platform.python_version(),
-            "pyqlib": version("pyqlib"),
-            "lightgbm": version("lightgbm"),
-            "numpy": version("numpy"),
-            "pandas": version("pandas"),
-            "modal": version("modal"),
-        },
+        "runtime": current_runtime,
         "runner_source_sha256": (
             hashlib.sha256(source_path.read_bytes()).hexdigest()
             if source_path.is_file()
             else "unavailable"
         ),
         "core_source_sha256": hashlib.sha256(core_path.read_bytes()).hexdigest(),
-        "deterministic_strategy_source_sha256": hashlib.sha256(
-            strategy_path.read_bytes()
-        ).hexdigest(),
+        "deterministic_strategy_source_sha256": current_strategy_sha,
     }
     manifest["snapshot_token"] = _stable_json_sha256(manifest)
     return manifest
