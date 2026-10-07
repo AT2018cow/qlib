@@ -1267,6 +1267,7 @@ def stage_b_driver(
             "phase": preflight["phase"],
             "n_retrains_per_repeat": preflight["n_retrains_per_repeat"],
             "total_model_fits": preflight["total_model_fits"],
+            "execution_resources": preflight.get("execution_resources"),
             "comparison": preflight["comparison"],
         },
         "candidate_count": len(candidates),
