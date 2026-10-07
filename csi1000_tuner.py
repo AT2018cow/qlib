@@ -808,6 +808,9 @@ def stage_a_screen_driver(
     )
     repeat_a = list(stage_a_fold_worker.map(gate_jobs_a))
     repeat_b = list(stage_a_fold_worker.map(gate_jobs_b))
+    # Child workers commit report artifacts to the shared Volume. Refresh the
+    # driver mount before loading those files for semantic A/B comparison.
+    vol.reload()
 
     reproducibility_gate = validate_reproducibility_pairs(repeat_a, repeat_b)
     report_validation = _compare_repro_reports(repeat_a, repeat_b)
