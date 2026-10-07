@@ -22,6 +22,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 from pathlib import Path
 from statistics import median
 from typing import Any
@@ -400,6 +401,7 @@ def main(
     snapshot_token: str = "",
     candidate_count: int = 80,
     plan_path: str = "",
+    plan_label: str = "",
 ):
     """Plan reuse before expansion or export compact fold audit after expansion."""
     from csi1000_tuner_core import (
@@ -411,6 +413,15 @@ def main(
     mode = str(mode).strip().lower()
     if mode not in {"plan", "export"}:
         raise ValueError("mode must be 'plan' or 'export'")
+    if mode == "plan":
+        if not plan_label:
+            raise ValueError(
+                "plan_label is required in plan mode so reuse plans are immutable"
+            )
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", plan_label):
+            raise ValueError(
+                "plan_label must be 1-64 characters: letters, digits, dot, underscore, hyphen"
+            )
     if not snapshot_token:
         raise ValueError("snapshot_token is required")
     if int(candidate_count) != 80:
@@ -526,12 +537,24 @@ def main(
 
     out_dir = Path("results") / "csi1000_tuner"
     out_dir.mkdir(parents=True, exist_ok=True)
-    stem = (
-        "stage_a_expanded_reuse_plan"
-        if mode == "plan"
-        else "stage_a_expanded_audit"
-    )
-    out_path = out_dir / f"{stem}_{snapshot_token[:16]}.json"
-    out_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False))
+    if mode == "plan":
+        payload["plan_label"] = plan_label
+        stem = "stage_a_expanded_reuse_plan"
+        out_path = out_dir / (
+            f"{stem}_{snapshot_token[:16]}_{plan_label}.json"
+        )
+        serialized = json.dumps(payload, indent=2, ensure_ascii=False)
+        if out_path.exists():
+            if out_path.read_text() != serialized:
+                raise RuntimeError(
+                    f"immutable reuse plan already exists with different content: {out_path}"
+                )
+            print(f"[stage-a-audit] immutable plan already exists unchanged: {out_path}")
+        else:
+            out_path.write_text(serialized)
+    else:
+        stem = "stage_a_expanded_audit"
+        out_path = out_dir / f"{stem}_{snapshot_token[:16]}.json"
+        out_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False))
     print(f"[stage-a-audit] exported {out_path}")
     print(json.dumps(accounting, indent=2))
