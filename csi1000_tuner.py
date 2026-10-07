@@ -251,6 +251,7 @@ def _runtime_manifest(cutoff: str) -> dict:
     import platform
 
     import csi1000_tuner_core
+    import deterministic_strategy
     from qlib_live_retrain import LGB_REPRO_PARAMS, provider_training_fingerprint
 
     def version(name: str) -> str:
@@ -262,8 +263,9 @@ def _runtime_manifest(cutoff: str) -> dict:
     cfg = _load_task()
     source_path = Path(__file__)
     core_path = Path(csi1000_tuner_core.__file__)
+    strategy_path = Path(deterministic_strategy.__file__)
     manifest = {
-        "manifest_version": "csi1000_tuner_repro_v2",
+        "manifest_version": "csi1000_tuner_repro_v3",
         "protocol": frozen_protocol(),
         "provider_cutoff": cutoff,
         "provider_fingerprint": provider_training_fingerprint(DATA_DIR, MARKET, cutoff),
@@ -281,6 +283,11 @@ def _runtime_manifest(cutoff: str) -> dict:
         ),
         "core_source_sha256": (
             hashlib.sha256(core_path.read_bytes()).hexdigest() if core_path.is_file() else "unavailable"
+        ),
+        "deterministic_strategy_source_sha256": (
+            hashlib.sha256(strategy_path.read_bytes()).hexdigest()
+            if strategy_path.is_file()
+            else "unavailable"
         ),
     }
     manifest["snapshot_token"] = _stable_json_sha256(manifest)
