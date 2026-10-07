@@ -73,7 +73,7 @@ class CSI1000StageBCoreTests(unittest.TestCase):
         self.assertEqual(protocol["reserved_execution_end"], RESERVED_EXECUTION_END)
         self.assertEqual(protocol["strategy"], "deterministic_topk_dropout_v1")
         self.assertEqual(WORKER_CPU, 8)
-        self.assertEqual(WORKER_MEMORY_MIB, 24576)
+        self.assertEqual(WORKER_MEMORY_MIB, 16384)
         self.assertEqual(WORKER_MAX_CONTAINERS, 64)
         self.assertEqual(STARTER_CONTAINER_LIMIT, 100)
         self.assertEqual(MODEL_NUM_THREADS, 20)
@@ -162,15 +162,39 @@ class CSI1000StageBCoreTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             rank_stage_b_candidates([])
 
+    def test_runtime_worker_resource_bounds(self):
+        from csi1000_stage_b_core import validate_worker_resources
+
+        defaults = validate_worker_resources(
+            cpu=WORKER_CPU,
+            memory_mib=WORKER_MEMORY_MIB,
+            max_containers=WORKER_MAX_CONTAINERS,
+        )
+        self.assertEqual(defaults["retrain_worker_cpu_physical_cores"], 8.0)
+        self.assertEqual(defaults["retrain_worker_memory_mib"], 16384)
+        self.assertEqual(defaults["retrain_worker_max_containers"], 64)
+        self.assertEqual(defaults["lightgbm_num_threads"], 20)
+
+        with self.assertRaises(ValueError):
+            validate_worker_resources(cpu=3, memory_mib=16384, max_containers=64)
+        with self.assertRaises(ValueError):
+            validate_worker_resources(cpu=8, memory_mib=8192, max_containers=64)
+        with self.assertRaises(ValueError):
+            validate_worker_resources(cpu=8, memory_mib=16384, max_containers=101)
+
     def test_stage_b_runner_is_deterministic_and_resume_aware(self):
         source = (ROOT / "csi1000_stage_b.py").read_text()
         ast.parse(source)
         self.assertIn("DeterministicTopkDropoutStrategy", source)
         self.assertIn("collect_data(", source)
         self.assertIn("max_containers=WORKER_MAX_CONTAINERS", source)
-        self.assertIn("with_options(max_containers=worker_cap)", source)
+        self.assertIn("with_options(", source)
+        self.assertIn("cpu=worker_cpu_value", source)
+        self.assertIn("memory=worker_memory_value", source)
+        self.assertIn("max_containers=worker_cap", source)
+        self.assertIn("worker_cpu: float = WORKER_CPU", source)
+        self.assertIn("worker_memory_mib: int = WORKER_MEMORY_MIB", source)
         self.assertIn("worker_max_containers: int = WORKER_MAX_CONTAINERS", source)
-        self.assertIn("worker_max_containers must be within 1..", source)
         self.assertIn("cpu=WORKER_CPU", source)
         self.assertIn("memory=WORKER_MEMORY_MIB", source)
         self.assertIn("retries=WORKER_RETRIES", source)
