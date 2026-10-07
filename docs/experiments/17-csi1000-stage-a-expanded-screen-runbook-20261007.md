@@ -66,15 +66,32 @@ Before launching the 80-candidate screen, inventory the existing artifacts:
 modal run csi1000_tuner_audit.py \
   --mode plan \
   --snapshot-token a2ecd8d1cadf404670762a81b1fd33a377f2ef2aaf27a0d9ac6787366defd65b \
-  --candidate-count 80
+  --candidate-count 80 \
+  --plan-label initial
 ```
 
 The command exports:
 
 ```text
 results/csi1000_tuner/
-stage_a_expanded_reuse_plan_a2ecd8d1cadf4046.json
+stage_a_expanded_reuse_plan_a2ecd8d1cadf4046_initial.json
 ```
+
+
+
+Reuse plans are immutable. A restart inventory must use a new label instead of
+overwriting the original evidence, for example:
+
+```bash
+modal run csi1000_tuner_audit.py \
+  --mode plan \
+  --snapshot-token a2ecd8d1cadf404670762a81b1fd33a377f2ef2aaf27a0d9ac6787366defd65b \
+  --candidate-count 80 \
+  --plan-label restart-1
+```
+
+If the requested labeled plan file already exists with different content, the
+audit sidecar fails closed.
 
 The expected accounting before expansion is:
 
@@ -143,7 +160,7 @@ modal run csi1000_tuner_audit.py \
   --mode export \
   --snapshot-token a2ecd8d1cadf404670762a81b1fd33a377f2ef2aaf27a0d9ac6787366defd65b \
   --candidate-count 80 \
-  --plan-path results/csi1000_tuner/stage_a_expanded_reuse_plan_a2ecd8d1cadf4046.json
+  --plan-path results/csi1000_tuner/stage_a_expanded_reuse_plan_a2ecd8d1cadf4046_initial.json
 ```
 
 This exports:
