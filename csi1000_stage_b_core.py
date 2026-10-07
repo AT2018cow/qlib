@@ -209,6 +209,14 @@ def validate_stage_a_evidence(expanded: dict, audit: dict) -> dict:
     if len(by_id) != 80:
         raise ValueError("Stage-A ranking is incomplete or contains duplicate IDs")
 
+    audit_ranked = audit.get("recomputed_full_rank") or []
+    if len(audit_ranked) != 80:
+        raise ValueError("Stage-A audit recomputed ranking is incomplete")
+    if [row.get("candidate_id") for row in audit_ranked] != [
+        row.get("candidate_id") for row in ranked
+    ]:
+        raise ValueError("Stage-A expanded ranking disagrees with independent audit ranking")
+
     tuned = [row for row in stage_b_candidates() if not row["is_baseline"]]
     if [row.get("candidate_id") for row in ranked[:10]] != [
         row["candidate_id"] for row in tuned
