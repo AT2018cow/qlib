@@ -111,7 +111,7 @@ image = (
             "cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py "
             "/root/qlib/board_rules.py /root/qlib/board_execution.py "
             "/root/qlib/portfolio_performance.py /root/qlib/deterministic_strategy.py "
-            "/root/qlib/csi1000_stage_b_core.py /root/"
+            "/root/qlib/csi1000_tuner_core.py /root/qlib/csi1000_stage_b_core.py /root/"
         ),
     )
 )
