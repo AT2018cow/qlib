@@ -57,7 +57,11 @@ WORKER_CPU_MAX = 8
 WORKER_MEMORY_MIB_MIN = 12288
 WORKER_MEMORY_MIB_MAX = 24576
 WORKER_RETRIES = 2
-MODEL_NUM_THREADS = 8  # matches Stage-A _load_and_patch_cfg normalization (was 20 in YAML)
+# Stage-A v3 actually trained from the checked-in LightGBM YAML with
+# num_threads=20.  Do not confuse Modal worker CPU (8 physical cores) with
+# LightGBM's model parameter.  Stage-B must preserve the Stage-A model config
+# exactly; _runtime_manifest additionally checks base_model_config_sha256.
+MODEL_NUM_THREADS = 20
 
 REPORT_REPRO_RTOL = 1e-10
 REPORT_REPRO_ATOL = 1e-12
