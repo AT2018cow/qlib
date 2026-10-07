@@ -347,20 +347,30 @@ worker memory       24576 MiB
 LightGBM threads    20
 ```
 
-PR #20 deliberately retains those proven per-container resources and changes
-only the Stage-B horizontal cap:
+PR #20 deliberately retains those proven per-container resources. The Stage-B
+horizontal cap defaults to:
 
 ```text
 max_containers      64
+Starter bound       100
 retries             2
+```
+
+The cap is a runtime throughput option, not a model-selection parameter. It may
+be changed without changing the frozen candidates or LightGBM semantics:
+
+```bash
+modal run --detach csi1000_stage_b.py \
+  --preflight-only \
+  --worker-max-containers 64
 ```
 
 Do not change `num_threads` merely to chase throughput; preserve model
 semantics. The baseline phase-0 preflight has 44 model fits and therefore also
 acts as a real scheduling/throughput probe. If it scales cleanly to around 40+
 workers, the 64-container full-run cap is reasonable. If Modal schedules
-materially fewer, inspect actual function/container stats before changing
-resources.
+materially fewer, inspect actual function/container stats before changing the
+runtime cap. The runner rejects caps above the Starter 100-container limit.
 
 Use `--detach` for long Modal runs so local/client failure does not
 automatically kill remote work.
@@ -372,7 +382,9 @@ automatically kill remote work.
 After PR #20 is merged, run **only** the engineering preflight first:
 
 ```bash
-modal run --detach csi1000_stage_b.py --preflight-only
+modal run --detach csi1000_stage_b.py \
+  --preflight-only \
+  --worker-max-containers 64
 ```
 
 It performs:
@@ -414,7 +426,7 @@ and ask the next conversation to audit it before starting the full grid.
 Run:
 
 ```bash
-modal run --detach csi1000_stage_b.py
+modal run --detach csi1000_stage_b.py --worker-max-containers 64
 ```
 
 The passing preflight's baseline phase-0 result is reused, so the full run needs:
