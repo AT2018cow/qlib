@@ -182,7 +182,7 @@ class CSI1000StageBCoreTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_worker_resources(cpu=8, memory_mib=16384, max_containers=101)
 
-    def test_lightgbm_threads_preserve_stage_a_model_semantics(self):
+    def test_lightgbm_threads_and_hash_layers_preserve_stage_a_semantics(self):
         source = (ROOT / "csi1000_stage_b.py").read_text()
         self.assertEqual(MODEL_NUM_THREADS, 20)
         self.assertNotIn('["num_threads"] = 8', source)
@@ -194,6 +194,20 @@ class CSI1000StageBCoreTests(unittest.TestCase):
             manifest["base_model_config_sha256"],
             "198a17ebd3ef271ad41393b688169afd0ae88f5f9989f500c30bfde9a6811df5",
         )
+
+        # Stage-A hashed its common base before applying a candidate overlay.
+        # Stage-B must compare that same layer, then fingerprint each frozen
+        # candidate separately rather than comparing an overlaid config to the
+        # Stage-A base hash.
+        self.assertIn('def _load_task(model_params: dict | None = None)', source)
+        self.assertIn('base_model = _load_task(None)["task"]["model"]', source)
+        self.assertIn('"candidate_model_config_sha256"', source)
+        self.assertIn(
+            '_load_task(candidate["model_params"])["task"]["model"]',
+            source,
+        )
+        self.assertIn("Stage-B unoverlaid base model config differs", source)
+        self.assertIn("Stage-B candidate model config drift", source)
 
     def test_stage_b_runner_is_deterministic_and_resume_aware(self):
         source = (ROOT / "csi1000_stage_b.py").read_text()
@@ -211,7 +225,7 @@ class CSI1000StageBCoreTests(unittest.TestCase):
         self.assertIn("cpu=WORKER_CPU", source)
         self.assertIn("memory=WORKER_MEMORY_MIB", source)
         self.assertIn("retries=WORKER_RETRIES", source)
-        self.assertIn("_load_reusable_chunk(args)", source)
+        self.assertIn("_load_reusable_chunk(args, manifest)", source)
         self.assertIn("_load_reusable_phase(args)", source)
         self.assertIn("stage_b_baseline_phase0_double_run_v1", source)
         self.assertIn("stage_b_preflight_reuse", source)
