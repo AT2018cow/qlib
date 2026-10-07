@@ -209,6 +209,29 @@ class CSI1000StageBCoreTests(unittest.TestCase):
         self.assertIn("Stage-B unoverlaid base model config differs", source)
         self.assertIn("Stage-B candidate model config drift", source)
 
+    def test_preflight_refreshes_volume_after_phase_worker_commit(self):
+        source = (ROOT / "csi1000_stage_b.py").read_text()
+        preflight = source.index("if preflight_only:")
+        phase_call = source.index(
+            "phase = stage_b_phase_worker.remote(",
+            preflight,
+        )
+        reload_after_phase = source.index("vol.reload()", phase_call)
+        comparison = source.index(
+            "comparison = _compare_preflight_phase_results(",
+            phase_call,
+        )
+        self.assertLess(phase_call, reload_after_phase)
+        self.assertLess(reload_after_phase, comparison)
+
+        # The bug was Volume visibility, not an artifact-schema mistake.
+        self.assertIn('return root / "phases" / candidate_id', source)
+        self.assertIn('return root / "chunks" / candidate_id', source)
+        self.assertIn(
+            'report_artifact = _write_report_artifact(report, root / "report.parquet")',
+            source,
+        )
+
     def test_stage_b_runner_is_deterministic_and_resume_aware(self):
         source = (ROOT / "csi1000_stage_b.py").read_text()
         ast.parse(source)
