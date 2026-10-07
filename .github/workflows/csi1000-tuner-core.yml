@@ -8,7 +8,10 @@ on:
       - 'csi1000_tuner_core.py'
       - 'deterministic_strategy.py'
       - 'csi1000_tuner_audit.py'
+      - 'csi1000_stage_b.py'
+      - 'csi1000_stage_b_core.py'
       - 'tests/test_csi1000_tuner_core.py'
+      - 'tests/test_csi1000_stage_b_core.py'
       - 'docs/experiments/16-csi1000-stage-a-tuning-contract-20261007.md'
       - 'docs/experiments/17-csi1000-stage-a-expanded-screen-runbook-20261007.md'
       - '.github/workflows/csi1000-tuner-core.yml'
@@ -19,7 +22,10 @@ on:
       - 'csi1000_tuner_core.py'
       - 'deterministic_strategy.py'
       - 'csi1000_tuner_audit.py'
+      - 'csi1000_stage_b.py'
+      - 'csi1000_stage_b_core.py'
       - 'tests/test_csi1000_tuner_core.py'
+      - 'tests/test_csi1000_stage_b_core.py'
       - '.github/workflows/csi1000-tuner-core.yml'
   workflow_dispatch:
 
@@ -34,5 +40,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Run CSI1000 Stage-A contract tests
-        run: python -m unittest tests/test_csi1000_tuner_core.py
+      - name: Run CSI1000 Stage-A and Stage-B contract tests
+        run: >-
+          python -m unittest
+          tests/test_csi1000_tuner_core.py
+          tests/test_csi1000_stage_b_core.py
