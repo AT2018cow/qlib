@@ -1160,6 +1160,14 @@ def stage_b_driver(
             )
             repeat_phase_results.append(phase)
 
+            # stage_b_phase_worker writes/commits phase-level artifacts from a
+            # different container. Refresh the driver's Volume view before the
+            # next repeat or the final cross-repeat comparison reads those
+            # artifacts. Without this reload, repeat_b's report can be absent
+            # from the driver's mounted snapshot even though the worker
+            # successfully committed it.
+            vol.reload()
+
         comparison = _compare_preflight_phase_results(
             repeat_phase_results[0], repeat_phase_results[1]
         )
