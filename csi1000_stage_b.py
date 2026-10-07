@@ -235,27 +235,42 @@ def _decision_audit(decisions) -> dict:
     }
 
 
-def _write_series_artifact(signal, path: Path) -> dict:
+def _write_parquet_bytes(frame, path: Path) -> str:
+    """Serialize parquet off-Volume, then publish one closed file to the mount."""
     import hashlib
+    import io
+    import os
+    import uuid
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    signal.sort_index().rename("score").to_frame().to_parquet(path, index=True)
+    buffer = io.BytesIO()
+    frame.to_parquet(buffer, index=True)
+    data = buffer.getvalue()
+
+    tmp = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    tmp.write_bytes(data)
+    os.replace(tmp, path)
+    persisted = path.read_bytes()
+    if persisted != data:
+        raise RuntimeError(f"parquet write round-trip mismatch before commit: {path}")
+    return hashlib.sha256(persisted).hexdigest()
+
+
+def _write_series_artifact(signal, path: Path) -> dict:
+    frame = signal.sort_index().rename("score").to_frame()
     return {
         "path": str(path),
-        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "sha256": _write_parquet_bytes(frame, path),
         "content_sha256": _signal_sha256(signal),
         "rows": int(len(signal)),
     }
 
 
 def _write_report_artifact(report, path: Path) -> dict:
-    import hashlib
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    report.sort_index().to_parquet(path, index=True)
+    ordered = report.sort_index()
     return {
         "path": str(path),
-        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "sha256": _write_parquet_bytes(ordered, path),
         "content_sha256": _frame_sha256(report),
         "rows": int(len(report)),
         "columns": [str(column) for column in report.columns],
@@ -331,6 +346,83 @@ def _phase_metrics(report) -> dict:
     if error is None or abs(float(error)) > ACCOUNT_ERROR_TOLERANCE:
         raise RuntimeError("Stage-B report fails account consistency")
     return {**perf, **_turnover_cost_summary(report)}
+
+
+def _report_compare_payload(report) -> dict:
+    """Small in-memory semantic snapshot used by the preflight A/B gate."""
+    import pandas as pd
+
+    ordered = report.sort_index()
+    if isinstance(ordered.index, pd.MultiIndex):
+        index_values = [
+            [str(part) for part in value]
+            for value in ordered.index.tolist()
+        ]
+    else:
+        index_values = [str(value) for value in ordered.index.tolist()]
+
+    numeric = {}
+    nonnumeric = {}
+    for column in ordered.columns:
+        key = str(column)
+        series = ordered[column]
+        if pd.api.types.is_numeric_dtype(series.dtype):
+            numeric[key] = list(
+                series.to_numpy(dtype=float, na_value=float("nan"))
+            )
+        else:
+            nonnumeric[key] = [
+                None if pd.isna(value) else str(value)
+                for value in series.tolist()
+            ]
+    return {
+        "index": index_values,
+        "index_names": [str(name) for name in ordered.index.names],
+        "columns": [str(column) for column in ordered.columns],
+        "dtypes": [str(dtype) for dtype in ordered.dtypes],
+        "numeric": numeric,
+        "nonnumeric": nonnumeric,
+    }
+
+
+def _verify_phase_payload_artifacts(payload: dict) -> dict:
+    """Verify the committed phase artifact set from the current Volume view."""
+    signal = _load_verified_series_artifact(payload["signal_artifact"])
+    _load_verified_decision_artifact(payload["decision_artifact"])
+    report = _load_verified_report_artifact(payload["report_artifact"])
+
+    metrics = _phase_metrics(report)
+    expected_metrics = payload.get("phase_metrics") or {}
+    mismatches = [
+        key
+        for key, value in metrics.items()
+        if key not in expected_metrics
+        or not _metric_values_match(expected_metrics.get(key), value)
+    ]
+    if mismatches:
+        raise RuntimeError(
+            f"Stage-B committed phase metric mismatch: {mismatches}"
+        )
+
+    result_path = Path(payload["result_path"])
+    saved = _load_json(result_path)
+    if not saved:
+        raise RuntimeError(f"Stage-B committed phase result missing: {result_path}")
+    if saved != {
+        key: value
+        for key, value in payload.items()
+        if not key.startswith("_") and key != "durability_gate"
+    }:
+        raise RuntimeError(f"Stage-B committed phase result drift: {result_path}")
+
+    return {
+        "passed": True,
+        "signal_rows": int(len(signal)),
+        "report_rows": int(len(report)),
+        "signal_content_sha256": payload["signal_artifact"]["content_sha256"],
+        "report_content_sha256": payload["report_artifact"]["content_sha256"],
+        "decision_content_sha256": payload["decision_artifact"]["content_sha256"],
+    }
 
 
 def _run_signal_backtest(signal):
