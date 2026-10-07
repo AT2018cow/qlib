@@ -157,7 +157,9 @@ def _load_task(model_params: dict) -> dict:
     from qlib_live_retrain import apply_lgb_reproducibility
 
     apply_lgb_reproducibility(cfg)
-    cfg["task"]["model"]["kwargs"]["num_threads"] = 8  # match Stage-A normalization
+    # Preserve the Stage-A v3 model semantics.  The source YAML supplied
+    # num_threads=20; Modal worker_cpu is an execution resource, not this
+    # LightGBM hyperparameter.
     cfg["task"]["model"]["kwargs"].update(dict(model_params))
     apply_lgb_reproducibility(cfg)
     actual_threads = int(cfg["task"]["model"]["kwargs"].get("num_threads", -1))
