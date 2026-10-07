@@ -414,7 +414,8 @@ def _verify_phase_payload_artifacts(payload: dict) -> dict:
     if saved != {
         key: value
         for key, value in payload.items()
-        if not key.startswith("_") and key != "durability_gate"
+        if not key.startswith("_")
+        and key not in {"durability_gate", "driver_durability_gate"}
     }:
         raise RuntimeError(f"Stage-B committed phase result drift: {result_path}")
 
@@ -997,53 +998,77 @@ def stage_b_phase_worker(args: dict):
         args["phase"],
         args.get("artifact_namespace"),
     )
-    signal_artifact = _write_series_artifact(signal, root / "signal.parquet")
-    report_artifact = _write_report_artifact(report, root / "report.parquet")
-    decision_artifact = _write_decision_artifact(
-        decision_audit, root / "decisions.json"
-    )
     result_path = root / "result.json"
-    payload = {
-        "protocol": STAGE_B_PROTOCOL_VERSION,
-        "snapshot_token": args["snapshot_token"],
-        "candidate_id": args["candidate"]["candidate_id"],
-        "candidate": args["candidate"],
-        "stage_a_rank": args["candidate"]["stage_a_rank"],
-        "phase": int(args["phase"]),
-        "artifact_namespace": args.get("artifact_namespace"),
-        "source": "deterministic_full_rolling",
-        "n_retrains": len(chunk_meta),
-        "chunk_predictions": chunk_meta,
-        "signal_artifact": signal_artifact,
-        "decision_artifact": decision_artifact,
-        "report_artifact": report_artifact,
-        "result_path": str(result_path),
-        "phase_metrics": dict(metrics),
-        **metrics,
-    }
     report_compare_payload = (
         _report_compare_payload(report)
         if args.get("return_report_compare_payload", False)
         else None
     )
-    root.mkdir(parents=True, exist_ok=True)
-    result_path.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False)
+
+    last_persistence_error = None
+    for persistence_attempt in (1, 2):
+        # Re-publish the complete phase artifact set from in-memory objects.
+        # This makes a transient missing-file commit repairable without
+        # retraining any LightGBM model or rerunning the backtest.
+        signal_artifact = _write_series_artifact(signal, root / "signal.parquet")
+        report_artifact = _write_report_artifact(report, root / "report.parquet")
+        decision_artifact = _write_decision_artifact(
+            decision_audit, root / "decisions.json"
+        )
+        payload = {
+            "protocol": STAGE_B_PROTOCOL_VERSION,
+            "snapshot_token": args["snapshot_token"],
+            "candidate_id": args["candidate"]["candidate_id"],
+            "candidate": args["candidate"],
+            "stage_a_rank": args["candidate"]["stage_a_rank"],
+            "phase": int(args["phase"]),
+            "artifact_namespace": args.get("artifact_namespace"),
+            "source": "deterministic_full_rolling",
+            "n_retrains": len(chunk_meta),
+            "chunk_predictions": chunk_meta,
+            "signal_artifact": signal_artifact,
+            "decision_artifact": decision_artifact,
+            "report_artifact": report_artifact,
+            "result_path": str(result_path),
+            "phase_metrics": dict(metrics),
+            **metrics,
+        }
+        root.mkdir(parents=True, exist_ok=True)
+        result_path.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False)
+        )
+        vol.commit()
+        vol.reload()
+
+        try:
+            durability_gate = _verify_phase_payload_artifacts(payload)
+        except Exception as exc:
+            last_persistence_error = exc
+            if persistence_attempt == 1:
+                print(
+                    "[stage-b] phase artifact durability retry: "
+                    f"candidate={args['candidate']['candidate_id']} "
+                    f"phase={args['phase']} namespace={args.get('artifact_namespace')} "
+                    f"error={exc}"
+                )
+                continue
+            raise RuntimeError(
+                "Stage-B phase artifacts failed commit/reload verification "
+                "after two publish attempts"
+            ) from exc
+
+        returned = dict(payload)
+        returned["durability_gate"] = {
+            **durability_gate,
+            "publish_attempt": persistence_attempt,
+        }
+        if report_compare_payload is not None:
+            returned["_report_compare_payload"] = report_compare_payload
+        return returned
+
+    raise RuntimeError(
+        f"unreachable Stage-B phase persistence failure: {last_persistence_error}"
     )
-
-    # A successful return now means the entire phase artifact set survived a
-    # commit -> reload -> hash/metric round trip.  If Modal persistence is
-    # transiently incomplete, this function raises and Modal's function retry
-    # reruns only the cheap phase backtest, never the 22 model fits.
-    vol.commit()
-    vol.reload()
-    durability_gate = _verify_phase_payload_artifacts(payload)
-
-    returned = dict(payload)
-    returned["durability_gate"] = durability_gate
-    if report_compare_payload is not None:
-        returned["_report_compare_payload"] = report_compare_payload
-    return returned
 
 
 def _numeric_report_diagnostics(left, right):
@@ -1210,6 +1235,70 @@ def _load_passing_preflight(snapshot_token: str) -> dict:
         )
     if payload.get("snapshot_token") != snapshot_token:
         raise RuntimeError("Stage-B preflight snapshot mismatch")
+    return payload
+
+
+def _chunk_job_key_from_args(args: dict) -> tuple:
+    return (
+        args["candidate"]["candidate_id"],
+        int(args["phase"]),
+        args["retrain_asof"],
+    )
+
+
+def _chunk_job_key_from_result(row: dict) -> tuple:
+    return (
+        row["candidate_id"],
+        int(row["phase"]),
+        row["retrain_asof"],
+    )
+
+
+def _verify_and_repair_chunk_batch(
+    chunk_results: list[dict],
+    jobs: list[dict],
+    *,
+    worker_cpu: float,
+    worker_memory_mib: int,
+    worker_max_containers: int,
+) -> list[dict]:
+    """Cross-container verify chunks; refit only missing/corrupt artifacts."""
+    jobs_by_key = {_chunk_job_key_from_args(job): job for job in jobs}
+    rows_by_key = {_chunk_job_key_from_result(row): row for row in chunk_results}
+    if set(rows_by_key) != set(jobs_by_key):
+        raise RuntimeError("Stage-B chunk result/job key set mismatch")
+
+    vol.reload()
+    repair_jobs = []
+    for key, row in rows_by_key.items():
+        try:
+            _load_verified_series_artifact(row["prediction_artifact"])
+        except Exception as exc:
+            print(f"[stage-b] chunk durability repair scheduled {key}: {exc}")
+            repair_jobs.append({**jobs_by_key[key], "resume": False})
+
+    if repair_jobs:
+        repaired = list(
+            stage_b_retrain_worker.with_options(
+                cpu=worker_cpu,
+                memory=worker_memory_mib,
+                max_containers=worker_max_containers,
+            ).map(repair_jobs)
+        )
+        for row in repaired:
+            rows_by_key[_chunk_job_key_from_result(row)] = row
+        vol.reload()
+        for row in repaired:
+            _load_verified_series_artifact(row["prediction_artifact"])
+
+    return [rows_by_key[_chunk_job_key_from_args(job)] for job in jobs]
+
+
+def _driver_verify_phase_result(payload: dict) -> dict:
+    """Independent driver-container verification of worker-committed artifacts."""
+    vol.reload()
+    gate = _verify_phase_payload_artifacts(payload)
+    payload["driver_durability_gate"] = gate
     return payload
 
 
