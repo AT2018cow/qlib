@@ -25,6 +25,14 @@ The corrected implementation uses protocol `csi1000_lgb_stage_a_v2`. Any artifac
 created under the merged PR #15 `v1` implementation is superseded because v1 used a
 60-session one-fit fold and the pre-fix ranking/reproducibility contract.
 
+
+PR #17 does **not** change the Stage-A model/backtest protocol. It upgrades only the
+baseline reproducibility gate to `baseline_double_fit_4fold_v2`: model configuration,
+best iteration, and prediction signal remain exact-match requirements, while raw
+backtest reports are compared by exact structure, tight numeric tolerance, and
+recomputed canonical metrics. Raw report content hashes remain recorded audit evidence
+but are no longer required to be bitwise identical.
+
 ChiNext rescue and STAR reproducibility repair remain valid later workstreams, but they
 are intentionally outside this implementation.
 
@@ -161,7 +169,8 @@ This is intentionally small enough to validate:
 - artifact retention;
 - turnover/cost extraction;
 - resumability;
-- exact baseline double-fit prediction/report reproducibility.
+- exact baseline double-fit model/prediction reproducibility;
+- semantic baseline report reproducibility with retained A/B diagnostics.
 
 Do not expand the search if the smoke artifacts fail any of these checks.
 
@@ -236,6 +245,11 @@ tests/test_csi1000_tuner_core.py
 
 - creates one provider snapshot for the run;
 - requires a baseline 4-fold double-fit reproducibility gate before candidate ranking;
+- preserves repeat A under `_repro/baseline_double_fit_4fold_v2/repeat_a/` while
+  repeat B remains the canonical baseline artifact;
+- requires report index/columns/dtypes to match exactly, numeric values to satisfy
+  `rtol=1e-10` and `atol=1e-12` (with account normalized by initial cash), and
+  recomputed canonical metrics plus turnover/cost to match;
 - fingerprints provider/config/runtime/source lineage;
 - runs candidate-fold jobs;
 - saves signal/report Parquet artifacts and hashes;
@@ -272,7 +286,8 @@ identity produces a different snapshot token and therefore a separate artifact l
 Do not expand beyond the 12-candidate smoke if any of the following occurs:
 
 - fold chronology or purge assertion fails;
-- baseline double-fit prediction/report hashes do not match exactly;
+- baseline double-fit model config, best iteration, or prediction signal hashes do not match exactly;
+- baseline A/B report structure, numeric tolerance, canonical metrics, turnover, or cost comparison fails;
 - canonical account consistency is not exact within tolerance;
 - a signal/report hash cannot be independently reloaded;
 - turnover or cost is missing;
