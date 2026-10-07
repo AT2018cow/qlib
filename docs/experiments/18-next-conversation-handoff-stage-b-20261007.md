@@ -303,6 +303,12 @@ The runner:
   candidate selection;
 - fingerprints Stage-B protocol, provider, source, runtime, Stage-A evidence,
   deterministic strategy, and model config;
+- compares the **unoverlaid** Stage-B base model config to Stage-A
+  `base_model_config_sha256`, because Stage-A created that hash before applying
+  any candidate overlay;
+- fingerprints each frozen candidate's overlaid model config separately and
+  requires every retrain worker (including resume artifacts) to match that
+  candidate-specific hash;
 - persists each retrain prediction chunk independently;
 - validates chunk artifacts before resume;
 - assembles one continuous signal lineage per candidate/phase;
@@ -339,16 +345,17 @@ Starter currently allows 100 containers at the workspace level.
 Do not interpret that as a guarantee that 100 high-resource workers will be
 simultaneously schedulable.
 
-Stage A already proved this allocation works in this workspace:
+Stage A proved the following conservative allocation works in this workspace:
 
 ```text
 worker CPU          8 Modal physical cores (~16 conventional vCPU)
-worker memory       16384 MiB
+worker memory       24576 MiB
 LightGBM threads    20
 ```
 
-PR #20 deliberately retains those proven per-container resources. The Stage-B
-horizontal cap defaults to:
+Stage B deliberately keeps the proven 8-core CPU request and LightGBM
+`num_threads=20`, while using a leaner default memory request of 16384 MiB.
+The Stage-B horizontal cap defaults to:
 
 ```text
 max_containers      64
@@ -379,11 +386,12 @@ worker containers    1 .. 100
 ```
 
 Do not change `num_threads` merely to chase throughput; preserve model
-semantics. The baseline phase-0 preflight has 44 model fits and therefore also
-acts as a real scheduling/throughput probe. If it scales cleanly to around 40+
-workers, the 64-container full-run cap is reasonable. If Modal schedules
-materially fewer, inspect actual function/container stats before changing the
-runtime cap. The runner rejects caps above the Starter 100-container limit.
+semantics. The baseline phase-0 preflight has 44 model fits, but the two
+22-retrain repeats run sequentially. Therefore the preflight can validate
+per-worker CPU/memory behavior and fit duration, but cannot demonstrate
+40-64-way retrain scaling. The full Stage-B grid has enough backlog to test the
+64-container cap. The runner rejects caps above the Starter 100-container
+limit.
 
 Use `--detach` for long Modal runs so local/client failure does not
 automatically kill remote work.
