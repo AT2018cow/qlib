@@ -530,9 +530,15 @@ def _compare_repro_reports(repeat_a: list[dict], repeat_b: list[dict]) -> dict:
                 series_b = report_b[column]
                 if pd.api.types.is_numeric_dtype(series_a.dtype):
                     scale = 100000000.0 if str(column) == "account" else 1.0
+                    values_a = (
+                        series_a.to_numpy(dtype=float, na_value=float("nan")) / scale
+                    )
+                    values_b = (
+                        series_b.to_numpy(dtype=float, na_value=float("nan")) / scale
+                    )
                     diag = numeric_reproducibility_diagnostics(
-                        (float(value) / scale for value in series_a.tolist()),
-                        (float(value) / scale for value in series_b.tolist()),
+                        values_a,
+                        values_b,
                         rtol=REPORT_REPRO_RTOL,
                         atol=REPORT_REPRO_ATOL,
                     )
@@ -552,21 +558,32 @@ def _compare_repro_reports(repeat_a: list[dict], repeat_b: list[dict]) -> dict:
                         detail["passed"] = False
                         detail["errors"].append(f"non_numeric_mismatch:{column}")
 
-        metrics_a = _recompute_result_metrics(report_a, fold)
-        metrics_b = _recompute_result_metrics(report_b, fold)
-        metric_mismatches = [
-            key
-            for key in metrics_a
-            if key not in metrics_b
-            or not _metric_values_match(metrics_a[key], metrics_b[key])
-        ]
-        if metric_mismatches:
-            detail["passed"] = False
+        if detail["structure_match"]:
+            try:
+                metrics_a = _recompute_result_metrics(report_a, fold)
+                metrics_b = _recompute_result_metrics(report_b, fold)
+            except Exception as exc:
+                detail["passed"] = False
+                detail["canonical_metrics_match"] = False
+                detail["errors"].append(
+                    f"canonical_metric_recompute_failed:{type(exc).__name__}:{exc}"
+                )
+            else:
+                metric_mismatches = [
+                    key
+                    for key in metrics_a
+                    if key not in metrics_b
+                    or not _metric_values_match(metrics_a[key], metrics_b[key])
+                ]
+                if metric_mismatches:
+                    detail["passed"] = False
+                    detail["canonical_metrics_match"] = False
+                    detail["errors"].append(
+                        "canonical_metric_mismatch:" + ",".join(metric_mismatches)
+                    )
+                detail["canonical_metrics"] = metrics_b
+        else:
             detail["canonical_metrics_match"] = False
-            detail["errors"].append(
-                "canonical_metric_mismatch:" + ",".join(metric_mismatches)
-            )
-        detail["canonical_metrics"] = metrics_b
 
         if not detail["passed"]:
             all_passed = False
