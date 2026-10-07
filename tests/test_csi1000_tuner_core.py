@@ -79,6 +79,7 @@ class CSI1000TunerCoreTests(unittest.TestCase):
 
     def test_frozen_protocol_is_csi1000_only(self):
         protocol = frozen_protocol()
+        self.assertEqual(protocol["protocol"], "csi1000_lgb_stage_a_v2")
         self.assertEqual(protocol["market"], "csi1000")
         self.assertEqual(protocol["target"], "raw_20d")
         self.assertEqual(protocol["retrain_frequency"], 20)
@@ -283,6 +284,7 @@ class CSI1000TunerCoreTests(unittest.TestCase):
         ast.parse(source)
         self.assertIn('validate_reproducibility_pairs(repeat_a, repeat_b)', source)
         self.assertIn('_compare_repro_reports(repeat_a, repeat_b)', source)
+        self.assertIn('vol.reload()\n\n    reproducibility_gate', source)
         self.assertIn('artifact_namespace": f"_repro/{REPRO_GATE_VERSION}/repeat_a"', source)
         self.assertIn('_assert_reusable_metrics(payload, report, args["fold"])', source)
         self.assertIn('"ranking_contract": ranking_contract("screen")', source)
