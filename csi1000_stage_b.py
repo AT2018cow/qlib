@@ -411,13 +411,29 @@ def _verify_phase_payload_artifacts(payload: dict) -> dict:
     saved = _load_json(result_path)
     if not saved:
         raise RuntimeError(f"Stage-B committed phase result missing: {result_path}")
-    if saved != {
-        key: value
-        for key, value in payload.items()
-        if not key.startswith("_")
-        and key not in {"durability_gate", "driver_durability_gate"}
-    }:
-        raise RuntimeError(f"Stage-B committed phase result drift: {result_path}")
+    persisted_fields = (
+        "protocol",
+        "snapshot_token",
+        "candidate_id",
+        "candidate",
+        "stage_a_rank",
+        "phase",
+        "artifact_namespace",
+        "n_retrains",
+        "chunk_predictions",
+        "signal_artifact",
+        "decision_artifact",
+        "report_artifact",
+        "result_path",
+    )
+    drift = [
+        key for key in persisted_fields
+        if saved.get(key) != payload.get(key)
+    ]
+    if drift:
+        raise RuntimeError(
+            f"Stage-B committed phase result drift {result_path}: {drift}"
+        )
 
     return {
         "passed": True,
@@ -951,20 +967,15 @@ def _load_reusable_phase(args: dict):
     payload = _load_json(result_path)
     if not _valid_phase_result(payload, args):
         return None
-    _load_verified_series_artifact(payload["signal_artifact"])
-    _load_verified_decision_artifact(payload["decision_artifact"])
-    report = _load_verified_report_artifact(payload["report_artifact"])
-    metrics = _phase_metrics(report)
-    mismatches = [
-        key
-        for key, value in metrics.items()
-        if key not in payload or not _metric_values_match(payload.get(key), value)
-    ]
-    if mismatches:
-        raise RuntimeError(f"reusable Stage-B phase metric mismatch: {mismatches}")
-    payload.update(metrics)
-    payload["source"] = "artifact_reuse_verified"
-    return payload
+    if not payload.get("result_path"):
+        # Pre-PR24 phase artifacts are not reused under the strengthened
+        # transactional contract.
+        return None
+    durability_gate = _verify_phase_payload_artifacts(payload)
+    returned = dict(payload)
+    returned["durability_gate"] = durability_gate
+    returned["_runtime_source"] = "artifact_reuse_verified"
+    return returned
 
 
 @app.function(
@@ -1565,7 +1576,7 @@ def stage_b_driver(
     for candidate in candidates:
         rows = sorted(
             [
-                row
+                _public_phase_payload(row)
                 for row in phase_results
                 if row["candidate_id"] == candidate["candidate_id"]
             ],
