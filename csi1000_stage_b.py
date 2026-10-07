@@ -40,6 +40,7 @@ from csi1000_stage_b_core import (
     WORKER_MAX_CONTAINERS,
     WORKER_MEMORY_MIB,
     WORKER_RETRIES,
+    validate_worker_resources,
     build_phase_jobs,
     frozen_stage_b_protocol,
     rank_stage_b_candidates,
@@ -1065,17 +1066,22 @@ def _jobs_for(candidate: dict, phase: int, calendar: list[str], snapshot: str,
 def stage_b_driver(
     preflight_only: bool = False,
     resume: bool = True,
+    worker_cpu: float = WORKER_CPU,
+    worker_memory_mib: int = WORKER_MEMORY_MIB,
     worker_max_containers: int = WORKER_MAX_CONTAINERS,
 ):
     import json
 
     from qlib_audit_fixes import read_trading_calendar
 
-    worker_cap = int(worker_max_containers)
-    if worker_cap < 1 or worker_cap > STARTER_CONTAINER_LIMIT:
-        raise ValueError(
-            f"worker_max_containers must be within 1..{STARTER_CONTAINER_LIMIT}"
-        )
+    execution_resources = validate_worker_resources(
+        cpu=float(worker_cpu),
+        memory_mib=int(worker_memory_mib),
+        max_containers=int(worker_max_containers),
+    )
+    worker_cpu_value = execution_resources["retrain_worker_cpu_physical_cores"]
+    worker_memory_value = execution_resources["retrain_worker_memory_mib"]
+    worker_cap = execution_resources["retrain_worker_max_containers"]
 
     setup = prepare_stage_b.remote()
     vol.reload()
@@ -1098,9 +1104,14 @@ def stage_b_driver(
             )
             print(
                 f"[stage-b preflight] {repeat}: {len(jobs)} retrain fits; "
+                f"cpu={worker_cpu_value} memory={worker_memory_value}MiB "
                 f"worker cap={worker_cap}"
             )
-            chunks = list(stage_b_retrain_worker.with_options(max_containers=worker_cap).map(jobs))
+            chunks = list(stage_b_retrain_worker.with_options(
+                cpu=worker_cpu_value,
+                memory=worker_memory_value,
+                max_containers=worker_cap,
+            ).map(jobs))
             vol.reload()
             phase = stage_b_phase_worker.remote(
                 {
@@ -1129,6 +1140,7 @@ def stage_b_driver(
             "phase": 0,
             "n_retrains_per_repeat": repeat_phase_results[0]["n_retrains"],
             "total_model_fits": 2 * repeat_phase_results[0]["n_retrains"],
+            "execution_resources": execution_resources,
             "repeat_a": repeat_phase_results[0],
             "repeat_b": repeat_phase_results[1],
             "comparison": comparison,
@@ -1144,12 +1156,7 @@ def stage_b_driver(
             "reserved_tail": setup["reserved_tail"],
             "fit_budget": setup["fit_budget"],
             "preflight": gate,
-            "execution_resources": {
-                "retrain_worker_max_containers": worker_cap,
-                "retrain_worker_cpu_physical_cores": WORKER_CPU,
-                "retrain_worker_memory_mib": WORKER_MEMORY_MIB,
-                "lightgbm_num_threads": MODEL_NUM_THREADS,
-            },
+            "execution_resources": execution_resources,
         }
 
     preflight = _load_passing_preflight(snapshot)
@@ -1175,9 +1182,16 @@ def stage_b_driver(
     print(
         f"[stage-b full] candidates={len(candidates)} phases={len(REFERENCE_PHASES)} "
         f"new/reusable retrain jobs={len(all_retrain_jobs)} "
+        f"cpu={worker_cpu_value} memory={worker_memory_value}MiB "
         f"worker cap={worker_cap}"
     )
-    chunk_results = list(stage_b_retrain_worker.map(all_retrain_jobs))
+    chunk_results = list(
+        stage_b_retrain_worker.with_options(
+            cpu=worker_cpu_value,
+            memory=worker_memory_value,
+            max_containers=worker_cap,
+        ).map(all_retrain_jobs)
+    )
     vol.reload()
     by_key = {}
     for row in chunk_results:
@@ -1264,12 +1278,7 @@ def stage_b_driver(
         "reserved_tail_policy": (
             "final_confirmation_only_do_not_retune_on_stage_b_results"
         ),
-        "execution_resources": {
-            "retrain_worker_max_containers": worker_cap,
-            "retrain_worker_cpu_physical_cores": WORKER_CPU,
-            "retrain_worker_memory_mib": WORKER_MEMORY_MIB,
-            "lightgbm_num_threads": MODEL_NUM_THREADS,
-        },
+        "execution_resources": execution_resources,
     }
     root = ARTIFACT_ROOT / snapshot
     root.mkdir(parents=True, exist_ok=True)
@@ -1284,6 +1293,8 @@ def stage_b_driver(
 def main(
     preflight_only: bool = False,
     resume: bool = True,
+    worker_cpu: float = WORKER_CPU,
+    worker_memory_mib: int = WORKER_MEMORY_MIB,
     worker_max_containers: int = WORKER_MAX_CONTAINERS,
 ):
     import json
@@ -1291,6 +1302,8 @@ def main(
     payload = stage_b_driver.remote(
         preflight_only=bool(preflight_only),
         resume=bool(resume),
+        worker_cpu=float(worker_cpu),
+        worker_memory_mib=int(worker_memory_mib),
         worker_max_containers=int(worker_max_containers),
     )
     out_dir = Path("results") / "csi1000_stage_b"
