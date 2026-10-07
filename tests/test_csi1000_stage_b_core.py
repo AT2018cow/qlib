@@ -182,6 +182,19 @@ class CSI1000StageBCoreTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_worker_resources(cpu=8, memory_mib=16384, max_containers=101)
 
+    def test_lightgbm_threads_preserve_stage_a_model_semantics(self):
+        source = (ROOT / "csi1000_stage_b.py").read_text()
+        self.assertEqual(MODEL_NUM_THREADS, 20)
+        self.assertNotIn('["num_threads"] = 8', source)
+        self.assertNotIn("num_threads'] = 8", source)
+
+        expanded = json.loads((ROOT / STAGE_A_EXPANDED_RESULT).read_text())
+        manifest = expanded["manifest"]
+        self.assertEqual(
+            manifest["base_model_config_sha256"],
+            "198a17ebd3ef271ad41393b688169afd0ae88f5f9989f500c30bfde9a6811df5",
+        )
+
     def test_stage_b_runner_is_deterministic_and_resume_aware(self):
         source = (ROOT / "csi1000_stage_b.py").read_text()
         ast.parse(source)
