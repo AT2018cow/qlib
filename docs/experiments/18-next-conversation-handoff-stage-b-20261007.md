@@ -343,7 +343,7 @@ Stage A already proved this allocation works in this workspace:
 
 ```text
 worker CPU          8 Modal physical cores (~16 conventional vCPU)
-worker memory       24576 MiB
+worker memory       16384 MiB
 LightGBM threads    20
 ```
 
@@ -356,13 +356,26 @@ Starter bound       100
 retries             2
 ```
 
-The cap is a runtime throughput option, not a model-selection parameter. It may
-be changed without changing the frozen candidates or LightGBM semantics:
+CPU, memory, and container cap are runtime execution options, not
+model-selection parameters. PR #20 defaults to 8 physical cores, a 16 GiB
+memory request, and 64 containers. They may be adjusted inside a bounded
+preflight envelope without changing the frozen candidates or LightGBM
+`num_threads=20` semantics:
 
 ```bash
 modal run --detach csi1000_stage_b.py \
   --preflight-only \
+  --worker-cpu 8 \
+  --worker-memory-mib 16384 \
   --worker-max-containers 64
+```
+
+Allowed runtime envelope:
+
+```text
+worker CPU           4 .. 8 Modal physical cores
+worker memory        12288 .. 24576 MiB
+worker containers    1 .. 100
 ```
 
 Do not change `num_threads` merely to chase throughput; preserve model
@@ -384,6 +397,8 @@ After PR #20 is merged, run **only** the engineering preflight first:
 ```bash
 modal run --detach csi1000_stage_b.py \
   --preflight-only \
+  --worker-cpu 8 \
+  --worker-memory-mib 16384 \
   --worker-max-containers 64
 ```
 
@@ -426,7 +441,10 @@ and ask the next conversation to audit it before starting the full grid.
 Run:
 
 ```bash
-modal run --detach csi1000_stage_b.py --worker-max-containers 64
+modal run --detach csi1000_stage_b.py \
+  --worker-cpu 8 \
+  --worker-memory-mib 16384 \
+  --worker-max-containers 64
 ```
 
 The passing preflight's baseline phase-0 result is reused, so the full run needs:
