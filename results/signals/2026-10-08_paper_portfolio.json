@@ -1,0 +1,39 @@
+{
+  "state_version": 2,
+  "market": "csi1000",
+  "signal_data_date": "2026-09-30",
+  "usage_date": "2026-10-08",
+  "execution_report": null,
+  "pending_orders": {
+    "signal_date": "2026-09-30",
+    "execution_date": "2026-10-08",
+    "sell": [],
+    "buy": [
+      "SH688146",
+      "SH605376",
+      "SH688141",
+      "SH603883",
+      "SH601326",
+      "SZ301175",
+      "SH601107",
+      "SH601333",
+      "SH600787",
+      "SH600662",
+      "SZ300685",
+      "SZ300080",
+      "SZ000828",
+      "SZ002948",
+      "SZ300070",
+      "SZ301589",
+      "SH688668",
+      "SH600323",
+      "SH600033",
+      "SH600908"
+    ]
+  },
+  "cash": 100000000.0,
+  "n_positions": 0,
+  "positions": {},
+  "model_fit_asof": "2026-09-30",
+  "note": "Orders are planned before the execution-day open and settled on a later data refresh using the recorded open. If provider data is stale, the prior pending order remains frozen and no new paper order is invented."
+}
