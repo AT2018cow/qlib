@@ -14,6 +14,7 @@ from csi1000_tuner_core import (
     SCREEN_EXECUTION_SESSIONS,
     build_candidate_spec,
     build_stage_a_folds,
+    deterministic_score_order,
     expanded_candidate_specs,
     frozen_protocol,
     numeric_reproducibility_diagnostics,
@@ -32,7 +33,14 @@ def _calendar():
     return [f"2026-{month:02d}-{day:02d}" for month in range(1, 13) for day in range(1, 29)]
 
 
-def _repro_row(fold_id, *, signal="a", report="b", best_iteration=123):
+def _repro_row(
+    fold_id,
+    *,
+    signal="a",
+    decision="d",
+    report="b",
+    best_iteration=123,
+):
     candidate = build_candidate_spec(dict(BASELINE_TUNABLE_PARAMS))
     return {
         "candidate_id": candidate["candidate_id"],
@@ -43,6 +51,7 @@ def _repro_row(fold_id, *, signal="a", report="b", best_iteration=123):
         "model_config_sha256": "m" * 64,
         "best_iteration": best_iteration,
         "signal_sha256": signal * 64,
+        "decision_artifact": {"content_sha256": decision * 64},
         "report_artifact": {"content_sha256": report * 64},
         "account_return_max_error": 0.0,
     }
@@ -79,7 +88,9 @@ class CSI1000TunerCoreTests(unittest.TestCase):
 
     def test_frozen_protocol_is_csi1000_only(self):
         protocol = frozen_protocol()
-        self.assertEqual(protocol["protocol"], "csi1000_lgb_stage_a_v2")
+        self.assertEqual(protocol["protocol"], "csi1000_lgb_stage_a_v3")
+        self.assertEqual(protocol["strategy"], "deterministic_topk_dropout_v1")
+        self.assertEqual(protocol["tie_break"], "score_desc_instrument_asc")
         self.assertEqual(protocol["market"], "csi1000")
         self.assertEqual(protocol["target"], "raw_20d")
         self.assertEqual(protocol["retrain_frequency"], 20)
@@ -88,6 +99,16 @@ class CSI1000TunerCoreTests(unittest.TestCase):
         self.assertEqual(RETRAIN_FREQUENCY, 20)
         self.assertEqual(SCREEN_EXECUTION_SESSIONS, RETRAIN_FREQUENCY)
         self.assertEqual(protocol["screen_execution_sessions"], 20)
+
+    def test_deterministic_score_order_is_input_order_independent(self):
+        a = [("SZ300003", 0.2), ("SH600001", 0.2), ("SZ000002", 0.1)]
+        b = list(reversed(a))
+        expected = ["SH600001", "SZ300003", "SZ000002"]
+        self.assertEqual(deterministic_score_order(a), expected)
+        self.assertEqual(deterministic_score_order(b), expected)
+
+        with_nan = [("B", float("nan")), ("A", 0.0), ("C", float("nan"))]
+        self.assertEqual(deterministic_score_order(with_nan), ["A", "B", "C"])
 
     def test_candidate_identity_is_order_independent(self):
         a = self.candidate()
@@ -219,6 +240,11 @@ class CSI1000TunerCoreTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             validate_reproducibility_pairs(repeat_a, bad)
 
+        bad_decision = [_repro_row(f"fold{i}") for i in range(1, 5)]
+        bad_decision[1]["decision_artifact"]["content_sha256"] = "z" * 64
+        with self.assertRaises(RuntimeError):
+            validate_reproducibility_pairs(repeat_a, bad_decision)
+
         # Raw report hashes are audit evidence; semantic report validation is
         # performed separately by the runner and must not weaken signal exactness.
         report_only_diff = [_repro_row(f"fold{i}") for i in range(1, 5)]
@@ -226,7 +252,7 @@ class CSI1000TunerCoreTests(unittest.TestCase):
         gate = validate_reproducibility_pairs(repeat_a, report_only_diff)
         self.assertTrue(gate["passed"])
         self.assertFalse(gate["folds"]["fold1"]["report_exact_match"])
-        self.assertEqual(REPRO_GATE_VERSION, "baseline_double_fit_4fold_v2")
+        self.assertEqual(REPRO_GATE_VERSION, "baseline_double_fit_4fold_v3")
 
     def test_numeric_reproducibility_tolerates_only_float_tail_noise(self):
         tiny = numeric_reproducibility_diagnostics(
@@ -284,11 +310,21 @@ class CSI1000TunerCoreTests(unittest.TestCase):
         ast.parse(source)
         self.assertIn('validate_reproducibility_pairs(repeat_a, repeat_b)', source)
         self.assertIn('_compare_repro_reports(repeat_a, repeat_b)', source)
+        self.assertIn('"class": "DeterministicTopkDropoutStrategy"', source)
+        self.assertIn('"decision_artifact": decision_artifact', source)
+        self.assertIn('preflight_only: bool = False', source)
         self.assertIn('vol.reload()\n\n    reproducibility_gate', source)
         self.assertIn('artifact_namespace": f"_repro/{REPRO_GATE_VERSION}/repeat_a"', source)
         self.assertIn('_assert_reusable_metrics(payload, report, args["fold"])', source)
         self.assertIn('"ranking_contract": ranking_contract("screen")', source)
         self.assertNotIn('"relative_excess_cagr_q25",\n                "relative_excess_cagr_median"', source)
+
+    def test_deterministic_strategy_source_is_explicit_and_syntax_valid(self):
+        source = (ROOT / "deterministic_strategy.py").read_text()
+        ast.parse(source)
+        self.assertIn("sorted(current_temp.get_stock_list(), key=str)", source)
+        self.assertIn("deterministic_score_order(score.items())", source)
+        self.assertNotIn("np.random", source)
 
     def test_stage_b_selection_retains_baseline(self):
         summaries = []

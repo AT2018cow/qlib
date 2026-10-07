@@ -96,7 +96,8 @@ image = (
         (
             "cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py "
             "/root/qlib/board_rules.py /root/qlib/board_execution.py "
-            "/root/qlib/portfolio_performance.py /root/qlib/csi1000_tuner_core.py /root/"
+            "/root/qlib/portfolio_performance.py /root/qlib/csi1000_tuner_core.py "
+            "/root/qlib/deterministic_strategy.py /root/"
         ),
     )
 )
@@ -250,6 +251,7 @@ def _runtime_manifest(cutoff: str) -> dict:
     import platform
 
     import csi1000_tuner_core
+    import deterministic_strategy
     from qlib_live_retrain import LGB_REPRO_PARAMS, provider_training_fingerprint
 
     def version(name: str) -> str:
@@ -261,8 +263,9 @@ def _runtime_manifest(cutoff: str) -> dict:
     cfg = _load_task()
     source_path = Path(__file__)
     core_path = Path(csi1000_tuner_core.__file__)
+    strategy_path = Path(deterministic_strategy.__file__)
     manifest = {
-        "manifest_version": "csi1000_tuner_repro_v2",
+        "manifest_version": "csi1000_tuner_repro_v3",
         "protocol": frozen_protocol(),
         "provider_cutoff": cutoff,
         "provider_fingerprint": provider_training_fingerprint(DATA_DIR, MARKET, cutoff),
@@ -280,6 +283,11 @@ def _runtime_manifest(cutoff: str) -> dict:
         ),
         "core_source_sha256": (
             hashlib.sha256(core_path.read_bytes()).hexdigest() if core_path.is_file() else "unavailable"
+        ),
+        "deterministic_strategy_source_sha256": (
+            hashlib.sha256(strategy_path.read_bytes()).hexdigest()
+            if strategy_path.is_file()
+            else "unavailable"
         ),
     }
     manifest["snapshot_token"] = _stable_json_sha256(manifest)
@@ -317,9 +325,70 @@ def _worker_assert_snapshot(expected: str) -> dict:
     return manifest
 
 
+def _decision_audit(decisions) -> dict:
+    """Canonical decision/order lineage, including empty decision days."""
+    rows = []
+    total_orders = 0
+    for decision_index, decision in enumerate(decisions):
+        orders = []
+        for order_index, order in enumerate(decision.get_decision()):
+            orders.append(
+                {
+                    "order_index": order_index,
+                    "stock_id": str(order.stock_id),
+                    "direction": int(order.direction),
+                    "amount": float(order.amount),
+                    "deal_amount": float(order.deal_amount),
+                    "factor": None if order.factor is None else float(order.factor),
+                    "start_time": str(order.start_time),
+                    "end_time": str(order.end_time),
+                }
+            )
+        total_orders += len(orders)
+        rows.append(
+            {
+                "decision_index": decision_index,
+                "start_time": str(decision.start_time),
+                "end_time": str(decision.end_time),
+                "orders": orders,
+            }
+        )
+    return {
+        "audit_version": "topk_decisions_v1",
+        "decision_count": len(rows),
+        "order_count": total_orders,
+        "decisions": rows,
+        "content_sha256": _stable_json_sha256(rows),
+    }
+
+
+def _write_decision_artifact(decision_audit: dict, path: Path) -> dict:
+    import hashlib
+    import json
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            decision_audit["decisions"],
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        )
+    )
+    return {
+        "path": str(path),
+        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "content_sha256": decision_audit["content_sha256"],
+        "audit_version": decision_audit["audit_version"],
+        "decision_count": decision_audit["decision_count"],
+        "order_count": decision_audit["order_count"],
+    }
+
+
 def _run_signal_backtest(signal, *, execution_start: str, execution_end: str):
     import qlib
-    from qlib.backtest import backtest as normal_backtest
+    from qlib.backtest import collect_data
 
     from board_execution import research_exchange
 
@@ -327,11 +396,15 @@ def _run_signal_backtest(signal, *, execution_start: str, execution_end: str):
     executor = {
         "class": "SimulatorExecutor",
         "module_path": "qlib.backtest.executor",
-        "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
+        "kwargs": {
+            "time_per_step": "day",
+            "generate_portfolio_metrics": True,
+            "track_data": True,
+        },
     }
     strategy = {
-        "class": "TopkDropoutStrategy",
-        "module_path": "qlib.contrib.strategy",
+        "class": "DeterministicTopkDropoutStrategy",
+        "module_path": "deterministic_strategy",
         "kwargs": {
             "signal": signal,
             "topk": TOPK,
@@ -339,16 +412,25 @@ def _run_signal_backtest(signal, *, execution_start: str, execution_end: str):
             "forbid_all_trade_at_limit": False,
         },
     }
-    portfolio_metrics, _ = normal_backtest(
-        strategy=strategy,
-        executor=executor,
-        start_time=execution_start,
-        end_time=execution_end,
-        account=100000000,
-        benchmark="SH000852",
-        exchange_kwargs=research_exchange(execution_start, execution_end, codes=MARKET),
+    return_value = {}
+    decisions = list(
+        collect_data(
+            strategy=strategy,
+            executor=executor,
+            start_time=execution_start,
+            end_time=execution_end,
+            account=100000000,
+            benchmark="SH000852",
+            exchange_kwargs=research_exchange(
+                execution_start,
+                execution_end,
+                codes=MARKET,
+            ),
+            return_value=return_value,
+        )
     )
-    return portfolio_metrics["1day"][0]
+    report = return_value["portfolio_dict"]["1day"][0]
+    return report, _decision_audit(decisions)
 
 
 def _turnover_cost_summary(report) -> dict:
@@ -452,7 +534,11 @@ def _validate_reusable_result(payload: dict, args: dict) -> bool:
         return False
     if payload.get("candidate") != args["candidate"]:
         return False
-    return bool(payload.get("signal_artifact") and payload.get("report_artifact"))
+    return bool(
+        payload.get("signal_artifact")
+        and payload.get("decision_artifact")
+        and payload.get("report_artifact")
+    )
 
 
 def _load_verified_report_artifact(meta: dict):
@@ -618,14 +704,28 @@ def _load_reusable_result(args: dict):
         return None
 
     signal_meta = payload["signal_artifact"]
+    decision_meta = payload["decision_artifact"]
     report_meta = payload["report_artifact"]
     signal_path = Path(signal_meta["path"])
+    decision_path = Path(decision_meta["path"])
     report_path = Path(report_meta["path"])
-    if not signal_path.is_file() or not report_path.is_file():
+    if (
+        not signal_path.is_file()
+        or not decision_path.is_file()
+        or not report_path.is_file()
+    ):
         return None
     if hashlib.sha256(signal_path.read_bytes()).hexdigest() != signal_meta["sha256"]:
         return None
+    if hashlib.sha256(decision_path.read_bytes()).hexdigest() != decision_meta["sha256"]:
+        return None
     if hashlib.sha256(report_path.read_bytes()).hexdigest() != report_meta["sha256"]:
+        return None
+
+    import json
+
+    decision_rows = json.loads(decision_path.read_text())
+    if _stable_json_sha256(decision_rows) != decision_meta["content_sha256"]:
         return None
 
     signal = pd.read_parquet(signal_path)["score"].sort_index()
@@ -706,7 +806,7 @@ def stage_a_fold_worker(args: dict):
         artifact_namespace=args.get("artifact_namespace"),
     )
     signal_artifact = _write_series_artifact(prediction, root / "signal.parquet")
-    report = _run_signal_backtest(
+    report, decision_audit = _run_signal_backtest(
         prediction,
         execution_start=fold["execution"][0],
         execution_end=fold["execution"][1],
@@ -722,6 +822,10 @@ def stage_a_fold_worker(args: dict):
         )
     turnover_cost = _turnover_cost_summary(report)
     report_artifact = _write_report_artifact(report, root / "report.parquet")
+    decision_artifact = _write_decision_artifact(
+        decision_audit,
+        root / "decisions.json",
+    )
 
     best_iteration = None
     if getattr(model, "model", None) is not None:
@@ -741,6 +845,7 @@ def stage_a_fold_worker(args: dict):
         "best_iteration": best_iteration,
         "signal_sha256": signal_artifact["content_sha256"],
         "signal_artifact": signal_artifact,
+        "decision_artifact": decision_artifact,
         "report_artifact": report_artifact,
         **perf,
         **turnover_cost,
@@ -755,8 +860,9 @@ def stage_a_fold_worker(args: dict):
 def stage_a_screen_driver(
     expanded: bool = False,
     candidate_count: int = 12,
-    force_data: bool = True,
+    force_data: bool = False,
     resume: bool = True,
+    preflight_only: bool = False,
 ):
     """Run the 12-candidate smoke screen or a capped deterministic expansion."""
     import json
@@ -835,6 +941,24 @@ def stage_a_screen_driver(
             f"{failed}; diagnostics={gate_path}"
         )
 
+    if preflight_only:
+        payload = {
+            "protocol": PROTOCOL_VERSION,
+            "screen_kind": "preflight_only",
+            "manifest": manifest,
+            "folds": folds,
+            "reserved_tail": tail,
+            "candidate_count": 1,
+            "fold_count": len(folds),
+            "max_new_fits": reproducibility_gate["total_gate_fits"],
+            "reproducibility_gate": reproducibility_gate,
+        }
+        (gate_root / "preflight_summary.json").write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False)
+        )
+        vol.commit()
+        return payload
+
     # The second baseline repeat is now the canonical retained baseline result.
     # Avoid a third baseline fit; all remaining candidates follow normal resume policy.
     jobs = [
@@ -898,8 +1022,9 @@ def stage_a_screen_driver(
 def main(
     expanded: bool = False,
     candidate_count: int = 12,
-    force_data: bool = True,
+    force_data: bool = False,
     resume: bool = True,
+    preflight_only: bool = False,
 ):
     """Launch Stage-A through normal Modal app boundaries and export review JSON."""
     import json
@@ -909,6 +1034,7 @@ def main(
         candidate_count=candidate_count,
         force_data=force_data,
         resume=resume,
+        preflight_only=preflight_only,
     )
     token = payload["manifest"]["snapshot_token"]
     out = Path("results") / "csi1000_tuner"
