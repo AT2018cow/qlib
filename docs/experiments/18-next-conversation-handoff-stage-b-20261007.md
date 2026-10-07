@@ -434,13 +434,46 @@ The gate requires:
 The preflight is **engineering-only**. Do not use its return/CAGR to alter,
 drop, or add candidates.
 
-PR #23 fixes a Modal Volume visibility bug in this preflight path. The phase
-worker correctly stores phase-level artifacts under
-`phases/<candidate>/phaseXX/`; retrain prediction chunks remain under
-`chunks/<candidate>/phaseXX/<retrain-date>/`. After each phase worker commits
-its report/signal/decision artifacts, the driver must call `vol.reload()`
-before comparing repeat A and repeat B. Do not "fix" this by moving reports into
-the chunk namespace.
+PR #23 added the missing driver-side Volume refresh, but a subsequent
+preflight showed that a phase report could still be absent from the durable
+Volume even though the same worker had already created/read it before commit.
+PR #24 therefore hardens the complete artifact transaction instead of relying
+on another trial-and-error path tweak:
+
+- each preflight invocation gets a unique
+  `_preflight/<run-id>/repeat_{a,b}` namespace, preventing detached/retried
+  runs from concurrently modifying the same files;
+- parquet is serialized to memory first and then published as one closed file
+  on the Volume mount;
+- a phase worker writes signal/report/decisions/result, calls
+  `vol.commit()`, then `vol.reload()`, and hash/metric-verifies the complete
+  artifact set before returning;
+- if that durability round trip fails once, the worker republishes the phase
+  artifacts from already-computed in-memory signal/report/decisions and retries
+  persistence without retraining any LightGBM model;
+- the driver independently verifies the committed artifact set from its own
+  refreshed Volume view;
+- the repeat-A/repeat-B semantic report comparison uses the in-memory semantic
+  report payload returned by the phase workers, so the gate no longer depends
+  on opening the report through the driver's mount;
+- retrain chunks are cross-container verified before phase assembly; only a
+  missing/corrupt chunk is refit, rather than restarting the whole run.
+
+The artifact schema itself remains correct and unchanged:
+
+```text
+chunks/<candidate>/phaseXX/<retrain-date>/
+    prediction.parquet
+    result.json
+
+phases/<candidate>/phaseXX/
+    signal.parquet
+    decisions.json
+    report.parquet
+    result.json
+```
+
+Do not move phase reports into the chunk namespace.
 
 Push the generated:
 

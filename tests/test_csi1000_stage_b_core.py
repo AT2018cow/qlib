@@ -209,28 +209,60 @@ class CSI1000StageBCoreTests(unittest.TestCase):
         self.assertIn("Stage-B unoverlaid base model config differs", source)
         self.assertIn("Stage-B candidate model config drift", source)
 
-    def test_preflight_refreshes_volume_after_phase_worker_commit(self):
+    def test_preflight_artifacts_are_isolated_durable_and_compared_in_memory(self):
         source = (ROOT / "csi1000_stage_b.py").read_text()
-        preflight = source.index("if preflight_only:")
-        phase_call = source.index(
-            "phase = stage_b_phase_worker.remote(",
-            preflight,
-        )
-        reload_after_phase = source.index("vol.reload()", phase_call)
-        comparison = source.index(
-            "comparison = _compare_preflight_phase_results(",
-            phase_call,
-        )
-        self.assertLess(phase_call, reload_after_phase)
-        self.assertLess(reload_after_phase, comparison)
+        ast.parse(source)
 
-        # The bug was Volume visibility, not an artifact-schema mistake.
-        self.assertIn('return root / "phases" / candidate_id', source)
-        self.assertIn('return root / "chunks" / candidate_id', source)
+        # Never let two detached preflights write the same phase files.
+        self.assertIn("preflight_run_id = uuid.uuid4().hex[:16]", source)
         self.assertIn(
-            'report_artifact = _write_report_artifact(report, root / "report.parquet")',
+            'namespace = f"_preflight/{preflight_run_id}/{repeat}"',
             source,
         )
+
+        # Parquet is serialized off-Volume and published as one closed file.
+        self.assertIn("def _write_parquet_bytes(", source)
+        self.assertIn("frame.to_parquet(buffer, index=True)", source)
+        self.assertIn("os.replace(tmp, path)", source)
+
+        # A phase return is successful only after commit -> reload -> full
+        # signal/report/decision/result verification.  A persistence anomaly
+        # gets one rewrite from in-memory objects, not 22 new model fits.
+        self.assertIn("for persistence_attempt in (1, 2):", source)
+        self.assertIn("vol.commit()", source)
+        self.assertIn("durability_gate = _verify_phase_payload_artifacts(payload)", source)
+        self.assertIn("phase artifact durability retry", source)
+
+        # The A/B semantic comparison uses the report values returned by the
+        # phase workers, so it does not depend on the driver's Volume mount.
+        self.assertIn("def _report_compare_payload(report)", source)
+        self.assertIn('report_a = a.get("_report_compare_payload")', source)
+        self.assertIn(
+            '"report_comparison_source": "phase_worker_return_payload_v1"',
+            source,
+        )
+        compare_start = source.index("def _compare_preflight_phase_results")
+        compare_end = source.index("def _preflight_path", compare_start)
+        compare_source = source[compare_start:compare_end]
+        self.assertNotIn(
+            '_load_verified_report_artifact(a["report_artifact"])',
+            compare_source,
+        )
+        self.assertNotIn(
+            '_load_verified_report_artifact(b["report_artifact"])',
+            compare_source,
+        )
+
+        # Driver independently checks committed files and phase repair never
+        # retrains chunks.
+        self.assertIn("def _driver_verify_phase_result", source)
+        self.assertIn("def _run_phase_verified", source)
+        self.assertIn("def _verify_and_repair_chunk_batch", source)
+
+        # Artifact responsibilities remain unchanged.
+        self.assertIn('return root / "phases" / candidate_id', source)
+        self.assertIn('return root / "chunks" / candidate_id', source)
+
 
     def test_stage_b_runner_is_deterministic_and_resume_aware(self):
         source = (ROOT / "csi1000_stage_b.py").read_text()

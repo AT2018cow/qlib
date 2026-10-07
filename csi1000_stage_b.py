@@ -235,27 +235,42 @@ def _decision_audit(decisions) -> dict:
     }
 
 
-def _write_series_artifact(signal, path: Path) -> dict:
+def _write_parquet_bytes(frame, path: Path) -> str:
+    """Serialize parquet off-Volume, then publish one closed file to the mount."""
     import hashlib
+    import io
+    import os
+    import uuid
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    signal.sort_index().rename("score").to_frame().to_parquet(path, index=True)
+    buffer = io.BytesIO()
+    frame.to_parquet(buffer, index=True)
+    data = buffer.getvalue()
+
+    tmp = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    tmp.write_bytes(data)
+    os.replace(tmp, path)
+    persisted = path.read_bytes()
+    if persisted != data:
+        raise RuntimeError(f"parquet write round-trip mismatch before commit: {path}")
+    return hashlib.sha256(persisted).hexdigest()
+
+
+def _write_series_artifact(signal, path: Path) -> dict:
+    frame = signal.sort_index().rename("score").to_frame()
     return {
         "path": str(path),
-        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "sha256": _write_parquet_bytes(frame, path),
         "content_sha256": _signal_sha256(signal),
         "rows": int(len(signal)),
     }
 
 
 def _write_report_artifact(report, path: Path) -> dict:
-    import hashlib
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    report.sort_index().to_parquet(path, index=True)
+    ordered = report.sort_index()
     return {
         "path": str(path),
-        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "sha256": _write_parquet_bytes(ordered, path),
         "content_sha256": _frame_sha256(report),
         "rows": int(len(report)),
         "columns": [str(column) for column in report.columns],
@@ -331,6 +346,103 @@ def _phase_metrics(report) -> dict:
     if error is None or abs(float(error)) > ACCOUNT_ERROR_TOLERANCE:
         raise RuntimeError("Stage-B report fails account consistency")
     return {**perf, **_turnover_cost_summary(report)}
+
+
+def _report_compare_payload(report) -> dict:
+    """Small in-memory semantic snapshot used by the preflight A/B gate."""
+    import pandas as pd
+
+    ordered = report.sort_index()
+    if isinstance(ordered.index, pd.MultiIndex):
+        index_values = [
+            [str(part) for part in value]
+            for value in ordered.index.tolist()
+        ]
+    else:
+        index_values = [str(value) for value in ordered.index.tolist()]
+
+    numeric = {}
+    nonnumeric = {}
+    for column in ordered.columns:
+        key = str(column)
+        series = ordered[column]
+        if pd.api.types.is_numeric_dtype(series.dtype):
+            numeric[key] = [
+                float(value)
+                for value in series.to_numpy(dtype=float, na_value=float("nan"))
+            ]
+        else:
+            nonnumeric[key] = [
+                None if pd.isna(value) else str(value)
+                for value in series.tolist()
+            ]
+    return {
+        "index": index_values,
+        "index_names": [str(name) for name in ordered.index.names],
+        "columns": [str(column) for column in ordered.columns],
+        "dtypes": [str(dtype) for dtype in ordered.dtypes],
+        "numeric": numeric,
+        "nonnumeric": nonnumeric,
+    }
+
+
+def _verify_phase_payload_artifacts(payload: dict) -> dict:
+    """Verify the committed phase artifact set from the current Volume view."""
+    signal = _load_verified_series_artifact(payload["signal_artifact"])
+    _load_verified_decision_artifact(payload["decision_artifact"])
+    report = _load_verified_report_artifact(payload["report_artifact"])
+
+    metrics = _phase_metrics(report)
+    expected_metrics = payload.get("phase_metrics") or {
+        key: payload.get(key) for key in metrics
+    }
+    mismatches = [
+        key
+        for key, value in metrics.items()
+        if key not in expected_metrics
+        or not _metric_values_match(expected_metrics.get(key), value)
+    ]
+    if mismatches:
+        raise RuntimeError(
+            f"Stage-B committed phase metric mismatch: {mismatches}"
+        )
+
+    result_path = Path(payload["result_path"])
+    saved = _load_json(result_path)
+    if not saved:
+        raise RuntimeError(f"Stage-B committed phase result missing: {result_path}")
+    persisted_fields = (
+        "protocol",
+        "snapshot_token",
+        "candidate_id",
+        "candidate",
+        "stage_a_rank",
+        "phase",
+        "artifact_namespace",
+        "n_retrains",
+        "chunk_predictions",
+        "signal_artifact",
+        "decision_artifact",
+        "report_artifact",
+        "result_path",
+    )
+    drift = [
+        key for key in persisted_fields
+        if saved.get(key) != payload.get(key)
+    ]
+    if drift:
+        raise RuntimeError(
+            f"Stage-B committed phase result drift {result_path}: {drift}"
+        )
+
+    return {
+        "passed": True,
+        "signal_rows": int(len(signal)),
+        "report_rows": int(len(report)),
+        "signal_content_sha256": payload["signal_artifact"]["content_sha256"],
+        "report_content_sha256": payload["report_artifact"]["content_sha256"],
+        "decision_content_sha256": payload["decision_artifact"]["content_sha256"],
+    }
 
 
 def _run_signal_backtest(signal):
@@ -855,20 +967,15 @@ def _load_reusable_phase(args: dict):
     payload = _load_json(result_path)
     if not _valid_phase_result(payload, args):
         return None
-    _load_verified_series_artifact(payload["signal_artifact"])
-    _load_verified_decision_artifact(payload["decision_artifact"])
-    report = _load_verified_report_artifact(payload["report_artifact"])
-    metrics = _phase_metrics(report)
-    mismatches = [
-        key
-        for key, value in metrics.items()
-        if key not in payload or not _metric_values_match(payload.get(key), value)
-    ]
-    if mismatches:
-        raise RuntimeError(f"reusable Stage-B phase metric mismatch: {mismatches}")
-    payload.update(metrics)
-    payload["source"] = "artifact_reuse_verified"
-    return payload
+    if not payload.get("result_path"):
+        # Pre-PR24 phase artifacts are not reused under the strengthened
+        # transactional contract.
+        return None
+    durability_gate = _verify_phase_payload_artifacts(payload)
+    returned = dict(payload)
+    returned["durability_gate"] = durability_gate
+    returned["_runtime_source"] = "artifact_reuse_verified"
+    return returned
 
 
 @app.function(
@@ -902,33 +1009,77 @@ def stage_b_phase_worker(args: dict):
         args["phase"],
         args.get("artifact_namespace"),
     )
-    signal_artifact = _write_series_artifact(signal, root / "signal.parquet")
-    report_artifact = _write_report_artifact(report, root / "report.parquet")
-    decision_artifact = _write_decision_artifact(
-        decision_audit, root / "decisions.json"
+    result_path = root / "result.json"
+    report_compare_payload = (
+        _report_compare_payload(report)
+        if args.get("return_report_compare_payload", False)
+        else None
     )
-    payload = {
-        "protocol": STAGE_B_PROTOCOL_VERSION,
-        "snapshot_token": args["snapshot_token"],
-        "candidate_id": args["candidate"]["candidate_id"],
-        "candidate": args["candidate"],
-        "stage_a_rank": args["candidate"]["stage_a_rank"],
-        "phase": int(args["phase"]),
-        "artifact_namespace": args.get("artifact_namespace"),
-        "source": "deterministic_full_rolling",
-        "n_retrains": len(chunk_meta),
-        "chunk_predictions": chunk_meta,
-        "signal_artifact": signal_artifact,
-        "decision_artifact": decision_artifact,
-        "report_artifact": report_artifact,
-        **metrics,
-    }
-    root.mkdir(parents=True, exist_ok=True)
-    (root / "result.json").write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False)
+
+    last_persistence_error = None
+    for persistence_attempt in (1, 2):
+        # Re-publish the complete phase artifact set from in-memory objects.
+        # This makes a transient missing-file commit repairable without
+        # retraining any LightGBM model or rerunning the backtest.
+        signal_artifact = _write_series_artifact(signal, root / "signal.parquet")
+        report_artifact = _write_report_artifact(report, root / "report.parquet")
+        decision_artifact = _write_decision_artifact(
+            decision_audit, root / "decisions.json"
+        )
+        payload = {
+            "protocol": STAGE_B_PROTOCOL_VERSION,
+            "snapshot_token": args["snapshot_token"],
+            "candidate_id": args["candidate"]["candidate_id"],
+            "candidate": args["candidate"],
+            "stage_a_rank": args["candidate"]["stage_a_rank"],
+            "phase": int(args["phase"]),
+            "artifact_namespace": args.get("artifact_namespace"),
+            "source": "deterministic_full_rolling",
+            "n_retrains": len(chunk_meta),
+            "chunk_predictions": chunk_meta,
+            "signal_artifact": signal_artifact,
+            "decision_artifact": decision_artifact,
+            "report_artifact": report_artifact,
+            "result_path": str(result_path),
+            "phase_metrics": dict(metrics),
+            **metrics,
+        }
+        root.mkdir(parents=True, exist_ok=True)
+        result_path.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False)
+        )
+        vol.commit()
+        vol.reload()
+
+        try:
+            durability_gate = _verify_phase_payload_artifacts(payload)
+        except Exception as exc:
+            last_persistence_error = exc
+            if persistence_attempt == 1:
+                print(
+                    "[stage-b] phase artifact durability retry: "
+                    f"candidate={args['candidate']['candidate_id']} "
+                    f"phase={args['phase']} namespace={args.get('artifact_namespace')} "
+                    f"error={exc}"
+                )
+                continue
+            raise RuntimeError(
+                "Stage-B phase artifacts failed commit/reload verification "
+                "after two publish attempts"
+            ) from exc
+
+        returned = dict(payload)
+        returned["durability_gate"] = {
+            **durability_gate,
+            "publish_attempt": persistence_attempt,
+        }
+        if report_compare_payload is not None:
+            returned["_report_compare_payload"] = report_compare_payload
+        return returned
+
+    raise RuntimeError(
+        f"unreachable Stage-B phase persistence failure: {last_persistence_error}"
     )
-    vol.commit()
-    return payload
 
 
 def _numeric_report_diagnostics(left, right):
@@ -973,8 +1124,6 @@ def _numeric_report_diagnostics(left, right):
 
 
 def _compare_preflight_phase_results(a: dict, b: dict) -> dict:
-    import pandas as pd
-
     chunk_a = [
         (
             row["retrain_asof"],
@@ -1005,8 +1154,13 @@ def _compare_preflight_phase_results(a: dict, b: dict) -> dict:
     ):
         raise RuntimeError("Stage-B preflight decision lineage mismatch")
 
-    report_a = _load_verified_report_artifact(a["report_artifact"])
-    report_b = _load_verified_report_artifact(b["report_artifact"])
+    report_a = a.get("_report_compare_payload")
+    report_b = b.get("_report_compare_payload")
+    if not report_a or not report_b:
+        raise RuntimeError(
+            "Stage-B preflight is missing in-memory report comparison payload"
+        )
+
     detail = {
         "passed": True,
         "prediction_chunks_exact": True,
@@ -1016,53 +1170,69 @@ def _compare_preflight_phase_results(a: dict, b: dict) -> dict:
             a["report_artifact"]["content_sha256"]
             == b["report_artifact"]["content_sha256"]
         ),
+        "report_comparison_source": "phase_worker_return_payload_v1",
+        "phase_artifacts_durable": bool(
+            (a.get("durability_gate") or {}).get("passed")
+            and (b.get("durability_gate") or {}).get("passed")
+            and (a.get("driver_durability_gate") or {}).get("passed")
+            and (b.get("driver_durability_gate") or {}).get("passed")
+        ),
         "structure_match": True,
         "canonical_metrics_match": True,
         "columns": {},
         "errors": [],
     }
-    if (
-        not report_a.index.equals(report_b.index)
-        or list(report_a.index.names) != list(report_b.index.names)
-        or list(report_a.columns) != list(report_b.columns)
-        or [str(x) for x in report_a.dtypes] != [str(x) for x in report_b.dtypes]
-    ):
+
+    structure_fields = ("index", "index_names", "columns", "dtypes")
+    if any(report_a.get(key) != report_b.get(key) for key in structure_fields):
         detail["passed"] = False
         detail["structure_match"] = False
         detail["errors"].append("report_structure_mismatch")
         return detail
 
-    for column in report_a.columns:
-        left = report_a[column]
-        right = report_b[column]
-        if pd.api.types.is_numeric_dtype(left.dtype):
-            scale = 100000000.0 if str(column) == "account" else 1.0
-            diag = _numeric_report_diagnostics(
-                left.to_numpy(dtype=float, na_value=float("nan")) / scale,
-                right.to_numpy(dtype=float, na_value=float("nan")) / scale,
-            )
+    for column in report_a["columns"]:
+        if column in report_a["numeric"] and column in report_b["numeric"]:
+            scale = 100000000.0 if column == "account" else 1.0
+            left = [float(value) / scale for value in report_a["numeric"][column]]
+            right = [float(value) / scale for value in report_b["numeric"][column]]
+            diag = _numeric_report_diagnostics(left, right)
             diag["normalization_scale"] = scale
-        else:
-            exact = left.equals(right)
+        elif column in report_a["nonnumeric"] and column in report_b["nonnumeric"]:
+            exact = report_a["nonnumeric"][column] == report_b["nonnumeric"][column]
             diag = {"passed": bool(exact), "exact_match": bool(exact)}
-        detail["columns"][str(column)] = diag
+        else:
+            diag = {
+                "passed": False,
+                "exact_match": False,
+                "reason": "numeric_type_partition_mismatch",
+            }
+        detail["columns"][column] = diag
         if not diag["passed"]:
             detail["passed"] = False
             detail["errors"].append(f"report_column_mismatch:{column}")
 
-    metrics_a = _phase_metrics(report_a)
-    metrics_b = _phase_metrics(report_b)
-    mismatches = [
-        key
-        for key in metrics_a
-        if key not in metrics_b
-        or not _metric_values_match(metrics_a[key], metrics_b[key])
-    ]
-    if mismatches:
+    metrics_a = a.get("phase_metrics") or {}
+    metrics_b = b.get("phase_metrics") or {}
+    if set(metrics_a) != set(metrics_b):
         detail["passed"] = False
         detail["canonical_metrics_match"] = False
-        detail["errors"].append("canonical_metric_mismatch:" + ",".join(mismatches))
+        detail["errors"].append("canonical_metric_key_mismatch")
+    else:
+        mismatches = [
+            key
+            for key in metrics_a
+            if not _metric_values_match(metrics_a[key], metrics_b[key])
+        ]
+        if mismatches:
+            detail["passed"] = False
+            detail["canonical_metrics_match"] = False
+            detail["errors"].append(
+                "canonical_metric_mismatch:" + ",".join(mismatches)
+            )
     detail["canonical_metrics"] = metrics_b
+    if not detail["phase_artifacts_durable"]:
+        detail["passed"] = False
+        detail["errors"].append("phase_artifact_durability_gate_failed")
     return detail
 
 
@@ -1079,6 +1249,100 @@ def _load_passing_preflight(snapshot_token: str) -> dict:
     if payload.get("snapshot_token") != snapshot_token:
         raise RuntimeError("Stage-B preflight snapshot mismatch")
     return payload
+
+
+def _chunk_job_key_from_args(args: dict) -> tuple:
+    return (
+        args["candidate"]["candidate_id"],
+        int(args["phase"]),
+        args["retrain_asof"],
+    )
+
+
+def _chunk_job_key_from_result(row: dict) -> tuple:
+    return (
+        row["candidate_id"],
+        int(row["phase"]),
+        row["retrain_asof"],
+    )
+
+
+def _verify_and_repair_chunk_batch(
+    chunk_results: list[dict],
+    jobs: list[dict],
+    *,
+    worker_cpu: float,
+    worker_memory_mib: int,
+    worker_max_containers: int,
+) -> list[dict]:
+    """Cross-container verify chunks; refit only missing/corrupt artifacts."""
+    jobs_by_key = {_chunk_job_key_from_args(job): job for job in jobs}
+    rows_by_key = {_chunk_job_key_from_result(row): row for row in chunk_results}
+    if set(rows_by_key) != set(jobs_by_key):
+        raise RuntimeError("Stage-B chunk result/job key set mismatch")
+
+    vol.reload()
+    repair_jobs = []
+    for key, row in rows_by_key.items():
+        try:
+            _load_verified_series_artifact(row["prediction_artifact"])
+        except Exception as exc:
+            print(f"[stage-b] chunk durability repair scheduled {key}: {exc}")
+            repair_jobs.append({**jobs_by_key[key], "resume": False})
+
+    if repair_jobs:
+        repaired = list(
+            stage_b_retrain_worker.with_options(
+                cpu=worker_cpu,
+                memory=worker_memory_mib,
+                max_containers=worker_max_containers,
+            ).map(repair_jobs)
+        )
+        for row in repaired:
+            rows_by_key[_chunk_job_key_from_result(row)] = row
+        vol.reload()
+        for row in repaired:
+            _load_verified_series_artifact(row["prediction_artifact"])
+
+    return [rows_by_key[_chunk_job_key_from_args(job)] for job in jobs]
+
+
+def _driver_verify_phase_result(payload: dict) -> dict:
+    """Independent driver-container verification of worker-committed artifacts."""
+    vol.reload()
+    gate = _verify_phase_payload_artifacts(payload)
+    payload["driver_durability_gate"] = gate
+    return payload
+
+
+def _run_phase_verified(args: dict, *, attempts: int = 2) -> dict:
+    """Run/repair only the cheap phase backtest until driver-visible artifacts verify."""
+    last_error = None
+    current = dict(args)
+    for attempt in range(1, attempts + 1):
+        if attempt > 1:
+            current["resume"] = False
+        phase = stage_b_phase_worker.remote(current)
+        try:
+            return _driver_verify_phase_result(phase)
+        except Exception as exc:
+            last_error = exc
+            if attempt < attempts:
+                print(
+                    "[stage-b] driver phase verification retry: "
+                    f"candidate={args['candidate']['candidate_id']} "
+                    f"phase={args['phase']} namespace={args.get('artifact_namespace')} "
+                    f"error={exc}"
+                )
+                continue
+            raise RuntimeError(
+                "Stage-B phase artifacts were not driver-visible after repair"
+            ) from exc
+    raise RuntimeError(f"unreachable phase verification failure: {last_error}")
+
+
+def _public_phase_payload(row: dict) -> dict:
+    return {key: value for key, value in row.items() if not key.startswith("_")}
 
 
 def _jobs_for(candidate: dict, phase: int, calendar: list[str], snapshot: str,
@@ -1126,9 +1390,16 @@ def stage_b_driver(
     baseline = next(row for row in stage_b_candidates() if row["is_baseline"])
 
     if preflight_only:
+        import uuid
+
+        preflight_run_id = uuid.uuid4().hex[:16]
         repeat_phase_results = []
         for repeat in ("repeat_a", "repeat_b"):
-            namespace = f"_preflight/{repeat}"
+            # Each invocation gets its own namespace.  This prevents an older
+            # detached/preempted preflight from writing the same files as the
+            # current run (Modal Volumes are last-write-wins for same-file
+            # concurrent modification).
+            namespace = f"_preflight/{preflight_run_id}/{repeat}"
             jobs = _jobs_for(
                 baseline,
                 0,
@@ -1138,7 +1409,8 @@ def stage_b_driver(
                 resume=False,
             )
             print(
-                f"[stage-b preflight] {repeat}: {len(jobs)} retrain fits; "
+                f"[stage-b preflight] run={preflight_run_id} {repeat}: "
+                f"{len(jobs)} retrain fits; "
                 f"cpu={worker_cpu_value} memory={worker_memory_value}MiB "
                 f"worker cap={worker_cap}"
             )
@@ -1147,26 +1419,26 @@ def stage_b_driver(
                 memory=worker_memory_value,
                 max_containers=worker_cap,
             ).map(jobs))
-            vol.reload()
-            phase = stage_b_phase_worker.remote(
+            chunks = _verify_and_repair_chunk_batch(
+                chunks,
+                jobs,
+                worker_cpu=worker_cpu_value,
+                worker_memory_mib=worker_memory_value,
+                worker_max_containers=worker_cap,
+            )
+
+            phase = _run_phase_verified(
                 {
                     "candidate": baseline,
                     "phase": 0,
                     "snapshot_token": snapshot,
                     "artifact_namespace": namespace,
                     "resume": False,
+                    "return_report_compare_payload": True,
                     "chunk_results": chunks,
                 }
             )
             repeat_phase_results.append(phase)
-
-            # stage_b_phase_worker writes/commits phase-level artifacts from a
-            # different container. Refresh the driver's Volume view before the
-            # next repeat or the final cross-repeat comparison reads those
-            # artifacts. Without this reload, repeat_b's report can be absent
-            # from the driver's mounted snapshot even though the worker
-            # successfully committed it.
-            vol.reload()
 
         comparison = _compare_preflight_phase_results(
             repeat_phase_results[0], repeat_phase_results[1]
@@ -1181,11 +1453,12 @@ def stage_b_driver(
             "snapshot_token": snapshot,
             "candidate_id": baseline["candidate_id"],
             "phase": 0,
+            "preflight_run_id": preflight_run_id,
             "n_retrains_per_repeat": repeat_phase_results[0]["n_retrains"],
             "total_model_fits": 2 * repeat_phase_results[0]["n_retrains"],
             "execution_resources": execution_resources,
-            "repeat_a": repeat_phase_results[0],
-            "repeat_b": repeat_phase_results[1],
+            "repeat_a": _public_phase_payload(repeat_phase_results[0]),
+            "repeat_b": _public_phase_payload(repeat_phase_results[1]),
             "comparison": comparison,
         }
         path = _preflight_path(snapshot)
@@ -1235,6 +1508,13 @@ def stage_b_driver(
             max_containers=worker_cap,
         ).map(all_retrain_jobs)
     )
+    chunk_results = _verify_and_repair_chunk_batch(
+        chunk_results,
+        all_retrain_jobs,
+        worker_cpu=worker_cpu_value,
+        worker_memory_mib=worker_memory_value,
+        worker_max_containers=worker_cap,
+    )
     vol.reload()
     by_key = {}
     for row in chunk_results:
@@ -1259,12 +1539,33 @@ def stage_b_driver(
                     "snapshot_token": snapshot,
                     "artifact_namespace": None,
                     "resume": bool(resume),
+                    "return_report_compare_payload": False,
                     "chunk_results": chunks,
                 }
             )
 
     phase_results = list(stage_b_phase_worker.map(phase_jobs))
     vol.reload()
+
+    phase_job_by_key = {
+        (job["candidate"]["candidate_id"], int(job["phase"])): job
+        for job in phase_jobs
+    }
+    verified_phase_results = []
+    for row in phase_results:
+        key = (row["candidate_id"], int(row["phase"]))
+        try:
+            verified_phase_results.append(_driver_verify_phase_result(row))
+        except Exception as exc:
+            print(f"[stage-b] repairing phase artifact set {key}: {exc}")
+            repair_args = {
+                **phase_job_by_key[key],
+                "resume": False,
+            }
+            verified_phase_results.append(
+                _run_phase_verified(repair_args)
+            )
+    phase_results = verified_phase_results
 
     # The passing repeat_b is the frozen baseline phase-0 confirmation result.
     baseline_phase0 = dict(preflight["repeat_b"])
@@ -1275,7 +1576,7 @@ def stage_b_driver(
     for candidate in candidates:
         rows = sorted(
             [
-                row
+                _public_phase_payload(row)
                 for row in phase_results
                 if row["candidate_id"] == candidate["candidate_id"]
             ],
