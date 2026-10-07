@@ -367,9 +367,10 @@ def _report_compare_payload(report) -> dict:
         key = str(column)
         series = ordered[column]
         if pd.api.types.is_numeric_dtype(series.dtype):
-            numeric[key] = list(
-                series.to_numpy(dtype=float, na_value=float("nan"))
-            )
+            numeric[key] = [
+                float(value)
+                for value in series.to_numpy(dtype=float, na_value=float("nan"))
+            ]
         else:
             nonnumeric[key] = [
                 None if pd.isna(value) else str(value)
@@ -392,7 +393,9 @@ def _verify_phase_payload_artifacts(payload: dict) -> dict:
     report = _load_verified_report_artifact(payload["report_artifact"])
 
     metrics = _phase_metrics(report)
-    expected_metrics = payload.get("phase_metrics") or {}
+    expected_metrics = payload.get("phase_metrics") or {
+        key: payload.get(key) for key in metrics
+    }
     mismatches = [
         key
         for key, value in metrics.items()
@@ -999,6 +1002,7 @@ def stage_b_phase_worker(args: dict):
     decision_artifact = _write_decision_artifact(
         decision_audit, root / "decisions.json"
     )
+    result_path = root / "result.json"
     payload = {
         "protocol": STAGE_B_PROTOCOL_VERSION,
         "snapshot_token": args["snapshot_token"],
@@ -1013,14 +1017,33 @@ def stage_b_phase_worker(args: dict):
         "signal_artifact": signal_artifact,
         "decision_artifact": decision_artifact,
         "report_artifact": report_artifact,
+        "result_path": str(result_path),
+        "phase_metrics": dict(metrics),
         **metrics,
     }
+    report_compare_payload = (
+        _report_compare_payload(report)
+        if args.get("return_report_compare_payload", False)
+        else None
+    )
     root.mkdir(parents=True, exist_ok=True)
-    (root / "result.json").write_text(
+    result_path.write_text(
         json.dumps(payload, indent=2, ensure_ascii=False)
     )
+
+    # A successful return now means the entire phase artifact set survived a
+    # commit -> reload -> hash/metric round trip.  If Modal persistence is
+    # transiently incomplete, this function raises and Modal's function retry
+    # reruns only the cheap phase backtest, never the 22 model fits.
     vol.commit()
-    return payload
+    vol.reload()
+    durability_gate = _verify_phase_payload_artifacts(payload)
+
+    returned = dict(payload)
+    returned["durability_gate"] = durability_gate
+    if report_compare_payload is not None:
+        returned["_report_compare_payload"] = report_compare_payload
+    return returned
 
 
 def _numeric_report_diagnostics(left, right):
@@ -1065,8 +1088,6 @@ def _numeric_report_diagnostics(left, right):
 
 
 def _compare_preflight_phase_results(a: dict, b: dict) -> dict:
-    import pandas as pd
-
     chunk_a = [
         (
             row["retrain_asof"],
@@ -1097,8 +1118,13 @@ def _compare_preflight_phase_results(a: dict, b: dict) -> dict:
     ):
         raise RuntimeError("Stage-B preflight decision lineage mismatch")
 
-    report_a = _load_verified_report_artifact(a["report_artifact"])
-    report_b = _load_verified_report_artifact(b["report_artifact"])
+    report_a = a.get("_report_compare_payload")
+    report_b = b.get("_report_compare_payload")
+    if not report_a or not report_b:
+        raise RuntimeError(
+            "Stage-B preflight is missing in-memory report comparison payload"
+        )
+
     detail = {
         "passed": True,
         "prediction_chunks_exact": True,
@@ -1108,53 +1134,67 @@ def _compare_preflight_phase_results(a: dict, b: dict) -> dict:
             a["report_artifact"]["content_sha256"]
             == b["report_artifact"]["content_sha256"]
         ),
+        "report_comparison_source": "phase_worker_return_payload_v1",
+        "phase_artifacts_durable": bool(
+            (a.get("durability_gate") or {}).get("passed")
+            and (b.get("durability_gate") or {}).get("passed")
+        ),
         "structure_match": True,
         "canonical_metrics_match": True,
         "columns": {},
         "errors": [],
     }
-    if (
-        not report_a.index.equals(report_b.index)
-        or list(report_a.index.names) != list(report_b.index.names)
-        or list(report_a.columns) != list(report_b.columns)
-        or [str(x) for x in report_a.dtypes] != [str(x) for x in report_b.dtypes]
-    ):
+
+    structure_fields = ("index", "index_names", "columns", "dtypes")
+    if any(report_a.get(key) != report_b.get(key) for key in structure_fields):
         detail["passed"] = False
         detail["structure_match"] = False
         detail["errors"].append("report_structure_mismatch")
         return detail
 
-    for column in report_a.columns:
-        left = report_a[column]
-        right = report_b[column]
-        if pd.api.types.is_numeric_dtype(left.dtype):
-            scale = 100000000.0 if str(column) == "account" else 1.0
-            diag = _numeric_report_diagnostics(
-                left.to_numpy(dtype=float, na_value=float("nan")) / scale,
-                right.to_numpy(dtype=float, na_value=float("nan")) / scale,
-            )
+    for column in report_a["columns"]:
+        if column in report_a["numeric"] and column in report_b["numeric"]:
+            scale = 100000000.0 if column == "account" else 1.0
+            left = [float(value) / scale for value in report_a["numeric"][column]]
+            right = [float(value) / scale for value in report_b["numeric"][column]]
+            diag = _numeric_report_diagnostics(left, right)
             diag["normalization_scale"] = scale
-        else:
-            exact = left.equals(right)
+        elif column in report_a["nonnumeric"] and column in report_b["nonnumeric"]:
+            exact = report_a["nonnumeric"][column] == report_b["nonnumeric"][column]
             diag = {"passed": bool(exact), "exact_match": bool(exact)}
-        detail["columns"][str(column)] = diag
+        else:
+            diag = {
+                "passed": False,
+                "exact_match": False,
+                "reason": "numeric_type_partition_mismatch",
+            }
+        detail["columns"][column] = diag
         if not diag["passed"]:
             detail["passed"] = False
             detail["errors"].append(f"report_column_mismatch:{column}")
 
-    metrics_a = _phase_metrics(report_a)
-    metrics_b = _phase_metrics(report_b)
-    mismatches = [
-        key
-        for key in metrics_a
-        if key not in metrics_b
-        or not _metric_values_match(metrics_a[key], metrics_b[key])
-    ]
-    if mismatches:
+    metrics_a = a.get("phase_metrics") or {}
+    metrics_b = b.get("phase_metrics") or {}
+    if set(metrics_a) != set(metrics_b):
         detail["passed"] = False
         detail["canonical_metrics_match"] = False
-        detail["errors"].append("canonical_metric_mismatch:" + ",".join(mismatches))
+        detail["errors"].append("canonical_metric_key_mismatch")
+    else:
+        mismatches = [
+            key
+            for key in metrics_a
+            if not _metric_values_match(metrics_a[key], metrics_b[key])
+        ]
+        if mismatches:
+            detail["passed"] = False
+            detail["canonical_metrics_match"] = False
+            detail["errors"].append(
+                "canonical_metric_mismatch:" + ",".join(mismatches)
+            )
     detail["canonical_metrics"] = metrics_b
+    if not detail["phase_artifacts_durable"]:
+        detail["passed"] = False
+        detail["errors"].append("phase_artifact_durability_gate_failed")
     return detail
 
 
