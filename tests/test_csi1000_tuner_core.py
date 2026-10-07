@@ -7,12 +7,16 @@ ROOT = Path(__file__).resolve().parents[1]
 from csi1000_tuner_core import (
     BASELINE_TUNABLE_PARAMS,
     REFERENCE_PHASES,
+    REPORT_REPRO_ATOL,
+    REPORT_REPRO_RTOL,
+    REPRO_GATE_VERSION,
     RETRAIN_FREQUENCY,
     SCREEN_EXECUTION_SESSIONS,
     build_candidate_spec,
     build_stage_a_folds,
     expanded_candidate_specs,
     frozen_protocol,
+    numeric_reproducibility_diagnostics,
     rank_candidates,
     ranking_contract,
     reserved_tail,
@@ -75,6 +79,7 @@ class CSI1000TunerCoreTests(unittest.TestCase):
 
     def test_frozen_protocol_is_csi1000_only(self):
         protocol = frozen_protocol()
+        self.assertEqual(protocol["protocol"], "csi1000_lgb_stage_a_v2")
         self.assertEqual(protocol["market"], "csi1000")
         self.assertEqual(protocol["target"], "raw_20d")
         self.assertEqual(protocol["retrain_frequency"], 20)
@@ -201,7 +206,7 @@ class CSI1000TunerCoreTests(unittest.TestCase):
             ],
         )
 
-    def test_double_fit_reproducibility_gate_requires_exact_hashes(self):
+    def test_double_fit_reproducibility_gate_requires_exact_model_signal(self):
         repeat_a = [_repro_row(f"fold{i}") for i in range(1, 5)]
         repeat_b = [_repro_row(f"fold{i}") for i in range(1, 5)]
         gate = validate_reproducibility_pairs(repeat_a, repeat_b)
@@ -213,6 +218,45 @@ class CSI1000TunerCoreTests(unittest.TestCase):
         bad[2]["signal_sha256"] = "z" * 64
         with self.assertRaises(RuntimeError):
             validate_reproducibility_pairs(repeat_a, bad)
+
+        # Raw report hashes are audit evidence; semantic report validation is
+        # performed separately by the runner and must not weaken signal exactness.
+        report_only_diff = [_repro_row(f"fold{i}") for i in range(1, 5)]
+        report_only_diff[0]["report_artifact"]["content_sha256"] = "z" * 64
+        gate = validate_reproducibility_pairs(repeat_a, report_only_diff)
+        self.assertTrue(gate["passed"])
+        self.assertFalse(gate["folds"]["fold1"]["report_exact_match"])
+        self.assertEqual(REPRO_GATE_VERSION, "baseline_double_fit_4fold_v2")
+
+    def test_numeric_reproducibility_tolerates_only_float_tail_noise(self):
+        tiny = numeric_reproducibility_diagnostics(
+            [0.0, 0.001, float("nan"), 1.0],
+            [5e-13, 0.0010000000005, float("nan"), 1.0 + 5e-11],
+        )
+        self.assertTrue(tiny["passed"])
+        self.assertFalse(tiny["exact_match"])
+        self.assertEqual(tiny["rtol"], REPORT_REPRO_RTOL)
+        self.assertEqual(tiny["atol"], REPORT_REPRO_ATOL)
+
+        material = numeric_reproducibility_diagnostics(
+            [0.0, 0.001, 1.0],
+            [1e-8, 0.0011, 1.0],
+        )
+        self.assertFalse(material["passed"])
+        self.assertGreater(material["mismatch_count"], 0)
+
+    def test_numeric_reproducibility_requires_matching_nan_inf_structure(self):
+        nan_mismatch = numeric_reproducibility_diagnostics(
+            [float("nan"), 1.0],
+            [0.0, 1.0],
+        )
+        self.assertFalse(nan_mismatch["passed"])
+
+        inf_mismatch = numeric_reproducibility_diagnostics(
+            [float("inf"), 1.0],
+            [float("-inf"), 1.0],
+        )
+        self.assertFalse(inf_mismatch["passed"])
 
     def test_double_fit_reproducibility_gate_rejects_bad_account(self):
         repeat_a = [_repro_row(f"fold{i}") for i in range(1, 5)]
@@ -239,6 +283,9 @@ class CSI1000TunerCoreTests(unittest.TestCase):
         source = (ROOT / "csi1000_tuner.py").read_text()
         ast.parse(source)
         self.assertIn('validate_reproducibility_pairs(repeat_a, repeat_b)', source)
+        self.assertIn('_compare_repro_reports(repeat_a, repeat_b)', source)
+        self.assertIn('vol.reload()\n\n    reproducibility_gate', source)
+        self.assertIn('artifact_namespace": f"_repro/{REPRO_GATE_VERSION}/repeat_a"', source)
         self.assertIn('_assert_reusable_metrics(payload, report, args["fold"])', source)
         self.assertIn('"ranking_contract": ranking_contract("screen")', source)
         self.assertNotIn('"relative_excess_cagr_q25",\n                "relative_excess_cagr_median"', source)

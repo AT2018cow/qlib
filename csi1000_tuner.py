@@ -20,10 +20,14 @@ from csi1000_tuner_core import (
     MARKET,
     N_DROP,
     PROTOCOL_VERSION,
+    REPORT_REPRO_ATOL,
+    REPORT_REPRO_RTOL,
+    REPRO_GATE_VERSION,
     TOPK,
     build_stage_a_folds,
     expanded_candidate_specs,
     frozen_protocol,
+    numeric_reproducibility_diagnostics,
     rank_candidates,
     ranking_contract,
     reserved_tail,
@@ -417,8 +421,20 @@ def _assert_reusable_metrics(payload: dict, report, fold: dict) -> dict:
     return recomputed
 
 
-def _result_dir(snapshot_token: str, candidate_id: str, fold_id: str) -> Path:
-    return ARTIFACT_ROOT / snapshot_token / candidate_id / fold_id
+def _result_dir(
+    snapshot_token: str,
+    candidate_id: str,
+    fold_id: str,
+    *,
+    artifact_namespace: str | None = None,
+) -> Path:
+    root = ARTIFACT_ROOT / snapshot_token
+    if artifact_namespace:
+        namespace = Path(str(artifact_namespace))
+        if namespace.is_absolute() or ".." in namespace.parts:
+            raise ValueError("artifact_namespace must be a relative safe path")
+        root = root / namespace
+    return root / candidate_id / fold_id
 
 
 def _validate_reusable_result(payload: dict, args: dict) -> bool:
@@ -437,6 +453,151 @@ def _validate_reusable_result(payload: dict, args: dict) -> bool:
     if payload.get("candidate") != args["candidate"]:
         return False
     return bool(payload.get("signal_artifact") and payload.get("report_artifact"))
+
+
+def _load_verified_report_artifact(meta: dict):
+    import hashlib
+
+    import pandas as pd
+
+    path = Path(meta["path"])
+    if not path.is_file():
+        raise RuntimeError(f"repro report artifact missing: {path}")
+    if hashlib.sha256(path.read_bytes()).hexdigest() != meta["sha256"]:
+        raise RuntimeError(f"repro report byte hash mismatch: {path}")
+    report = pd.read_parquet(path)
+    if _frame_sha256(report) != meta["content_sha256"]:
+        raise RuntimeError(f"repro report content hash mismatch: {path}")
+    return report
+
+
+def _compare_repro_reports(repeat_a: list[dict], repeat_b: list[dict]) -> dict:
+    """Compare baseline backtest reports semantically, preserving float diagnostics."""
+    import pandas as pd
+
+    left = {row["fold_id"]: row for row in repeat_a}
+    right = {row["fold_id"]: row for row in repeat_b}
+    if set(left) != set(right):
+        raise RuntimeError("repro report fold sets do not match")
+
+    fold_details = {}
+    all_passed = True
+    all_exact = True
+    for fold_id in sorted(left):
+        a = left[fold_id]
+        b = right[fold_id]
+        report_a = _load_verified_report_artifact(a["report_artifact"])
+        report_b = _load_verified_report_artifact(b["report_artifact"])
+        fold = a["fold"]
+
+        detail = {
+            "passed": True,
+            "report_content_sha256_a": a["report_artifact"]["content_sha256"],
+            "report_content_sha256_b": b["report_artifact"]["content_sha256"],
+            "exact_content_match": (
+                a["report_artifact"]["content_sha256"]
+                == b["report_artifact"]["content_sha256"]
+            ),
+            "structure_match": True,
+            "canonical_metrics_match": True,
+            "columns": {},
+            "errors": [],
+        }
+        all_exact = all_exact and detail["exact_content_match"]
+
+        if (
+            not report_a.index.equals(report_b.index)
+            or list(report_a.index.names) != list(report_b.index.names)
+        ):
+            detail["passed"] = False
+            detail["structure_match"] = False
+            detail["errors"].append("index_mismatch")
+
+        if list(report_a.columns) != list(report_b.columns):
+            detail["passed"] = False
+            detail["structure_match"] = False
+            detail["errors"].append("column_mismatch")
+        elif [str(dtype) for dtype in report_a.dtypes] != [
+            str(dtype) for dtype in report_b.dtypes
+        ]:
+            detail["passed"] = False
+            detail["structure_match"] = False
+            detail["errors"].append("dtype_mismatch")
+
+        if detail["structure_match"]:
+            for column in report_a.columns:
+                series_a = report_a[column]
+                series_b = report_b[column]
+                if pd.api.types.is_numeric_dtype(series_a.dtype):
+                    scale = 100000000.0 if str(column) == "account" else 1.0
+                    values_a = (
+                        series_a.to_numpy(dtype=float, na_value=float("nan")) / scale
+                    )
+                    values_b = (
+                        series_b.to_numpy(dtype=float, na_value=float("nan")) / scale
+                    )
+                    diag = numeric_reproducibility_diagnostics(
+                        values_a,
+                        values_b,
+                        rtol=REPORT_REPRO_RTOL,
+                        atol=REPORT_REPRO_ATOL,
+                    )
+                    diag["normalization_scale"] = scale
+                    detail["columns"][str(column)] = diag
+                    if not diag["passed"]:
+                        detail["passed"] = False
+                        detail["errors"].append(f"numeric_tolerance:{column}")
+                else:
+                    exact = series_a.equals(series_b)
+                    detail["columns"][str(column)] = {
+                        "passed": bool(exact),
+                        "exact_match": bool(exact),
+                        "kind": "non_numeric",
+                    }
+                    if not exact:
+                        detail["passed"] = False
+                        detail["errors"].append(f"non_numeric_mismatch:{column}")
+
+        if detail["structure_match"]:
+            try:
+                metrics_a = _recompute_result_metrics(report_a, fold)
+                metrics_b = _recompute_result_metrics(report_b, fold)
+            except Exception as exc:
+                detail["passed"] = False
+                detail["canonical_metrics_match"] = False
+                detail["errors"].append(
+                    f"canonical_metric_recompute_failed:{type(exc).__name__}:{exc}"
+                )
+            else:
+                metric_mismatches = [
+                    key
+                    for key in metrics_a
+                    if key not in metrics_b
+                    or not _metric_values_match(metrics_a[key], metrics_b[key])
+                ]
+                if metric_mismatches:
+                    detail["passed"] = False
+                    detail["canonical_metrics_match"] = False
+                    detail["errors"].append(
+                        "canonical_metric_mismatch:" + ",".join(metric_mismatches)
+                    )
+                detail["canonical_metrics"] = metrics_b
+        else:
+            detail["canonical_metrics_match"] = False
+
+        if not detail["passed"]:
+            all_passed = False
+        fold_details[fold_id] = detail
+
+    return {
+        "passed": all_passed,
+        "gate_version": REPRO_GATE_VERSION,
+        "rtol": REPORT_REPRO_RTOL,
+        "atol": REPORT_REPRO_ATOL,
+        "account_normalization": 100000000.0,
+        "all_report_content_exact": all_exact,
+        "folds": fold_details,
+    }
 
 
 def _load_reusable_result(args: dict):
@@ -538,7 +699,12 @@ def stage_a_fold_worker(args: dict):
             f"{first_signal}~{last_signal} != {fold['signal']}"
         )
 
-    root = _result_dir(args["snapshot_token"], candidate["candidate_id"], fold["fold_id"])
+    root = _result_dir(
+        args["snapshot_token"],
+        candidate["candidate_id"],
+        fold["fold_id"],
+        artifact_namespace=args.get("artifact_namespace"),
+    )
     signal_artifact = _write_series_artifact(prediction, root / "signal.parquet")
     report = _run_signal_backtest(
         prediction,
@@ -570,6 +736,7 @@ def stage_a_fold_worker(args: dict):
         "fold_id": fold["fold_id"],
         "fold": fold,
         "source": "deterministic_fit",
+        "artifact_namespace": args.get("artifact_namespace"),
         "model_config_sha256": model_config_sha256,
         "best_iteration": best_iteration,
         "signal_sha256": signal_artifact["content_sha256"],
@@ -615,21 +782,58 @@ def stage_a_screen_driver(
     if baseline is None:
         raise RuntimeError("Stage-A candidate set is missing the frozen baseline")
 
-    gate_jobs = [
+    gate_jobs_a = [
         {
             "candidate": baseline,
             "fold": fold,
             "snapshot_token": manifest["snapshot_token"],
             "resume": False,
+            "artifact_namespace": f"_repro/{REPRO_GATE_VERSION}/repeat_a",
+        }
+        for fold in folds
+    ]
+    gate_jobs_b = [
+        {
+            "candidate": baseline,
+            "fold": fold,
+            "snapshot_token": manifest["snapshot_token"],
+            "resume": False,
+            # Repeat B remains the canonical retained baseline artifact.
+            "artifact_namespace": None,
         }
         for fold in folds
     ]
     print(
         f"[stage-a] reproducibility preflight: baseline x {len(folds)} folds x2"
     )
-    repeat_a = list(stage_a_fold_worker.map(gate_jobs))
-    repeat_b = list(stage_a_fold_worker.map(gate_jobs))
+    repeat_a = list(stage_a_fold_worker.map(gate_jobs_a))
+    repeat_b = list(stage_a_fold_worker.map(gate_jobs_b))
+    # Child workers commit report artifacts to the shared Volume. Refresh the
+    # driver mount before loading those files for semantic A/B comparison.
+    vol.reload()
+
     reproducibility_gate = validate_reproducibility_pairs(repeat_a, repeat_b)
+    report_validation = _compare_repro_reports(repeat_a, repeat_b)
+    reproducibility_gate["report_validation"] = report_validation
+    reproducibility_gate["passed"] = bool(
+        reproducibility_gate["passed"] and report_validation["passed"]
+    )
+
+    gate_root = ARTIFACT_ROOT / manifest["snapshot_token"]
+    gate_root.mkdir(parents=True, exist_ok=True)
+    gate_path = gate_root / "reproducibility_gate.json"
+    gate_path.write_text(json.dumps(reproducibility_gate, indent=2, ensure_ascii=False))
+    vol.commit()
+    if not reproducibility_gate["passed"]:
+        failed = [
+            fold_id
+            for fold_id, detail in report_validation["folds"].items()
+            if not detail["passed"]
+        ]
+        raise RuntimeError(
+            "Stage-A baseline report semantic reproducibility failed for "
+            f"{failed}; diagnostics={gate_path}"
+        )
 
     # The second baseline repeat is now the canonical retained baseline result.
     # Avoid a third baseline fit; all remaining candidates follow normal resume policy.
