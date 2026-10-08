@@ -1,5 +1,7 @@
 # 19 - CSI1000 Stage-B Final Audit and Forward Migration Contract (2026-10-08)
 
+> **Operational topology update (2026-10-08):** the shadow-pair deployment described below is superseded by [20-csi1000-stage-b-winner-canonical-promotion-20261008.md](20-csi1000-stage-b-winner-canonical-promotion-20261008.md). Stage-B model selection and all frozen research decisions remain unchanged; only the deployment topology is superseded.
+
 ## 0. Status
 
 Stage B is complete and accepted.

@@ -71,6 +71,7 @@ def test_image_helper_modules_copied():
         "github_commit.py",
         "csi1000_tuner_core.py",
         "csi1000_production_config.py",
+        "signal_publication_gate.py",
     ):
         assert helper in cp.group(1), \
             f"{helper} not copied to /root/ — container import would fail (ModuleNotFoundError)"
@@ -97,15 +98,17 @@ def test_daily_cron_flow_order():
     assert i_decision < i_dedup < i_push, "daily_cron flow order broken"
 
 
-def test_stage_b_forward_shadow_wiring():
-    assert "csi1000_profile=BASELINE_PROFILE" in src
-    assert "csi1000_profile=WINNER_PROFILE" in src
-    assert 'lineage="stage_b_baseline_shadow"' in src
-    assert 'lineage="stage_b_winner_shadow"' in src
-    assert "_top20_lgb158_stage_b_winner_shadow.csv" in src
-    assert "_paper_portfolio_stage_b_winner_shadow.json" in src
+def test_stage_b_winner_is_single_canonical_csi1000_wiring():
+    assert "csi1000_profile=CANONICAL_PROFILE" in src
+    assert "csi1000_profile=BASELINE_PROFILE" not in src
+    assert "stage_b_baseline_shadow" not in src
+    assert "stage_b_winner_shadow" not in src
+    assert "lineage=CANONICAL_PAPER_LINEAGE" in src
+    assert "_top20_lgb158_stage_b_winner_shadow.csv" not in src
+    assert "_paper_portfolio_stage_b_winner_shadow.json" not in src
     assert 'production_lineage = cfg.get("_csi1000_production_manifest")' in src
     assert "deterministic_score_order(day.items())" in src
+    assert "def _csi1000_canonical_publication_decision" in src
 
 
 def test_github_commit_flow_complete():

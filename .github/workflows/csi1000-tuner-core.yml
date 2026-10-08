@@ -11,11 +11,13 @@ on:
       - 'csi1000_stage_b.py'
       - 'csi1000_stage_b_core.py'
       - 'csi1000_production_config.py'
+      - 'signal_publication_gate.py'
       - 'paper_portfolio.py'
       - 'modal_qlib_cn_a10g.py'
       - 'tests/test_csi1000_production_config.py'
       - 'tests/test_paper_portfolio.py'
       - 'docs/experiments/19-csi1000-stage-b-final-audit-forward-contract-20261008.md'
+      - 'docs/experiments/20-csi1000-stage-b-winner-canonical-promotion-20261008.md'
       - 'tests/test_csi1000_tuner_core.py'
       - 'tests/test_csi1000_stage_b_core.py'
       - 'docs/experiments/16-csi1000-stage-a-tuning-contract-20261007.md'
@@ -32,11 +34,13 @@ on:
       - 'csi1000_stage_b.py'
       - 'csi1000_stage_b_core.py'
       - 'csi1000_production_config.py'
+      - 'signal_publication_gate.py'
       - 'paper_portfolio.py'
       - 'modal_qlib_cn_a10g.py'
       - 'tests/test_csi1000_production_config.py'
       - 'tests/test_paper_portfolio.py'
       - 'docs/experiments/19-csi1000-stage-b-final-audit-forward-contract-20261008.md'
+      - 'docs/experiments/20-csi1000-stage-b-winner-canonical-promotion-20261008.md'
       - 'tests/test_csi1000_tuner_core.py'
       - 'tests/test_csi1000_stage_b_core.py'
       - 'docs/experiments/17-csi1000-stage-a-expanded-screen-runbook-20261007.md'
@@ -59,6 +63,7 @@ jobs:
         run: >-
           python -m py_compile
           csi1000_production_config.py
+          signal_publication_gate.py
           paper_portfolio.py
           modal_qlib_cn_a10g.py
       - name: Run CSI1000 Stage-A, Stage-B and production contract tests
@@ -68,3 +73,5 @@ jobs:
           tests/test_csi1000_stage_b_core.py
           tests/test_csi1000_production_config.py
           tests/test_paper_portfolio.py
+          tests/test_cron_gate.py
+          tests/test_modal_structure.py
