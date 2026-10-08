@@ -3541,6 +3541,8 @@ def daily_standalone(
         from csi1000_production_config import CANONICAL_PAPER_LINEAGE, CANONICAL_PROFILE
 
         csi1000_profile = csi1000_profile or CANONICAL_PROFILE
+        if csi1000_profile == CANONICAL_PROFILE and paper_lineage == "canonical":
+            paper_lineage = CANONICAL_PAPER_LINEAGE
     elif csi1000_profile is not None:
         raise ValueError("csi1000_profile is valid only for market='csi1000'")
 
@@ -3892,7 +3894,7 @@ def daily_cron():
         return
 
     print(f"[cron] {signal_date} 为交易日——启动 CSI1000 Stage-B winner canonical")
-    from csi1000_production_config import CANONICAL_PROFILE
+    from csi1000_production_config import CANONICAL_PAPER_LINEAGE, CANONICAL_PROFILE
 
     try:
         res = daily_standalone.remote(
