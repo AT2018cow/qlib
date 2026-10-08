@@ -1,5 +1,10 @@
 # 21 - Next Conversation Handoff: STAR + ChiNext (2026-10-08)
 
+> **Scope update after PR #34:** this is retained as a comprehensive 2026-10-08 research background snapshot, not the sole next-conversation launcher.
+> Use [22 — STAR/ChiNext research handoff](22-handoff-star-chinext-research-20261008.md) for model research,
+> or [23 — website development handoff](23-web-ui-handoff-20261008.md) for public UI work.
+> PRs #32, #33, and #34 were all merged by the time of this split. The original SHA below is the historical snapshot reviewed when doc 21 was written, not the latest main SHA.
+
 ## 0. Purpose
 
 This document is the starting point for the next conversation.
