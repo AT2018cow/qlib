@@ -8,7 +8,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'website', 'app.js'), 'utf8');
 const start = source.indexOf('function calendarAlignChartValues(');
-const end = source.indexOf('async function loadNameMap(', start);
+const end = source.indexOf('async function loadAvailableDates(', start);
 assert.ok(start >= 0 && end > start, 'sparkline functions found');
 const { calendarAlignChartValues, makeSparkline } = vm.runInNewContext(
   source.slice(start, end) + ';({ calendarAlignChartValues, makeSparkline })'
@@ -139,4 +139,18 @@ test('date selection is latest-request-wins, accessible and placed above the ran
   assert.match(css, /overscroll-behavior-x: contain/);
   assert.match(css, /\.performance-line\s*\{\s*fill:\s*none;/);
   assert.doesNotMatch(css, /\.performance-line\.(gain|loss),\s*\.performance-dot\./);
+});
+
+test('Pages index replaces weekday probing and first-render barrier', () => {
+  assert.match(source, /available_dates\.json/);
+  assert.match(source, /fetch\(url, \{ cache: fresh \? 'no-cache' : 'default' \}\)/);
+  assert.doesNotMatch(source, /cache: 'no-store'/);
+  assert.doesNotMatch(source, /for \(let i = 0; i < 45; i\+\+\)/);
+  assert.match(source, /const forwardPromise = loadForwardPerformance\(\);/);
+  assert.match(source, /const index = await loadAvailableDates\(\);/);
+  assert.match(source, /app\.innerHTML = pageShell\(dates\);/);
+  assert.match(source, /forwardPromise\.then\(renderForwardPerformance\)/);
+  assert.match(source, /const csvCache = new Map\(\);/);
+  assert.match(source, /paint\(null, null\);/);
+  assert.match(source, /paint\(previous, ctx\);/);
 });
