@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Iterable, Optional
 
 
@@ -38,7 +39,7 @@ def align_bin_values_to_calendar_tail(
         except (TypeError, ValueError):
             out.append(None)
             continue
-        if number != number:  # NaN
+        if not math.isfinite(number):
             out.append(None)
         else:
             out.append(round(number, 4))
