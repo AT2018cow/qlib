@@ -26,6 +26,7 @@ from qlib_live_retrain import (
     RETRAIN_EVERY_SESSIONS,
     provider_training_fingerprint,
     apply_lgb_reproducibility,
+    reconcile_model_cache_pair,
 )
 from board_execution import compute_limit_masks, research_exchange
 from signal_publication_gate import (
@@ -3465,9 +3466,16 @@ CHENDITC_LATEST_URL = "https://github.com/chenditc/investment_data/releases/late
 @app.function(
     volumes={str(VOL_ROOT): vol},
     cpu=CPU_COUNT,
-    memory=32768,
-    timeout=4 * 3600,
-    nonpreemptible=True,  # 每日信号是生产职责：抢占会导致当天无信号；3x 成本（~$0.3-0.8/日）可接受
+    # 2026-10-08 production retrain-day profiling peaked at ~9.1 GiB RSS.
+    # 16 GiB preserves substantial headroom while avoiding a 32 GiB request.
+    memory=16384,
+    # daily_cron waits synchronously with the same 2h ceiling; a longer child
+    # timeout cannot rescue publication after the parent has timed out.
+    timeout=2 * 3600,
+    # Production has one canonical signal lineage. Queue accidental overlapping
+    # manual/cron invocations instead of running duplicate heavy containers.
+    max_containers=1,
+    nonpreemptible=True,  # 每日信号是生产职责：抢占会导致当天无信号；保留可靠性优先语义
 )
 def daily_standalone(
     topk: int = 20,
@@ -3578,9 +3586,14 @@ def daily_standalone(
     cache_dir.mkdir(parents=True, exist_ok=True)
     model_file = cache_dir / f"{signature}.pkl"
     meta_file = cache_dir / f"{signature}.json"
-    if model_file.exists() != meta_file.exists():
-        raise RuntimeError("Partial model cache; refusing to load an unverified model")
-    saved = json.loads(meta_file.read_text()) if meta_file.exists() else None
+    cache_state = reconcile_model_cache_pair(model_file, meta_file)
+    if cache_state == "recovered_partial":
+        # A Modal Volume commit can be interrupted between the pickle and JSON
+        # becoming durable. This cache is reconstructible, so invalidate the
+        # orphan and take the normal bootstrap/retrain path. The new complete
+        # pair is committed together after model.fit below.
+        print("[daily] 检测到不完整模型缓存（pkl/json 单边缺失），已失效并强制重训")
+    saved = json.loads(meta_file.read_text()) if cache_state == "complete" else None
     if saved is not None and saved.get("signature") != signature:
         raise RuntimeError("Model cache signature mismatch")
     # R27: compare the current provider prefix against exactly the history that
