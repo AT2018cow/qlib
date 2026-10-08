@@ -127,6 +127,7 @@ def inspect_viewport(browser, base_url, width: int):
     assert not errors, errors
     assert page.locator("#forward-return").inner_text() == "待开始"
     assert page.locator("#stat-lineage").inner_text() == "Stage-B winner"
+    assert page.locator("#ranking-date").inner_text() == page.locator("#stat-date").inner_text()
     # These must be actual visible labels, not title-only tooltips on touchscreens.
     ranking = page.locator("#ranking")
     history = page.locator("#history")
@@ -154,6 +155,7 @@ def inspect_viewport(browser, base_url, width: int):
     page.screenshot(path=str(OUT / f"dashboard-fixture-awaiting-{width}.png"), full_page=True)
     page.locator(".date-btn").nth(1).click()
     page.wait_for_function("document.getElementById('stat-lineage')?.textContent === '历史 / 未核验'")
+    assert page.locator("#ranking-date").inner_text() == page.locator("#stat-date").inner_text()
     page.wait_for_function("Math.abs(document.querySelector('#ranking').getBoundingClientRect().top) < 30")
     after_history = len(signals_requests)
     assert after_history == initial_requests + 2, signals_requests
