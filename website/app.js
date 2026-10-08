@@ -202,8 +202,8 @@ function pageShell(dates) {
           <div class="eyebrow"><span class="status-dot"></span> CSI1000 Production</div>
           <h1>中证1000<span>每日选股信号</span></h1>
           <p class="hero-lede">
-            当前生产模型为冻结的 Stage-B winner。页面展示每日 Top20 排名、模型数据日期与
-            paper lineage 状态；研究协议与生产实现保持同一套 T close → T+1 open 语义。
+            基于已冻结的 Stage-B 模型，每日展示中证1000预测排名。
+            可查询历史榜单、数据截止日与模型版本。信号于 T 日收盘形成，供 T+1 开盘使用。
           </p>
         </div>
         <aside class="protocol-card">
@@ -249,7 +249,7 @@ function pageShell(dates) {
           </div>
           <div class="panel-note">
             <div id="artifact-status"></div>
-            <div style="margin-top:6px">分数为模型输出，不代表确定收益</div>
+            <div class="ranking-note">预测分数用于排序，不构成收益承诺</div>
           </div>
         </div>
         <div class="table-wrap">
@@ -269,7 +269,7 @@ function pageShell(dates) {
             <div class="panel-kicker">Archive</div>
             <h2>历史榜单</h2>
           </div>
-          <div class="panel-note">历史文件只读保留；切换日期不会改变生产状态</div>
+          <div class="panel-note">只读存档 · 按日期查看</div>
         </div>
         <div class="history-wrap">
           <div id="history-buttons" class="history-buttons">${history}</div>
@@ -311,16 +311,16 @@ async function main() {
     document.getElementById('mobile-cards').innerHTML = mobileCards(rows);
     document.getElementById('stat-date').textContent = formatDate(dateInfo.date);
     document.getElementById('stat-data-date').textContent =
-      formatDate(ctx.paper?.signal_data_date || dateInfo.date);
+      formatDate(ctx.paper?.signal_data_date || null);
     document.getElementById('stat-fit-date').textContent =
       formatDate(ctx.paper?.model_fit_asof || null);
-    document.getElementById('stat-lineage').textContent = winner ? 'Winner canonical' : '历史记录';
+    document.getElementById('stat-lineage').textContent = winner ? 'Stage-B winner' : '历史 / 未核验';
     document.getElementById('stat-lineage-sub').textContent = winner
       ? 'stage_b_winner_canonical'
       : '非当前 winner lineage / 元数据缺失';
     document.getElementById('artifact-status').innerHTML = winner
-      ? '<span class="status-pill"><span class="status-dot"></span> CURRENT WINNER LINEAGE</span>'
-      : '<span class="status-pill history">HISTORICAL ARTIFACT</span>';
+      ? '<span class="status-pill"><span class="status-dot"></span> Stage-B winner · 已核验</span>'
+      : '<span class="status-pill history">历史记录 / 版本未确认</span>';
 
     document.querySelectorAll('.date-btn').forEach(btn => {
       btn.classList.toggle('current', btn.dataset.date === dateInfo.date);
