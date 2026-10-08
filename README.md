@@ -1,7 +1,7 @@
 [![Python Versions](https://img.shields.io/pypi/pyversions/pyqlib.svg?logo=python&logoColor=white)](https://pypi.org/project/pyqlib/#files)
 
 > **Fork 说明**：本 fork 在 Qlib 之上构建了 A 股日频量价研究管道（Modal 云端运行，入口 `modal_qlib_cn_a10g.py`）。
-> 研究结论、工作路线图、风险审计与实盘手册见 **[docs/experiments/](docs/experiments/README.md)**，实验原始数据在 `results/`。
+> 当前研究结论、审计入口与历史实验文档见 **[docs/experiments/](docs/experiments/README.md)**，实验原始数据在 `results/`。
 > 当前项目状态与下一阶段 STAR / ChiNext 交接见 **[docs/experiments/21-next-conversation-handoff-star-chinext-20261008.md](docs/experiments/21-next-conversation-handoff-star-chinext-20261008.md)**。
 >
 > **免责声明**：本仓库仅供学术研究与实验性工程验证，不构成投资建议（research-only, not investment advice）。
