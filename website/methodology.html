@@ -64,9 +64,9 @@ footer {
     <div class="section">
         <h2>二、股票池与当前研究状态</h2>
         <ul>
-            <li><strong>主池 · 中证 1000</strong>：成分股含历史真实成分（无幸存者偏差）；执行口径 top20 / nd2（每日换 2 只）</li>
-            <li><strong>研究卫星池 · 创业板</strong>：基础设施仍可独立训练/发布 top20/nd3 榜单，但 corrected v5 gate + 0/5/10/15 screen 的相对 CAGR 全为负；当前仅保留为 bounded-rescue 研究线，不视为与主池等价的生产候选</li>
-            <li><strong>选股</strong>：各自独立训练/打分排序，各取预测收益率最高的 <strong>top 20</strong> 等权持有；两池榜单互相独立</li>
+            <li><strong>生产主池 · 中证 1000</strong>：当前 canonical 为已冻结的 Stage-B winner；成分股含历史真实成分（无幸存者偏差），执行口径 top20 / nd2（每日换 2 只）</li>
+            <li><strong>研究线 · 创业板</strong>：旧模型的每日 production 更新与网页展示已暂停。研究代码和历史 artifacts 保留，待下一代模型完成独立验证并通过 production gate 后再显式恢复。</li>
+            <li><strong>当前每日选股</strong>：生产页面只发布中证 1000 Stage-B winner 的 top 20；创业板历史榜单不再作为当前生产信号展示。</li>
             <li><strong>调仓</strong>：每日微调（daily rebalance），换掉跌出榜单最差的 nd 只</li>
             <li><strong>涨跌停过滤（板块感知）</strong>：主板/改革前创业板 ±10%（阈值 9.5%）、科创板/改革后创业板 ±20%（阈值 19.5%）、北交所 ±30%；上市前 5 个交易日无涨跌停不剔除；ST ±5% 需外部名单（未接线，已知限制）</li>
             <li><strong>科创板说明</strong>：独立 STAR top50/nd2 在 corrected protocol 下尚未通过 prediction-chunk reproducibility gate，因此当前 alpha 结论不可用；688 个股若属于中证 1000 成分，仍在主池中正常参与排名</li>
@@ -88,17 +88,17 @@ footer {
         <h2>四、当前 corrected / reproducible 审计结果</h2>
         <table>
             <tr><th>股票池</th><th>当前证据</th><th>研究状态</th></tr>
-            <tr><td>中证 1000 top20/nd2</td><td>phase 0：策略 CAGR 6.84%，相对 CAGR 5.29%，Sharpe 0.55；5-phase 相对 CAGR 4.16%~8.95%</td><td>reproducibility PASS；主调优线，但存在显著 calendar-phase sensitivity</td></tr>
-            <tr><td>创业板 top20/nd3</td><td>gate PASS；phase 0/5/10/15 相对 CAGR = -1.00% / -3.72% / -8.99% / -10.82%</td><td>当前 frozen baseline 偏弱；仅 bounded-rescue 研究</td></tr>
+            <tr><td>中证 1000 top20/nd2</td><td>Stage-B winner：5/5 retraining phases 为正超额；relative excess CAGR 9.16%~15.50%，median 14.25%；worst strategy MaxDD -14.65%</td><td>Stage-B rank #1；已冻结并晋升为 canonical production</td></tr>
+            <tr><td>创业板 top20/nd3</td><td>旧 corrected screen：phase 0/5/10/15 相对 CAGR = -1.00% / -3.72% / -8.99% / -10.82%</td><td>production paused；仅保留历史研究与下一代模型开发</td></tr>
             <tr><td>STAR top50/nd2</td><td>prediction-chunk reproducibility gate 未通过</td><td>暂不可评价 alpha；先修复 determinism/data lineage</td></tr>
         </table>
-        <p class="note">旧 +11% 级 Batch C / rolling 数字保留在历史实验文档中，但已被 corrected execution、canonical portfolio metrics 和 deterministic reproducibility gate 所 supersede。当前研究入口：docs/experiments/14-pre-tuner-stage-summary-20261007.md。</p>
+        <p class="note">CSI1000 当前生产选择来自已完成的 Stage A + Stage B 冻结协议；Stage-B confirmation tail 不再用于继续调参。创业板旧 +11% 级 Batch C / rolling 数字及旧 daily artifacts 仅保留为历史研究记录，不代表当前生产信号。</p>
     </div>
 
     <div class="section">
         <h2>五、已知风险</h2>
         <ul>
-            <li><strong>重训日历敏感</strong>：CSI1000 corrected 5-phase screen 的相对 CAGR 约 4.16%~8.95%；单一 retraining calendar 的漂亮结果不能作为模型选择依据</li>
+            <li><strong>历史结果不等于未来收益</strong>：CSI1000 Stage-B winner 的 5-phase relative excess CAGR 为 9.16%~15.50%，用于确认重训相位稳健性，不应外推为未来收益承诺</li>
             <li><strong>指数 Beta 全自担</strong>：绝对收益 = 指数涨跌 + 选股超额；2022 年中证 1000 跌 21%，组合约亏 10%</li>
             <li><strong>小盘股流动性约束</strong>：组合规模上限约 100~400 万元</li>
             <li><strong>基准口径差异</strong>：CSI1000 使用价格指数；ChiNext/STAR 使用项目内等权合成基准，跨池 relative CAGR 不应直接相加比较</li>
