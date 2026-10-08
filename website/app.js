@@ -74,12 +74,12 @@ function calendarAlignChartValues(values, dates) {
 
 function makeSparkline(values, w = 128, h = 34) {
   const raw = Array.isArray(values) ? values : [];
-  if (raw.length < 2) return '<span class="muted">—</span>';
+  if (raw.length < 2) return '<span class="muted" title="近60日有效收盘价不足，无法绘图">—</span>';
 
   const finite = raw
     .map((v, i) => ({ i, v: Number(v) }))
     .filter(p => raw[p.i] !== null && raw[p.i] !== undefined && Number.isFinite(p.v));
-  if (finite.length < 2) return '<span class="muted">—</span>';
+  if (finite.length < 2) return '<span class="muted" title="近60日有效收盘价不足，无法绘图">—</span>';
 
   const min = Math.min(...finite.map(p => p.v));
   const max = Math.max(...finite.map(p => p.v));
@@ -105,7 +105,7 @@ function makeSparkline(values, w = 128, h = 34) {
   });
   if (current.length >= 2) segments.push(current);
 
-  if (!segments.length) return '<span class="muted">—</span>';
+  if (!segments.length) return '<span class="muted" title="有效价格不连续，无法形成趋势线">—</span>';
   const stroke = finite[finite.length - 1].v >= finite[0].v ? '#ff6b6b' : '#3ccf91';
   const paths = segments.map(seg => {
     const d = seg.map((p, i) => `${i ? 'L' : 'M'} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
@@ -154,15 +154,58 @@ async function loadDateContext(date) {
   };
 }
 
+// Frontend trust boundary: only a validated forward-only artifact may
+// produce a numerical return. Never silently turn missing/null data into 0%.
+const FORWARD_START = '2026-10-12';
+
+function dateKeyToUTC(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return NaN;
+  const time = Date.parse(value + 'T00:00:00Z');
+  return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === value ? time : NaN;
+}
+
+function normalizeForwardPerformance(raw) {
+  const invalid = { status: 'invalid' };
+  if (!raw || raw.start_date !== FORWARD_START || !Array.isArray(raw.points)) return invalid;
+  if (raw.status === 'awaiting_first_valuation') {
+    return raw.points.length === 0 && raw.latest_date == null && raw.cumulative_return == null
+      ? raw : invalid;
+  }
+  if (raw.status !== 'active' || raw.points.length === 0 ||
+      raw.points[0]?.date !== FORWARD_START) return invalid;
+  let previousDate = '';
+  let previousNav = 1;
+  for (const point of raw.points) {
+    if (!point || !Number.isFinite(dateKeyToUTC(point.date)) ||
+        point.date < FORWARD_START || point.date <= previousDate ||
+        typeof point.nav !== 'number' || !Number.isFinite(point.nav) || point.nav <= 0 ||
+        typeof point.daily_return !== 'number' || !Number.isFinite(point.daily_return) ||
+        typeof point.cumulative_return !== 'number' || !Number.isFinite(point.cumulative_return) ||
+        Math.abs(point.nav - 1 - point.cumulative_return) > 1e-6 ||
+        Math.abs(point.daily_return - (point.nav / previousNav - 1)) > 1e-6) {
+      return invalid;
+    }
+    previousDate = point.date;
+    previousNav = point.nav;
+  }
+  const last = raw.points[raw.points.length - 1];
+  if (raw.latest_date !== last.date || typeof raw.cumulative_return !== 'number' ||
+      !Number.isFinite(raw.cumulative_return) ||
+      Math.abs(raw.cumulative_return - last.cumulative_return) > 1e-8) return invalid;
+  return raw;
+}
+
+function isPossiblyStale(latestDate, now = new Date()) {
+  const latest = dateKeyToUTC(latestDate);
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  // Calendar-day heuristic only: weekends and market holidays can delay updates.
+  return Number.isFinite(latest) && today - latest > 7 * 86400000;
+}
+
 async function loadForwardPerformance() {
-  const text = await fetchText(`${CSV_BASE}/csi1000_forward_performance.json`);
-  return parseJSONLoose(text) || {
-    start_date: '2026-10-12',
-    status: 'awaiting_first_valuation',
-    latest_date: null,
-    cumulative_return: null,
-    points: [],
-  };
+  const text = await fetchText(CSV_BASE + '/csi1000_forward_performance.json');
+  if (text === null) return { status: 'unavailable' };
+  return normalizeForwardPerformance(parseJSONLoose(text));
 }
 
 function formatReturn(value, digits = 2) {
@@ -178,7 +221,10 @@ function makePerformanceChart(points, w = 760, h = 180) {
     return '<div class="performance-empty">从 2026.10.12 开始记录，首个收盘估值将在下一次数据更新后显示。</div>';
   }
 
-  const values = [0, ...rows.map(p => Number(p.cumulative_return)).filter(Number.isFinite)];
+  if (rows.some(p => !p || typeof p.cumulative_return !== 'number' || !Number.isFinite(p.cumulative_return))) {
+    return '<div class="performance-empty">估值点异常，无法绘制收益曲线。</div>';
+  }
+  const values = [0, ...rows.map(p => p.cumulative_return)];
   const min = Math.min(...values);
   const max = Math.max(...values);
   const pad = Math.max((max - min) * 0.18, 0.005);
@@ -189,7 +235,7 @@ function makePerformanceChart(points, w = 760, h = 180) {
   const yPad = 18;
   const usableW = w - xPad * 2;
   const usableH = h - yPad * 2;
-  const series = [0, ...rows.map(p => Number(p.cumulative_return))];
+  const series = values;
   const pts = series.map((v, i) => {
     const x = xPad + (series.length === 1 ? 0 : i / (series.length - 1) * usableW);
     const y = yPad + (hi - v) / range * usableH;
@@ -206,6 +252,7 @@ function makePerformanceChart(points, w = 760, h = 180) {
       <path d="${path}" class="performance-line ${positive ? 'gain' : 'loss'}"/>
       <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="4" class="performance-dot ${positive ? 'gain' : 'loss'}"/>
     </svg>
+    <div class="performance-axis"><span>2026.10.12 · 起点</span><span>${formatDate(rows[rows.length - 1].date)} · 最近估值</span></div>
   `;
 }
 
@@ -216,22 +263,32 @@ function renderForwardPerformance(data) {
   const status = document.getElementById('forward-status');
   if (!value || !latest || !chart || !status) return;
 
-  const points = Array.isArray(data?.points) ? data.points : [];
-  if (data?.status !== 'active' || !points.length) {
-    value.textContent = '待开始';
-    value.className = 'performance-value';
-    latest.textContent = '尚无收盘估值';
+  value.className = 'performance-value';
+  latest.className = 'performance-latest';
+  status.className = 'performance-status';
+  if (data?.status !== 'active') {
+    const unavailable = data?.status === 'unavailable';
+    const invalid = data?.status === 'invalid';
+    value.textContent = unavailable ? '暂不可用' : invalid ? '数据异常' : '待开始';
+    latest.textContent = unavailable ? '收益文件加载失败' :
+      invalid ? '估值数据校验未通过' : '尚无收盘估值';
     status.textContent = 'Forward tracking · 2026.10.12 起';
-    chart.innerHTML = makePerformanceChart([]);
+    const message = unavailable ? '暂时无法读取累计收益数据，请稍后重试。' :
+      invalid ? '累计收益数据不完整或不符合 forward-only 约定，已停止展示。' :
+      '从 2026.10.12 开始记录，首个收盘估值将在下一次数据更新后显示。';
+    chart.innerHTML = '<div class="performance-empty" role="status">' + message + '</div>';
     return;
   }
 
-  const ret = Number(data.cumulative_return);
-  value.textContent = formatReturn(ret);
-  value.className = `performance-value ${ret >= 0 ? 'gain' : 'loss'}`;
-  latest.textContent = `最新估值 ${formatDate(data.latest_date)}`;
-  status.textContent = `Forward tracking · ${formatDate(data.start_date)} 起`;
-  chart.innerHTML = makePerformanceChart(points);
+  const stale = isPossiblyStale(data.latest_date);
+  value.textContent = formatReturn(data.cumulative_return);
+  value.className = 'performance-value ' + (data.cumulative_return >= 0 ? 'gain' : 'loss');
+  latest.textContent = '最新估值 ' + formatDate(data.latest_date) + (stale ? ' · 可能滞后' : '');
+  if (stale) latest.classList.add('stale');
+  status.textContent = 'Forward tracking · ' + formatDate(data.start_date) + ' 起' +
+    (stale ? ' · 请核对估值时效' : '');
+  if (stale) status.classList.add('stale');
+  chart.innerHTML = makePerformanceChart(data.points);
 }
 
 function isWinnerCanonical(paper) {
@@ -251,10 +308,10 @@ function buildRows(dateInfo, nameMap, prev, chartData) {
 
   return rows.map(r => {
     const rank = Number(r.rank);
-    let tag = '<span class="tag tag-hold">持有</span>';
-    if (!prevCodes.has(r.instrument)) tag = '<span class="tag tag-new">新进</span>';
-    else if (rank < prevRank[r.instrument]) tag = '<span class="tag tag-up">上升</span>';
-    else if (rank > prevRank[r.instrument]) tag = '<span class="tag tag-dn">下降</span>';
+    let tag = prev ? '<span class="tag tag-hold">持有</span>' : '<span class="tag tag-hold">无对照</span>';
+    if (prev && !prevCodes.has(r.instrument)) tag = '<span class="tag tag-new">新进</span>';
+    else if (prev && rank < prevRank[r.instrument]) tag = '<span class="tag tag-up">上升</span>';
+    else if (prev && rank > prevRank[r.instrument]) tag = '<span class="tag tag-dn">下降</span>';
 
     return {
       rank,
@@ -302,7 +359,7 @@ function mobileCards(rows) {
 
 function pageShell(dates) {
   const history = dates.slice(0, 24).map((d, i) =>
-    `<button class="date-btn${i === 0 ? ' current' : ''}" data-date="${d.date}">${formatDate(d.date)}</button>`
+    `<button class="date-btn${i === 0 ? ' current' : ''}" aria-pressed="${i === 0}" data-date="${d.date}">${formatDate(d.date)}</button>`
   ).join('');
 
   return `
@@ -362,6 +419,19 @@ function pageShell(dates) {
         </div>
       </section>
 
+      <section class="panel" id="history">
+        <div class="panel-head">
+          <div>
+            <div class="panel-kicker">Archive</div>
+            <h2>历史榜单</h2>
+          </div>
+          <div class="panel-note">只读存档 · 按日期查看</div>
+        </div>
+        <div class="history-wrap">
+          <div id="history-buttons" class="history-buttons">${history}</div>
+        </div>
+      </section>
+
       <section class="panel performance-panel" id="performance">
         <div class="performance-head">
           <div>
@@ -405,19 +475,6 @@ function pageShell(dates) {
         <div id="mobile-cards" class="mobile-cards"></div>
       </section>
 
-      <section class="panel" id="history">
-        <div class="panel-head">
-          <div>
-            <div class="panel-kicker">Archive</div>
-            <h2>历史榜单</h2>
-          </div>
-          <div class="panel-note">只读存档 · 按日期查看</div>
-        </div>
-        <div class="history-wrap">
-          <div id="history-buttons" class="history-buttons">${history}</div>
-        </div>
-      </section>
-
       <div class="callout">
         <strong>当前范围：</strong>生产页面仅展示 CSI1000。创业板旧模型的每日更新与公开展示已暂停，
         历史研究结果仍保留；待新模型完成独立验证并获准恢复后再展示。
@@ -440,17 +497,24 @@ async function main() {
   ]);
 
   if (!dates.length) {
-    app.innerHTML = `<main class="shell"><div class="callout"><strong>暂无可用信号。</strong> 当前没有找到最近的 CSI1000 production artifact。</div></main>`;
+    app.innerHTML = `<main class="shell"><nav class="topbar"><a class="brand" href="./">Qlib Signal Lab</a><a href="methodology.html">方法论</a></nav><div class="callout" role="status"><strong>暂无可用信号。</strong> 最近查询范围内没有找到 CSI1000 信号文件，无法确认是尚未发布还是资源不可用。</div></main>`;
     return;
   }
 
   app.innerHTML = pageShell(dates);
   renderForwardPerformance(forwardPerformance);
 
+  let latestDateRequest = 0;
   async function renderDate(dateInfo) {
+    const request = ++latestDateRequest;
+    const container = document.querySelector(".signal-table");
+    if (container) container.setAttribute("aria-busy", "true");
+    document.getElementById("artifact-status").textContent = "正在加载日期记录…";
     const idx = dates.findIndex(d => d.date === dateInfo.date);
     const prev = idx >= 0 && idx + 1 < dates.length ? parseCSV(dates[idx + 1].text) : null;
     const ctx = await loadDateContext(dateInfo.date);
+    // A slower prior request must never overwrite a more recent date choice.
+    if (request !== latestDateRequest) return;
     const rows = buildRows(dateInfo, nameMap, prev, ctx.chart);
     const winner = isWinnerCanonical(ctx.paper);
 
@@ -470,8 +534,11 @@ async function main() {
       : '<span class="status-pill history">历史记录 / 版本未确认</span>';
 
     document.querySelectorAll('.date-btn').forEach(btn => {
-      btn.classList.toggle('current', btn.dataset.date === dateInfo.date);
+      const active = btn.dataset.date === dateInfo.date;
+      btn.classList.toggle('current', active);
+      btn.setAttribute('aria-pressed', String(active));
     });
+    if (container) container.setAttribute("aria-busy", "false");
   }
 
   document.querySelectorAll('.date-btn').forEach(btn => {
