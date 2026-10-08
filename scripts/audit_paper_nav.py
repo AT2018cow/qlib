@@ -13,7 +13,7 @@ import csv
 import json
 import re
 from datetime import date
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 
 START = "2026-10-12"
@@ -192,10 +192,25 @@ def reconcile(artifacts, *, forward=None, calendar=None, quotes=None):
                                 factor = number(q["factor"], "quote factor")
                                 if factor <= 0:
                                     issue("BAD_FACTOR", execution_day, sym)
-                                elif (shares * factor / Decimal(100)) % 1 != 0:
-                                    issue("FACTOR_LOT_DIVERGENCE", execution_day,
-                                          f"{sym}: adjusted shares={shares}, factor={factor}; "
-                                          "not a multiple of 100 original shares")
+                                else:
+                                    physical_shares = shares * factor
+                                    nearest_lot = (physical_shares / Decimal(100)).to_integral_value(
+                                        rounding=ROUND_HALF_UP
+                                    ) * Decimal(100)
+                                    # Floating adjusted shares may not multiply back to
+                                    # exact integers; Qlib explicitly tolerates 0.1 share.
+                                    if abs(physical_shares - nearest_lot) > Decimal("0.1"):
+                                        issue("FACTOR_LOT_DIVERGENCE", execution_day,
+                                              f"{sym}: adjusted shares={shares}, factor={factor}; "
+                                              "not a physical 100-share lot")
+                                    if "factor" in fill and abs(number(fill["factor"], "recorded factor") - factor) > Decimal("0.000001"):
+                                        issue("REPORTED_FACTOR_DIFF", execution_day,
+                                              f"{sym}: recorded={fill['factor']}, independent={factor}")
+                                    if "physical_shares" in fill and abs(
+                                        number(fill["physical_shares"], "physical shares") - physical_shares
+                                    ) > Decimal("0.1"):
+                                        issue("PHYSICAL_SHARES_DIFF", execution_day,
+                                              f"{sym}: reported={fill['physical_shares']}, actual={physical_shares}")
                 except (KeyError, TypeError, ValueError) as exc:
                     issue("INVALID_FILL", execution_day, str(exc))
         if abs(fees - reported_cost) > CENT_TOL:
@@ -205,8 +220,44 @@ def reconcile(artifacts, *, forward=None, calendar=None, quotes=None):
             warn("MISSING_OPENING_SNAPSHOT", execution_day,
                  "no prior winner state snapshot; cannot independently replay opening holdings/cash")
         else:
-            expected_cash = previous["cash"] + sum(n * px - fee for _, n, px, fee in sells)
-            expected_cash -= sum(n * px + fee for _, n, px, fee in buys)
+            cash_after_sells = previous["cash"] + sum(n * px - fee for _, n, px, fee in sells)
+            expected_cash = cash_after_sells - sum(n * px + fee for _, n, px, fee in buys)
+            # A legal physical lot alone is not enough: a fixed-100-adjusted
+            # Paper buy can itself form a legal lot yet differ from Qlib's
+            # factor-adjusted *target* buy size. Independently replay the
+            # frozen 95% risk sizing and buy order budget from public fills.
+            planned_buys = report.get("planned_buy")
+            if quotes is not None and buys:
+                if not isinstance(planned_buys, list) or not planned_buys:
+                    issue("MISSING_BUY_PLAN", execution_day, "cannot verify Qlib target without the planned buy count")
+                else:
+                    per_buy_budget = cash_after_sells * Decimal("0.95") / len(planned_buys)
+                    available_cash = cash_after_sells
+                    for sym, shares, px, fee in buys:
+                        q = quotes.get((execution_day, sym))
+                        if q and q.get("factor") not in (None, ""):
+                            factor = number(q["factor"], "factor")
+                            if factor > 0:
+                                desired_lots = int((per_buy_budget / px * factor + Decimal("0.1")) // 100)
+                                expected_lots = desired_lots
+                                expected_shares = Decimal(expected_lots) * 100 / factor
+                                estimated_fee = max(expected_shares * px * Decimal("0.0005"), Decimal(5))
+                                if expected_shares * px + estimated_fee > available_cash:
+                                    available_lots = max(0, int(
+                                        ((available_cash - Decimal(5)) / px * factor + Decimal("0.1")) // 100
+                                    ))
+                                    expected_lots = min(expected_lots, available_lots)
+                                    while expected_lots > 0:
+                                        expected_shares = Decimal(expected_lots) * 100 / factor
+                                        estimated_fee = max(expected_shares * px * Decimal("0.0005"), Decimal(5))
+                                        if expected_shares * px + estimated_fee <= available_cash:
+                                            break
+                                        expected_lots -= 1
+                                expected_shares = Decimal(expected_lots) * 100 / factor
+                                if abs(shares - expected_shares) * factor > Decimal("0.1"):
+                                    issue("BUY_SIZE_DIFF", execution_day,
+                                          f"{sym}: filled adjusted shares={shares}, Qlib factor-aware target={expected_shares}")
+                        available_cash -= shares * px + fee
             if abs(expected_cash - cash) > CENT_TOL:
                 issue("CASH_LEDGER_DIFF", execution_day, f"replayed cash={expected_cash}, artifact cash={cash}")
             share_balance = {sym: p["shares"] for sym, p in previous["positions"].items()}

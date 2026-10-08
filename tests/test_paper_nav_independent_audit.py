@@ -25,6 +25,7 @@ def fixture():
             "cash": 995,
             "n_positions": 1,
             "positions": ["A"],
+            "planned_buy": ["A"],
             "executed_buy": [{"instrument": "A", "shares": 100, "price": 10, "cost": 5}],
             "executed_sell": [],
             "cost": 5,
@@ -43,6 +44,7 @@ def fixture():
             "cash": 2190,
             "n_positions": 0,
             "positions": [],
+            "planned_buy": [],
             "executed_buy": [],
             "executed_sell": [{"instrument": "A", "shares": 100, "price": 12, "cost": 5}],
             "cost": 5,
@@ -205,3 +207,53 @@ def test_missing_public_forward_json_does_not_allow_full_certification():
     result = reconcile(artifacts, quotes=quotes, calendar=calendar)
     assert result["status"] == "PARTIAL_NOT_CERTIFIED"
     assert any(w["code"] == "PUBLIC_FORWARD_NOT_PROVIDED" for w in result["warnings"])
+
+
+def test_legal_physical_lot_still_detects_wrong_buy_budget_at_factor_two():
+    """Old Paper 100-adjusted-share fill can form a legal physical lot, yet be undersized."""
+    artifacts, quotes, calendar, forward = fixture()
+    quotes[("2026-10-12", "A")]["factor"] = "2"
+    result = reconcile(artifacts, quotes=quotes, calendar=calendar, forward=forward)
+    assert "FACTOR_LOT_DIVERGENCE" not in codes(result)
+    assert "BUY_SIZE_DIFF" in codes(result)
+
+
+def test_factor_aware_fractional_share_ledger_reconciles():
+    """A correct Qlib-adjusted buy at factor 2 should pass the full ledger audit."""
+    artifacts, quotes, calendar, _ = fixture()
+    original, first, second = artifacts
+    quotes[("2026-10-12", "A")]["factor"] = "2"
+    quotes[("2026-10-13", "A")]["factor"] = "2"
+    first["positions"]["A"]["shares"] = 150
+    first["cash"] = 495
+    fill = first["execution_report"]["executed_buy"][0]
+    fill.update({"shares": 150, "factor": 2, "physical_shares": 300})
+    first["execution_report"].update({"cash": 495, "portfolio_value_close": 2145})
+    sold = second["execution_report"]["executed_sell"][0]
+    sold["shares"] = 150
+    sold["cost"] = 5
+    second["cash"] = 2290
+    second["execution_report"].update({
+        "cash": 2290, "portfolio_value_pre_trade_open": 2295,
+        "portfolio_value_close": 2290,
+    })
+    result = reconcile(artifacts, quotes=quotes, calendar=calendar)
+    assert result["status"] == "PARTIAL_NOT_CERTIFIED"
+    assert not result["issues"], result
+
+
+def test_mismatched_reported_factor_and_physical_share_count_are_detected():
+    artifacts, quotes, calendar, forward = fixture()
+    fill = artifacts[1]["execution_report"]["executed_buy"][0]
+    fill["factor"] = 2
+    fill["physical_shares"] = 300
+    result = reconcile(artifacts, quotes=quotes, calendar=calendar, forward=forward)
+    assert "REPORTED_FACTOR_DIFF" in codes(result)
+    assert "PHYSICAL_SHARES_DIFF" in codes(result)
+
+
+def test_missing_buy_plan_is_not_independently_certified():
+    artifacts, quotes, calendar, forward = fixture()
+    del artifacts[1]["execution_report"]["planned_buy"]
+    result = reconcile(artifacts, quotes=quotes, calendar=calendar, forward=forward)
+    assert "MISSING_BUY_PLAN" in codes(result)

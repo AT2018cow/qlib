@@ -1322,6 +1322,7 @@ def _paper_execution_context(
             "execution_date": execution_date,
             "open_prices": {},
             "close_prices": {},
+            "factors": {},
             "buy_tradable": {},
             "sell_tradable": {},
         }
@@ -1342,6 +1343,7 @@ def _paper_execution_context(
     opens, prevs, close_na, factors = [], [], [], []
     open_prices = {}
     close_prices = {}
+    factor_by_symbol = {}
     for inst in insts:
         row = rows.get(inst)
         op = float(row["$open"]) if row is not None and _pd.notna(row["$open"]) else _np.nan
@@ -1356,6 +1358,8 @@ def _paper_execution_context(
             open_prices[inst] = op
         if _np.isfinite(close):
             close_prices[inst] = close
+        if _np.isfinite(factor) and factor > 0:
+            factor_by_symbol[inst] = factor
 
     listing = _board_listing_dates(data_dir, insts)
     limit_buy, limit_sell = compute_limit_masks(
@@ -1374,6 +1378,7 @@ def _paper_execution_context(
         "execution_date": execution_date,
         "open_prices": open_prices,
         "close_prices": close_prices,
+        "factors": factor_by_symbol,
         "buy_tradable": {inst: not bool(v) for inst, v in zip(insts, limit_buy)},
         "sell_tradable": {inst: not bool(v) for inst, v in zip(insts, limit_sell)},
     }
@@ -1439,6 +1444,7 @@ def _apply_paper_portfolio(
                 buy_tradable=ctx.get("buy_tradable", {}),
                 sell_tradable=ctx.get("sell_tradable", {}),
                 close_prices=ctx.get("close_prices", {}),
+                factors=ctx.get("factors", {}),
             )
 
     planned = None

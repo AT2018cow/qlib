@@ -16,6 +16,7 @@ ranked stock.  Cash sizing follows Qlib's risk_degree convention.
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
@@ -187,7 +188,15 @@ class PaperPortfolio:
         buy_tradable: Optional[Dict[str, bool]] = None,
         sell_tradable: Optional[Dict[str, bool]] = None,
         close_prices: Optional[Dict[str, float]] = None,
+        *,
+        factors: Dict[str, float],
     ) -> dict:
+        """Settle adjusted Qlib share units; factor is mandatory for lot-aligned buys.
+
+        Shares/prices are in Qlib's adjusted coordinate system. A physical
+        100-share trading lot represents 100 / $factor adjusted share units.
+        Never assume $factor=1 for production fills.
+        """
         if self.pending_signal is None:
             return {"date": execution_date, "status": "no_pending"}
         pending = self.pending_signal
@@ -201,6 +210,18 @@ class PaperPortfolio:
         buy_tradable = buy_tradable or {}
         sell_tradable = sell_tradable or {}
         close_prices = close_prices or {}
+        if not isinstance(factors, dict):
+            raise ValueError("execution-day Qlib $factor mapping is required")
+        decision = self.decision_from_ranking(pending["ranking"])
+        # Reject missing/nonfinite factors *before* any sells or cash mutation.
+        # Blocked buys and missing-open orders do not require an executable lot.
+        for sym in decision["buy"]:
+            px = open_prices.get(sym)
+            if buy_tradable.get(sym, True) is False or px is None or not math.isfinite(float(px)) or px <= 0:
+                continue
+            factor = factors.get(sym)
+            if factor is None or not math.isfinite(float(factor)) or factor <= 0:
+                raise ValueError(f"missing/invalid Qlib $factor for planned buy {sym} on {execution_date}")
 
         # Public forward performance is normalized to the account value at the
         # execution-day open *before* trades.  Missing opens conservatively fall
@@ -217,7 +238,6 @@ class PaperPortfolio:
             pos["holding_days"] = int(pos.get("holding_days", 0)) + 1
 
         # Recompute from the stored ranking against the actual current position.
-        decision = self.decision_from_ranking(pending["ranking"])
         planned_sell = decision["sell"]
         planned_buy = decision["buy"]
         executed_sell, blocked_sell = [], []
@@ -258,20 +278,31 @@ class PaperPortfolio:
             if px is None or px <= 0:
                 blocked_buy.append({"instrument": sym, "reason": "missing_open"})
                 continue
-            shares = int(value_per_buy / float(px) / self.trade_unit) * self.trade_unit
-            if shares <= 0:
+            factor = float(factors[sym])  # validated before any state mutation
+            # Parity with Qlib Exchange.round_amount_by_trade_unit():
+            # (target_adjusted * factor + 0.1) // trade_unit * trade_unit / factor
+            # Keep the lot count integral and the adjusted shares fractional.
+            target_adjusted = value_per_buy / float(px)
+            lots = int((target_adjusted * factor + 0.1) // self.trade_unit)
+            if lots <= 0:
                 blocked_buy.append({"instrument": sym, "reason": "rounding"})
                 continue
+            shares = lots * self.trade_unit / factor
             trade_value = shares * float(px)
             cost = max(trade_value * self.open_cost, self.min_cost)
             if trade_value + cost > self.cash:
-                # Qlib's generator does not reserve open_cost in sizing.  The
-                # paper layer stays fail-safe and refuses an unaffordable fill.
-                affordable = int((self.cash - self.min_cost) / float(px) / self.trade_unit) * self.trade_unit
-                shares = max(0, affordable)
-                trade_value = shares * float(px)
-                cost = max(trade_value * self.open_cost, self.min_cost) if shares > 0 else 0.0
-            if shares <= 0 or trade_value + cost > self.cash:
+                # Retain the existing fail-safe: Qlib's sizing does not reserve
+                # open_cost, but the paper account may never overdraw.
+                affordable = max(0.0, (self.cash - self.min_cost) / float(px))
+                lots = min(lots, int((affordable * factor + 0.1) // self.trade_unit))
+                while lots > 0:
+                    shares = lots * self.trade_unit / factor
+                    trade_value = shares * float(px)
+                    cost = max(trade_value * self.open_cost, self.min_cost)
+                    if trade_value + cost <= self.cash:
+                        break
+                    lots -= 1
+            if lots <= 0 or trade_value + cost > self.cash:
                 blocked_buy.append({"instrument": sym, "reason": "cash"})
                 continue
             self.cash -= trade_value + cost
@@ -284,7 +315,10 @@ class PaperPortfolio:
                 "cost_basis": trade_value + cost,
                 "holding_days": 0,
             }
-            executed_buy.append({"instrument": sym, "shares": shares, "price": float(px), "cost": cost})
+            executed_buy.append({
+                "instrument": sym, "shares": shares, "price": float(px), "cost": cost,
+                "factor": factor, "physical_shares": lots * self.trade_unit,
+            })
 
         for sym, pos in self.positions.items():
             px = open_prices.get(sym)

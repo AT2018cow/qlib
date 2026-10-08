@@ -52,3 +52,27 @@
 ## 正式认证前的准备清单
 
 需要保留初始 winner 账户快照、每个执行日的成交列表、开盘/收盘价格和 factor、现金及持仓快照、缺价/停牌处理、交易日历版本和行情快照哈希。每日重新计算并以差异代码报告异常。当前系统如果没有这些证据，不应凭内部 JSON 与 Python 测试给生产 NAV 签发“完全正确”的认证。
+
+
+## 起点前的 Qlib 复权下单数量修复（2026-10-08）
+
+新增独立修复 PR 将执行日 $factor 传至 PaperPortfolio，按照冻结 Qlib
+Exchange 语义计算复权买入数量：
+
+    lots = floor((target_adjusted_shares * factor + 0.1) / trade_unit)
+    adjusted_shares = lots * trade_unit / factor
+
+这里的持仓数量为 Qlib **复权股数**，可为小数；实体整手为
+lots * trade_unit。现金不足时也按同一复权单位扣减整手，而不是恢复
+固定 100 复权股数。若某只具备成交条件的拟买股票缺失有效 factor，
+在执行任何卖出/资金变更前拒绝 Paper 状态推进。保留原有 paper
+account 初始资金、交易成本、Top20/Drop2、signal 日期契约及
+2026-10-12 forward inception，不改历史结果。
+
+买入成交报告新增可选（向后兼容）取证字段 factor、physical_shares。
+审计器独立核算 **拟买金额应得股数** 而不仅验证成交单位合法，避免
+例如 factor=2、固定 100 复权股数也刚好构成整手却产生错误权重的漏报。
+
+本次证明的是代码口径和合成用例的确定性一致；实际生产场景仍需在
+正式 inception 后用可追溯独立行情对账。不将 CI PASS 等同于实盘式
+Paper NAV 全面认证，且不自动部署 Modal app。
