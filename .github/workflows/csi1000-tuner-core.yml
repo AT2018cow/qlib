@@ -55,7 +55,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Run CSI1000 Stage-A and Stage-B contract tests
+      - name: Compile CSI1000 production migration
+        run: >-
+          python -m py_compile
+          csi1000_production_config.py
+          paper_portfolio.py
+          modal_qlib_cn_a10g.py
+      - name: Run CSI1000 Stage-A, Stage-B and production contract tests
         run: >-
           python -m unittest
           tests/test_csi1000_tuner_core.py
