@@ -88,6 +88,14 @@ test('forward panel rejects pre-inception, malformed and contradictory data', ()
   assert.equal(validate({ ...validForward, points: [{ ...firstPoint, cumulative_return: NaN }] }).status, 'invalid');
   assert.equal(validate({ ...validForward, points: [{ ...firstPoint, nav: 2 }] }).status, 'invalid');
   assert.equal(validate({ ...validForward, cumulative_return: 0 }).status, 'invalid');
+  assert.equal(validate({
+    ...validForward,
+    latest_date: '2026-10-13',
+    points: [{ ...firstPoint, date: '2026-10-13' }],
+  }).status, 'invalid', 'no return without the 2026-10-12 inception report');
+  assert.equal(validate({
+    ...validForward, points: [{ ...firstPoint, daily_return: 0.99 }],
+  }).status, 'invalid', 'daily return must reconcile to NAV');
   assert.equal(validate({ ...validForward, latest_date: '2026-10-13' }).status, 'invalid');
   assert.equal(validate({
     ...validForward, points: [firstPoint, firstPoint],
