@@ -19,6 +19,8 @@ import json
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
+from csi1000_tuner_core import deterministic_score_order
+
 STATE_VERSION = 2
 
 
@@ -108,26 +110,40 @@ class PaperPortfolio:
     @staticmethod
     def _score_map(ranking: Iterable[Tuple[str, float]]) -> tuple[list[str], dict[str, float]]:
         rows = [(str(s), float(v)) for s, v in ranking]
-        # Qlib sorts pred_score descending before taking today's candidates.
-        rows.sort(key=lambda x: x[1], reverse=True)
-        return [s for s, _ in rows], dict(rows)
+        scores = dict(rows)
+        ordered = deterministic_score_order(rows)
+        return [str(s) for s in ordered], scores
 
     def decision_from_ranking(self, ranking: Iterable[Tuple[str, float]]) -> dict:
         """Return Qlib-style *planned* sell/buy lists before tradability checks."""
         ranked, scores = self._score_map(ranking)
-        held = list(self.positions)
-        last = sorted(held, key=lambda s: scores.get(s, float("-inf")), reverse=True)
+        # Match DeterministicTopkDropoutStrategy exactly: holdings never inherit
+        # dict/set iteration order, and score ties resolve by instrument asc.
+        held = sorted(self.positions, key=str)
+        last = [
+            str(s)
+            for s in deterministic_score_order(
+                (s, scores.get(s, float("-inf"))) for s in held
+            )
+        ]
         held_set = set(last)
 
         n_today = self.nd + self.topk - len(last)
         not_held = [s for s in ranked if s not in held_set]
         today = not_held[:n_today] if n_today != 0 else []
 
-        # pandas Index.union is unique; sort combined symbols by score descending.
-        comb = list(dict.fromkeys(last + today))
-        comb.sort(key=lambda s: scores.get(s, float("-inf")), reverse=True)
+        # Avoid collection-order semantics at both the TopK and dropout
+        # boundaries.  Sell iteration is instrument ascending, as in the
+        # audited Stage-A/Stage-B deterministic strategy.
+        comb_codes = sorted(set(last).union(today), key=str)
+        comb = [
+            str(s)
+            for s in deterministic_score_order(
+                (s, scores.get(s, float("-inf"))) for s in comb_codes
+            )
+        ]
         bottom = set(comb[-self.nd:]) if self.nd > 0 else set()
-        sell = [s for s in last if s in bottom]
+        sell = sorted((s for s in last if s in bottom), key=str)
         n_buy = len(sell) + self.topk - len(last)
         buy = today[:n_buy] if n_buy != 0 else []
         return {"sell": sell, "buy": buy}

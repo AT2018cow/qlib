@@ -65,7 +65,13 @@ def test_image_helper_modules_copied():
     assert 'pip install . --no-build-isolation --no-deps' in src, "qlib pip install step missing"
     cp = re.search(r'run_commands\("cp ([^"]+?)/root/"\)', src)
     assert cp is not None, "helper-module cp step missing"
-    for helper in ("qlib_audit_fixes.py", "qlib_live_retrain.py", "github_commit.py"):
+    for helper in (
+        "qlib_audit_fixes.py",
+        "qlib_live_retrain.py",
+        "github_commit.py",
+        "csi1000_tuner_core.py",
+        "csi1000_production_config.py",
+    ):
         assert helper in cp.group(1), \
             f"{helper} not copied to /root/ — container import would fail (ModuleNotFoundError)"
 
@@ -89,6 +95,17 @@ def test_daily_cron_flow_order():
     i_push = src.find("from github_commit import push_files")
     assert -1 not in (i_decision, i_dedup, i_push), "daily_cron flow section missing"
     assert i_decision < i_dedup < i_push, "daily_cron flow order broken"
+
+
+def test_stage_b_forward_shadow_wiring():
+    assert "csi1000_profile=BASELINE_PROFILE" in src
+    assert "csi1000_profile=WINNER_PROFILE" in src
+    assert 'lineage="stage_b_baseline_shadow"' in src
+    assert 'lineage="stage_b_winner_shadow"' in src
+    assert "_top20_lgb158_stage_b_winner_shadow.csv" in src
+    assert "_paper_portfolio_stage_b_winner_shadow.json" in src
+    assert 'production_lineage = cfg.get("_csi1000_production_manifest")' in src
+    assert "deterministic_score_order(day.items())" in src
 
 
 def test_github_commit_flow_complete():
