@@ -148,6 +148,10 @@ def main():
                 page.locator("#signal-rows tr").first.wait_for(state="attached")
                 assert page.locator("#forward-return").inner_text() == "-1.20%"
                 assert page.locator(".performance-svg").count() == 1
+                line_fill = page.locator(".performance-line").evaluate(
+                    "(el) => getComputedStyle(el).fill"
+                )
+                assert line_fill == "none", f"Performance curve must not render as filled polygon: {line_fill}"
                 page.screenshot(path=str(OUT / "dashboard-fixture-active-390.png"), full_page=True)
                 page.close()
                 for width in (1440, 320):
