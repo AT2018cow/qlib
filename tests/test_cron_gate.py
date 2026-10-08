@@ -9,7 +9,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from modal_qlib_cn_a10g import (
+from signal_publication_gate import (
     _csi1000_canonical_publication_decision,
     _publication_decision,
 )
