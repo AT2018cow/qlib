@@ -125,8 +125,8 @@ def test_pages_deployment_packages_stylesheet():
     and causes the browser to fall back to an unstyled white document.
     """
     workflow = (ROOT / ".github" / "workflows" / "website-deploy.yml").read_text()
-    assert "cp website/*.html website/*.js website/*.css _site/" in workflow
-    for filename in ("index.html", "methodology.html", "app.js", "styles.css"):
+    assert "cp website/*.html website/*.js website/*.css website/*.svg _site/" in workflow
+    for filename in ("index.html", "methodology.html", "app.js", "styles.css", "favicon.svg"):
         assert f"test -s _site/{filename}" in workflow
 
 
@@ -181,3 +181,21 @@ def test_legacy_chart_arrays_are_calendar_padded():
     assert "function calendarAlignChartValues(values, dates)" in app
     assert "Array(count - values.length).fill(null).concat(values)" in app
     assert "calendarAlignChartValues(" in app
+
+
+def test_favicon_is_valid_svg_and_published_on_both_pages():
+    from xml.etree import ElementTree
+
+    asset = ROOT / "website" / "favicon.svg"
+    assert asset.is_file()
+    svg = ElementTree.fromstring(asset.read_text())
+    assert svg.tag == "{http://www.w3.org/2000/svg}svg"
+    assert svg.attrib.get("viewBox") == "0 0 64 64"
+
+    for name in ("index.html", "methodology.html"):
+        html = (ROOT / "website" / name).read_text()
+        assert '<link rel="icon" type="image/svg+xml" href="favicon.svg?v=1">' in html
+
+    workflow = (ROOT / ".github" / "workflows" / "website-deploy.yml").read_text()
+    assert "website/*.svg _site/" in workflow
+    assert "test -s _site/favicon.svg" in workflow
