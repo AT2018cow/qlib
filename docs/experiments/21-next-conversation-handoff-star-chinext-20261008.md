@@ -62,6 +62,7 @@ Exact winner parameters and research identifiers remain frozen in `csi1000_produ
 - ChiNext daily publication is paused.
 - Public website displays CSI1000 only.
 - Public website dark responsive layout and Pages CSS packaging were fixed through PRs #29–#31.
+- Forward-only public paper performance is scheduled to start from **2026-10-12**. It normalizes the paper account at that day's pre-trade open and uses end-of-day marked value after actual paper execution/cost constraints. No pre-2026-10-12 backtest or paper return is backfilled into the public curve.
 
 Operational caution: this conversation verified repository state and CI, but did **not** independently inspect the user's live Modal workspace after the final merges. Do not claim the deployed app is running unless the next conversation verifies it.
 
