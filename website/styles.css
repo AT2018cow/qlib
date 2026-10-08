@@ -612,6 +612,12 @@ body { background: #0c121b; }
 .date-btn.current { background: #213c5e; }
 .doc-nav a:hover { background: #213247; }
 .callout { background: #15202e; }
+.ranking-date {
+  color: var(--heading);
+  font-size: 12px;
+  font-weight: 680;
+  font-variant-numeric: tabular-nums;
+}
 .ranking-note { margin-top: 6px; }
 
 
