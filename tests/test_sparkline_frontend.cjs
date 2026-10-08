@@ -137,4 +137,6 @@ test('date selection is latest-request-wins, accessible and placed above the ran
   assert.match(css, /@media \(min-width: 701px\) and \(max-width: 860px\)/);
   assert.match(css, /\.performance-axis\s*\{/);
   assert.match(css, /overscroll-behavior-x: contain/);
+  assert.match(css, /\.performance-line\s*\{\s*fill:\s*none;/);
+  assert.doesNotMatch(css, /\.performance-line\.(gain|loss),\s*\.performance-dot\./);
 });
