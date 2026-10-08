@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 
 from csi1000_production_config import (
     BASELINE_PROFILE,
@@ -88,6 +89,24 @@ class CSI1000ProductionConfigTests(unittest.TestCase):
     def test_unknown_profile_rejected(self):
         with self.assertRaises(ValueError):
             profile_manifest("retune_after_seeing_forward")
+
+    def test_production_source_wires_frozen_profiles_without_clock_drift(self):
+        root = Path(__file__).resolve().parents[1]
+        modal_src = (root / "modal_qlib_cn_a10g.py").read_text()
+        live_src = (root / "qlib_live_retrain.py").read_text()
+        self.assertIn("CPU_COUNT = 8", modal_src)
+        self.assertIn('RETRAIN_ORIGIN = "2026-09-18"', live_src)
+        self.assertIn("csi1000_profile=BASELINE_PROFILE", modal_src)
+        self.assertIn("csi1000_profile=WINNER_PROFILE", modal_src)
+        self.assertIn('lineage="stage_b_baseline_shadow"', modal_src)
+        self.assertIn('lineage="stage_b_winner_shadow"', modal_src)
+        self.assertIn("_top20_lgb158_stage_b_winner_shadow.csv", modal_src)
+        self.assertIn("_paper_portfolio_stage_b_winner_shadow.json", modal_src)
+        self.assertIn("deterministic_score_order(day.items())", modal_src)
+        self.assertIn(
+            'production_lineage = cfg.get("_csi1000_production_manifest")',
+            modal_src,
+        )
 
 
 if __name__ == "__main__":
