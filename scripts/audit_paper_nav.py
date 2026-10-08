@@ -321,10 +321,14 @@ def reconcile(artifacts, *, forward=None, calendar=None, quotes=None):
         status = "FAIL" if issues else "NOT_STARTED"
     elif issues:
         status = "FAIL"
-    elif quotes is None or calendar is None or any(w["code"] == "MISSING_OPENING_SNAPSHOT" for w in warnings):
+    elif quotes is None or calendar is None or forward is None or any(
+        w["code"] == "MISSING_OPENING_SNAPSHOT" for w in warnings
+    ):
         status = "PARTIAL_NOT_CERTIFIED"
     else:
         status = "PASS"
+    if rows and forward is None:
+        warn("PUBLIC_FORWARD_NOT_PROVIDED", None, "cannot certify that webpage return JSON equals the account ledger")
     if rows and quotes is None:
         warn("PRICE_PROVENANCE_NOT_VERIFIED", None, "no independent open/close/factor quotes; original market marks unverified")
     return {"status": status, "start_date": START, "winner_artifacts": len(audited),
