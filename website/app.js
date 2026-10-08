@@ -421,6 +421,7 @@ function pageShell(dates) {
             <h2>Top 20</h2>
           </div>
           <div class="panel-note">
+            <div id="ranking-date" class="ranking-date">—</div>
             <div id="artifact-status"></div>
             <div class="ranking-note">预测分数用于排序，不构成收益承诺</div>
           </div>
@@ -521,6 +522,7 @@ async function main() {
     const request = ++latestDateRequest;
     const container = document.querySelector('.signal-table');
     if (container) container.setAttribute('aria-busy', 'true');
+    document.getElementById('ranking-date').textContent = formatDate(dateInfo.date);
     document.getElementById('artifact-status').textContent = '正在加载日期记录…';
     const idx = dates.findIndex(d => d.date === dateInfo.date);
     const previousPromise = idx >= 0 && idx + 1 < dates.length
