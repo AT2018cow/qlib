@@ -134,6 +134,8 @@ test('date selection is latest-request-wins and the daily ranking leads the arch
   assert.ok(source.indexOf('id="ranking"') < source.indexOf('id="history"'));
   assert.ok(source.indexOf('id="history"') < source.indexOf('id="performance"'));
   assert.ok(source.indexOf('id="signal-rows"') < source.indexOf('id="history"'));
+  assert.match(source, /document.getElementById\('ranking-date'\).textContent = formatDate\(dateInfo.date\)/);
+  assert.match(source, /getElementById\('ranking'\).scrollIntoView/);
   const css = fs.readFileSync(path.join(root, 'website', 'styles.css'), 'utf8');
   assert.match(css, /@media \(min-width: 701px\) and \(max-width: 860px\)/);
   assert.match(css, /\.performance-axis\s*\{/);
