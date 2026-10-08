@@ -513,7 +513,8 @@ async function main() {
     document.getElementById('artifact-status').textContent = '正在加载日期记录…';
     const idx = dates.findIndex(d => d.date === dateInfo.date);
     const previousPromise = idx >= 0 && idx + 1 < dates.length
-      ? loadDateRows(dates[idx + 1].date) : Promise.resolve(null);
+      ? loadDateRows(dates[idx + 1].date).then(previous => previous.length ? previous : null)
+      : Promise.resolve(null);
     const ctxPromise = loadContext(dateInfo.date);
     const rows = await loadDateRows(dateInfo.date);
     if (request !== latestDateRequest) return;
