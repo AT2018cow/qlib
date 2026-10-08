@@ -18,6 +18,10 @@ on:
       - 'tests/test_paper_portfolio.py'
       - 'tests/test_cron_gate.py'
       - 'tests/test_modal_structure.py'
+      - 'tests/test_production_surface.py'
+      - 'website/app.js'
+      - 'website/index.html'
+      - 'website/methodology.html'
       - 'docs/experiments/19-csi1000-stage-b-final-audit-forward-contract-20261008.md'
       - 'docs/experiments/20-csi1000-stage-b-winner-canonical-promotion-20261008.md'
       - 'tests/test_csi1000_tuner_core.py'
@@ -43,6 +47,10 @@ on:
       - 'tests/test_paper_portfolio.py'
       - 'tests/test_cron_gate.py'
       - 'tests/test_modal_structure.py'
+      - 'tests/test_production_surface.py'
+      - 'website/app.js'
+      - 'website/index.html'
+      - 'website/methodology.html'
       - 'docs/experiments/19-csi1000-stage-b-final-audit-forward-contract-20261008.md'
       - 'docs/experiments/20-csi1000-stage-b-winner-canonical-promotion-20261008.md'
       - 'tests/test_csi1000_tuner_core.py'
@@ -81,3 +89,4 @@ jobs:
           tests/test_paper_portfolio.py
           tests/test_cron_gate.py
           tests/test_modal_structure.py
+          tests/test_production_surface.py
