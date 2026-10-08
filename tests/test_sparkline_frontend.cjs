@@ -30,7 +30,7 @@ test('null is not interpreted as zero or squeezed out', () => {
 test('chart trend color follows first and last valid values', () => {
   assert.match(makeSparkline([10, 11, 13]), /stroke="#ff6b6b"/);
   assert.match(makeSparkline([13, 11, 10]), /stroke="#3ccf91"/);
-  assert.match(makeSparkline([null, null, null]), /—/);
+  assert.match(makeSparkline([null, null, null]), /有效数据不足/);
 });
 
 test('desktop table-cell layout remains intact; mobile uses flex only', () => {
@@ -128,17 +128,45 @@ test('validated forward curve labels dates and flags possibly stale valuations',
   assert.equal(makePerformanceChart([{ cumulative_return: NaN }]).includes('<svg'), false);
 });
 
-test('date selection is latest-request-wins, accessible and placed above the ranking', () => {
+test('date selection is latest-request-wins and the daily ranking leads the archive', () => {
   assert.match(source, /if \(request !== latestDateRequest\) return;/);
   assert.match(source, /btn\.setAttribute\('aria-pressed', String\(active\)\)/);
+  assert.ok(source.indexOf('id="ranking"') < source.indexOf('id="history"'));
   assert.ok(source.indexOf('id="history"') < source.indexOf('id="performance"'));
-  assert.ok(source.indexOf('id="performance"') < source.indexOf('id="signal-rows"'));
+  assert.ok(source.indexOf('id="signal-rows"') < source.indexOf('id="history"'));
+  assert.match(source, /document.getElementById\('ranking-date'\).textContent = formatDate\(dateInfo.date\)/);
+  assert.match(source, /getElementById\('ranking'\).scrollIntoView/);
   const css = fs.readFileSync(path.join(root, 'website', 'styles.css'), 'utf8');
   assert.match(css, /@media \(min-width: 701px\) and \(max-width: 860px\)/);
   assert.match(css, /\.performance-axis\s*\{/);
   assert.match(css, /overscroll-behavior-x: contain/);
   assert.match(css, /\.performance-line\s*\{\s*fill:\s*none;/);
   assert.doesNotMatch(css, /\.performance-line\.(gain|loss),\s*\.performance-dot\./);
+});
+
+
+test('sparkline placeholders explain missing, discontinuous and loading data visibly', () => {
+  assert.match(makeSparkline([]), /有效数据不足<\/span><span>暂无走势/);
+  assert.match(makeSparkline([10, null, 9]), /价格不连续<\/span><span>暂无走势/);
+  assert.doesNotMatch(makeSparkline([10, null, 9]), /<svg/);
+
+  const startRows = source.indexOf('function buildRows(');
+  const endRows = source.indexOf('function tableRows(', startRows);
+  assert.ok(startRows >= 0 && endRows > startRows);
+  const { buildRows } = vm.runInNewContext(
+    source.slice(start, end) + source.slice(startRows, endRows) + ';({ buildRows })',
+    { qlibCode: code => code, sinaUrl: code => code, formatScore: () => ({ text: '+1.0%', klass: 'positive' }) }
+  );
+  const rows = [{ rank: '1', instrument: 'SH600000', score: '0.01' }];
+  const result = (chart) => buildRows(rows, {}, null, chart)[0].spark;
+  assert.match(result(undefined), /走势加载中<\/span><span>请稍候/);
+  assert.match(result(null), /走势不可用<\/span><span>暂无走势/);
+  assert.match(result({ stocks: {}, dates: ['D1', 'D2'] }), /有效数据不足/);
+  assert.match(result({ stocks: { SH600000: [8, 9] }, dates: ['D1', 'D2'] }), /sparkline-svg/);
+
+  const css = fs.readFileSync(path.join(root, 'website', 'styles.css'), 'utf8');
+  assert.match(css, /\.spark-empty\s*\{/);
+  assert.match(css, /\.mobile-cards \.spark-empty\s*\{/);
 });
 
 test('Pages index replaces weekday probing and first-render barrier', () => {
