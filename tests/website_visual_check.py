@@ -197,6 +197,17 @@ def main():
                     assert overflow <= 1, f"Methodology overflow at {width}px: {overflow}"
                     page.screenshot(path=str(OUT / f"methodology-{width}.png"), full_page=True)
                     page.close()
+                # Missing index is explicit and does not fan out to weekday probes.
+                (root / "signals" / "available_dates.json").unlink()
+                page = browser.new_page(viewport={"width": 390, "height": 844})
+                requests = []
+                page.on("request", lambda request: requests.append(request.url) if "/signals/" in request.url else None)
+                page.goto(url + "/index.html")
+                assert "日期索引暂不可用" in page.locator('[role="alert"]').inner_text()
+                assert len(requests) <= 2, requests
+                assert not any("_top20_lgb158.csv" in item for item in requests)
+                page.close()
+                print("PASS missing index: visible failure, no archive probe storm")
                 browser.close()
         finally:
             server.shutdown()
