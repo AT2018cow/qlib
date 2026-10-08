@@ -31,6 +31,7 @@ on:
       - 'docs/experiments/17-csi1000-stage-a-expanded-screen-runbook-20261007.md'
       - 'docs/experiments/18-next-conversation-handoff-stage-b-20261007.md'
       - '.github/workflows/csi1000-tuner-core.yml'
+      - '.github/workflows/website-deploy.yml'
   push:
     branches: [main]
     paths:
@@ -60,6 +61,7 @@ on:
       - 'docs/experiments/17-csi1000-stage-a-expanded-screen-runbook-20261007.md'
       - 'docs/experiments/18-next-conversation-handoff-stage-b-20261007.md'
       - '.github/workflows/csi1000-tuner-core.yml'
+      - '.github/workflows/website-deploy.yml'
   workflow_dispatch:
 
 permissions:
