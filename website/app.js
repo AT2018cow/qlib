@@ -237,7 +237,7 @@ function pageShell(dates) {
         <div class="stat-card">
           <div class="stat-label">记录状态</div>
           <div class="stat-value" id="stat-lineage">—</div>
-          <div class="stat-sub" id="stat-lineage-sub">artifact lineage</div>
+          <div class="stat-sub" id="stat-lineage-sub">版本说明</div>
         </div>
       </section>
 
@@ -278,7 +278,7 @@ function pageShell(dates) {
 
       <div class="callout">
         <strong>当前范围：</strong>生产页面仅展示 CSI1000。创业板旧模型的每日更新与公开展示已暂停，
-        历史研究结果仍保留；待新模型完成独立验证并通过 production gate 后再恢复。
+        历史研究结果仍保留；待新模型完成独立验证并获准恢复后再展示。
       </div>
 
       <footer class="footer">
@@ -316,8 +316,8 @@ async function main() {
       formatDate(ctx.paper?.model_fit_asof || null);
     document.getElementById('stat-lineage').textContent = winner ? 'Stage-B winner' : '历史 / 未核验';
     document.getElementById('stat-lineage-sub').textContent = winner
-      ? 'stage_b_winner_canonical'
-      : '非当前 winner lineage / 元数据缺失';
+      ? '当前生产版本'
+      : '历史记录未包含当前版本标识';
     document.getElementById('artifact-status').innerHTML = winner
       ? '<span class="status-pill"><span class="status-dot"></span> Stage-B winner · 已核验</span>'
       : '<span class="status-pill history">历史记录 / 版本未确认</span>';
