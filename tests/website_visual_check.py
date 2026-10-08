@@ -105,6 +105,7 @@ def inspect_viewport(browser, base_url, width: int):
     assert len(signals_requests) == 6, signals_requests
     assert all(status == 200 for _, status in statuses), statuses
     assert not any("code_name_map.csv" in url for url in signals_requests)
+    initial_requests = len(signals_requests)
     actual = page.evaluate("""() => ({
       overflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth,
       table: getComputedStyle(document.querySelector('.table-wrap')).display,
@@ -125,10 +126,15 @@ def inspect_viewport(browser, base_url, width: int):
     page.screenshot(path=str(OUT / f"dashboard-fixture-awaiting-{width}.png"), full_page=True)
     page.locator(".date-btn").nth(1).click()
     page.wait_for_function("document.getElementById('stat-lineage')?.textContent === '历史 / 未核验'")
+    after_history = len(signals_requests)
+    assert after_history == initial_requests + 2, signals_requests
+    page.locator(".date-btn").first.click()
+    page.wait_for_function("document.getElementById('stat-lineage')?.textContent === 'Stage-B winner'")
+    assert len(signals_requests) == after_history, "previously loaded context should be cached"
     if width in (390, 320):
         page.screenshot(path=str(OUT / f"dashboard-fixture-historical-{width}.png"), full_page=True)
     page.close()
-    return {**actual, "first_load_data_requests": len(signals_requests), "data_404s": 0}
+    return {**actual, "first_load_data_requests": initial_requests, "after_history_data_requests": after_history, "data_404s": 0}
 
 
 def main():
