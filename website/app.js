@@ -414,7 +414,7 @@ function pageShell(dates) {
         </div>
       </section>
 
-      <section class="panel">
+      <section class="panel" id="ranking">
         <div class="panel-head">
           <div>
             <div class="panel-kicker">Daily ranking</div>
