@@ -3,6 +3,8 @@ from pathlib import Path
 
 from csi1000_production_config import (
     BASELINE_PROFILE,
+    CANONICAL_PAPER_LINEAGE,
+    CANONICAL_PROFILE,
     MODEL_NUM_THREADS,
     STAGE_B_RESULT_COMMIT,
     STAGE_B_SNAPSHOT_TOKEN,
@@ -96,12 +98,13 @@ class CSI1000ProductionConfigTests(unittest.TestCase):
         live_src = (root / "qlib_live_retrain.py").read_text()
         self.assertIn("CPU_COUNT = 8", modal_src)
         self.assertIn('RETRAIN_ORIGIN = "2026-09-18"', live_src)
-        self.assertIn("csi1000_profile=BASELINE_PROFILE", modal_src)
-        self.assertIn("csi1000_profile=WINNER_PROFILE", modal_src)
-        self.assertIn('lineage="stage_b_baseline_shadow"', modal_src)
-        self.assertIn('lineage="stage_b_winner_shadow"', modal_src)
-        self.assertIn("_top20_lgb158_stage_b_winner_shadow.csv", modal_src)
-        self.assertIn("_paper_portfolio_stage_b_winner_shadow.json", modal_src)
+        self.assertEqual(CANONICAL_PROFILE, WINNER_PROFILE)
+        self.assertEqual(CANONICAL_PAPER_LINEAGE, "stage_b_winner_canonical")
+        self.assertIn("csi1000_profile=CANONICAL_PROFILE", modal_src)
+        self.assertIn("lineage=CANONICAL_PAPER_LINEAGE", modal_src)
+        self.assertNotIn("csi1000_profile=BASELINE_PROFILE", modal_src)
+        self.assertNotIn("stage_b_baseline_shadow", modal_src)
+        self.assertNotIn("stage_b_winner_shadow", modal_src)
         self.assertIn("deterministic_score_order(day.items())", modal_src)
         self.assertIn(
             'production_lineage = cfg.get("_csi1000_production_manifest")',
