@@ -658,14 +658,11 @@ body { background: #0c121b; }
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.performance-line.gain, .performance-dot.gain {
-  stroke: var(--red);
-  fill: var(--red);
-}
-.performance-line.loss, .performance-dot.loss {
-  stroke: var(--teal);
-  fill: var(--teal);
-}
+/* A return curve is always a stroke, never a filled area. */
+.performance-line.gain { stroke: var(--red); }
+.performance-line.loss { stroke: var(--teal); }
+.performance-dot.gain { stroke: var(--red); fill: var(--red); }
+.performance-dot.loss { stroke: var(--teal); fill: var(--teal); }
 .performance-empty {
   display: grid;
   place-items: center;
