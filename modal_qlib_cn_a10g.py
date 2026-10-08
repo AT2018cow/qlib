@@ -3955,6 +3955,9 @@ def daily_cron():
         print(f"[cron] ⚠️ chinext 池失败（csi1000 仍可独立发布）: {pool_errors['chinext']}")
     if res is None and res_chi is None:
         raise RuntimeError(f"两个股票池均失败: {pool_errors}")
+    if res is None and res_stage_b_winner is not None:
+        print("[cron] ⚠️ Stage-B baseline control 不可用；为保持 paired forward lineage，跳过 winner shadow")
+        res_stage_b_winner = None
     data_date = (res or res_chi)["date"]  # 任一成功池的数据覆盖日
     print(f"[cron] 数据日历至 {data_date}")
     print(f"[cron] 信号日期 {signal_date}（基于数据日 {data_date} 的收盘数据）")
@@ -4002,20 +4005,6 @@ def daily_cron():
             )
             files[f"results/signals/{signal_date}_paper_portfolio.json"] = paper_proposals["csi1000"]["artifact_json"]
 
-            # Forward control starts from an independent zero-inception account
-            # while consuming the exact same Stage-B baseline signal as the
-            # canonical stream.  The historical canonical state is operational
-            # continuity only and is not a clean winner-vs-baseline control.
-            paper_proposals["csi1000_stage_b_baseline_shadow"] = _apply_paper_portfolio(
-                res,
-                signal_date,
-                topk=20,
-                nd=2,
-                lineage="stage_b_baseline_shadow",
-            )
-            files[
-                f"results/signals/{signal_date}_paper_portfolio_stage_b_baseline_shadow.json"
-            ] = paper_proposals["csi1000_stage_b_baseline_shadow"]["artifact_json"]
     if res_stage_b_winner is not None:
         files[
             f"results/signals/{signal_date}_top20_lgb158_stage_b_winner_shadow.csv"
@@ -4024,16 +4013,41 @@ def daily_cron():
             f"results/signals/{signal_date}_chart_stage_b_winner_shadow.json"
         ] = res_stage_b_winner["chart_json"]
         if paper_enabled:
-            paper_proposals["csi1000_stage_b_winner_shadow"] = _apply_paper_portfolio(
-                res_stage_b_winner,
-                signal_date,
-                topk=20,
-                nd=2,
-                lineage="stage_b_winner_shadow",
-            )
-            files[
-                f"results/signals/{signal_date}_paper_portfolio_stage_b_winner_shadow.json"
-            ] = paper_proposals["csi1000_stage_b_winner_shadow"]["artifact_json"]
+            # The two forward accounts advance as one transaction.  A shadow
+            # bookkeeping failure must not block canonical production.
+            try:
+                baseline_shadow = _apply_paper_portfolio(
+                    res,
+                    signal_date,
+                    topk=20,
+                    nd=2,
+                    lineage="stage_b_baseline_shadow",
+                )
+                winner_shadow = _apply_paper_portfolio(
+                    res_stage_b_winner,
+                    signal_date,
+                    topk=20,
+                    nd=2,
+                    lineage="stage_b_winner_shadow",
+                )
+            except Exception as shadow_err:  # pylint: disable=W0703
+                pool_errors["csi1000_stage_b_forward_pair"] = (
+                    f"{type(shadow_err).__name__}: {str(shadow_err)[:300]}"
+                )
+                print(
+                    "[cron] ⚠️ Stage-B paired paper shadow 失败；"
+                    "canonical 继续发布，shadow state 不推进: "
+                    f"{pool_errors['csi1000_stage_b_forward_pair']}"
+                )
+            else:
+                paper_proposals["csi1000_stage_b_baseline_shadow"] = baseline_shadow
+                paper_proposals["csi1000_stage_b_winner_shadow"] = winner_shadow
+                files[
+                    f"results/signals/{signal_date}_paper_portfolio_stage_b_baseline_shadow.json"
+                ] = baseline_shadow["artifact_json"]
+                files[
+                    f"results/signals/{signal_date}_paper_portfolio_stage_b_winner_shadow.json"
+                ] = winner_shadow["artifact_json"]
     if res_chi is not None:
         files[f"results/signals/{signal_date}_top20_lgb158_chinext.csv"] = res_chi["csv_content"]
         files[f"results/signals/{signal_date}_chart_chinext.json"] = res_chi["chart_json"]
