@@ -78,6 +78,11 @@ def make_fixture(root: Path):
         "cumulative_return": None,
         "points": [],
     }
+    # Match the static Pages build contract: list existing dates, never probe weekdays.
+    (signals / "available_dates.json").write_text(json.dumps({
+        "schema_version": 1,
+        "dates": [days[-1].isoformat(), days[-2].isoformat()],
+    }))
     performance_path = signals / "csi1000_forward_performance.json"
     performance_path.write_text(json.dumps(waiting))
     return performance_path
@@ -87,9 +92,15 @@ def inspect_viewport(browser, base_url, width: int):
     page = browser.new_page(viewport={"width": width, "height": 900}, device_scale_factor=1)
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
+    responses = []
+    page.on("response", lambda response: responses.append((response.url, response.status)))
     page.goto(base_url + "/index.html", wait_until="domcontentloaded")
     page.locator("#signal-rows tr").first.wait_for(state="attached", timeout=20000)
     assert page.locator("#signal-rows tr").count() == 20
+    signal_responses = [(url, status) for url, status in responses if "/signals/" in url]
+    assert all(status != 404 for _, status in signal_responses), signal_responses
+    assert sum("available_dates.json" in url for url, _ in signal_responses) == 1, signal_responses
+    assert sum("_top20_lgb158.csv" in url for url, _ in signal_responses) == 2, signal_responses
     actual = page.evaluate("""() => ({
       overflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth,
       table: getComputedStyle(document.querySelector('.table-wrap')).display,
