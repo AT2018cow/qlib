@@ -21,6 +21,7 @@ on:
       - 'tests/test_production_surface.py'
       - 'website/app.js'
       - 'website/index.html'
+      - 'website/styles.css'
       - 'website/methodology.html'
       - 'docs/experiments/19-csi1000-stage-b-final-audit-forward-contract-20261008.md'
       - 'docs/experiments/20-csi1000-stage-b-winner-canonical-promotion-20261008.md'
@@ -50,6 +51,7 @@ on:
       - 'tests/test_production_surface.py'
       - 'website/app.js'
       - 'website/index.html'
+      - 'website/styles.css'
       - 'website/methodology.html'
       - 'docs/experiments/19-csi1000-stage-b-final-audit-forward-contract-20261008.md'
       - 'docs/experiments/20-csi1000-stage-b-winner-canonical-promotion-20261008.md'
@@ -80,6 +82,8 @@ jobs:
           signal_publication_gate.py
           paper_portfolio.py
           modal_qlib_cn_a10g.py
+      - name: Validate website JavaScript
+        run: node --check website/app.js
       - name: Run full CSI1000 Stage-A, Stage-B and production contract tests
         run: >-
           python -m pytest -q
