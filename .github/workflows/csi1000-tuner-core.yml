@@ -16,6 +16,8 @@ on:
       - 'modal_qlib_cn_a10g.py'
       - 'tests/test_csi1000_production_config.py'
       - 'tests/test_paper_portfolio.py'
+      - 'tests/test_cron_gate.py'
+      - 'tests/test_modal_structure.py'
       - 'docs/experiments/19-csi1000-stage-b-final-audit-forward-contract-20261008.md'
       - 'docs/experiments/20-csi1000-stage-b-winner-canonical-promotion-20261008.md'
       - 'tests/test_csi1000_tuner_core.py'
@@ -39,6 +41,8 @@ on:
       - 'modal_qlib_cn_a10g.py'
       - 'tests/test_csi1000_production_config.py'
       - 'tests/test_paper_portfolio.py'
+      - 'tests/test_cron_gate.py'
+      - 'tests/test_modal_structure.py'
       - 'docs/experiments/19-csi1000-stage-b-final-audit-forward-contract-20261008.md'
       - 'docs/experiments/20-csi1000-stage-b-winner-canonical-promotion-20261008.md'
       - 'tests/test_csi1000_tuner_core.py'
@@ -59,6 +63,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Install test runner
+        run: python -m pip install --disable-pip-version-check pytest
       - name: Compile CSI1000 production migration
         run: >-
           python -m py_compile
@@ -66,9 +72,9 @@ jobs:
           signal_publication_gate.py
           paper_portfolio.py
           modal_qlib_cn_a10g.py
-      - name: Run CSI1000 Stage-A, Stage-B and production contract tests
+      - name: Run full CSI1000 Stage-A, Stage-B and production contract tests
         run: >-
-          python -m unittest
+          python -m pytest -q
           tests/test_csi1000_tuner_core.py
           tests/test_csi1000_stage_b_core.py
           tests/test_csi1000_production_config.py
