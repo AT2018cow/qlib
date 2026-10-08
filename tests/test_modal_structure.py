@@ -12,6 +12,10 @@ production. Run from repo root:  python -m pytest tests/test_modal_structure.py
 """
 import os
 import re
+import tempfile
+from pathlib import Path
+
+from qlib_live_retrain import reconcile_model_cache_pair
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODAL_FILE = os.path.join(ROOT, "modal_qlib_cn_a10g.py")
@@ -60,6 +64,37 @@ def test_production_functions_nonpreemptible():
     for fn in ("daily_standalone", "backfill_signals"):
         assert "nonpreemptible=True" in _decorator_block(fn), \
             f"{fn} lost nonpreemptible=True — preemption would drop that day's run"
+
+
+def test_daily_standalone_resource_contract():
+    params = _decorator_block("daily_standalone")
+    assert "cpu=CPU_COUNT" in params
+    assert "memory=16384" in params
+    assert "timeout=2 * 3600" in params
+    assert "max_containers=1" in params
+    assert 'gpu=' not in params
+
+
+def test_partial_live_model_cache_self_heals_to_retrain():
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        model = root / "model.pkl"
+        meta = root / "model.json"
+
+        assert reconcile_model_cache_pair(model, meta) == "empty"
+
+        model.write_bytes(b"orphan-model")
+        assert reconcile_model_cache_pair(model, meta) == "recovered_partial"
+        assert not model.exists() and not meta.exists()
+
+        meta.write_text('{"signature": "orphan"}')
+        assert reconcile_model_cache_pair(model, meta) == "recovered_partial"
+        assert not model.exists() and not meta.exists()
+
+        model.write_bytes(b"model")
+        meta.write_text('{"signature": "ok"}')
+        assert reconcile_model_cache_pair(model, meta) == "complete"
+        assert model.exists() and meta.exists()
 
 
 def test_image_helper_modules_copied():
