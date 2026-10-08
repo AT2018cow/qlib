@@ -3834,14 +3834,15 @@ def _early_gate(cal, signal_date: str) -> str:
     nonpreemptible=True,  # 调度入口：被抢占则当天任务丢失；自身运行时间短，3x 成本增量极小
 )
 def daily_cron():
-    """云端全自动每日信号：Stage-B winner CSI1000 + chinext → GitHub API 提交。
-    csi1000（Stage-B winner canonical）与 chinext（卫星池）各自出榜，文件互相独立：
-      - results/signals/<date>_top20_lgb158.csv            （csi1000，网站兼容不变）
-      - results/signals/<date>_top20_lgb158_chinext.csv    （chinext）
-      - results/signals/<date>_chart.json / <date>_chart_chinext.json
-      - results/signals/<date>_paper_portfolio.json（及 chinext 后缀）
-    发布判定（交易日 gate）两池共享（同一数据日）；单池失败不影响另一池发布，
-    双池同时失败才 raise（触发 Modal 告警）。
+    """云端全自动每日信号：Stage-B winner CSI1000 canonical → GitHub API 提交。
+
+    当前 production 仅发布 CSI1000：
+      - results/signals/<date>_top20_lgb158.csv
+      - results/signals/<date>_chart.json
+      - results/signals/<date>_paper_portfolio.json
+
+    ChiNext 日更暂时停用；研究函数和历史 artifacts 保留，待新模型重新通过
+    production gate 后再显式恢复 scheduled publication。
     需 Modal Secret `github-push`（含 GITHUB_TOKEN，对 fork 仓库 Contents 读写权限的 PAT）。"""
     import base64
     import os
@@ -3850,31 +3851,26 @@ def daily_cron():
 
     import requests
 
-    # ---- gate 前移：先拿日历做零成本预判定，非交易日直接 return（省两池下载+推理）----
-    # 日历拉取失败（重试后仍失败）→ cal=None → 预判定返回 proceed（fail-open：
-    # 日历失败 ≠ 今天非交易日，降级模式下必须照常跑两池，否则交易日会漏发信号）
+    # ---- gate 前移：先拿日历做零成本预判定，非交易日直接 return ----
+    # CSI1000 canonical 已冻结为严格 T-close -> T+1-open，因此交易日历不可验证时
+    # 直接 fail closed，不再为暂停的卫星池保留 generic fail-open 调度。
     today = datetime.now(ZoneInfo("Asia/Shanghai")).date()
     signal_date = today.isoformat()
     try:
         cal = _cn_trading_calendar()
     except Exception as e:  # pylint: disable=W0703
-        cal = None
-        print(f"[cron] ⚠️ 交易日历获取失败（已重试），进入 fail-open 降级: {e}")
-        cal_err = str(e)
-    else:
-        cal_err = None
+        raise RuntimeError(
+            "CSI1000 Stage-B canonical requires a verified trading calendar"
+        ) from e
     early = _early_gate(cal, signal_date)
     if early == "skip":
         print(f"[cron] {signal_date} 非 A 股交易日（假日），gate 前移零成本跳过；最近排名见最近一份已发布信号")
         return
 
-    print(f"[cron] {signal_date} 为交易日（或日历降级 fail-open）——启动生产信号")
-    res = None
-    res_chi = None
-    pool_errors = {}
-    try:
-        from csi1000_production_config import CANONICAL_PROFILE
+    print(f"[cron] {signal_date} 为交易日——启动 CSI1000 Stage-B winner canonical")
+    from csi1000_production_config import CANONICAL_PROFILE
 
+    try:
         res = daily_standalone.remote(
             topk=20,
             nd=2,
@@ -3882,21 +3878,11 @@ def daily_cron():
             csi1000_profile=CANONICAL_PROFILE,
         )
     except Exception as csi_err:  # pylint: disable=W0703
-        pool_errors["csi1000"] = f"{type(csi_err).__name__}: {str(csi_err)[:300]}"
-        print(
-            "[cron] ⚠️ CSI1000 Stage-B winner canonical 失败"
-            f"（chinext 仍可独立发布）: {pool_errors['csi1000']}"
-        )
-    try:
-        # nd=3 = chinext 批次A 网格胜出值 + 批次C 终审口径（低换手形态）
-        # nd 不改变 RANKING-ONLY 榜单内容，仅保证配置元数据与已终审参数一致
-        res_chi = daily_standalone.remote(topk=20, nd=3, market="chinext")
-    except Exception as chi_err:  # pylint: disable=W0703
-        pool_errors["chinext"] = f"{type(chi_err).__name__}: {str(chi_err)[:300]}"
-        print(f"[cron] ⚠️ chinext 池失败（csi1000 仍可独立发布）: {pool_errors['chinext']}")
-    if res is None and res_chi is None:
-        raise RuntimeError(f"两个股票池均失败: {pool_errors}")
-    data_date = (res or res_chi)["date"]  # 任一成功池的数据覆盖日
+        raise RuntimeError(
+            "CSI1000 Stage-B winner canonical daily_standalone failed: "
+            f"{type(csi_err).__name__}: {str(csi_err)[:300]}"
+        ) from csi_err
+    data_date = res["date"]
     print(f"[cron] 数据日历至 {data_date}")
     print(f"[cron] 信号日期 {signal_date}（基于数据日 {data_date} 的收盘数据）")
 
@@ -3908,32 +3894,18 @@ def daily_cron():
     if action == "skip":
         return
     if action == "raise":
-        if res_chi is not None:
-            print("[cron] ⚠️ 数据源疑似故障——双池本可发布仍拒绝发布（fail-closed）")
         raise RuntimeError(detail)
-    if cal_err:
-        print(f"[cron] ⚠️ 降级原因: {cal_err}")
 
     # CSI1000 Stage-B winner is stricter than the legacy generic gate:
     # it must preserve the frozen T-close -> T+1-open contract exactly.
-    if res is not None:
-        csi_action, csi_detail = _csi1000_canonical_publication_decision(
-            cal, res["date"], signal_date
-        )
-        print(f"[cron] {csi_detail}")
-        if csi_action == "skip":
-            res = None
-        elif csi_action == "raise":
-            pool_errors["csi1000_freshness"] = csi_detail
-            res = None
-            if res_chi is None:
-                raise RuntimeError(csi_detail)
-
-    # 两池都成功时必须使用同一数据日；不一致时保留 CSI1000，拒绝混合来源。
-    if res is not None and res_chi is not None and res_chi["date"] != res["date"]:
-        print(f"[cron] ⚠️ 双池数据日不一致: csi1000={res['date']} chinext={res_chi['date']}；仅发布 csi1000")
-        res_chi = None
-        data_date = res["date"]
+    csi_action, csi_detail = _csi1000_canonical_publication_decision(
+        cal, res["date"], signal_date
+    )
+    print(f"[cron] {csi_detail}")
+    if csi_action == "skip":
+        return
+    if csi_action == "raise":
+        raise RuntimeError(csi_detail)
     # R28: build stateful paper artifacts only after the data/publication gate
     # has passed.  State is proposed now but persisted only after immutable
     # GitHub publication succeeds.
@@ -3942,33 +3914,23 @@ def daily_cron():
     if not paper_enabled:
         print("[cron] ⚠️ 交易日历不可确认，排名按既有 fail-open 规则发布，但 paper orders/state 不推进")
     files = {}
-    if res is not None:
-        files[f"results/signals/{signal_date}_top20_lgb158.csv"] = res["csv_content"]
-        files[f"results/signals/{signal_date}_chart.json"] = res["chart_json"]
-        if paper_enabled:
-            from csi1000_production_config import CANONICAL_PAPER_LINEAGE
+    files[f"results/signals/{signal_date}_top20_lgb158.csv"] = res["csv_content"]
+    files[f"results/signals/{signal_date}_chart.json"] = res["chart_json"]
+    if paper_enabled:
+        from csi1000_production_config import CANONICAL_PAPER_LINEAGE
 
-            # New winner-only state: never inherit the pre-promotion baseline
-            # account or its pending orders.  Public artifact names stay
-            # canonical for downstream consumers.
-            paper_proposals["csi1000"] = _apply_paper_portfolio(
-                res,
-                signal_date,
-                topk=20,
-                nd=2,
-                lineage=CANONICAL_PAPER_LINEAGE,
-            )
-            files[f"results/signals/{signal_date}_paper_portfolio.json"] = (
-                paper_proposals["csi1000"]["artifact_json"]
-            )
-    if res_chi is not None:
-        files[f"results/signals/{signal_date}_top20_lgb158_chinext.csv"] = res_chi["csv_content"]
-        files[f"results/signals/{signal_date}_chart_chinext.json"] = res_chi["chart_json"]
-        if paper_enabled:
-            paper_proposals["chinext"] = _apply_paper_portfolio(
-                res_chi, signal_date, topk=20, nd=3, lineage="canonical"
-            )
-            files[f"results/signals/{signal_date}_paper_portfolio_chinext.json"] = paper_proposals["chinext"]["artifact_json"]
+        # Winner-only state: never inherit the pre-promotion baseline account
+        # or its pending orders. Public artifact names stay canonical.
+        paper_proposals["csi1000"] = _apply_paper_portfolio(
+            res,
+            signal_date,
+            topk=20,
+            nd=2,
+            lineage=CANONICAL_PAPER_LINEAGE,
+        )
+        files[f"results/signals/{signal_date}_paper_portfolio.json"] = (
+            paper_proposals["csi1000"]["artifact_json"]
+        )
 
     def _persist_paper_states():
         if not paper_proposals:
@@ -4015,10 +3977,9 @@ def daily_cron():
         message=f"chore(signal): {signal_date} repair/publish {len(missing_files)} signal artifacts (cron)",
     )
     _persist_paper_states()
-    published_streams = int(res is not None) + int(res_chi is not None)
     print(
-        f"[cron] ✅ 已补发/推送 {len(missing_files)} 个文件，"
-        f"覆盖 {published_streams} 个成功信号流: {signal_date}"
+        f"[cron] ✅ 已补发/推送 {len(missing_files)} 个 CSI1000 canonical 文件: "
+        f"{signal_date}"
     )
 
     # ---- 名称映射每日自动更新（akshare 全量拉取，有变化才推送；失败不影响信号）----
