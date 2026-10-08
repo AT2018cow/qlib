@@ -581,7 +581,11 @@ async function main() {
   document.querySelectorAll('.date-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const d = dates.find(item => item.date === btn.dataset.date);
-      if (d) renderDate(d);
+      if (d) {
+        renderDate(d);
+        // The date rail now follows the ranking; return to the updated result.
+        document.getElementById('ranking').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     });
   });
 
