@@ -1,5 +1,7 @@
 # 15 - Next-Conversation Work Handoff (2026-10-07)
 
+> **Superseded as a startup handoff (2026-10-08):** use [21-next-conversation-handoff-star-chinext-20261008.md](21-next-conversation-handoff-star-chinext-20261008.md) for the next conversation. This file is retained only as the 2026-10-07 historical handoff.
+
 ## 0. Purpose
 
 This document is the **startup handoff for the next ChatGPT conversation**.
