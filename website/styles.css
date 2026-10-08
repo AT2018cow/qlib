@@ -329,7 +329,7 @@ h1, h2, h3, p { margin-top: 0; }
 .tag-new { background: var(--blue-soft); color: var(--blue); }
 .tag-up { background: var(--red-soft); color: var(--red); }
 .tag-dn { background: var(--teal-soft); color: var(--teal); }
-.tag-hold { background: #283647; color: #97a7b8; }
+.tag-neutral { background: #283647; color: #97a7b8; }
 /* Keep desktop <td> as a real table cell; flex would break column sizing. */
 .signal-table td.spark {
   display: table-cell;

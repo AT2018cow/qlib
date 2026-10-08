@@ -304,7 +304,7 @@ function buildRows(rows, nameMap, prev, chartData) {
 
   return rows.map(r => {
     const rank = Number(r.rank);
-    let tag = prev ? '<span class="tag tag-hold">持有</span>' : '<span class="tag tag-hold">无对照</span>';
+    let tag = prev ? '<span class="tag tag-neutral" title="与上一期可用榜单排名相同">持平</span>' : '<span class="tag tag-neutral">无对照</span>';
     if (prev && !prevCodes.has(r.instrument)) tag = '<span class="tag tag-new">新进</span>';
     else if (prev && rank < prevRank[r.instrument]) tag = '<span class="tag tag-up">上升</span>';
     else if (prev && rank > prevRank[r.instrument]) tag = '<span class="tag tag-dn">下降</span>';
@@ -423,13 +423,14 @@ function pageShell(dates) {
           <div class="panel-note">
             <div id="ranking-date" class="ranking-date">—</div>
             <div id="artifact-status"></div>
+            <div class="ranking-note">排名变化对比上一期可用榜单，不代表实际持仓</div>
             <div class="ranking-note">预测分数用于排序，不构成收益承诺</div>
           </div>
         </div>
         <div class="table-wrap">
           <table class="signal-table">
             <thead>
-              <tr><th>Rank</th><th>代码</th><th>名称</th><th>20日预测</th><th>变化</th><th>近60日</th></tr>
+              <tr><th>Rank</th><th>代码</th><th>名称</th><th>20日预测</th><th>排名变化</th><th>近60日</th></tr>
             </thead>
             <tbody id="signal-rows"></tbody>
           </table>
