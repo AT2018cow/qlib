@@ -25,7 +25,7 @@
 - `qlib/cli/run.py` (`qrun` entry, `fire`) and `scripts/get_data.py` (`fire.Fire(GetData)`).
 
 ## This fork's extension layer (actively maintained)
-- **Read `docs/experiments/21-next-conversation-handoff-star-chinext-20261008.md` first.** It is the current authority for project status and next-stage STAR/ChiNext work. Use docs 16–20 for the frozen CSI1000 Stage-A/B lineage and doc 14 for the corrected pre-tuner STAR/ChiNext evidence.
+- **Read the task-specific handoff first**: `docs/experiments/22-handoff-star-chinext-research-20261008.md` for STAR/ChiNext model research, or `docs/experiments/23-web-ui-handoff-20261008.md` for dark responsive website work. Doc 21 is historical combined context. Docs 16–20 contain the frozen CSI1000 Stage-A/B lineage; doc 14 contains corrected pre-tuner STAR/ChiNext evidence. Do not cross-edit unrelated research/website files or reinterpret the consumed Stage-B tail as fresh OOS.
 - **CSI1000 is frozen**: Stage-B winner is the sole canonical production profile. Do not reopen Stage-A/B selection or use the consumed 2025-01-02..2026-09-30 confirmation tail for post-hoc tuning unless a concrete implementation/data-integrity defect is found.
 - **ChiNext is paused in production**: research code/history remain, but scheduled daily publication and the public website entry are disabled until a new model passes a separately versioned validation gate.
 - **STAR is not rejected**: its corrected prediction reproducibility gate has not passed, so alpha is unknown. Repair reproducibility/data lineage before interpreting profitability.

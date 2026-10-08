@@ -1,11 +1,12 @@
 # 实验文档导览
 
-> **当前权威交接入口（2026-10-08）**：
-> [21-next-conversation-handoff-star-chinext-20261008.md](21-next-conversation-handoff-star-chinext-20261008.md)
+> **2026-10-08：按任务拆分为两个并行交接入口。**
 >
-> 下一次对话如要开始科创板 / 创业板研究，应先读 21，再按需回看 14、16–20。
-> 2026-09 到 2026-10-07 的旧 handover、Batch A/B/C 和双池生产说明只作为历史记录，
-> 不再代表当前 production 或当前研究结论。
+> - **[22 — STAR/ChiNext 模型研究交接](22-handoff-star-chinext-research-20261008.md)**：只负责科创板 reproducibility 和创业板新模型研究。
+> - **[23 — 网站/UI 交接](23-web-ui-handoff-20261008.md)**：只负责深色响应式网页、图表和 forward performance 展示。
+>
+> [21 — 综合历史交接](21-next-conversation-handoff-star-chinext-20261008.md) 继续保留详细研究背景，但不再是两条并行工作的共同操作入口。
+> 旧 handover、Batch A/B/C 与已 supersede 的双池生产描述只作历史记录。
 
 ## 当前项目状态
 
@@ -21,7 +22,9 @@
 
 | 文档 | 用途 |
 |---|---|
-| [21-next-conversation-handoff-star-chinext-20261008.md](21-next-conversation-handoff-star-chinext-20261008.md) | **下一对话入口**：当前 main 状态、CSI1000 冻结边界、STAR/ChiNext 下一阶段工作顺序 |
+| [22-handoff-star-chinext-research-20261008.md](22-handoff-star-chinext-research-20261008.md) | **研究对话入口**：STAR reproducibility、ChiNext 新模型、冻结/OOS 约束 |
+| [23-web-ui-handoff-20261008.md](23-web-ui-handoff-20261008.md) | **网页对话入口**：深色响应式、Top20/走势图/forward 累计收益、Pages 发布与视觉验收 |
+| [21-next-conversation-handoff-star-chinext-20261008.md](21-next-conversation-handoff-star-chinext-20261008.md) | 综合历史交接与研究背景（请优先使用 22/23 分工） |
 | [20-csi1000-stage-b-winner-canonical-promotion-20261008.md](20-csi1000-stage-b-winner-canonical-promotion-20261008.md) | CSI1000 Stage-B winner canonical promotion 决策 |
 | [19-csi1000-stage-b-final-audit-forward-contract-20261008.md](19-csi1000-stage-b-final-audit-forward-contract-20261008.md) | Stage-B 最终审计；其中 shadow deployment topology 已由 20 supersede |
 | [18-next-conversation-handoff-stage-b-20261007.md](18-next-conversation-handoff-stage-b-20261007.md) | Stage-B 启动前冻结合同与资源约束（历史但仍可用于追溯） |

@@ -2,7 +2,7 @@
 
 > **Fork 说明**：本 fork 在 Qlib 之上构建了 A 股日频量价研究管道（Modal 云端运行，入口 `modal_qlib_cn_a10g.py`）。
 > 当前研究结论、审计入口与历史实验文档见 **[docs/experiments/](docs/experiments/README.md)**，实验原始数据在 `results/`。
-> 当前项目状态与下一阶段 STAR / ChiNext 交接见 **[docs/experiments/21-next-conversation-handoff-star-chinext-20261008.md](docs/experiments/21-next-conversation-handoff-star-chinext-20261008.md)**。
+> 新对话请按任务分别阅读：**[STAR/ChiNext 模型研究交接](docs/experiments/22-handoff-star-chinext-research-20261008.md)** 或 **[网页/UI 开发交接](docs/experiments/23-web-ui-handoff-20261008.md)**；[doc 21](docs/experiments/21-next-conversation-handoff-star-chinext-20261008.md) 保留为综合历史参考。
 >
 > **免责声明**：本仓库仅供学术研究与实验性工程验证，不构成投资建议（research-only, not investment advice）。
 > 任何信号或配置均不得作为实际投资决策依据，用户需自担全部投资风险。

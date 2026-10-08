@@ -1,7 +1,7 @@
 # 网站交接文档（当前状态）
 
 > 2026-10-08：旧的双池网站交接已被当前 CSI1000-only 页面取代。
-> 下一阶段总体交接见 [21-next-conversation-handoff-star-chinext-20261008.md](21-next-conversation-handoff-star-chinext-20261008.md)。
+> 当前网站专用交接请读 [23-web-ui-handoff-20261008.md](23-web-ui-handoff-20261008.md)。原 [21 综合交接](21-next-conversation-handoff-star-chinext-20261008.md) 只作历史背景参考；STAR/ChiNext 模型研究另有 [22 研究交接](22-handoff-star-chinext-research-20261008.md)。
 
 ## 当前公开页面
 
