@@ -1,79 +1,55 @@
 # 实验文档导览
 
-> Qlib A 股日频量化研究（2026-09）。本项目在 microsoft/qlib 之上构建了 Modal 云端研究管道，
-> 完成了从信号验证到滚动终局评估的完整闭环。所有结论均基于实测数据，可复现。
+> **当前权威交接入口（2026-10-08）**：
+> [21-next-conversation-handoff-star-chinext-20261008.md](21-next-conversation-handoff-star-chinext-20261008.md)
+>
+> 下一次对话如要开始科创板 / 创业板研究，应先读 21，再按需回看 14、16–20。
+> 2026-09 到 2026-10-07 的旧 handover、Batch A/B/C 和双池生产说明只作为历史记录，
+> 不再代表当前 production 或当前研究结论。
 
-> **2026-10-07 下一对话启动入口**：[Next-Conversation Work Handoff](15-next-conversation-handoff-20261007.md)
-> 新对话应先读 15，再读 14/12/AGENTS.md；15 已基于 PR #14 合并后的 main 整理当前三池状态、权威结果、下一阶段实现顺序与禁止回退的旧结论。
+## 当前项目状态
 
-> **2026-10-07 当前权威阶段入口**：[Pre-Tuner Stage Summary and Next-Stage Baseline](14-pre-tuner-stage-summary-20261007.md)
-> 已汇总 PR #5-#13、修正后的 CSI1000/ChiNext/STAR 证据、被 supersede 的旧结论和下一阶段三池不对称并进计划。
-> 后续调优/审计应先读 14；下方 2026-09 “终审版”及 11%+ 历史数字仅保留为历史记录，不再代表当前生产证据。
+- **CSI1000**：Stage-A / Stage-B 已完成并冻结；Stage-B winner 已晋升为唯一 canonical production profile。
+- **ChiNext / 创业板**：旧模型的每日 production 更新与网页展示已暂停；历史 artifacts 和研究代码保留。
+- **STAR / 科创板**：corrected reproducibility gate 尚未通过，当前 alpha 结论为**未知**，不是“已证伪”。
+- **执行协议**：T 日收盘形成信号，T+1 开盘执行；Top20 / Drop2；board/date-aware price limits；无 5% high-open overlay。
+- **重训协议**：2016-01-01 起 expanding train，252-session validation，20-session purge，每 20 个交易日重训，生产原点 2026-09-18。
+- **生产 freshness**：CSI1000 只在前一真实交易日数据完整可验证时发布；陈旧数据 fail closed。
+- **网站**：当前公开页面仅展示 CSI1000；方法论页描述当前冻结 Stage-B 协议，ChiNext 标记为 paused。
 
-> **2026-10-03 审阅补充**：[当前选股逻辑问题与优化建议](08-stock-selection-review-20261003.md)
-> 汇总两轮审阅的23项问题、证据状态、修复优先级和验收建议。当前独立复算、数据修订审计、
-> 回测与生产一致性仍有待修复事项；下文历史验证记录须结合该审阅理解，不能直接证明当前生产协议已完整验证。
+## 当前权威文档
 
-## 重要声明
-
-本仓库全部内容仅为**学术研究与实验性工程验证**（research-only）。所有信号、配置、结论
-不构成任何投资建议（not investment advice）；不得将其中的任何信号或清单用于实际投资决策。
-用户应自行判断并承担一切投资决策风险。
-
-## 一页纸速览（终审版，截至 2026-09-18 —— 详见 [05-final-audit.md](05-final-audit.md)）
-
-- **唯一实盘候选**：LightGBM + Alpha158 + 20日标签 + csi1000 + top20 等权 + nd2 每日微调（csi500 路线已关闭：滚动 +0.6%）
-- **5.5 年滚动（23 窗口，purge 后新口径 2026-09-19）**：年化有成本超额 **+11.6%**（t=1.44 不显著），正窗口 14/23，最差年 2025 -12%
-- **统计诚实**：t=1.44 不显著——"未证伪但未确立"，仓位必须按"信号可能无效"定价；csi500 路线已关闭（-4.1%~-4.7% 双重收敛）
-- **计算可信度**：三重独立验证（含完全独立端到端复算，偏差 0.15pp）+ 前视/幸存者偏差排除
-- **绝对收益 = 指数 β + 选股超额**：指数风险全自担，门控是唯一 β 管理工具
-- **实盘定位**：卫星仓 ≤10-20%，先 3 个月 paper trading 积累前向样本
-- **重训频率已验证（第六步 2026-09-19）**：20 日档 +12.7% / 60 日档 +10.5%（1385 日，差异在噪声带内）——生产 20 日频率维持
-- **下一步**：cron 前向样本积累 + P3 信息维度（RD-Agent 因子挖掘 / 消息面）
-
-## 文档索引
-
-| 文档 | 内容 |
+| 文档 | 用途 |
 |---|---|
-| [01-findings.md](01-findings.md) | 研究结论全记录：环境、实验矩阵、各阶段结果（P0/P1/vcheck/P2/成本推算）、固化配置 |
-| [02-roadmap.md](02-roadmap.md) | 工作路线图：P0-P3 全量清单、各项完成/关闭状态、剩余工作 |
-| [03-risks-and-audit.md](03-risks-and-audit.md) | 风险条款、代码审计记录、资源使用规范 |
-| [04-playbook.md](04-playbook.md) | 实盘操作手册：模型能力边界、月度流程、仓位与风控、预期管理 |
-| [05-final-audit.md](05-final-audit.md) | **终审报告（最终基线）**：准确结果、完整分析过程、统计强度结论、操作启示 |
-| [06-cron-setup.md](06-cron-setup.md) | 每日信号云端定时任务（Modal Cron）：架构、部署步骤、费用、验证与生命周期 |
-| [06-qlib-audit-fixes.md](06-qlib-audit-fixes.md) | 审计 PR：泄漏修复清单与验收条件 |
-| [07-live-retrain.md](07-live-retrain.md) | 每 20 交易日重训与模型缓存机制 |
-| [08-stock-selection-review-20261003.md](08-stock-selection-review-20261003.md) | 当前选股逻辑审阅：23项问题及优化建议、证据、优先级、验收和复现样例 |
-| [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md) | **当前权威阶段总结**：PR #5-#13、三池最新证据、superseded 结论、下一阶段三池不对称并进基线 |
-| [15-next-conversation-handoff-20261007.md](15-next-conversation-handoff-20261007.md) | **下一对话启动入口**：当前 main、三池状态、已完成实验、下一阶段 tuner/rescue/STAR repair 工作顺序 |
+| [21-next-conversation-handoff-star-chinext-20261008.md](21-next-conversation-handoff-star-chinext-20261008.md) | **下一对话入口**：当前 main 状态、CSI1000 冻结边界、STAR/ChiNext 下一阶段工作顺序 |
+| [20-csi1000-stage-b-winner-canonical-promotion-20261008.md](20-csi1000-stage-b-winner-canonical-promotion-20261008.md) | CSI1000 Stage-B winner canonical promotion 决策 |
+| [19-csi1000-stage-b-final-audit-forward-contract-20261008.md](19-csi1000-stage-b-final-audit-forward-contract-20261008.md) | Stage-B 最终审计；其中 shadow deployment topology 已由 20 supersede |
+| [18-next-conversation-handoff-stage-b-20261007.md](18-next-conversation-handoff-stage-b-20261007.md) | Stage-B 启动前冻结合同与资源约束（历史但仍可用于追溯） |
+| [17-csi1000-stage-a-expanded-screen-runbook-20261007.md](17-csi1000-stage-a-expanded-screen-runbook-20261007.md) | Stage-A 80-candidate 扩展执行记录 |
+| [16-csi1000-stage-a-tuning-contract-20261007.md](16-csi1000-stage-a-tuning-contract-20261007.md) | Stage-A 调参合同 |
+| [14-pre-tuner-stage-summary-20261007.md](14-pre-tuner-stage-summary-20261007.md) | STAR/ChiNext corrected evidence 的关键历史入口 |
+| [12-pre-tuner-audit.md](12-pre-tuner-audit.md) | corrected reproducibility / execution audit 基础 |
 
-## 数据
+## 历史文档
 
-实验原始数据按批次归档于仓库根 `results/`：`p0/`、`p1/`（含 version_check）、`p2/`。
-每批含 summary.json 与明细 csv/pkl，关键数值均与云端运行日志双重核对过。
+`01`–`15`、旧 `HANDOVER*.md`、Batch A/B/C 和早期 universe-expansion 记录保留用于工程追溯，
+但其中以下内容不得当作当前事实：
 
-## 快速命令（2026-09-18 终审版，全部经过验证）
+- 旧 CSI1000 +11% 级 rolling baseline 是当前“最终模型”；
+- ChiNext 与 CSI1000 同等成熟并应双池 production；
+- STAR 已被证明无 alpha；
+- production cron 仍应发布两个 pool；
+- 旧 baseline paper state 应继续给 Stage-B winner 使用。
 
-```bash
-# 1. 每日信号（自包含单容器：自动下载当日最新数据 → 训练 csi1000+top20+nd2 →
-#    信号自动取回本地 results/signals/ 并 git 推送，无需任何参数、无需 Volume）
-modal run modal_qlib_cn_a10g.py --best --daily
-#    注意：不再需要 --force-data（每次运行必然使用最新数据）；Volume 仅供研究批并行使用
+这些结论均已被 2026-10-07/08 的 corrected audit、Stage-A/B 和 canonical promotion supersede。
 
-# 2. 完整训练+回测（同配置）
-modal run modal_qlib_cn_a10g.py --best
+## Public-repository hygiene
 
-# 3. 实盘前审计（涨跌停口径）——建议建仓前跑
-modal run modal_qlib_cn_a10g.py::verify_integrity
+本仓库是公开代码仓库。文档不记录真实访问凭据、私有 workspace/profile 名称、账户余额、个人目录或其他非必要身份信息。
+部署凭据只通过托管平台的凭据管理功能配置，不进入仓库文档。
+网站只公开研究方法、当前状态与必要风险说明；精确 lineage/hash 如需审计，以 versioned research docs / source manifests 为准。
 
-# 4. 复现各阶段实验（历史记录见 01/05 文档）
-modal run modal_qlib_cn_a10g.py --p0        # 分组单调性/IC衰减/分月/n_drop网格（csi500时代）
-modal run modal_qlib_cn_a10g.py --p1        # 特征融合/40日标签/组合构造（已被后续部分修正）
-modal run modal_qlib_cn_a10g.py --p2        # 7窗口滚动（被批次C的23窗口滚动取代）
-modal run modal_qlib_cn_a10g.py --vcheck    # 数据版本/特征/幸存者验证
-modal run modal_qlib_cn_a10g.py --batcha    # topk×nd 耦合 + 股票池粗筛
-modal run modal_qlib_cn_a10g.py --batchb    # 训练起点/窗口模式/LGB超参（csi1000）
-modal run modal_qlib_cn_a10g.py --batchc    # ⭐ 23窗口滚动终审（唯一裁判）
-modal run modal_qlib_cn_a10g.py::independent_recheck  # 独立端到端复算
-modal run modal_qlib_cn_a10g.py::bench_years          # 基准指数年度收益
-```
+## 免责声明
+
+本仓库全部内容仅用于学术研究与实验性工程验证，不构成投资建议。
+历史回测、Stage-B 结果、模型分数和 paper artifacts 均不能保证未来收益。
