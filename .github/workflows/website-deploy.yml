@@ -27,8 +27,14 @@ jobs:
       - name: Build site
         run: |
           mkdir -p _site/signals
-          cp website/index.html website/app.js website/methodology.html _site/
+          # Keep all local HTML/JS/CSS dependencies together in Pages artifact.
+          cp website/*.html website/*.js website/*.css _site/
           cp results/signals/*.csv results/signals/*.json _site/signals/
+          # Fail the deployment before uploading if a required site asset is missing.
+          test -s _site/index.html
+          test -s _site/methodology.html
+          test -s _site/app.js
+          test -s _site/styles.css
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
