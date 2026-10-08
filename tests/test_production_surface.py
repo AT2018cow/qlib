@@ -28,8 +28,11 @@ def test_daily_cron_publishes_only_csi1000():
 
 def test_chinext_hidden_from_public_signal_ui():
     app = (ROOT / "website" / "app.js").read_text()
-    assert "chinext" not in app.lower()
-    assert "创业板" not in app
+    # The page may explain that ChiNext is paused, but must not expose a
+    # selectable pool, ChiNext artifact path, or legacy query-route contract.
+    assert "_chinext" not in app
+    assert "?pool=chinext" not in app.lower()
+    assert "market=\"chinext\"" not in app.lower()
     assert "csi1000" in app
     assert "中证1000" in app
 
@@ -48,3 +51,29 @@ def test_historical_chinext_files_are_not_deleted_by_runtime():
     # deletion/migration path targeting historical signal artifacts.
     assert "delete_file" not in cron
     assert "unlink(" not in cron
+
+
+def test_methodology_tracks_current_frozen_stage_b_contract():
+    page = (ROOT / "website" / "methodology.html").read_text()
+    for marker in (
+        "2025-01-02",
+        "2026-09-30",
+        "424",
+        "0 / 4 / 6 / 10 / 15",
+        "+9.16%",
+        "+14.25%",
+        "5 / 5",
+        "2026-09-18",
+        "stage_b_winner_canonical",
+        "4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2",
+    ):
+        assert marker in page, f"methodology missing current Stage-B marker: {marker}"
+
+
+def test_public_site_uses_shared_stylesheet():
+    index = (ROOT / "website" / "index.html").read_text()
+    methodology = (ROOT / "website" / "methodology.html").read_text()
+    styles = ROOT / "website" / "styles.css"
+    assert styles.is_file()
+    assert 'href="styles.css?v=1"' in index
+    assert 'href="styles.css?v=1"' in methodology
