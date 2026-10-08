@@ -6,6 +6,8 @@ on:
     paths:
       - 'results/signals/**'
       - 'website/**'
+      - 'forward_performance.py'
+      - 'scripts/build_forward_performance.py'
   workflow_dispatch:
 
 permissions:
@@ -30,11 +32,15 @@ jobs:
           # Keep all local HTML/JS/CSS dependencies together in Pages artifact.
           cp website/*.html website/*.js website/*.css _site/
           cp results/signals/*.csv results/signals/*.json _site/signals/
+          python3 scripts/build_forward_performance.py \
+            --signals results/signals \
+            --output _site/signals/csi1000_forward_performance.json
           # Fail the deployment before uploading if a required site asset is missing.
           test -s _site/index.html
           test -s _site/methodology.html
           test -s _site/app.js
           test -s _site/styles.css
+          test -s _site/signals/csi1000_forward_performance.json
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
