@@ -10,6 +10,12 @@ on:
       - 'csi1000_tuner_audit.py'
       - 'csi1000_stage_b.py'
       - 'csi1000_stage_b_core.py'
+      - 'csi1000_production_config.py'
+      - 'paper_portfolio.py'
+      - 'modal_qlib_cn_a10g.py'
+      - 'tests/test_csi1000_production_config.py'
+      - 'tests/test_paper_portfolio.py'
+      - 'docs/experiments/19-csi1000-stage-b-final-audit-forward-contract-20261008.md'
       - 'tests/test_csi1000_tuner_core.py'
       - 'tests/test_csi1000_stage_b_core.py'
       - 'docs/experiments/16-csi1000-stage-a-tuning-contract-20261007.md'
@@ -25,6 +31,12 @@ on:
       - 'csi1000_tuner_audit.py'
       - 'csi1000_stage_b.py'
       - 'csi1000_stage_b_core.py'
+      - 'csi1000_production_config.py'
+      - 'paper_portfolio.py'
+      - 'modal_qlib_cn_a10g.py'
+      - 'tests/test_csi1000_production_config.py'
+      - 'tests/test_paper_portfolio.py'
+      - 'docs/experiments/19-csi1000-stage-b-final-audit-forward-contract-20261008.md'
       - 'tests/test_csi1000_tuner_core.py'
       - 'tests/test_csi1000_stage_b_core.py'
       - 'docs/experiments/17-csi1000-stage-a-expanded-screen-runbook-20261007.md'
@@ -48,3 +60,5 @@ jobs:
           python -m unittest
           tests/test_csi1000_tuner_core.py
           tests/test_csi1000_stage_b_core.py
+          tests/test_csi1000_production_config.py
+          tests/test_paper_portfolio.py
