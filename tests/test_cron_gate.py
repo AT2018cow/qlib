@@ -9,7 +9,10 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from modal_qlib_cn_a10g import _publication_decision
+from modal_qlib_cn_a10g import (
+    _csi1000_canonical_publication_decision,
+    _publication_decision,
+)
 
 
 def test_cron_schedule_registered():
@@ -119,4 +122,38 @@ def test_same_day_data_rejected():
 def test_future_data_rejected():
     cal = _cal(["2026-10-08", "2026-10-09"])
     action, _ = _publication_decision(cal, "2026-10-09", "2026-10-08")
+    assert action == "raise"
+
+
+def test_csi1000_canonical_lag0_required():
+    cal = _cal(["2026-10-08", "2026-10-09"])
+    action, detail = _csi1000_canonical_publication_decision(
+        cal, "2026-10-08", "2026-10-09"
+    )
+    assert action == "publish"
+    assert "lag=0" in detail
+
+
+def test_csi1000_canonical_lag1_rejected():
+    cal = _cal(["2026-10-08", "2026-10-09", "2026-10-12"])
+    action, detail = _csi1000_canonical_publication_decision(
+        cal, "2026-10-08", "2026-10-12"
+    )
+    assert action == "raise"
+    assert "got lag=1" in detail
+
+
+def test_csi1000_canonical_calendar_unavailable_rejected():
+    action, detail = _csi1000_canonical_publication_decision(
+        None, "2026-10-08", "2026-10-09"
+    )
+    assert action == "raise"
+    assert "verified trading calendar" in detail
+
+
+def test_csi1000_canonical_unknown_data_date_rejected():
+    cal = _cal(["2026-10-08", "2026-10-09"])
+    action, _ = _csi1000_canonical_publication_decision(
+        cal, "2026-10-07", "2026-10-09"
+    )
     assert action == "raise"
