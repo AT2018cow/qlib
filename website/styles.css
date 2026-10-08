@@ -712,3 +712,69 @@ body { background: #0c121b; }
     gap: 5px;
   }
 }
+
+
+/* Information-first polish: navigation remains one compact, touch-scrollable row. */
+.history-buttons {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-padding-inline: 8px;
+  scrollbar-width: thin;
+  padding-block: 2px 10px;
+}
+.date-btn {
+  flex: 0 0 auto;
+  min-height: 40px;
+  white-space: nowrap;
+}
+.performance-axis {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 2px 2px;
+  color: var(--quiet);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.performance-status.stale,
+.performance-latest.stale { color: var(--amber); }
+
+/* Tablet portrait has too little space for six financial table columns.
+   Reuse compact cards; preserve a real table for laptop/desktop. */
+@media (min-width: 701px) and (max-width: 860px) {
+  .table-wrap { display: none; }
+  .mobile-cards { display: grid; }
+  .stock-card {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) 120px;
+    gap: 16px;
+    align-items: center;
+    padding: 14px 20px;
+    border-bottom: 1px solid #273544;
+  }
+  .stock-card:last-child { border-bottom: 0; }
+  .stock-main { min-width: 0; }
+  .stock-main .stock-name {
+    display: block;
+    margin-top: 5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .stock-side { min-width: 0; text-align: right; }
+  .stock-side .tag { margin-left: 5px; }
+  .stock-side .spark { justify-content: flex-end; margin-top: 8px; }
+  .stock-side .sparkline-svg { width: 104px; height: 27px; margin-inline: 0; }
+}
+@media (max-width: 700px) {
+  .stock-side > div:first-child {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 4px;
+  }
+  .stock-side .tag { margin-left: 0; }
+  .performance-axis { font-size: 10px; }
+}
