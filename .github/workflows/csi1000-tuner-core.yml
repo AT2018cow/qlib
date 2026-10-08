@@ -14,6 +14,9 @@ on:
       - 'signal_publication_gate.py'
       - 'paper_portfolio.py'
       - 'forward_performance.py'
+      - 'chart_series.py'
+      - 'tests/test_chart_series.py'
+      - 'tests/test_sparkline_frontend.cjs'
       - 'scripts/build_forward_performance.py'
       - 'modal_qlib_cn_a10g.py'
       - 'tests/test_csi1000_production_config.py'
@@ -25,6 +28,7 @@ on:
       - 'website/app.js'
       - 'website/index.html'
       - 'website/styles.css'
+      - 'website/favicon.svg'
       - 'website/methodology.html'
       - 'docs/experiments/19-csi1000-stage-b-final-audit-forward-contract-20261008.md'
       - 'docs/experiments/20-csi1000-stage-b-winner-canonical-promotion-20261008.md'
@@ -48,6 +52,9 @@ on:
       - 'signal_publication_gate.py'
       - 'paper_portfolio.py'
       - 'forward_performance.py'
+      - 'chart_series.py'
+      - 'tests/test_chart_series.py'
+      - 'tests/test_sparkline_frontend.cjs'
       - 'scripts/build_forward_performance.py'
       - 'modal_qlib_cn_a10g.py'
       - 'tests/test_csi1000_production_config.py'
@@ -59,6 +66,7 @@ on:
       - 'website/app.js'
       - 'website/index.html'
       - 'website/styles.css'
+      - 'website/favicon.svg'
       - 'website/methodology.html'
       - 'docs/experiments/19-csi1000-stage-b-final-audit-forward-contract-20261008.md'
       - 'docs/experiments/20-csi1000-stage-b-winner-canonical-promotion-20261008.md'
@@ -90,10 +98,13 @@ jobs:
           signal_publication_gate.py
           paper_portfolio.py
           forward_performance.py
+          chart_series.py
           scripts/build_forward_performance.py
           modal_qlib_cn_a10g.py
       - name: Validate website JavaScript
         run: node --check website/app.js
+      - name: Verify sparkline behavior and CSS layout semantics
+        run: node --test tests/test_sparkline_frontend.cjs
       - name: Run full CSI1000 Stage-A, Stage-B and production contract tests
         run: >-
           python -m pytest -q
@@ -102,6 +113,7 @@ jobs:
           tests/test_csi1000_production_config.py
           tests/test_paper_portfolio.py
           tests/test_forward_performance.py
+          tests/test_chart_series.py
           tests/test_cron_gate.py
           tests/test_modal_structure.py
           tests/test_production_surface.py

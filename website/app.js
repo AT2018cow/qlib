@@ -59,23 +59,61 @@ function formatScore(value) {
   };
 }
 
-function makeSparkline(values, w = 92, h = 28) {
-  const vs = (values || [])
-    .filter(v => v !== null && v !== undefined && Number.isFinite(Number(v)))
-    .map(Number);
-  if (vs.length < 2) return '<span class="muted">—</span>';
+function calendarAlignChartValues(values, dates) {
+  if (!Array.isArray(values)) return [];
+  const count = Array.isArray(dates) ? dates.length : 0;
+  if (!count) return values;
+  // Before the calendar-aware producer was deployed, shorter chart arrays
+  // represented the most recent available closes. Preserve their missing
+  // leading calendar slots instead of stretching them over the full window.
+  if (values.length < count) {
+    return Array(count - values.length).fill(null).concat(values);
+  }
+  return values.slice(-count);
+}
 
-  const min = Math.min(...vs);
-  const max = Math.max(...vs);
+function makeSparkline(values, w = 128, h = 34) {
+  const raw = Array.isArray(values) ? values : [];
+  if (raw.length < 2) return '<span class="muted">—</span>';
+
+  const finite = raw
+    .map((v, i) => ({ i, v: Number(v) }))
+    .filter(p => raw[p.i] !== null && raw[p.i] !== undefined && Number.isFinite(p.v));
+  if (finite.length < 2) return '<span class="muted">—</span>';
+
+  const min = Math.min(...finite.map(p => p.v));
+  const max = Math.max(...finite.map(p => p.v));
   const range = max - min || 1;
-  const pts = vs.map((v, i) =>
-    `${(i / (vs.length - 1) * w).toFixed(1)},${(h - (v - min) / range * h).toFixed(1)}`
-  ).join(' ');
-  const stroke = vs[vs.length - 1] >= vs[0] ? '#ff6b6b' : '#3ccf91';
-  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">
-    <polyline points="${pts}" fill="none" stroke="${stroke}" stroke-width="1.7"
-      stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>`;
+  const xPad = 2;
+  const yPad = 2;
+  const usableW = Math.max(1, w - xPad * 2);
+  const usableH = Math.max(1, h - yPad * 2);
+  const xOf = i => xPad + (raw.length === 1 ? 0 : i / (raw.length - 1) * usableW);
+  const yOf = v => yPad + (max - v) / range * usableH;
+
+  // Preserve null/suspension gaps instead of deleting them and compressing time.
+  const segments = [];
+  let current = [];
+  raw.forEach((value, i) => {
+    const n = Number(value);
+    if (value === null || value === undefined || !Number.isFinite(n)) {
+      if (current.length >= 2) segments.push(current);
+      current = [];
+      return;
+    }
+    current.push([xOf(i), yOf(n)]);
+  });
+  if (current.length >= 2) segments.push(current);
+
+  if (!segments.length) return '<span class="muted">—</span>';
+  const stroke = finite[finite.length - 1].v >= finite[0].v ? '#ff6b6b' : '#3ccf91';
+  const paths = segments.map(seg => {
+    const d = seg.map((p, i) => `${i ? 'L' : 'M'} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+    return `<path d="${d}" fill="none" stroke="${stroke}" stroke-width="1.8"
+      stroke-linecap="round" stroke-linejoin="round"/>`;
+  }).join('');
+
+  return `<svg class="sparkline-svg" viewBox="0 0 ${w} ${h}" aria-hidden="true">${paths}</svg>`;
 }
 
 async function loadNameMap() {
@@ -224,7 +262,10 @@ function buildRows(dateInfo, nameMap, prev, chartData) {
       name: nameMap[qlibCode(r.instrument)] || '名称待更新',
       score: formatScore(r.score),
       tag,
-      spark: makeSparkline(chartData?.stocks?.[r.instrument]),
+      spark: makeSparkline(calendarAlignChartValues(
+        chartData?.stocks?.[r.instrument],
+        chartData?.dates
+      )),
       url: sinaUrl(r.instrument),
     };
   });

@@ -73,6 +73,7 @@ def test_image_helper_modules_copied():
         "github_commit.py",
         "csi1000_tuner_core.py",
         "csi1000_production_config.py",
+        "chart_series.py",
         "signal_publication_gate.py",
     ):
         assert helper in cp.group(1), \
@@ -135,3 +136,10 @@ def test_github_commit_flow_complete():
     gsrc = open(os.path.join(ROOT, "github_commit.py")).read()
     for step in ("git/ref/heads", "git/blobs", "git/trees", "git/commits", "git/refs/heads"):
         assert step in gsrc, f"Git Data API step missing: {step}"
+
+
+def test_daily_chart_uses_calendar_aligned_series():
+    assert "from chart_series import align_bin_values_to_calendar_tail" in src
+    assert "start_index, values = _read_bin(close_bin)" in src
+    assert "calendar_length=len(cal_lines)" in src
+    assert "window=60" in src

@@ -273,7 +273,18 @@ h1, h2, h3, p { margin-top: 0; }
 .signal-table tbody tr:last-child td { border-bottom: 0; }
 .signal-table tbody tr:hover { background: #1b2939; }
 .signal-table th:first-child, .signal-table td:first-child { padding-left: 25px; }
-.signal-table th:last-child, .signal-table td:last-child { padding-right: 25px; }
+.signal-table th:nth-child(1), .signal-table td:nth-child(1) { width: 9%; }
+.signal-table th:nth-child(2), .signal-table td:nth-child(2) { width: 17%; }
+.signal-table th:nth-child(3), .signal-table td:nth-child(3) { width: 18%; }
+.signal-table th:nth-child(4), .signal-table td:nth-child(4) { width: 15%; }
+.signal-table th:nth-child(5), .signal-table td:nth-child(5) { width: 13%; }
+.signal-table th:last-child, .signal-table td:last-child {
+  width: 180px;
+  min-width: 180px;
+  padding-left: 18px;
+  padding-right: 25px;
+  text-align: center;
+}
 .rank-badge {
   display: inline-grid;
   place-items: center;
@@ -319,7 +330,24 @@ h1, h2, h3, p { margin-top: 0; }
 .tag-up { background: var(--red-soft); color: var(--red); }
 .tag-dn { background: var(--teal-soft); color: var(--teal); }
 .tag-hold { background: #283647; color: #97a7b8; }
-.spark svg { display: block; margin-left: auto; }
+/* Keep desktop <td> as a real table cell; flex would break column sizing. */
+.signal-table td.spark {
+  display: table-cell;
+  text-align: center;
+}
+.sparkline-svg {
+  display: block;
+  width: 128px;
+  height: 34px;
+  max-width: 100%;
+  margin-inline: auto;
+  overflow: hidden;
+}
+.mobile-cards .spark {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
 .muted { color: var(--quiet); font-size: 12px; }
 .mobile-cards { display: none; }
 
@@ -512,10 +540,20 @@ details p { margin: 12px 0 0; }
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .stock-side { text-align: right; }
+  .stock-side {
+    min-width: 108px;
+    text-align: right;
+  }
   .stock-side .tag { margin-left: 5px; }
-  .stock-side .spark { margin-top: 8px; }
-  .stock-side svg { width: 74px; height: 22px; }
+  .stock-side .spark {
+    justify-content: flex-end;
+    margin-top: 8px;
+  }
+  .stock-side .sparkline-svg {
+    width: 104px;
+    height: 27px;
+    margin-inline: 0;
+  }
   .history-wrap { padding: 15px 16px 18px; }
   .history-buttons { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
   .date-btn { white-space: nowrap; flex: 0 0 auto; }
@@ -535,7 +573,8 @@ details p { margin: 12px 0 0; }
   .protocol-list { grid-template-columns: 1fr; }
   .protocol-row { padding: 7px 0; }
   .stock-card { grid-template-columns: 27px minmax(0, 1fr) auto; gap: 8px; padding: 13px 11px; }
-  .stock-side .spark { display: none; }
+  .stock-side { min-width: 82px; }
+  .stock-side .sparkline-svg { width: 78px; height: 22px; }
   .metric-grid { grid-template-columns: 1fr 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {
