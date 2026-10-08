@@ -1,14 +1,14 @@
 // ============================================================
 // 每日选股结果展示 — 纯静态单页应用（响应式：桌面表格 / 移动卡片）
-// 双池：csi1000（中证1000）+ chinext（创业板）——文件按后缀区分
+// 当前生产页面仅展示 csi1000（中证1000）；其他研究池暂停展示
 // ============================================================
 const CSV_BASE = 'signals';
 const NAME_MAP_URL = `${CSV_BASE}/code_name_map.csv`;
 
-// 池定义：suffix 决定信号/走势文件名（csi1000 无后缀=网站历史兼容；chinext 带 _chinext）
+// Production pool allowlist. Historical/research pool artifacts may remain in
+// the repository, but are intentionally not reachable from this UI.
 const POOLS = {
     csi1000: { label: '中证1000', suffix: '', desc: 'top20 · 预测未来 20 日收益 · nd2 执行口径' },
-    chinext: { label: '创业板', suffix: '_chinext', desc: 'top20 · 预测未来 20 日收益 · nd3 执行口径（等权基准）' },
 };
 const DEFAULT_POOL = 'csi1000';
 
@@ -131,7 +131,7 @@ async function main(pool) {
         </div>
         <footer>
             <p>⚠️ 仅供研究参考，不构成投资建议 · 据此操作风险自负</p>
-            <p>每个交易日 07:00 自动更新${pool === 'chinext' ? ' · 创业板为独立卫星池（5.5年滚动终审 +11.5%，见方法论）' : ''}</p>
+            <p>每个交易日 07:00 自动更新 · 当前生产信号仅中证1000</p>
         </footer>`;
 
     const render = (rows) => {
@@ -183,5 +183,5 @@ async function main(pool) {
     });
 }
 
-// 入口：?pool=chinext 支持（默认 csi1000）
+// 入口：未知/历史 pool 参数会被 main() 的 allowlist 自动回退到 csi1000。
 main(new URLSearchParams(location.search).get('pool') || 'csi1000');
