@@ -64,8 +64,7 @@ def test_methodology_tracks_current_frozen_stage_b_contract():
         "+14.25%",
         "5 / 5",
         "2026-09-18",
-        "stage_b_winner_canonical",
-        "4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2",
+        "治理与公开边界",
     ):
         assert marker in page, f"methodology missing current Stage-B marker: {marker}"
 
@@ -109,3 +108,34 @@ def test_pages_deployment_packages_stylesheet():
     assert "cp website/*.html website/*.js website/*.css _site/" in workflow
     for filename in ("index.html", "methodology.html", "app.js", "styles.css"):
         assert f"test -s _site/{filename}" in workflow
+
+
+def test_public_methodology_does_not_expose_internal_audit_identifiers():
+    page = (ROOT / "website" / "methodology.html").read_text()
+    forbidden = (
+        "stage_b_winner_canonical",
+        "Winner candidate ID",
+        "Model config SHA256",
+        "Stage-B runtime snapshot",
+        "GITHUB_TOKEN",
+        "github-push",
+        "modal secret",
+    )
+    for marker in forbidden:
+        assert marker not in page, f"public methodology exposes internal marker: {marker}"
+
+
+def test_current_handoff_is_present_and_indexed():
+    handoff = ROOT / "docs" / "experiments" / "21-next-conversation-handoff-star-chinext-20261008.md"
+    index = (ROOT / "docs" / "experiments" / "README.md").read_text()
+    assert handoff.is_file()
+    text = handoff.read_text()
+    for marker in (
+        "CSI1000 research selection is complete and frozen",
+        "STAR reproducibility repair first",
+        "ChiNext",
+        "2025-01-02",
+        "2026-09-30",
+    ):
+        assert marker in text
+    assert handoff.name in index
