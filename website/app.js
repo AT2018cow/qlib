@@ -497,6 +497,14 @@ async function main() {
     return csvCache.get(date);
   }
 
+  const contextCache = new Map();
+  function loadContext(date) {
+    if (!contextCache.has(date)) {
+      contextCache.set(date, loadDateContext(date, date === dates[0].date));
+    }
+    return contextCache.get(date);
+  }
+
   let latestDateRequest = 0;
   async function renderDate(dateInfo) {
     const request = ++latestDateRequest;
@@ -506,7 +514,7 @@ async function main() {
     const idx = dates.findIndex(d => d.date === dateInfo.date);
     const previousPromise = idx >= 0 && idx + 1 < dates.length
       ? loadDateRows(dates[idx + 1].date) : Promise.resolve(null);
-    const ctxPromise = loadDateContext(dateInfo.date, dateInfo.date === dates[0].date);
+    const ctxPromise = loadContext(dateInfo.date);
     const rows = await loadDateRows(dateInfo.date);
     if (request !== latestDateRequest) return;
 
