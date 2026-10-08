@@ -138,6 +138,10 @@ def inspect_viewport(browser, base_url, width: int):
     assert ranking_box and history_box and performance_box
     assert ranking_box["y"] + ranking_box["height"] <= history_box["y"] + 1
     assert history_box["y"] + history_box["height"] <= performance_box["y"] + 1
+    # The status is a ranking comparison, never a paper-account holding.
+    assert page.locator("#signal-rows tr").first.locator(".tag").inner_text() == "持平"
+    assert page.locator(".stock-card").first.locator(".tag").inner_text() == "持平"
+    assert "持有" not in page.locator("#ranking").inner_text()
     if width <= 860:
         stock_rows = page.locator(".stock-card")
         assert stock_rows.count() == 20
@@ -156,6 +160,7 @@ def inspect_viewport(browser, base_url, width: int):
     page.locator(".date-btn").nth(1).click()
     page.wait_for_function("document.getElementById('stat-lineage')?.textContent === '历史 / 未核验'")
     assert page.locator("#ranking-date").inner_text() == page.locator("#stat-date").inner_text()
+    assert page.locator("#signal-rows tr").first.locator(".tag").inner_text() == "无对照"
     page.wait_for_function("Math.abs(document.querySelector('#ranking').getBoundingClientRect().top) < 30")
     after_history = len(signals_requests)
     assert after_history == initial_requests + 2, signals_requests
