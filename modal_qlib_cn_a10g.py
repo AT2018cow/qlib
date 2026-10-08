@@ -28,6 +28,10 @@ from qlib_live_retrain import (
     apply_lgb_reproducibility,
 )
 from board_execution import compute_limit_masks, research_exchange
+from signal_publication_gate import (
+    _csi1000_canonical_publication_decision,
+    _publication_decision,
+)
 from board_rules import (
     CHINEXT_REFORM,
     BENCH_CANDIDATES,
@@ -110,7 +114,8 @@ image = (
     # /root/ 运行（sys.path 首位是 /root）——必须复制到 /root/ 否则 ModuleNotFoundError。
     .run_commands(
         "cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/qlib/board_rules.py /root/qlib/board_execution.py /root/qlib/paper_portfolio.py /root/qlib/portfolio_performance.py /root/qlib/github_commit.py "
-            "/root/qlib/csi1000_tuner_core.py /root/qlib/csi1000_production_config.py /root/"
+            "/root/qlib/csi1000_tuner_core.py /root/qlib/csi1000_production_config.py "
+            "/root/qlib/signal_publication_gate.py /root/"
     )
 )
 
@@ -3815,95 +3820,6 @@ def _early_gate(cal, signal_date: str) -> str:
     if cal is None:
         return "proceed"
     return "skip" if signal_date not in cal else "proceed"
-
-
-def _publication_decision(cal, data_date: str, signal_date: str, fallback_days: int = 0):
-    """发布判定：合并"今天是否交易日"gate 与"数据新鲜度"检查，统一交易日口径。
-
-    取代旧的 ">4 自然日跳过" 机械规则——两者会在长假后复市日冲突：
-    2026 国庆后 10-08 复市，数据止于 09-30（差 8 个自然日 >4，旧规则会静默漏发），
-    而交易日口径下 lag=0，正常发布。
-
-    Args:
-        cal: 交易日历集合（{"YYYY-MM-DD"}，含未来日期）；None = 日历获取失败（降级模式）
-        data_date: 数据覆盖到的最后交易日（YYYY-MM-DD）
-        signal_date: 信号使用日 = 今天（YYYY-MM-DD）
-        fallback_days: 降级模式用的自然日差（today - data_date）
-
-    Returns:
-        (action, detail)：action ∈ {"publish", "skip", "raise"}
-        - publish: 正常发布（detail 为日志信息）
-        - skip: 今天非交易日，不发布（detail 为日志信息）
-        - raise: 数据源疑似故障，抛 RuntimeError(detail) 触发 Modal 告警
-
-    逻辑：
-        日历可用时：
-          - 今天非交易日 → skip（假日榜单无人可执行，且与最近已发布信号内容相同）
-          - 数据日不在日历（口径差异）→ publish + 警告（fail-open）
-          - lag = (data_date, signal_date) 之间的交易日数：
-              0 → publish（数据即前一交易日收盘）
-              1 → publish + 警告（数据源漏发一轮，以最近可得数据发布）
-              ≥2 → raise（疑似数据源故障，连续 ≥2 轮未更新）
-        日历不可用时（fail-open 降级）：
-          - fallback_days ≤ 12 → publish（保留极端兜底：12 自然日 ≈ 春节级长假上限之外）
-          - > 12 → raise（日历与数据源同时故障且数据极端陈旧）
-    """
-    if data_date >= signal_date:
-        return ("raise", f"异常数据日期：data_date={data_date} 必须早于 signal_date={signal_date}；拒绝发布")
-    if cal is not None:
-        if signal_date not in cal:
-            return ("skip", f"{signal_date} 非 A 股交易日（假日），不发布榜单；最近排名见最近一份已发布信号")
-        if data_date not in cal:
-            return ("publish", f"⚠️ 交易日历不含数据日 {data_date}，日历源口径差异，fail-open 照常发布")
-        lag = sum(1 for c in cal if data_date < c < signal_date)
-        if lag >= 2:
-            return ("raise", f"数据滞后 {lag} 个交易日（{data_date} → {signal_date}），疑似数据源故障；不发布陈旧榜单")
-        if lag == 1:
-            return ("publish", f"⚠️ 数据滞后 1 个交易日（{data_date} → {signal_date}，数据源漏发一轮），以最近可得数据发布")
-        return ("publish", f"{signal_date} 是交易日，数据为前一交易日收盘（lag=0），正常发布")
-    if fallback_days > 12:
-        return ("raise", f"交易日历获取失败且数据滞后 {fallback_days} 自然日>12，不发布")
-    return ("publish", f"⚠️ 交易日历获取失败，fail-open 降级（数据距今 {fallback_days} 自然日 ≤12），照常发布")
-
-
-def _csi1000_canonical_publication_decision(cal, data_date: str, signal_date: str):
-    """Fail closed unless CSI1000 winner data is exactly the prior trading session.
-
-    Stage-B production is frozen to T-close -> T+1-open execution.  Unlike the
-    legacy generic publication gate, the canonical winner must never advance on
-    a one-session-stale provider or an unverifiable calendar.
-    """
-    if cal is None:
-        return (
-            "raise",
-            "CSI1000 Stage-B canonical requires a verified trading calendar; "
-            "calendar unavailable, refusing publication",
-        )
-    if signal_date not in cal:
-        return ("skip", f"{signal_date} 非 A 股交易日，不发布 CSI1000 canonical signal")
-    if data_date not in cal:
-        return (
-            "raise",
-            f"CSI1000 Stage-B canonical data_date={data_date} 不在交易日历；拒绝 fail-open",
-        )
-    if data_date >= signal_date:
-        return (
-            "raise",
-            f"CSI1000 Stage-B canonical requires data_date < signal_date: "
-            f"{data_date} >= {signal_date}",
-        )
-    lag = sum(1 for c in cal if data_date < c < signal_date)
-    if lag != 0:
-        return (
-            "raise",
-            f"CSI1000 Stage-B canonical requires lag=0 for T-close -> T+1-open; "
-            f"got lag={lag} ({data_date} -> {signal_date})",
-        )
-    return (
-        "publish",
-        f"CSI1000 Stage-B canonical freshness PASS: {data_date} close -> "
-        f"{signal_date} open (lag=0)",
-    )
 
 
 @app.function(
