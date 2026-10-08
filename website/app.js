@@ -154,7 +154,7 @@ async function loadDateContext(date) {
   };
 }
 
-// Frontend trust boundary: only a validated winner-only forward artifact may
+// Frontend trust boundary: only a validated forward-only artifact may
 // produce a numerical return. Never silently turn missing/null data into 0%.
 const FORWARD_START = '2026-10-12';
 
@@ -171,18 +171,22 @@ function normalizeForwardPerformance(raw) {
     return raw.points.length === 0 && raw.latest_date == null && raw.cumulative_return == null
       ? raw : invalid;
   }
-  if (raw.status !== 'active' || raw.points.length === 0) return invalid;
+  if (raw.status !== 'active' || raw.points.length === 0 ||
+      raw.points[0]?.date !== FORWARD_START) return invalid;
   let previousDate = '';
+  let previousNav = 1;
   for (const point of raw.points) {
     if (!point || !Number.isFinite(dateKeyToUTC(point.date)) ||
         point.date < FORWARD_START || point.date <= previousDate ||
         typeof point.nav !== 'number' || !Number.isFinite(point.nav) || point.nav <= 0 ||
         typeof point.daily_return !== 'number' || !Number.isFinite(point.daily_return) ||
         typeof point.cumulative_return !== 'number' || !Number.isFinite(point.cumulative_return) ||
-        Math.abs(point.nav - 1 - point.cumulative_return) > 1e-6) {
+        Math.abs(point.nav - 1 - point.cumulative_return) > 1e-6 ||
+        Math.abs(point.daily_return - (point.nav / previousNav - 1)) > 1e-6) {
       return invalid;
     }
     previousDate = point.date;
+    previousNav = point.nav;
   }
   const last = raw.points[raw.points.length - 1];
   if (raw.latest_date !== last.date || typeof raw.cumulative_return !== 'number' ||
