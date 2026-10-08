@@ -17,9 +17,12 @@ const PRODUCTION = {
 const qlibCode = inst => inst.replace(/^(SH|SZ|BJ)/, '');
 const sinaUrl = inst => `https://finance.sina.com.cn/realstock/company/${inst.toLowerCase()}/nc.shtml`;
 
-async function fetchText(url) {
+// Historical dated artifacts use normal HTTP caching. Mutable status/index
+// artifacts ask the browser to revalidate rather than unconditionally bypassing
+// its cache. The Pages deployment still controls response cache lifetimes.
+async function fetchText(url, cache = 'default') {
   try {
-    const r = await fetch(url, { cache: 'no-store' });
+    const r = await fetch(url, { cache });
     if (!r.ok) return null;
     return r.text();
   } catch (_) {
@@ -123,24 +126,20 @@ async function loadNameMap() {
   return map;
 }
 
+// The Pages build lists actually published CSI1000 dates. Never probe guessed
+// weekdays (holidays or missing runs produce dozens of unnecessary 404s).
 async function loadAvailableDates() {
-  const now = new Date();
-  const candidates = [];
-  for (let i = 0; i < 45; i++) {
-    const d = new Date(now - i * 86400000);
-    if (d.getDay() === 0 || d.getDay() === 6) continue;
-    candidates.push(
-      d.getFullYear() + '-' +
-      String(d.getMonth() + 1).padStart(2, '0') + '-' +
-      String(d.getDate()).padStart(2, '0')
-    );
+  const text = await fetchText(`${CSV_BASE}/available_dates.json`, 'no-cache');
+  if (text === null) return null;
+  const index = parseJSONLoose(text);
+  if (!index || index.schema_version !== 1 || !Array.isArray(index.dates) ||
+      index.dates.length > 10000 ||
+      index.dates.some((date, i) =>
+        typeof date !== 'string' || !Number.isFinite(dateKeyToUTC(date)) ||
+        (i > 0 && date >= index.dates[i - 1]))) {
+    return null;
   }
-
-  const results = await Promise.all(candidates.map(async date => {
-    const text = await fetchText(`${CSV_BASE}/${date}_top20_lgb158.csv`);
-    return text ? { date, text } : null;
-  }));
-  return results.filter(Boolean).sort((a, b) => b.date.localeCompare(a.date));
+  return index.dates.map(date => ({ date }));
 }
 
 async function loadDateContext(date) {
@@ -203,7 +202,7 @@ function isPossiblyStale(latestDate, now = new Date()) {
 }
 
 async function loadForwardPerformance() {
-  const text = await fetchText(CSV_BASE + '/csi1000_forward_performance.json');
+  const text = await fetchText(CSV_BASE + '/csi1000_forward_performance.json', 'no-cache');
   if (text === null) return { status: 'unavailable' };
   return normalizeForwardPerformance(parseJSONLoose(text));
 }
@@ -490,36 +489,84 @@ function pageShell(dates) {
 
 async function main() {
   const app = document.getElementById('app');
-  const [nameMap, dates, forwardPerformance] = await Promise.all([
-    loadNameMap(),
-    loadAvailableDates(),
-    loadForwardPerformance(),
-  ]);
+  // Neither the large name map nor the forward status should gate the shell
+  // and Top20. Start them in parallel with the one-request date index.
+  const namesPromise = loadNameMap();
+  const forwardPromise = loadForwardPerformance();
+  const dates = await loadAvailableDates();
 
-  if (!dates.length) {
-    app.innerHTML = `<main class="shell"><nav class="topbar"><a class="brand" href="./">Qlib Signal Lab</a><a href="methodology.html">方法论</a></nav><div class="callout" role="status"><strong>暂无可用信号。</strong> 最近查询范围内没有找到 CSI1000 信号文件，无法确认是尚未发布还是资源不可用。</div></main>`;
+  if (!dates || !dates.length) {
+    const detail = dates === null
+      ? '无法读取或校验网站的日期索引，请稍后重试。'
+      : '当前没有已发布的 CSI1000 信号记录。';
+    app.innerHTML = `<main class="shell"><nav class="topbar"><a class="brand" href="./">Qlib Signal Lab</a><a href="methodology.html">方法论</a></nav><div class="callout" role="status"><strong>暂无可用信号。</strong> ${detail}</div></main>`;
     return;
   }
 
   app.innerHTML = pageShell(dates);
-  renderForwardPerformance(forwardPerformance);
+  forwardPromise.then(renderForwardPerformance);
+
+  // Only fetch a dated CSV when it is selected or needed for the previous-rank
+  // comparison. Cache in-flight reads so quick date switches don't duplicate
+  // network requests. Older dates remain eligible for browser HTTP caching.
+  const csvPromises = new Map();
+  function loadCSV(date) {
+    if (!csvPromises.has(date)) {
+      csvPromises.set(date, fetchText(`${CSV_BASE}/${date}_top20_lgb158.csv`));
+    }
+    return csvPromises.get(date);
+  }
+
+  let nameMap = {};
+  let displayed = null;
+  function refreshRows() {
+    if (!displayed) return;
+    const rows = buildRows({ text: displayed.text }, nameMap, displayed.prev, displayed.chart);
+    document.getElementById('signal-rows').innerHTML = tableRows(rows);
+    document.getElementById('mobile-cards').innerHTML = mobileCards(rows);
+  }
+
+  // Initial rows can show an explicit name placeholder while the map is still
+  // downloading. When it arrives, refresh only the currently selected rows.
+  namesPromise.then(map => {
+    nameMap = map;
+    refreshRows();
+  });
 
   let latestDateRequest = 0;
   async function renderDate(dateInfo) {
     const request = ++latestDateRequest;
-    const container = document.querySelector(".signal-table");
-    if (container) container.setAttribute("aria-busy", "true");
-    document.getElementById("artifact-status").textContent = "正在加载日期记录…";
+    const container = document.querySelector('.signal-table');
+    if (container) container.setAttribute('aria-busy', 'true');
+    document.getElementById('artifact-status').textContent = '正在加载日期记录…';
     const idx = dates.findIndex(d => d.date === dateInfo.date);
-    const prev = idx >= 0 && idx + 1 < dates.length ? parseCSV(dates[idx + 1].text) : null;
-    const ctx = await loadDateContext(dateInfo.date);
-    // A slower prior request must never overwrite a more recent date choice.
-    if (request !== latestDateRequest) return;
-    const rows = buildRows(dateInfo, nameMap, prev, ctx.chart);
-    const winner = isWinnerCanonical(ctx.paper);
 
-    document.getElementById('signal-rows').innerHTML = tableRows(rows);
-    document.getElementById('mobile-cards').innerHTML = mobileCards(rows);
+    // The currently selected date and its immediate predecessor are the only
+    // required CSVs; charts/lineage load concurrently rather than in a wave
+    // after a full history scan.
+    const [text, ctx, previousText] = await Promise.all([
+      loadCSV(dateInfo.date),
+      loadDateContext(dateInfo.date),
+      idx >= 0 && idx + 1 < dates.length ? loadCSV(dates[idx + 1].date) : Promise.resolve(null),
+    ]);
+    if (request !== latestDateRequest) return;
+
+    if (text === null) {
+      displayed = null;
+      document.getElementById('signal-rows').innerHTML = '';
+      document.getElementById('mobile-cards').innerHTML = '';
+      document.getElementById('artifact-status').textContent = '该日期信号文件无法读取';
+      if (container) container.setAttribute('aria-busy', 'false');
+      return;
+    }
+
+    displayed = {
+      text,
+      prev: previousText === null ? null : parseCSV(previousText),
+      chart: ctx.chart,
+    };
+    refreshRows();
+    const winner = isWinnerCanonical(ctx.paper);
     document.getElementById('stat-date').textContent = formatDate(dateInfo.date);
     document.getElementById('stat-data-date').textContent =
       formatDate(ctx.paper?.signal_data_date || null);
@@ -538,7 +585,7 @@ async function main() {
       btn.classList.toggle('current', active);
       btn.setAttribute('aria-pressed', String(active));
     });
-    if (container) container.setAttribute("aria-busy", "false");
+    if (container) container.setAttribute('aria-busy', 'false');
   }
 
   document.querySelectorAll('.date-btn').forEach(btn => {
