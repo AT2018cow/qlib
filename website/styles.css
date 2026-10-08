@@ -330,17 +330,23 @@ h1, h2, h3, p { margin-top: 0; }
 .tag-up { background: var(--red-soft); color: var(--red); }
 .tag-dn { background: var(--teal-soft); color: var(--teal); }
 .tag-hold { background: #283647; color: #97a7b8; }
-.spark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* Keep desktop <td> as a real table cell; flex would break column sizing. */
+.signal-table td.spark {
+  display: table-cell;
+  text-align: center;
 }
 .sparkline-svg {
   display: block;
   width: 128px;
   height: 34px;
   max-width: 100%;
-  overflow: visible;
+  margin-inline: auto;
+  overflow: hidden;
+}
+.mobile-cards .spark {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 .muted { color: var(--quiet); font-size: 12px; }
 .mobile-cards { display: none; }
@@ -546,6 +552,7 @@ details p { margin: 12px 0 0; }
   .stock-side .sparkline-svg {
     width: 104px;
     height: 27px;
+    margin-inline: 0;
   }
   .history-wrap { padding: 15px 16px 18px; }
   .history-buttons { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
