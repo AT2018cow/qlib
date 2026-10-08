@@ -207,6 +207,31 @@ def provider_training_fingerprint(provider_dir, market: str, cutoff: str,
     return h.hexdigest()
 
 
+def reconcile_model_cache_pair(model_file, meta_file) -> str:
+    """Validate the two-file live-model cache and self-heal partial commits.
+
+    The model pickle and its JSON metadata are one logical cache entry. Modal
+    Volume persistence is not transactional across two independent files, so an
+    interrupted commit can leave exactly one side visible on the next run.
+    Because this cache is fully reconstructible from the frozen production
+    config and provider snapshot, a partial pair is invalidated locally and the
+    caller must retrain instead of failing publication.
+
+    Returns one of: "complete", "empty", "recovered_partial".
+    Complete-but-corrupt pairs are intentionally handled by the stricter
+    signature/hash checks at the call site and are not silently repaired here.
+    """
+    model_path, meta_path = Path(model_file), Path(meta_file)
+    model_exists, meta_exists = model_path.exists(), meta_path.exists()
+    if model_exists and meta_exists:
+        return "complete"
+    if not model_exists and not meta_exists:
+        return "empty"
+    model_path.unlink(missing_ok=True)
+    meta_path.unlink(missing_ok=True)
+    return "recovered_partial"
+
+
 def cache_signature(cfg: dict, *, horizon: int = 20,
                     train_start: str = '2016-01-01',
                     validation_sessions: int = VALIDATION_SESSIONS,
