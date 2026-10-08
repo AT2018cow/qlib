@@ -27,6 +27,8 @@ EXPECTED_FUNCTIONS = [
     "version_check_0911", "version_check_0916", "batch_c_window", "batch_c",
     "p2_rolling", "topk_grid", "batch_a", "batch_b", "daily_standalone",
     "daily_cron", "freq_window", "freq_driver", "backfill_signals",
+    # Satellite/universe-expansion batch functions (kept in the cron image).
+    "verify_universe", "build_star_chn_bench", "batch_a_star_chn", "batch_b_one",
 ]
 
 
@@ -63,7 +65,7 @@ def test_production_functions_nonpreemptible():
 def test_image_helper_modules_copied():
     assert '.add_local_dir(' in src, "image add_local_dir (repo -> /root/qlib) missing"
     assert 'pip install . --no-build-isolation --no-deps' in src, "qlib pip install step missing"
-    cp = re.search(r'run_commands\("cp ([^"]+?)/root/"\)', src)
+    cp = re.search(r'run_commands\(\s*"(cp .*?)"\s*\)', src, re.DOTALL)
     assert cp is not None, "helper-module cp step missing"
     for helper in (
         "qlib_audit_fixes.py",
@@ -85,14 +87,16 @@ def test_constants_intact():
 
 def test_top_level_helper_imports_intact():
     assert "from qlib_audit_fixes import read_trading_calendar, purge_cfg_splits" in src
-    assert "from qlib_live_retrain import (configure_asof, should_retrain, cache_signature" in src
+    assert "from qlib_live_retrain import (" in src
+    for name in ("configure_asof", "should_retrain", "cache_signature"):
+        assert f"\n    {name}," in src, f"qlib_live_retrain import lost {name}"
 
 
 def test_daily_cron_flow_order():
     """Decision (gate/staleness) must run BEFORE the immutable push; dedup and
     the atomic push_files call must be present."""
     i_decision = src.find("action, detail = _publication_decision(")
-    i_dedup = src.find("# 同日重跑 dedup")
+    i_dedup = src.find("# 同日重跑按文件幂等")
     i_push = src.find("from github_commit import push_files")
     assert -1 not in (i_decision, i_dedup, i_push), "daily_cron flow section missing"
     assert i_decision < i_dedup < i_push, "daily_cron flow order broken"
@@ -108,7 +112,12 @@ def test_stage_b_winner_is_single_canonical_csi1000_wiring():
     assert "_paper_portfolio_stage_b_winner_shadow.json" not in src
     assert 'production_lineage = cfg.get("_csi1000_production_manifest")' in src
     assert "deterministic_score_order(day.items())" in src
-    assert "def _csi1000_canonical_publication_decision" in src
+    # The canonical decision lives in the pure gate module; the cron file imports it.
+    assert "from signal_publication_gate import (" in src
+    assert "_csi1000_canonical_publication_decision(" in src
+    gsrc = open(os.path.join(ROOT, "signal_publication_gate.py")).read()
+    assert "def _csi1000_canonical_publication_decision" in gsrc
+    assert "def _publication_decision" in gsrc
 
 
 def test_github_commit_flow_complete():
