@@ -76,7 +76,8 @@ def reconcile(artifacts, *, forward=None, calendar=None, quotes=None):
         if not valid_date(day):
             issue("BAD_USAGE_DATE", day, "missing/invalid published usage_date")
             continue
-        if (artifact.get("production_lineage") or {}).get("profile") != "stage_b_winner":
+        profile = artifact.get("production_lineage")
+        if not isinstance(profile, dict) or profile.get("profile") != "stage_b_winner":
             issue("LINEAGE_MISMATCH", day, "winner paper requires Stage-B winner production profile")
             continue
         audited.append((day, artifact))
@@ -122,6 +123,10 @@ def reconcile(artifacts, *, forward=None, calendar=None, quotes=None):
             continue
 
         execution_day = report.get("date")
+        signal_day = report.get("signal_date")
+        if signal_day is not None and (not valid_date(signal_day) or
+                                      (valid_date(execution_day) and signal_day >= execution_day)):
+            issue("BAD_SIGNAL_DATE", day, f"report signal day {signal_day!r} must precede execution")
         if not valid_date(execution_day) or execution_day > day or execution_day < START:
             issue("BAD_EXECUTION_DATE", day, f"invalid or out-of-range execution day: {execution_day!r}")
             previous = {"date": day, "cash": cash, "positions": positions}
@@ -180,14 +185,17 @@ def reconcile(artifacts, *, forward=None, calendar=None, quotes=None):
                         else:
                             if abs(number(q["open"], "quote open") - px) > Decimal("0.0001"):
                                 issue("OPEN_PRICE_DIFF", execution_day, f"{sym}: fill={px} quote={q['open']}")
-                        if action == "executed_buy" and q and q.get("factor") not in (None, ""):
-                            factor = number(q["factor"], "quote factor")
-                            if factor <= 0:
-                                issue("BAD_FACTOR", execution_day, sym)
-                            elif (shares * factor / Decimal(100)) % 1 != 0:
-                                issue("FACTOR_LOT_DIVERGENCE", execution_day,
-                                      f"{sym}: adjusted shares={shares}, factor={factor}; "
-                                      "not a multiple of 100 original shares")
+                        if action == "executed_buy":
+                            if not q or q.get("factor") in (None, ""):
+                                issue("MISSING_INDEPENDENT_FACTOR", execution_day, sym)
+                            else:
+                                factor = number(q["factor"], "quote factor")
+                                if factor <= 0:
+                                    issue("BAD_FACTOR", execution_day, sym)
+                                elif (shares * factor / Decimal(100)) % 1 != 0:
+                                    issue("FACTOR_LOT_DIVERGENCE", execution_day,
+                                          f"{sym}: adjusted shares={shares}, factor={factor}; "
+                                          "not a multiple of 100 original shares")
                 except (KeyError, TypeError, ValueError) as exc:
                     issue("INVALID_FILL", execution_day, str(exc))
         if abs(fees - reported_cost) > CENT_TOL:
@@ -232,6 +240,12 @@ def reconcile(artifacts, *, forward=None, calendar=None, quotes=None):
                 if not q or q.get("close") in (None, ""):
                     issue("MISSING_INDEPENDENT_CLOSE", execution_day, sym)
                 else:
+                    if q.get("factor") in (None, ""):
+                        issue("MISSING_INDEPENDENT_FACTOR", execution_day, sym)
+                    else:
+                        factor = number(q["factor"], "quote factor")
+                        if factor <= 0:
+                            issue("BAD_FACTOR", execution_day, sym)
                     actual_mark = number(q["close"], "quote close")
                     expected_quote_close += pos["shares"] * actual_mark
                     quote_count += 1
