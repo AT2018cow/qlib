@@ -1,5 +1,7 @@
 # 14 - Pre-Tuner Stage Summary and Next-Stage Baseline (2026-10-07)
 
+> **Current-state override (2026-10-08):** use [21-next-conversation-handoff-star-chinext-20261008.md](21-next-conversation-handoff-star-chinext-20261008.md) for current project status and next-step planning. The corrected STAR/ChiNext evidence in this document remains useful, but the old three-pool parallel plan is no longer current. CSI1000 is frozen as the selected production line; ChiNext daily publication is paused; STAR still requires reproducibility repair before model evaluation.
+
 ## 0. Purpose and authority
 
 This document is the stage-boundary summary for the Qlib A-share stock-selection project

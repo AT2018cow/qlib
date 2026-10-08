@@ -25,32 +25,27 @@
 - `qlib/cli/run.py` (`qrun` entry, `fire`) and `scripts/get_data.py` (`fire.Fire(GetData)`).
 
 ## This fork's extension layer (actively maintained)
-- **Read `docs/experiments/14-pre-tuner-stage-summary-20261007.md` first.** It is the current authority for research conclusions, pool status, superseded historical claims, and next-stage work. Use `12-pre-tuner-audit.md` / `13-handoff-after-pr8-20261006.md` for deeper audit history. `HANDOVER.md`, `05-final-audit.md`, and older Batch A/B/C conclusions are historical unless explicitly revalidated by doc 14.
-- **Current pool status (2026-10-07)**: CSI1000 = reproducibility PASS + positive corrected baseline, primary tuner line; ChiNext = reproducibility PASS but frozen top20/nd3 0/5/10/15 screen has negative relative CAGR in all sampled phases, bounded-rescue only; STAR = reproducibility gate FAIL at prediction-chunk equality, alpha conclusion unavailable until repaired. Do not describe STAR as proven unprofitable, and do not interpret phase number as model age.
-- **Current research protocol**: T-close scoring -> T+1-open execution, continuous account, board/date-aware CNY tick limits, no 5% high-open overlay, canonical geometric portfolio metrics, deterministic LightGBM gate before phase/tuning work.
-- **Board-aware universe / satellite plumbing**: `board_rules.py` provides STAR/ChiNext board rules, equal-weight benchmark construction, custom pools, and board-aware limit filtering. The older Batch A/B/C profitability statements and "STAR closed" wording are historical; current corrected pool evidence is in doc 14. Dual-pool signal publication may remain operational, but publication is not evidence that ChiNext is currently approved for production capital.
-- `modal_qlib_cn_a10g.py` — all Modal functions (production daily cron + research batches). Deployment: `modal deploy modal_qlib_cn_a10g.py` (at2018cow workspace; `github-push` secret required for cron push).
-- **Production is live**: `--best --daily` = csi1000+top20/nd2 candidate, cron at 07:00 CST weekdays (dual-pool: csi1000 then chinext, see board-aware universe below), auto-pushes signals to `results/signals/` via GitHub API; `daily_standalone`/`daily_cron` are `nonpreemptible=True`.
-- `qlib_audit_fixes.py` / `qlib_live_retrain.py` — audited label-maturity/purge boundary math + 20-session retrain cache policy (both unit-tested in `tests/test_qlib_*.py`; do NOT modify without re-running them).
-- `freq_experiment.py` — standalone retraining-frequency experiment (no Secret deps, runs in any workspace).
-- **Data in this fork**: chenditc daily full release (append-only, no revisions, real historical constituents — all verified); Volume `qlib-cn-data`. Docker-style local data setup from upstream README section does NOT apply to the daily pipeline (it always downloads fresh).
-- **Critical bug-fix conventions** (hard-won, see 03-risks-and-audit.md): limit-up filter must use close/prev-close with correct MultiIndex alignment; train/valid/test boundaries must be purged via `purge_cfg_splits`; never trust a too-good backtest number before a look-ahead audit.
+- **Read `docs/experiments/21-next-conversation-handoff-star-chinext-20261008.md` first.** It is the current authority for project status and next-stage STAR/ChiNext work. Use docs 16–20 for the frozen CSI1000 Stage-A/B lineage and doc 14 for the corrected pre-tuner STAR/ChiNext evidence.
+- **CSI1000 is frozen**: Stage-B winner is the sole canonical production profile. Do not reopen Stage-A/B selection or use the consumed 2025-01-02..2026-09-30 confirmation tail for post-hoc tuning unless a concrete implementation/data-integrity defect is found.
+- **ChiNext is paused in production**: research code/history remain, but scheduled daily publication and the public website entry are disabled until a new model passes a separately versioned validation gate.
+- **STAR is not rejected**: its corrected prediction reproducibility gate has not passed, so alpha is unknown. Repair reproducibility/data lineage before interpreting profitability.
+- **Current execution contract**: T-close scoring -> T+1-open execution, continuous account, Top20/Drop2 for CSI1000, board/date-aware CNY tick limits, no 5% high-open overlay, canonical geometric portfolio metrics, deterministic LightGBM.
+- `modal_qlib_cn_a10g.py` contains the production daily path and historical research helpers. Current scheduled production publishes CSI1000 only.
+- `qlib_audit_fixes.py` / `qlib_live_retrain.py` contain audited label-maturity/purge and 20-session retrain logic. Re-run their tests after any change.
+- `board_rules.py` / `board_execution.py` contain STAR/ChiNext board-aware rules and universe utilities. Preserve date-sensitive limit rules and listing-day exemptions.
+- Public-repository rule: do not add access credentials, private workspace/profile names, account details, personal filesystem paths, or other unnecessary identity information to docs, logs, fixtures, or examples.
 
-## Modal usage (critical, repeatedly forgotten)
-- **NEVER use `nohup ... &` for Modal commands** — the shell tool kills background processes when its timeout expires, silently losing the run. Use synchronous execution with a long `timeout` (e.g. `timeout: 3600000` for 1 hour).
-- **`modal run` creates a temporary app** — it uses the local file directly; no redeploy needed for experiments. Use `modal deploy` only for the production cron.
-- **Workspace switching**: `modal profile activate <name>` — always verify with `modal profile current` after switching. at2018cow = production; infi = experiments.
-- **`modal run` is synchronous** — it waits for all functions to complete. For long jobs, set the bash `timeout` parameter generously (Batch C ≈ 20 min → `timeout: 1200000`; freq experiments ≈ 60 min → `timeout: 3600000`).
-- **`modal run --detach` is dangerous** — disconnecting cancels pending inputs (confirmed: two detach runs both lost work after ~10 min). Only use for fire-and-forget one-shot scripts.
-- **Image rebuild**: `modal run` rebuilds the image from the local file each time (add_local_dir + run_commands). Changes to helper modules (board_rules.py, board_execution.py, etc.) are picked up automatically. No need to redeploy for experiments.
-- **Volume data is per-workspace** — building a benchmark or pool file on infi does NOT make it available on at2018cow. Run data prep on the workspace you'll use.
+## Modal usage
+- Use an authorized local Modal profile; repository documentation intentionally does not name private workspaces or credential objects.
+- `modal run` is for temporary research runs; `modal deploy modal_qlib_cn_a10g.py` updates the scheduled production app.
+- Prefer synchronous runs with adequate timeout. Do not rely on shell-backgrounded `nohup` jobs for long experiments.
+- Workspace-scoped volumes are isolated. Prepare data/benchmarks in the same authorized workspace that will execute the experiment.
+- Do not print, paste, or commit deployment credentials. Configure them through the platform's secret-management UI/CLI outside the repository.
 
-## Path discipline (repeated errors, fix permanently)
-- **Working directory is `/home/ss/git_repos/qlib`** — always use `workdir` parameter; never `cd` into a subdirectory you're already in (e.g. being in `tests/` and running `cd tests` again).
-- **`read` tool takes a file path, NOT bash syntax** — don't pipe or add shell commands to the path.
-- **Never typo the path** — it's `git_repos`, not `git_reos`.
-- **Run tests from the repo root with `PYTHONPATH=/home/ss/git_repos/qlib`**, or from `tests/` with the same PYTHONPATH; use the venv at `/home/ss/git_repos/qlib/.venv/bin/python`.
-
+## Path discipline
+- Do not encode a developer-specific checkout path in scripts or docs. Resolve the repository root from the current checkout or tool workdir.
+- Run project tests from the repository root, or set `PYTHONPATH` to the current checkout dynamically.
+- Tool file-read APIs take file paths, not shell pipelines.
 ## Conventions / gotchas
 - Docstrings: Numpydoc style (`docs/developer/code_standard_and_dev_guide.rst`).
 - `make clean` deletes `*.so/*.cpp/mlruns/build/dist`; use it before rebuilds, not casually.
