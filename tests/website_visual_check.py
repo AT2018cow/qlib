@@ -88,7 +88,7 @@ def inspect_viewport(browser, base_url, width: int):
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
     page.goto(base_url + "/index.html", wait_until="domcontentloaded")
-    page.locator("#signal-rows tr").first.wait_for(timeout=20000)
+    page.locator("#signal-rows tr").first.wait_for(state="attached", timeout=20000)
     assert page.locator("#signal-rows tr").count() == 20
     actual = page.evaluate("""() => ({
       overflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth,
@@ -145,7 +145,7 @@ def main():
                 performance_path.write_text(json.dumps(active))
                 page = browser.new_page(viewport={"width": 390, "height": 844})
                 page.goto(url + "/index.html")
-                page.locator("#signal-rows tr").first.wait_for()
+                page.locator("#signal-rows tr").first.wait_for(state="attached")
                 assert page.locator("#forward-return").inner_text() == "-1.20%"
                 assert page.locator(".performance-svg").count() == 1
                 page.screenshot(path=str(OUT / "dashboard-fixture-active-390.png"), full_page=True)
