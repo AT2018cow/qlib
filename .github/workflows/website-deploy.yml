@@ -32,6 +32,9 @@ jobs:
           # Keep all local HTML/JS/CSS dependencies together in Pages artifact.
           cp website/*.html website/*.js website/*.css website/*.svg _site/
           cp results/signals/*.csv results/signals/*.json _site/signals/
+          python3 website/build_index.py \
+            --signals results/signals \
+            --output _site/signals/available_dates.json
           python3 scripts/build_forward_performance.py \
             --signals results/signals \
             --output _site/signals/csi1000_forward_performance.json
@@ -41,6 +44,7 @@ jobs:
           test -s _site/app.js
           test -s _site/styles.css
           test -s _site/favicon.svg
+          test -s _site/signals/available_dates.json
           test -s _site/signals/csi1000_forward_performance.json
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
