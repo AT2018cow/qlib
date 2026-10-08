@@ -176,3 +176,25 @@ def test_without_opening_state_trade_replay_is_not_certified():
     result = reconcile(artifacts[1:], quotes=quotes, calendar=calendar, forward=forward)
     assert result["status"] == "PARTIAL_NOT_CERTIFIED"
     assert any(w["code"] == "MISSING_OPENING_SNAPSHOT" for w in result["warnings"])
+
+
+def test_external_quote_factor_is_required_for_certification():
+    artifacts, quotes, calendar, forward = fixture()
+    del quotes[("2026-10-12", "A")]["factor"]
+    result = reconcile(artifacts, quotes=quotes, calendar=calendar, forward=forward)
+    assert "MISSING_INDEPENDENT_FACTOR" in codes(result)
+    assert result["status"] == "FAIL"
+
+
+def test_malformed_winner_profile_is_a_reported_failure():
+    artifacts, quotes, calendar, forward = fixture()
+    artifacts[0]["production_lineage"] = "not-an-object"
+    result = reconcile(artifacts, quotes=quotes, calendar=calendar, forward=forward)
+    assert "LINEAGE_MISMATCH" in codes(result)
+
+
+def test_invalid_signal_day_cannot_certify_execution():
+    artifacts, quotes, calendar, forward = fixture()
+    artifacts[1]["execution_report"]["signal_date"] = "2026-10-13"
+    result = reconcile(artifacts, quotes=quotes, calendar=calendar, forward=forward)
+    assert "BAD_SIGNAL_DATE" in codes(result)
