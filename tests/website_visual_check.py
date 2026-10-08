@@ -8,6 +8,8 @@ from __future__ import annotations
 import csv
 import json
 import shutil
+import subprocess
+import sys
 import threading
 from datetime import datetime, timedelta
 from functools import partial
@@ -80,16 +82,29 @@ def make_fixture(root: Path):
     }
     performance_path = signals / "csi1000_forward_performance.json"
     performance_path.write_text(json.dumps(waiting))
+    subprocess.run([
+        sys.executable, str(ROOT / "website" / "build_index.py"),
+        "--signals", str(signals),
+        "--output", str(signals / "available_dates.json"),
+    ], check=True, capture_output=True, text=True)
     return performance_path
 
 
 def inspect_viewport(browser, base_url, width: int):
     page = browser.new_page(viewport={"width": width, "height": 900}, device_scale_factor=1)
     errors = []
+    signals_requests = []
+    statuses = []
     page.on("pageerror", lambda error: errors.append(str(error)))
+    page.on("request", lambda request: signals_requests.append(request.url) if "/signals/" in request.url else None)
+    page.on("response", lambda response: statuses.append((response.url, response.status)) if "/signals/" in response.url else None)
     page.goto(base_url + "/index.html", wait_until="domcontentloaded")
     page.locator("#signal-rows tr").first.wait_for(state="attached", timeout=20000)
     assert page.locator("#signal-rows tr").count() == 20
+    page.wait_for_function("document.getElementById('stat-lineage')?.textContent === 'Stage-B winner'")
+    assert len(signals_requests) == 6, signals_requests
+    assert all(status == 200 for _, status in statuses), statuses
+    assert not any("code_name_map.csv" in url for url in signals_requests)
     actual = page.evaluate("""() => ({
       overflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth,
       table: getComputedStyle(document.querySelector('.table-wrap')).display,
@@ -113,7 +128,7 @@ def inspect_viewport(browser, base_url, width: int):
     if width in (390, 320):
         page.screenshot(path=str(OUT / f"dashboard-fixture-historical-{width}.png"), full_page=True)
     page.close()
-    return actual
+    return {**actual, "first_load_data_requests": len(signals_requests), "data_404s": 0}
 
 
 def main():
@@ -131,6 +146,21 @@ def main():
                 for width in (1440, 1024, 768, 390, 320):
                     actual = inspect_viewport(browser, url, width)
                     print(f"PASS {width}px: {actual}")
+                # A slow chart must not hold the first real Top20 off screen.
+                page = browser.new_page(viewport={"width": 390, "height": 844})
+                page.add_init_script("""
+                    const nativeFetch = window.fetch.bind(window);
+                    window.fetch = (url, opts) => String(url).includes('_chart.json')
+                      ? new Promise(resolve => setTimeout(() => resolve(nativeFetch(url, opts)), 1200))
+                      : nativeFetch(url, opts);
+                """)
+                page.goto(url + "/index.html", wait_until="domcontentloaded")
+                page.locator("#signal-rows tr").first.wait_for(state="attached")
+                assert page.locator("#stat-lineage").inner_text() == "核验中"
+                page.wait_for_function("document.getElementById('stat-lineage')?.textContent === 'Stage-B winner'")
+                page.close()
+                print("PASS delayed chart: Top20 visible before lineage/chart response")
+
                 # A separate synthetic active-series example covers chart layout.
                 active = {
                     "start_date": "2026-10-12",
