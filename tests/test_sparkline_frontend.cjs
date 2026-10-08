@@ -24,7 +24,7 @@ test('null is not interpreted as zero or squeezed out', () => {
   assert.match(svg, /class="sparkline-svg"/);
   assert.equal((svg.match(/<path /g) || []).length, 2);
   // x-coordinate after the gap keeps its original 5-point position.
-  assert.match(svg, /M 95\\.0 32\\.0/);
+  assert.ok(svg.includes('M 95.0 32.0'));
 });
 
 test('chart trend color follows first and last valid values', () => {
