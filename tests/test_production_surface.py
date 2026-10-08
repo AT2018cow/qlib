@@ -97,3 +97,15 @@ def test_missing_history_metadata_is_not_fabricated():
     assert "formatDate(ctx.paper?.signal_data_date || null)" in app
     assert "isWinnerCanonical(ctx.paper)" in app
     assert "paper.paper_lineage === 'stage_b_winner_canonical'" in app
+
+
+def test_pages_deployment_packages_stylesheet():
+    """GitHub Pages must publish CSS, not merely keep it in the source tree.
+
+    A missing stylesheet makes both desktop tables and mobile cards visible
+    and causes the browser to fall back to an unstyled white document.
+    """
+    workflow = (ROOT / ".github" / "workflows" / "website-deploy.yml").read_text()
+    assert "cp website/*.html website/*.js website/*.css _site/" in workflow
+    for filename in ("index.html", "methodology.html", "app.js", "styles.css"):
+        assert f"test -s _site/{filename}" in workflow
