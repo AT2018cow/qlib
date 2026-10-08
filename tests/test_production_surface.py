@@ -115,7 +115,7 @@ def test_pages_builds_forward_performance_artifact():
 
 def test_missing_history_metadata_is_not_fabricated():
     app = (ROOT / "website" / "app.js").read_text()
-    assert "formatDate(ctx.paper?.signal_data_date || null)" in app
+    assert "formatDate(paper?.signal_data_date || null)" in app
     assert "isWinnerCanonical(ctx.paper)" in app
     assert "paper.paper_lineage === 'stage_b_winner_canonical'" in app
 
