@@ -95,6 +95,25 @@ class PaperPortfolioTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.pp.execute_pending("2026-01-06", self.prices)
 
+    def test_exact_score_ties_use_instrument_ascending(self):
+        ranking = [("C", 0.5), ("A", 0.5), ("B", 0.5), ("D", 0.4)]
+        self.pp.plan_signal("2026-01-04", "2026-01-05", ranking)
+        r = self.pp.execute_pending("2026-01-05", self.prices)
+        self.assertEqual(r["planned_buy"], ["A", "B", "C"])
+        self.assertEqual(
+            [x["instrument"] for x in r["executed_buy"]],
+            ["A", "B", "C"],
+        )
+
+    def test_dropout_tie_boundary_and_sell_iteration_are_deterministic(self):
+        ranking = [("C", 0.5), ("A", 0.5), ("B", 0.5), ("D", 0.4)]
+        self._plan_execute("2026-01-04", "2026-01-05", ranking=ranking)
+        ranking2 = [("C", 0.5), ("D", 0.9), ("B", 0.5), ("A", 0.5)]
+        self.pp.plan_signal("2026-01-05", "2026-01-06", ranking2)
+        r = self.pp.execute_pending("2026-01-06", self.prices)
+        self.assertEqual(r["planned_sell"], ["C"])
+        self.assertEqual(r["planned_buy"], ["D"])
+
 
 if __name__ == "__main__":
     unittest.main()
