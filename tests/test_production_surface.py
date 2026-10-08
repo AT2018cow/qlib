@@ -169,7 +169,15 @@ def test_sparkline_layout_is_centered_and_mobile_safe():
     assert ".signal-table th:last-child, .signal-table td:last-child" in styles
     assert "width: 180px;" in styles
     assert ".sparkline-svg" in styles
-    assert "justify-content: center;" in styles
+    assert ".signal-table td.spark {\n  display: table-cell;" in styles
+    assert ".mobile-cards .spark {\n  display: flex;" in styles
     assert ".stock-side .sparkline-svg" in styles
     assert "width: 104px;" in styles
     assert "width: 78px;" in styles
+
+
+def test_legacy_chart_arrays_are_calendar_padded():
+    app = (ROOT / "website" / "app.js").read_text()
+    assert "function calendarAlignChartValues(values, dates)" in app
+    assert "Array(count - values.length).fill(null).concat(values)" in app
+    assert "calendarAlignChartValues(" in app
