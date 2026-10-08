@@ -73,14 +73,26 @@ function calendarAlignChartValues(values, dates) {
   return values.slice(-count);
 }
 
+// Visible on touchscreens too; title only is not an accessible empty state.
+function sparklineEmpty(state) {
+  const states = {
+    loading: ['走势加载中', '请稍候', '正在读取近60日行情'],
+    unavailable: ['走势不可用', '暂无走势', '近60日走势图文件不可用'],
+    insufficient: ['有效数据不足', '暂无走势', '近60日有效收盘价不足两笔'],
+    discontinuous: ['价格不连续', '暂无走势', '近60日价格记录没有连续的有效线段'],
+  };
+  const [label, detail, title] = states[state];
+  return `<span class="spark-empty" title="${title}"><span>${label}</span><span>${detail}</span></span>`;
+}
+
 function makeSparkline(values, w = 128, h = 34) {
   const raw = Array.isArray(values) ? values : [];
-  if (raw.length < 2) return '<span class="muted" title="近60日有效收盘价不足，无法绘图">—</span>';
+  if (raw.length < 2) return sparklineEmpty('insufficient');
 
   const finite = raw
     .map((v, i) => ({ i, v: Number(v) }))
     .filter(p => raw[p.i] !== null && raw[p.i] !== undefined && Number.isFinite(p.v));
-  if (finite.length < 2) return '<span class="muted" title="近60日有效收盘价不足，无法绘图">—</span>';
+  if (finite.length < 2) return sparklineEmpty('insufficient');
 
   const min = Math.min(...finite.map(p => p.v));
   const max = Math.max(...finite.map(p => p.v));
@@ -106,7 +118,7 @@ function makeSparkline(values, w = 128, h = 34) {
   });
   if (current.length >= 2) segments.push(current);
 
-  if (!segments.length) return '<span class="muted" title="有效价格不连续，无法形成趋势线">—</span>';
+  if (!segments.length) return sparklineEmpty('discontinuous');
   const stroke = finite[finite.length - 1].v >= finite[0].v ? '#ff6b6b' : '#3ccf91';
   const paths = segments.map(seg => {
     const d = seg.map((p, i) => `${i ? 'L' : 'M'} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
@@ -303,10 +315,9 @@ function buildRows(rows, nameMap, prev, chartData) {
       name: nameMap[qlibCode(r.instrument)] || '名称待更新',
       score: formatScore(r.score),
       tag,
-      spark: makeSparkline(calendarAlignChartValues(
-        chartData?.stocks?.[r.instrument],
-        chartData?.dates
-      )),
+      spark: chartData === undefined ? sparklineEmpty('loading') :
+        (!chartData || !chartData.stocks ? sparklineEmpty('unavailable') :
+          makeSparkline(calendarAlignChartValues(chartData.stocks[r.instrument], chartData.dates))),
       url: sinaUrl(r.instrument),
     };
   });
@@ -403,6 +414,28 @@ function pageShell(dates) {
         </div>
       </section>
 
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-kicker">Daily ranking</div>
+            <h2>Top 20</h2>
+          </div>
+          <div class="panel-note">
+            <div id="artifact-status"></div>
+            <div class="ranking-note">预测分数用于排序，不构成收益承诺</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="signal-table">
+            <thead>
+              <tr><th>Rank</th><th>代码</th><th>名称</th><th>20日预测</th><th>变化</th><th>近60日</th></tr>
+            </thead>
+            <tbody id="signal-rows"></tbody>
+          </table>
+        </div>
+        <div id="mobile-cards" class="mobile-cards"></div>
+      </section>
+
       <section class="panel" id="history">
         <div class="panel-head">
           <div>
@@ -435,28 +468,6 @@ function pageShell(dates) {
           <span>起点：2026.10.12 开盘前账户价值 = 1.0000</span>
           <span>按 paper 账户真实调仓、交易成本与不可成交约束计算 · 每日收盘估值</span>
         </div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head">
-          <div>
-            <div class="panel-kicker">Daily ranking</div>
-            <h2>Top 20</h2>
-          </div>
-          <div class="panel-note">
-            <div id="artifact-status"></div>
-            <div class="ranking-note">预测分数用于排序，不构成收益承诺</div>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <table class="signal-table">
-            <thead>
-              <tr><th>Rank</th><th>代码</th><th>名称</th><th>20日预测</th><th>变化</th><th>近60日</th></tr>
-            </thead>
-            <tbody id="signal-rows"></tbody>
-          </table>
-        </div>
-        <div id="mobile-cards" class="mobile-cards"></div>
       </section>
 
       <div class="callout">
@@ -534,7 +545,7 @@ async function main() {
 
     function paint(previous, ctx) {
       if (request !== latestDateRequest) return;
-      const built = buildRows(rows, nameMap, previous, ctx?.chart);
+      const built = buildRows(rows, nameMap, previous, ctx ? ctx.chart : undefined);
       document.getElementById('signal-rows').innerHTML = tableRows(built);
       document.getElementById('mobile-cards').innerHTML = mobileCards(built);
       document.getElementById('stat-date').textContent = formatDate(dateInfo.date);
