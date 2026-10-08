@@ -109,7 +109,8 @@ image = (
     # 审计 PR 的 helper 模块随 add_local_dir 进了 /root/qlib/，但 Modal 入口脚本挂在
     # /root/ 运行（sys.path 首位是 /root）——必须复制到 /root/ 否则 ModuleNotFoundError。
     .run_commands(
-        "cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/qlib/board_rules.py /root/qlib/board_execution.py /root/qlib/paper_portfolio.py /root/qlib/portfolio_performance.py /root/qlib/github_commit.py /root/"
+        "cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/qlib/board_rules.py /root/qlib/board_execution.py /root/qlib/paper_portfolio.py /root/qlib/portfolio_performance.py /root/qlib/github_commit.py "
+            "/root/qlib/csi1000_tuner_core.py /root/qlib/csi1000_production_config.py /root/"
     )
 )
 
@@ -272,6 +273,7 @@ def _load_and_patch_cfg(
     market: str = None,
     nd: int = None,
     provider_dir: str = None,
+    csi1000_profile: str = None,
 ) -> dict:
     """读 bundled yaml，打上 Modal 路径补丁。不改仓库原文件。
 
@@ -466,6 +468,18 @@ def _load_and_patch_cfg(
         _codes = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"].get("instruments", "all")
         _bt["exchange_kwargs"] = research_exchange(_bt["start_time"], _bt["end_time"], codes=_codes)
         cfg["port_analysis_config"]["strategy"]["kwargs"]["forbid_all_trade_at_limit"] = False
+    # Apply production CSI1000 profiles last so generic research patches cannot
+    # silently overwrite frozen Stage-B model semantics.  Research callers that
+    # omit csi1000_profile retain their historical behavior.
+    if csi1000_profile is not None:
+        if market != "csi1000":
+            raise ValueError("csi1000_profile is valid only for market='csi1000'")
+        from csi1000_production_config import apply_csi1000_model_profile
+
+        cfg["_csi1000_production_manifest"] = apply_csi1000_model_profile(
+            cfg, csi1000_profile
+        )
+
     return cfg
 
 
@@ -1339,7 +1353,14 @@ def _paper_execution_context(data_dir, market: str, calendar: list[str], asof: s
     }
 
 
-def _apply_paper_portfolio(res: dict, usage_date: str, topk: int, nd: int) -> dict:
+def _apply_paper_portfolio(
+    res: dict,
+    usage_date: str,
+    topk: int,
+    nd: int,
+    *,
+    lineage: str = "canonical",
+) -> dict:
     """Propose the next persistent paper state without committing it.
 
     Cron publishes the immutable artifact first and only then writes state to
@@ -1352,7 +1373,10 @@ def _apply_paper_portfolio(res: dict, usage_date: str, topk: int, nd: int) -> di
     market = res["market"]
     state_dir = VOL_ROOT / "paper_portfolio"
     state_dir.mkdir(parents=True, exist_ok=True)
-    state_path = state_dir / f"{market}.json"
+    if not lineage or any(ch not in "abcdefghijklmnopqrstuvwxyz0123456789_-" for ch in lineage):
+        raise ValueError(f"invalid paper lineage: {lineage!r}")
+    state_key = market if lineage == "canonical" else f"{market}__{lineage}"
+    state_path = state_dir / f"{state_key}.json"
     try:
         vol.reload()
     except Exception:
@@ -1416,6 +1440,8 @@ def _apply_paper_portfolio(res: dict, usage_date: str, topk: int, nd: int) -> di
                 "valid_end": res["valid_end"],
                 "topk": topk,
                 "nd": nd,
+                "paper_lineage": lineage,
+                "production_lineage": res.get("production_lineage"),
             },
         )
     else:
@@ -1437,6 +1463,8 @@ def _apply_paper_portfolio(res: dict, usage_date: str, topk: int, nd: int) -> di
     artifact = {
         "state_version": 2,
         "market": market,
+        "paper_lineage": lineage,
+        "production_lineage": res.get("production_lineage"),
         "signal_data_date": res["date"],
         "usage_date": usage_date,
         "execution_report": execution_report,
@@ -3419,7 +3447,12 @@ CHENDITC_LATEST_URL = "https://github.com/chenditc/investment_data/releases/late
     timeout=4 * 3600,
     nonpreemptible=True,  # 每日信号是生产职责：抢占会导致当天无信号；3x 成本（~$0.3-0.8/日）可接受
 )
-def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
+def daily_standalone(
+    topk: int = 20,
+    nd: int = 2,
+    market: str = "csi1000",
+    csi1000_profile: str = None,
+):
     """每日信号（自包含单容器版，--best --daily 的实现）：
     下载 chenditc 最新全量包 → 解压到容器本地盘 → 训练终审候选 → top-k 信号 → 返回 CSV 内容。
     - 无 Volume 依赖：每次必然最新数据（根治"忘记 force-data 导致数据陈旧"）
@@ -3481,6 +3514,13 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
         )
 
     # ---- 2) 训练终审候选 ----
+    if market == "csi1000":
+        from csi1000_production_config import BASELINE_PROFILE
+
+        csi1000_profile = csi1000_profile or BASELINE_PROFILE
+    elif csi1000_profile is not None:
+        raise ValueError("csi1000_profile is valid only for market='csi1000'")
+
     qlib.init(
         provider_uri=str(data_dir),
         region="cn",
@@ -3500,7 +3540,9 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
         nd=nd,
         market=market,
         provider_dir=str(data_dir),
+        csi1000_profile=csi1000_profile,
     )
+    production_lineage = cfg.get("_csi1000_production_manifest")
     calendar = read_trading_calendar(data_dir)
     asof = calendar[-1]
     # Today is a feature/prediction date, NEVER a training/validation label date.
@@ -3555,6 +3597,7 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
             "fit_end": cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["fit_end_time"],
             "runtime_lineage": runtime_lineage,
             "data_fingerprint": provider_training_fingerprint(data_dir, market, asof),
+            "production_lineage": production_lineage,
         }
         tmp_model = cache_dir / f".{signature}.{os.getpid()}.tmp"
         tmp_meta = cache_dir / f".{signature}.{os.getpid()}.json.tmp"
@@ -3581,6 +3624,7 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
             or saved.get("fit_end") != saved.get("train", [None, None])[-1]
             or saved.get("runtime_lineage") != runtime_lineage
             or saved.get("data_fingerprint") != cached_data_fingerprint
+            or saved.get("production_lineage") != production_lineage
         ):
             raise RuntimeError("Invalid cached model split metadata")
         if hashlib.sha256(model_file.read_bytes()).hexdigest() != saved["model_sha256"]:
@@ -3604,12 +3648,15 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
     if str(predict_date)[:10] != asof:
         raise RuntimeError(f"Inference date {predict_date} != latest bar {asof}")
     day = pred.loc[predict_date].dropna()
-    # Keep the full unfiltered model cross-section for the stateful TopkDropout
-    # planner.  The public ranking CSV may apply display-time filters below,
-    # but portfolio decisions must see the same full score vector as Qlib.
+    from csi1000_tuner_core import deterministic_score_order
+
+    # Freeze score desc / instrument asc at the production boundary.  The
+    # unfiltered vector drives paper decisions; display filtering below does
+    # not alter the portfolio planner input.
+    ranking_order = deterministic_score_order(day.items())
     ranking_full = [
-        [str(inst), float(score)]
-        for inst, score in day.sort_values(ascending=False).items()
+        [str(inst), float(day.loc[inst])]
+        for inst in ranking_order
     ]
     try:
         vol.reload()
@@ -3617,7 +3664,7 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
         pass
     paper_context = _paper_execution_context(data_dir, market, calendar, asof)
     print("[daily] ranking CSV + stateful paper-order context prepared")
-    top = day.sort_values(ascending=False).head(topk)
+    top = day.reindex(ranking_order[:topk])
 
     # ---- 3) 排名展示的保守涨跌停过滤（与真实成交 Exchange 分层；board_rules 维护板块/日期/上市豁免） ----
     day_df = D.features(
@@ -3633,7 +3680,8 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
         limited = board_aware_limited(day_ret, str(predict_date)[:10], listing_dates=listing_dates)
         n_removed = len(day) - len(day.index[~day.index.isin(limited)])
         day = day.loc[day.index[~day.index.isin(limited)]]
-        top = day.sort_values(ascending=False).head(topk)
+        display_order = deterministic_score_order(day.items())
+        top = day.reindex(display_order[:topk])
         print(f"[daily] 已剔除 {n_removed} 只涨/跌停股")
 
     # ---- 4) 组装 CSV 内容返回 ----
@@ -3670,6 +3718,7 @@ def daily_standalone(topk: int = 20, nd: int = 2, market: str = "csi1000"):
         "train_end": saved["train"][-1],
         "valid_end": saved["valid"][-1],
         "retrained_today": train_now,
+        "production_lineage": production_lineage,
         "chart_json": chart_json,
     }
 
