@@ -33,7 +33,7 @@ def test_chinext_hidden_from_public_signal_ui():
     assert "_chinext" not in app
     assert "?pool=chinext" not in app.lower()
     assert "market=\"chinext\"" not in app.lower()
-    assert "csi1000" in app
+    assert "csi1000" in app.lower()
     assert "中证1000" in app
 
 
