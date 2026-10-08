@@ -30,8 +30,8 @@ def test_forward_series_starts_exactly_on_20261012():
 def test_first_day_includes_open_to_close_return_and_cost_effects():
     result = build_forward_performance([_artifact("2026-10-12", 100.0, 98.0)])
     assert result["points"][0]["nav"] == 0.98
-    assert result["points"][0]["daily_return"] == -0.02
-    assert result["cumulative_return"] == -0.02
+    assert abs(result["points"][0]["daily_return"] + 0.02) < 1e-12
+    assert abs(result["cumulative_return"] + 0.02) < 1e-12
 
 
 def test_only_current_winner_lineage_is_public_performance():
