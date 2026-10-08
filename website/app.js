@@ -59,6 +59,19 @@ function formatScore(value) {
   };
 }
 
+function calendarAlignChartValues(values, dates) {
+  if (!Array.isArray(values)) return [];
+  const count = Array.isArray(dates) ? dates.length : 0;
+  if (!count) return values;
+  // Before the calendar-aware producer was deployed, shorter chart arrays
+  // represented the most recent available closes. Preserve their missing
+  // leading calendar slots instead of stretching them over the full window.
+  if (values.length < count) {
+    return Array(count - values.length).fill(null).concat(values);
+  }
+  return values.slice(-count);
+}
+
 function makeSparkline(values, w = 128, h = 34) {
   const raw = Array.isArray(values) ? values : [];
   if (raw.length < 2) return '<span class="muted">—</span>';
@@ -249,7 +262,10 @@ function buildRows(dateInfo, nameMap, prev, chartData) {
       name: nameMap[qlibCode(r.instrument)] || '名称待更新',
       score: formatScore(r.score),
       tag,
-      spark: makeSparkline(chartData?.stocks?.[r.instrument]),
+      spark: makeSparkline(calendarAlignChartValues(
+        chartData?.stocks?.[r.instrument],
+        chartData?.dates
+      )),
       url: sinaUrl(r.instrument),
     };
   });
