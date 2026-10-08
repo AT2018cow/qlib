@@ -556,3 +556,120 @@ body { background: #0c121b; }
 .doc-nav a:hover { background: #213247; }
 .callout { background: #15202e; }
 .ranking-note { margin-top: 6px; }
+
+
+/* Forward-only live paper performance */
+.performance-panel { overflow: hidden; }
+.performance-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 22px 25px 10px;
+}
+.performance-head h2 {
+  margin: 0;
+  color: var(--heading);
+  font-size: 21px;
+  font-weight: 750;
+  letter-spacing: -.035em;
+}
+.performance-status {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.performance-summary {
+  flex: none;
+  min-width: 150px;
+  text-align: right;
+}
+.performance-value {
+  color: var(--heading);
+  font-size: clamp(28px, 4vw, 38px);
+  line-height: 1;
+  font-weight: 760;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.04em;
+}
+.performance-value.gain { color: var(--red); }
+.performance-value.loss { color: var(--teal); }
+.performance-latest {
+  margin-top: 8px;
+  color: var(--quiet);
+  font-size: 11px;
+}
+.performance-chart {
+  min-height: 190px;
+  padding: 8px 20px 4px;
+}
+.performance-svg {
+  display: block;
+  width: 100%;
+  height: 180px;
+}
+.performance-zero {
+  stroke: #344354;
+  stroke-width: 1;
+  stroke-dasharray: 4 5;
+}
+.performance-line {
+  fill: none;
+  stroke-width: 2.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.performance-line.gain, .performance-dot.gain {
+  stroke: var(--red);
+  fill: var(--red);
+}
+.performance-line.loss, .performance-dot.loss {
+  stroke: var(--teal);
+  fill: var(--teal);
+}
+.performance-empty {
+  display: grid;
+  place-items: center;
+  min-height: 165px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.75;
+}
+.performance-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 12px 25px 19px;
+  border-top: 1px solid var(--border);
+  color: var(--quiet);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+@media (max-width: 700px) {
+  .performance-head {
+    padding: 17px 17px 8px;
+    flex-direction: column;
+    gap: 15px;
+  }
+  .performance-summary {
+    min-width: 0;
+    text-align: left;
+  }
+  .performance-value { font-size: 32px; }
+  .performance-chart {
+    min-height: 150px;
+    padding: 5px 8px 0;
+  }
+  .performance-svg { height: 145px; }
+  .performance-empty {
+    min-height: 130px;
+    padding: 0 18px;
+  }
+  .performance-foot {
+    padding: 11px 17px 16px;
+    flex-direction: column;
+    gap: 5px;
+  }
+}

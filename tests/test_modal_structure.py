@@ -120,6 +120,17 @@ def test_stage_b_winner_is_single_canonical_csi1000_wiring():
     assert "def _publication_decision" in gsrc
 
 
+def test_winner_paper_context_uses_canonical_lineage_and_close_prices():
+    # Regression for the Stage-B promotion: execution context and state mutation
+    # must address the same lineage-specific state file.
+    assert "def _paper_state_path(" in src
+    assert "state_path = _paper_state_path(market, lineage)" in src
+    assert "paper_lineage=CANONICAL_PAPER_LINEAGE" in src
+    assert "lineage=paper_lineage" in src
+    assert '"close_prices": close_prices' in src
+    assert 'close_prices=ctx.get("close_prices", {})' in src
+
+
 def test_github_commit_flow_complete():
     gsrc = open(os.path.join(ROOT, "github_commit.py")).read()
     for step in ("git/ref/heads", "git/blobs", "git/trees", "git/commits", "git/refs/heads"):

@@ -1272,7 +1272,22 @@ def _board_listing_dates(provider_uri, symbols) -> dict:
 
 
 
-def _paper_execution_context(data_dir, market: str, calendar: list[str], asof: str) -> dict:
+def _paper_state_path(market: str, lineage: str = "canonical") -> Path:
+    """Return the persistent paper-state path for one explicit lineage."""
+    if not lineage or any(ch not in "abcdefghijklmnopqrstuvwxyz0123456789_-" for ch in lineage):
+        raise ValueError(f"invalid paper lineage: {lineage!r}")
+    state_key = market if lineage == "canonical" else f"{market}__{lineage}"
+    return VOL_ROOT / "paper_portfolio" / f"{state_key}.json"
+
+
+def _paper_execution_context(
+    data_dir,
+    market: str,
+    calendar: list[str],
+    asof: str,
+    *,
+    lineage: str = "canonical",
+) -> dict:
     """Read paper state without mutating it and prepare data for pending execution.
 
     daily_standalone runs before publication gating, so it must never mutate
@@ -1284,7 +1299,7 @@ def _paper_execution_context(data_dir, market: str, calendar: list[str], asof: s
     import pandas as _pd
     from qlib.data import D
 
-    state_path = VOL_ROOT / "paper_portfolio" / f"{market}.json"
+    state_path = _paper_state_path(market, lineage)
     if not state_path.exists():
         return {"status": "no_state", "execution_date": None}
     raw = _json.loads(state_path.read_text())
@@ -1305,6 +1320,7 @@ def _paper_execution_context(data_dir, market: str, calendar: list[str], asof: s
             "status": "ready",
             "execution_date": execution_date,
             "open_prices": {},
+            "close_prices": {},
             "buy_tradable": {},
             "sell_tradable": {},
         }
@@ -1324,6 +1340,7 @@ def _paper_execution_context(data_dir, market: str, calendar: list[str], asof: s
     insts = sorted(symbols)
     opens, prevs, close_na, factors = [], [], [], []
     open_prices = {}
+    close_prices = {}
     for inst in insts:
         row = rows.get(inst)
         op = float(row["$open"]) if row is not None and _pd.notna(row["$open"]) else _np.nan
@@ -1336,6 +1353,8 @@ def _paper_execution_context(data_dir, market: str, calendar: list[str], asof: s
         factors.append(factor)
         if _np.isfinite(op):
             open_prices[inst] = op
+        if _np.isfinite(close):
+            close_prices[inst] = close
 
     listing = _board_listing_dates(data_dir, insts)
     limit_buy, limit_sell = compute_limit_masks(
@@ -1353,6 +1372,7 @@ def _paper_execution_context(data_dir, market: str, calendar: list[str], asof: s
         "status": "ready",
         "execution_date": execution_date,
         "open_prices": open_prices,
+        "close_prices": close_prices,
         "buy_tradable": {inst: not bool(v) for inst, v in zip(insts, limit_buy)},
         "sell_tradable": {inst: not bool(v) for inst, v in zip(insts, limit_sell)},
     }
@@ -1376,12 +1396,8 @@ def _apply_paper_portfolio(
     from paper_portfolio import PaperPortfolio
 
     market = res["market"]
-    state_dir = VOL_ROOT / "paper_portfolio"
-    state_dir.mkdir(parents=True, exist_ok=True)
-    if not lineage or any(ch not in "abcdefghijklmnopqrstuvwxyz0123456789_-" for ch in lineage):
-        raise ValueError(f"invalid paper lineage: {lineage!r}")
-    state_key = market if lineage == "canonical" else f"{market}__{lineage}"
-    state_path = state_dir / f"{state_key}.json"
+    state_path = _paper_state_path(market, lineage)
+    state_path.parent.mkdir(parents=True, exist_ok=True)
     try:
         vol.reload()
     except Exception:
@@ -1421,6 +1437,7 @@ def _apply_paper_portfolio(
                 ctx.get("open_prices", {}),
                 buy_tradable=ctx.get("buy_tradable", {}),
                 sell_tradable=ctx.get("sell_tradable", {}),
+                close_prices=ctx.get("close_prices", {}),
             )
 
     planned = None
@@ -3457,6 +3474,7 @@ def daily_standalone(
     nd: int = 2,
     market: str = "csi1000",
     csi1000_profile: str = None,
+    paper_lineage: str = "canonical",
 ):
     """每日信号（自包含单容器版，--best --daily 的实现）：
     下载 chenditc 最新全量包 → 解压到容器本地盘 → 训练终审候选 → top-k 信号 → 返回 CSV 内容。
@@ -3520,9 +3538,11 @@ def daily_standalone(
 
     # ---- 2) 训练终审候选 ----
     if market == "csi1000":
-        from csi1000_production_config import CANONICAL_PROFILE
+        from csi1000_production_config import CANONICAL_PAPER_LINEAGE, CANONICAL_PROFILE
 
         csi1000_profile = csi1000_profile or CANONICAL_PROFILE
+        if csi1000_profile == CANONICAL_PROFILE and paper_lineage == "canonical":
+            paper_lineage = CANONICAL_PAPER_LINEAGE
     elif csi1000_profile is not None:
         raise ValueError("csi1000_profile is valid only for market='csi1000'")
 
@@ -3667,7 +3687,13 @@ def daily_standalone(
         vol.reload()
     except Exception:
         pass
-    paper_context = _paper_execution_context(data_dir, market, calendar, asof)
+    paper_context = _paper_execution_context(
+        data_dir,
+        market,
+        calendar,
+        asof,
+        lineage=paper_lineage,
+    )
     print("[daily] ranking CSV + stateful paper-order context prepared")
     top = day.reindex(ranking_order[:topk])
 
@@ -3868,7 +3894,7 @@ def daily_cron():
         return
 
     print(f"[cron] {signal_date} 为交易日——启动 CSI1000 Stage-B winner canonical")
-    from csi1000_production_config import CANONICAL_PROFILE
+    from csi1000_production_config import CANONICAL_PAPER_LINEAGE, CANONICAL_PROFILE
 
     try:
         res = daily_standalone.remote(
@@ -3876,6 +3902,7 @@ def daily_cron():
             nd=2,
             market="csi1000",
             csi1000_profile=CANONICAL_PROFILE,
+            paper_lineage=CANONICAL_PAPER_LINEAGE,
         )
     except Exception as csi_err:  # pylint: disable=W0703
         raise RuntimeError(
@@ -3917,8 +3944,6 @@ def daily_cron():
     files[f"results/signals/{signal_date}_top20_lgb158.csv"] = res["csv_content"]
     files[f"results/signals/{signal_date}_chart.json"] = res["chart_json"]
     if paper_enabled:
-        from csi1000_production_config import CANONICAL_PAPER_LINEAGE
-
         # Winner-only state: never inherit the pre-promotion baseline account
         # or its pending orders. Public artifact names stay canonical.
         paper_proposals["csi1000"] = _apply_paper_portfolio(

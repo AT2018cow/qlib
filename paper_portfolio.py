@@ -186,6 +186,7 @@ class PaperPortfolio:
         open_prices: Dict[str, float],
         buy_tradable: Optional[Dict[str, bool]] = None,
         sell_tradable: Optional[Dict[str, bool]] = None,
+        close_prices: Optional[Dict[str, float]] = None,
     ) -> dict:
         if self.pending_signal is None:
             return {"date": execution_date, "status": "no_pending"}
@@ -199,6 +200,16 @@ class PaperPortfolio:
 
         buy_tradable = buy_tradable or {}
         sell_tradable = sell_tradable or {}
+        close_prices = close_prices or {}
+
+        # Public forward performance is normalized to the account value at the
+        # execution-day open *before* trades.  Missing opens conservatively fall
+        # back to the position's last marked price.
+        portfolio_value_pre_trade_open = self.cash + sum(
+            float(pos["shares"])
+            * float(open_prices.get(sym, pos.get("last_price", pos["entry_price"])))
+            for sym, pos in self.positions.items()
+        )
 
         # A position bought yesterday has one completed bar of holding time today,
         # matching Qlib's default hold_thresh=1 eligibility on the next step.
@@ -284,6 +295,19 @@ class PaperPortfolio:
             float(pos["shares"]) * float(pos.get("last_price", pos["entry_price"]))
             for pos in self.positions.values()
         )
+
+        # Mark the post-trade holdings to the same execution day's close when
+        # those prices are available.  This is the public end-of-day NAV; the
+        # existing portfolio_value field remains the post-trade open valuation
+        # for backward compatibility.
+        for sym, pos in self.positions.items():
+            px = close_prices.get(sym)
+            if px is not None and px > 0:
+                pos["last_price"] = float(px)
+        portfolio_value_close = self.cash + sum(
+            float(pos["shares"]) * float(pos.get("last_price", pos["entry_price"]))
+            for pos in self.positions.values()
+        )
         report = {
             "date": str(execution_date),
             "signal_date": pending["signal_date"],
@@ -294,7 +318,9 @@ class PaperPortfolio:
             "executed_buy": executed_buy,
             "blocked_buy": blocked_buy,
             "cash": round(self.cash, 2),
+            "portfolio_value_pre_trade_open": round(portfolio_value_pre_trade_open, 2),
             "portfolio_value": round(portfolio_value, 2),
+            "portfolio_value_close": round(portfolio_value_close, 2),
             "n_positions": len(self.positions),
             "positions": sorted(self.positions),
             "cost": round(sell_cost_total + buy_cost_total, 2),

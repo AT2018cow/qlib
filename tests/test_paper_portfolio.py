@@ -105,6 +105,20 @@ class PaperPortfolioTests(unittest.TestCase):
             ["A", "B", "C"],
         )
 
+    def test_execution_report_records_pretrade_open_and_close_nav(self):
+        self.pp.plan_signal("2026-10-09", "2026-10-12", self.ranking)
+        close_prices = {"A": 11.0, "B": 21.0, "C": 26.0}
+        r = self.pp.execute_pending(
+            "2026-10-12",
+            self.prices,
+            close_prices=close_prices,
+        )
+        self.assertEqual(r["portfolio_value_pre_trade_open"], self.pp.initial_cash)
+        self.assertIn("portfolio_value_close", r)
+        self.assertGreater(r["portfolio_value_close"], r["portfolio_value"])
+        for sym in ("A", "B", "C"):
+            self.assertEqual(self.pp.positions[sym]["last_price"], close_prices[sym])
+
     def test_dropout_tie_boundary_and_sell_iteration_are_deterministic(self):
         ranking = [("C", 0.5), ("A", 0.5), ("B", 0.5), ("D", 0.4)]
         self._plan_execute("2026-01-04", "2026-01-05", ranking=ranking)
