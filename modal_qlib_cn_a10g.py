@@ -3515,9 +3515,9 @@ def daily_standalone(
 
     # ---- 2) 训练终审候选 ----
     if market == "csi1000":
-        from csi1000_production_config import BASELINE_PROFILE
+        from csi1000_production_config import CANONICAL_PROFILE
 
-        csi1000_profile = csi1000_profile or BASELINE_PROFILE
+        csi1000_profile = csi1000_profile or CANONICAL_PROFILE
     elif csi1000_profile is not None:
         raise ValueError("csi1000_profile is valid only for market='csi1000'")
 
@@ -3866,6 +3866,46 @@ def _publication_decision(cal, data_date: str, signal_date: str, fallback_days: 
     return ("publish", f"⚠️ 交易日历获取失败，fail-open 降级（数据距今 {fallback_days} 自然日 ≤12），照常发布")
 
 
+def _csi1000_canonical_publication_decision(cal, data_date: str, signal_date: str):
+    """Fail closed unless CSI1000 winner data is exactly the prior trading session.
+
+    Stage-B production is frozen to T-close -> T+1-open execution.  Unlike the
+    legacy generic publication gate, the canonical winner must never advance on
+    a one-session-stale provider or an unverifiable calendar.
+    """
+    if cal is None:
+        return (
+            "raise",
+            "CSI1000 Stage-B canonical requires a verified trading calendar; "
+            "calendar unavailable, refusing publication",
+        )
+    if signal_date not in cal:
+        return ("skip", f"{signal_date} 非 A 股交易日，不发布 CSI1000 canonical signal")
+    if data_date not in cal:
+        return (
+            "raise",
+            f"CSI1000 Stage-B canonical data_date={data_date} 不在交易日历；拒绝 fail-open",
+        )
+    if data_date >= signal_date:
+        return (
+            "raise",
+            f"CSI1000 Stage-B canonical requires data_date < signal_date: "
+            f"{data_date} >= {signal_date}",
+        )
+    lag = sum(1 for c in cal if data_date < c < signal_date)
+    if lag != 0:
+        return (
+            "raise",
+            f"CSI1000 Stage-B canonical requires lag=0 for T-close -> T+1-open; "
+            f"got lag={lag} ({data_date} -> {signal_date})",
+        )
+    return (
+        "publish",
+        f"CSI1000 Stage-B canonical freshness PASS: {data_date} close -> "
+        f"{signal_date} open (lag=0)",
+    )
+
+
 @app.function(
     volumes={str(VOL_ROOT): vol},
     schedule=modal.Cron("0 7 * * 1-5", timezone="Asia/Shanghai"),  # 周一~周五 07:00（周一算上周五数据，周二~周五算前一交易日）
@@ -3878,8 +3918,8 @@ def _publication_decision(cal, data_date: str, signal_date: str, fallback_days: 
     nonpreemptible=True,  # 调度入口：被抢占则当天任务丢失；自身运行时间短，3x 成本增量极小
 )
 def daily_cron():
-    """云端全自动每日信号（双池并行选股）：daily_standalone 训练 → GitHub API 提交。
-    csi1000（生产基线）与 chinext（卫星池，等权基准）各自出榜，文件互相独立：
+    """云端全自动每日信号：Stage-B winner CSI1000 + chinext → GitHub API 提交。
+    csi1000（Stage-B winner canonical）与 chinext（卫星池）各自出榜，文件互相独立：
       - results/signals/<date>_top20_lgb158.csv            （csi1000，网站兼容不变）
       - results/signals/<date>_top20_lgb158_chinext.csv    （chinext）
       - results/signals/<date>_chart.json / <date>_chart_chinext.json
@@ -3912,39 +3952,24 @@ def daily_cron():
         print(f"[cron] {signal_date} 非 A 股交易日（假日），gate 前移零成本跳过；最近排名见最近一份已发布信号")
         return
 
-    print(f"[cron] {signal_date} 为交易日（或日历降级 fail-open）——启动两池训练/推理")
+    print(f"[cron] {signal_date} 为交易日（或日历降级 fail-open）——启动生产信号")
     res = None
-    res_stage_b_winner = None
     res_chi = None
     pool_errors = {}
     try:
-        from csi1000_production_config import BASELINE_PROFILE
+        from csi1000_production_config import CANONICAL_PROFILE
 
         res = daily_standalone.remote(
             topk=20,
             nd=2,
             market="csi1000",
-            csi1000_profile=BASELINE_PROFILE,
+            csi1000_profile=CANONICAL_PROFILE,
         )
     except Exception as csi_err:  # pylint: disable=W0703
         pool_errors["csi1000"] = f"{type(csi_err).__name__}: {str(csi_err)[:300]}"
-        print(f"[cron] ⚠️ csi1000 池失败（chinext 仍可独立发布）: {pool_errors['csi1000']}")
-    try:
-        from csi1000_production_config import WINNER_PROFILE
-
-        res_stage_b_winner = daily_standalone.remote(
-            topk=20,
-            nd=2,
-            market="csi1000",
-            csi1000_profile=WINNER_PROFILE,
-        )
-    except Exception as winner_err:  # pylint: disable=W0703
-        pool_errors["csi1000_stage_b_winner"] = (
-            f"{type(winner_err).__name__}: {str(winner_err)[:300]}"
-        )
         print(
-            "[cron] ⚠️ Stage-B winner shadow 失败（不阻断 canonical 发布）: "
-            f"{pool_errors['csi1000_stage_b_winner']}"
+            "[cron] ⚠️ CSI1000 Stage-B winner canonical 失败"
+            f"（chinext 仍可独立发布）: {pool_errors['csi1000']}"
         )
     try:
         # nd=3 = chinext 批次A 网格胜出值 + 批次C 终审口径（低换手形态）
@@ -3955,9 +3980,6 @@ def daily_cron():
         print(f"[cron] ⚠️ chinext 池失败（csi1000 仍可独立发布）: {pool_errors['chinext']}")
     if res is None and res_chi is None:
         raise RuntimeError(f"两个股票池均失败: {pool_errors}")
-    if res is None and res_stage_b_winner is not None:
-        print("[cron] ⚠️ Stage-B baseline control 不可用；为保持 paired forward lineage，跳过 winner shadow")
-        res_stage_b_winner = None
     data_date = (res or res_chi)["date"]  # 任一成功池的数据覆盖日
     print(f"[cron] 数据日历至 {data_date}")
     print(f"[cron] 信号日期 {signal_date}（基于数据日 {data_date} 的收盘数据）")
@@ -3976,18 +3998,26 @@ def daily_cron():
     if cal_err:
         print(f"[cron] ⚠️ 降级原因: {cal_err}")
 
-    # 两池都成功时必须使用同一数据日；不一致时保留与 data_date 一致的池，拒绝混合来源。
+    # CSI1000 Stage-B winner is stricter than the legacy generic gate:
+    # it must preserve the frozen T-close -> T+1-open contract exactly.
+    if res is not None:
+        csi_action, csi_detail = _csi1000_canonical_publication_decision(
+            cal, res["date"], signal_date
+        )
+        print(f"[cron] {csi_detail}")
+        if csi_action == "skip":
+            res = None
+        elif csi_action == "raise":
+            pool_errors["csi1000_freshness"] = csi_detail
+            res = None
+            if res_chi is None:
+                raise RuntimeError(csi_detail)
+
+    # 两池都成功时必须使用同一数据日；不一致时保留 CSI1000，拒绝混合来源。
     if res is not None and res_chi is not None and res_chi["date"] != res["date"]:
         print(f"[cron] ⚠️ 双池数据日不一致: csi1000={res['date']} chinext={res_chi['date']}；仅发布 csi1000")
         res_chi = None
         data_date = res["date"]
-    if res_stage_b_winner is not None and res_stage_b_winner["date"] != data_date:
-        print(
-            "[cron] ⚠️ Stage-B winner shadow 数据日与 canonical 不一致: "
-            f"winner={res_stage_b_winner['date']} canonical={data_date}；跳过 shadow"
-        )
-        res_stage_b_winner = None
-
     # R28: build stateful paper artifacts only after the data/publication gate
     # has passed.  State is proposed now but persisted only after immutable
     # GitHub publication succeeds.
@@ -4000,54 +4030,21 @@ def daily_cron():
         files[f"results/signals/{signal_date}_top20_lgb158.csv"] = res["csv_content"]
         files[f"results/signals/{signal_date}_chart.json"] = res["chart_json"]
         if paper_enabled:
-            paper_proposals["csi1000"] = _apply_paper_portfolio(
-                res, signal_date, topk=20, nd=2, lineage="canonical"
-            )
-            files[f"results/signals/{signal_date}_paper_portfolio.json"] = paper_proposals["csi1000"]["artifact_json"]
+            from csi1000_production_config import CANONICAL_PAPER_LINEAGE
 
-    if res_stage_b_winner is not None:
-        files[
-            f"results/signals/{signal_date}_top20_lgb158_stage_b_winner_shadow.csv"
-        ] = res_stage_b_winner["csv_content"]
-        files[
-            f"results/signals/{signal_date}_chart_stage_b_winner_shadow.json"
-        ] = res_stage_b_winner["chart_json"]
-        if paper_enabled:
-            # The two forward accounts advance as one transaction.  A shadow
-            # bookkeeping failure must not block canonical production.
-            try:
-                baseline_shadow = _apply_paper_portfolio(
-                    res,
-                    signal_date,
-                    topk=20,
-                    nd=2,
-                    lineage="stage_b_baseline_shadow",
-                )
-                winner_shadow = _apply_paper_portfolio(
-                    res_stage_b_winner,
-                    signal_date,
-                    topk=20,
-                    nd=2,
-                    lineage="stage_b_winner_shadow",
-                )
-            except Exception as shadow_err:  # pylint: disable=W0703
-                pool_errors["csi1000_stage_b_forward_pair"] = (
-                    f"{type(shadow_err).__name__}: {str(shadow_err)[:300]}"
-                )
-                print(
-                    "[cron] ⚠️ Stage-B paired paper shadow 失败；"
-                    "canonical 继续发布，shadow state 不推进: "
-                    f"{pool_errors['csi1000_stage_b_forward_pair']}"
-                )
-            else:
-                paper_proposals["csi1000_stage_b_baseline_shadow"] = baseline_shadow
-                paper_proposals["csi1000_stage_b_winner_shadow"] = winner_shadow
-                files[
-                    f"results/signals/{signal_date}_paper_portfolio_stage_b_baseline_shadow.json"
-                ] = baseline_shadow["artifact_json"]
-                files[
-                    f"results/signals/{signal_date}_paper_portfolio_stage_b_winner_shadow.json"
-                ] = winner_shadow["artifact_json"]
+            # New winner-only state: never inherit the pre-promotion baseline
+            # account or its pending orders.  Public artifact names stay
+            # canonical for downstream consumers.
+            paper_proposals["csi1000"] = _apply_paper_portfolio(
+                res,
+                signal_date,
+                topk=20,
+                nd=2,
+                lineage=CANONICAL_PAPER_LINEAGE,
+            )
+            files[f"results/signals/{signal_date}_paper_portfolio.json"] = (
+                paper_proposals["csi1000"]["artifact_json"]
+            )
     if res_chi is not None:
         files[f"results/signals/{signal_date}_top20_lgb158_chinext.csv"] = res_chi["csv_content"]
         files[f"results/signals/{signal_date}_chart_chinext.json"] = res_chi["chart_json"]
@@ -4102,11 +4099,7 @@ def daily_cron():
         message=f"chore(signal): {signal_date} repair/publish {len(missing_files)} signal artifacts (cron)",
     )
     _persist_paper_states()
-    published_streams = (
-        int(res is not None)
-        + int(res_stage_b_winner is not None)
-        + int(res_chi is not None)
-    )
+    published_streams = int(res is not None) + int(res_chi is not None)
     print(
         f"[cron] ✅ 已补发/推送 {len(missing_files)} 个文件，"
         f"覆盖 {published_streams} 个成功信号流: {signal_date}"
