@@ -198,3 +198,10 @@ def test_invalid_signal_day_cannot_certify_execution():
     artifacts[1]["execution_report"]["signal_date"] = "2026-10-13"
     result = reconcile(artifacts, quotes=quotes, calendar=calendar, forward=forward)
     assert "BAD_SIGNAL_DATE" in codes(result)
+
+
+def test_missing_public_forward_json_does_not_allow_full_certification():
+    artifacts, quotes, calendar, _ = fixture()
+    result = reconcile(artifacts, quotes=quotes, calendar=calendar)
+    assert result["status"] == "PARTIAL_NOT_CERTIFIED"
+    assert any(w["code"] == "PUBLIC_FORWARD_NOT_PROVIDED" for w in result["warnings"])
