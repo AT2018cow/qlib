@@ -115,7 +115,7 @@ image = (
     .run_commands(
         "cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/qlib/board_rules.py /root/qlib/board_execution.py /root/qlib/paper_portfolio.py /root/qlib/portfolio_performance.py /root/qlib/github_commit.py "
             "/root/qlib/csi1000_tuner_core.py /root/qlib/csi1000_production_config.py "
-            "/root/qlib/signal_publication_gate.py /root/"
+            "/root/qlib/chart_series.py /root/qlib/signal_publication_gate.py /root/"
     )
 )
 
@@ -3726,12 +3726,19 @@ def daily_standalone(
     # ---- 4b) 走势 JSON：每只入选股近 60 个交易日收盘价（网站 K 线数据源）----
     # ⚠️ 停牌日值为 NaN：json.dumps 默认输出裸 NaN 是非法 JSON，浏览器 JSON.parse 会整体失败
     # （2026-10-02 实证：创业板 chart 全灭）——必须 sanitize 成 null
+    from chart_series import align_bin_values_to_calendar_tail
+
     chart = {"dates": cal_lines[-60:], "stocks": {}}
     for inst in top.index:
         close_bin = data_dir / "features" / str(inst).lower() / "close.day.bin"
         if close_bin.exists():
-            _, values = _read_bin(close_bin)
-            chart["stocks"][str(inst)] = [None if v != v else round(float(v), 4) for v in values[-60:]]
+            start_index, values = _read_bin(close_bin)
+            chart["stocks"][str(inst)] = align_bin_values_to_calendar_tail(
+                start_index=start_index,
+                values=values,
+                calendar_length=len(cal_lines),
+                window=60,
+            )
     chart_json = json.dumps(chart, ensure_ascii=False)
 
     return {
