@@ -116,6 +116,86 @@ async function loadDateContext(date) {
   };
 }
 
+async function loadForwardPerformance() {
+  const text = await fetchText(`${CSV_BASE}/csi1000_forward_performance.json`);
+  return parseJSONLoose(text) || {
+    start_date: '2026-10-12',
+    status: 'awaiting_first_valuation',
+    latest_date: null,
+    cumulative_return: null,
+    points: [],
+  };
+}
+
+function formatReturn(value, digits = 2) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '—';
+  const pct = n * 100;
+  return `${pct >= 0 ? '+' : ''}${pct.toFixed(digits)}%`;
+}
+
+function makePerformanceChart(points, w = 760, h = 180) {
+  const rows = Array.isArray(points) ? points : [];
+  if (!rows.length) {
+    return '<div class="performance-empty">从 2026.10.12 开始记录，首个收盘估值将在下一次数据更新后显示。</div>';
+  }
+
+  const values = [0, ...rows.map(p => Number(p.cumulative_return)).filter(Number.isFinite)];
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const pad = Math.max((max - min) * 0.18, 0.005);
+  const lo = min - pad;
+  const hi = max + pad;
+  const range = hi - lo || 1;
+  const xPad = 18;
+  const yPad = 18;
+  const usableW = w - xPad * 2;
+  const usableH = h - yPad * 2;
+  const series = [0, ...rows.map(p => Number(p.cumulative_return))];
+  const pts = series.map((v, i) => {
+    const x = xPad + (series.length === 1 ? 0 : i / (series.length - 1) * usableW);
+    const y = yPad + (hi - v) / range * usableH;
+    return [x, y];
+  });
+  const path = pts.map((p, i) => `${i ? 'L' : 'M'} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+  const zeroY = yPad + (hi - 0) / range * usableH;
+  const last = pts[pts.length - 1];
+  const positive = series[series.length - 1] >= 0;
+
+  return `
+    <svg class="performance-svg" viewBox="0 0 ${w} ${h}" role="img" aria-label="模型累计收益曲线">
+      <line x1="${xPad}" y1="${zeroY.toFixed(1)}" x2="${w - xPad}" y2="${zeroY.toFixed(1)}" class="performance-zero"/>
+      <path d="${path}" class="performance-line ${positive ? 'gain' : 'loss'}"/>
+      <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="4" class="performance-dot ${positive ? 'gain' : 'loss'}"/>
+    </svg>
+  `;
+}
+
+function renderForwardPerformance(data) {
+  const value = document.getElementById('forward-return');
+  const latest = document.getElementById('forward-latest');
+  const chart = document.getElementById('forward-chart');
+  const status = document.getElementById('forward-status');
+  if (!value || !latest || !chart || !status) return;
+
+  const points = Array.isArray(data?.points) ? data.points : [];
+  if (data?.status !== 'active' || !points.length) {
+    value.textContent = '待开始';
+    value.className = 'performance-value';
+    latest.textContent = '尚无收盘估值';
+    status.textContent = 'Forward tracking · 2026.10.12 起';
+    chart.innerHTML = makePerformanceChart([]);
+    return;
+  }
+
+  const ret = Number(data.cumulative_return);
+  value.textContent = formatReturn(ret);
+  value.className = `performance-value ${ret >= 0 ? 'gain' : 'loss'}`;
+  latest.textContent = `最新估值 ${formatDate(data.latest_date)}`;
+  status.textContent = `Forward tracking · ${formatDate(data.start_date)} 起`;
+  chart.innerHTML = makePerformanceChart(points);
+}
+
 function isWinnerCanonical(paper) {
   return Boolean(
     paper &&
@@ -241,6 +321,27 @@ function pageShell(dates) {
         </div>
       </section>
 
+      <section class="panel performance-panel" id="performance">
+        <div class="performance-head">
+          <div>
+            <div class="panel-kicker">Forward performance</div>
+            <h2>模型累计收益</h2>
+            <p id="forward-status" class="performance-status">Forward tracking · 2026.10.12 起</p>
+          </div>
+          <div class="performance-summary">
+            <div id="forward-return" class="performance-value">待开始</div>
+            <div id="forward-latest" class="performance-latest">尚无收盘估值</div>
+          </div>
+        </div>
+        <div id="forward-chart" class="performance-chart">
+          <div class="performance-empty">从 2026.10.12 开始记录，首个收盘估值将在下一次数据更新后显示。</div>
+        </div>
+        <div class="performance-foot">
+          <span>起点：2026.10.12 开盘前账户价值 = 1.0000</span>
+          <span>按 paper 账户真实调仓、交易成本与不可成交约束计算 · 每日收盘估值</span>
+        </div>
+      </section>
+
       <section class="panel">
         <div class="panel-head">
           <div>
@@ -291,7 +392,11 @@ function pageShell(dates) {
 
 async function main() {
   const app = document.getElementById('app');
-  const [nameMap, dates] = await Promise.all([loadNameMap(), loadAvailableDates()]);
+  const [nameMap, dates, forwardPerformance] = await Promise.all([
+    loadNameMap(),
+    loadAvailableDates(),
+    loadForwardPerformance(),
+  ]);
 
   if (!dates.length) {
     app.innerHTML = `<main class="shell"><div class="callout"><strong>暂无可用信号。</strong> 当前没有找到最近的 CSI1000 production artifact。</div></main>`;
@@ -299,6 +404,7 @@ async function main() {
   }
 
   app.innerHTML = pageShell(dates);
+  renderForwardPerformance(forwardPerformance);
 
   async function renderDate(dateInfo) {
     const idx = dates.findIndex(d => d.date === dateInfo.date);
