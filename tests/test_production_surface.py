@@ -88,7 +88,7 @@ def test_dashboard_dark_theme_and_responsive_layout():
     assert ".table-wrap { display: none; }" in styles
     assert ".mobile-cards { display: grid;" in styles
     assert ".doc-grid { grid-template-columns: 1fr;" in styles
-    assert 'src="app.js?v=22"' in index
+    assert 'src="app.js?v=23"' in index
 
 
 def test_forward_performance_panel_is_forward_only_from_20261012():
@@ -109,12 +109,14 @@ def test_pages_builds_forward_performance_artifact():
     assert "scripts/build_forward_performance.py" in workflow
     assert "--output _site/signals/csi1000_forward_performance.json" in workflow
     assert "test -s _site/signals/csi1000_forward_performance.json" in workflow
+    assert "website/build_index.py" in workflow
+    assert "test -s _site/signals/available_dates.json" in workflow
 
 
 def test_missing_history_metadata_is_not_fabricated():
     app = (ROOT / "website" / "app.js").read_text()
-    assert "formatDate(ctx.paper?.signal_data_date || null)" in app
-    assert "isWinnerCanonical(ctx.paper)" in app
+    assert "formatDate(paper?.signal_data_date || null)" in app
+    assert "isWinnerCanonical(paper)" in app
     assert "paper.paper_lineage === 'stage_b_winner_canonical'" in app
 
 

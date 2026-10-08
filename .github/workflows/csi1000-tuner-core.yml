@@ -17,6 +17,8 @@ on:
       - 'chart_series.py'
       - 'tests/test_chart_series.py'
       - 'tests/test_sparkline_frontend.cjs'
+      - 'tests/test_website_index.py'
+      - 'website/build_index.py'
       - 'scripts/build_forward_performance.py'
       - 'modal_qlib_cn_a10g.py'
       - 'tests/test_csi1000_production_config.py'
@@ -55,6 +57,8 @@ on:
       - 'chart_series.py'
       - 'tests/test_chart_series.py'
       - 'tests/test_sparkline_frontend.cjs'
+      - 'tests/test_website_index.py'
+      - 'website/build_index.py'
       - 'scripts/build_forward_performance.py'
       - 'modal_qlib_cn_a10g.py'
       - 'tests/test_csi1000_production_config.py'
@@ -117,3 +121,4 @@ jobs:
           tests/test_cron_gate.py
           tests/test_modal_structure.py
           tests/test_production_surface.py
+          tests/test_website_index.py
