@@ -9,7 +9,7 @@ import re
 from datetime import date
 from pathlib import Path
 
-SIGNAL_NAME = re.compile(r"^(\\d{4}-\\d{2}-\\d{2})_top20_lgb158\\.csv$")
+SIGNAL_NAME = re.compile(r"^(\d{4}-\d{2}-\d{2})_top20_lgb158\.csv$")
 
 
 def collect_signal_dates(signals: Path) -> list[str]:
