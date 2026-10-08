@@ -75,5 +75,25 @@ def test_public_site_uses_shared_stylesheet():
     methodology = (ROOT / "website" / "methodology.html").read_text()
     styles = ROOT / "website" / "styles.css"
     assert styles.is_file()
-    assert 'href="styles.css?v=1"' in index
-    assert 'href="styles.css?v=1"' in methodology
+    assert 'href="styles.css?v=2"' in index
+    assert 'href="styles.css?v=2"' in methodology
+
+
+def test_dashboard_dark_theme_and_responsive_layout():
+    styles = (ROOT / "website" / "styles.css").read_text()
+    index = (ROOT / "website" / "index.html").read_text()
+    assert "--background: #0c121b" in styles
+    assert "--surface: #151e2b" in styles
+    assert "html { color-scheme: dark; }" in styles
+    assert "@media (max-width: 700px)" in styles
+    assert ".table-wrap { display: none; }" in styles
+    assert ".mobile-cards { display: grid;" in styles
+    assert ".doc-grid { grid-template-columns: 1fr;" in styles
+    assert 'src="app.js?v=18"' in index
+
+
+def test_missing_history_metadata_is_not_fabricated():
+    app = (ROOT / "website" / "app.js").read_text()
+    assert "formatDate(ctx.paper?.signal_data_date || null)" in app
+    assert "isWinnerCanonical(ctx.paper)" in app
+    assert "paper.paper_lineage === 'stage_b_winner_canonical'" in app
