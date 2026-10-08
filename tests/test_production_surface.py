@@ -74,8 +74,8 @@ def test_public_site_uses_shared_stylesheet():
     methodology = (ROOT / "website" / "methodology.html").read_text()
     styles = ROOT / "website" / "styles.css"
     assert styles.is_file()
-    assert 'href="styles.css?v=4"' in index
-    assert 'href="styles.css?v=4"' in methodology
+    assert 'href="styles.css?v=5"' in index
+    assert 'href="styles.css?v=5"' in methodology
 
 
 def test_dashboard_dark_theme_and_responsive_layout():
@@ -88,7 +88,7 @@ def test_dashboard_dark_theme_and_responsive_layout():
     assert ".table-wrap { display: none; }" in styles
     assert ".mobile-cards { display: grid;" in styles
     assert ".doc-grid { grid-template-columns: 1fr;" in styles
-    assert 'src="app.js?v=20"' in index
+    assert 'src="app.js?v=21"' in index
 
 
 def test_forward_performance_panel_is_forward_only_from_20261012():
@@ -159,3 +159,17 @@ def test_current_handoff_is_present_and_indexed():
     ):
         assert marker in text
     assert handoff.name in index
+
+
+def test_sparkline_layout_is_centered_and_mobile_safe():
+    app = (ROOT / "website" / "app.js").read_text()
+    styles = (ROOT / "website" / "styles.css").read_text()
+    assert "function makeSparkline(values, w = 128, h = 34)" in app
+    assert "Preserve null/suspension gaps" in app
+    assert ".signal-table th:last-child, .signal-table td:last-child" in styles
+    assert "width: 180px;" in styles
+    assert ".sparkline-svg" in styles
+    assert "justify-content: center;" in styles
+    assert ".stock-side .sparkline-svg" in styles
+    assert "width: 104px;" in styles
+    assert "width: 78px;" in styles
