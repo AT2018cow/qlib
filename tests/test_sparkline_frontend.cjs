@@ -182,3 +182,44 @@ test('Pages index replaces weekday probing and first-render barrier', () => {
   assert.match(source, /paint\(null, null\);/);
   assert.match(source, /paint\(previous, ctx\);/);
 });
+
+
+test('ranking change labels reflect position, not paper account holdings', () => {
+  const startRows = source.indexOf('function buildRows(');
+  const endRows = source.indexOf('function tableRows(', startRows);
+  assert.ok(startRows >= 0 && endRows > startRows);
+  const { buildRows } = vm.runInNewContext(
+    source.slice(startRows, endRows) + ';({ buildRows })',
+    {
+      qlibCode: instrument => instrument.slice(2),
+      sinaUrl: instrument => instrument,
+      formatScore: () => ({ text: '0.0%', klass: '' }),
+      sparklineEmpty: () => '—',
+    }
+  );
+  const rows = [
+    { rank: '1', instrument: 'SH600001', score: '0' },
+    { rank: '2', instrument: 'SH600002', score: '0' },
+    { rank: '3', instrument: 'SH600003', score: '0' },
+    { rank: '4', instrument: 'SH600004', score: '0' },
+  ];
+  const prev = [
+    { rank: '1', instrument: 'SH600001' },
+    { rank: '3', instrument: 'SH600002' },
+    { rank: '2', instrument: 'SH600003' },
+  ];
+  const tags = buildRows(rows, {}, prev, undefined).map(row => row.tag);
+  assert.match(tags[0], />持平<\/span>/);
+  assert.match(tags[0], /与上一期可用榜单排名相同/);
+  assert.match(tags[1], />上升<\/span>/);
+  assert.match(tags[2], />下降<\/span>/);
+  assert.match(tags[3], />新进<\/span>/);
+  assert.ok(tags.every(tag => !tag.includes('持有')));
+  assert.ok(buildRows(rows, {}, null, undefined).every(row => row.tag.includes('无对照')));
+
+  const css = fs.readFileSync(path.join(root, 'website', 'styles.css'), 'utf8');
+  assert.match(css, /\.tag-neutral\s*\{/);
+  assert.doesNotMatch(css, /\.tag-hold\s*\{/);
+  assert.match(source, /<th>排名变化<\/th>/);
+  assert.match(source, /排名变化对比上一期可用榜单，不代表实际持仓/);
+});
