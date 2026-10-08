@@ -48,6 +48,11 @@ def make_fixture(root: Path):
         prices = [round(8 + i * 0.18 + j * (0.024 if i % 2 else -0.014), 3) for j in range(60)]
         if i == 0:
             prices[24:27] = [None, None, None]
+        if i == 18:
+            prices = [None] * 60  # insufficient valid closes
+        if i == 19:
+            prices = [None] * 60
+            prices[-8], prices[-1] = 15, 16  # two isolated prices, no drawable segment
         stocks[code] = prices
     chart = {"dates": [d.isoformat() for d in days], "stocks": stocks}
     with (signals / "code_name_map.csv").open("w", newline="") as file:
@@ -122,10 +127,34 @@ def inspect_viewport(browser, base_url, width: int):
     assert not errors, errors
     assert page.locator("#forward-return").inner_text() == "待开始"
     assert page.locator("#stat-lineage").inner_text() == "Stage-B winner"
+    # These must be actual visible labels, not title-only tooltips on touchscreens.
+    ranking = page.locator("#ranking")
+    history = page.locator("#history")
+    performance = page.locator("#performance")
+    ranking_box = ranking.bounding_box()
+    history_box = history.bounding_box()
+    performance_box = performance.bounding_box()
+    assert ranking_box and history_box and performance_box
+    assert ranking_box["y"] + ranking_box["height"] <= history_box["y"] + 1
+    assert history_box["y"] + history_box["height"] <= performance_box["y"] + 1
+    if width <= 860:
+        stock_rows = page.locator(".stock-card")
+        assert stock_rows.count() == 20
+        assert stock_rows.nth(18).locator(".spark-empty").is_visible()
+        assert "有效数据不足" in stock_rows.nth(18).locator(".spark").inner_text()
+        assert "价格不连续" in stock_rows.nth(19).locator(".spark").inner_text()
+        assert stock_rows.first.locator(".sparkline-svg").is_visible()
+    else:
+        stock_rows = page.locator("#signal-rows tr")
+        assert stock_rows.nth(18).locator(".spark-empty").is_visible()
+        assert "有效数据不足" in stock_rows.nth(18).locator(".spark").inner_text()
+        assert "价格不连续" in stock_rows.nth(19).locator(".spark").inner_text()
+        assert stock_rows.first.locator(".sparkline-svg").is_visible()
     OUT.mkdir(parents=True, exist_ok=True)
     page.screenshot(path=str(OUT / f"dashboard-fixture-awaiting-{width}.png"), full_page=True)
     page.locator(".date-btn").nth(1).click()
     page.wait_for_function("document.getElementById('stat-lineage')?.textContent === '历史 / 未核验'")
+    page.wait_for_function("Math.abs(document.querySelector('#ranking').getBoundingClientRect().top) < 30")
     after_history = len(signals_requests)
     assert after_history == initial_requests + 2, signals_requests
     if width in (390, 320):
@@ -163,7 +192,9 @@ def main():
                 page.goto(url + "/index.html", wait_until="domcontentloaded")
                 page.locator("#signal-rows tr").first.wait_for(state="attached")
                 assert page.locator("#stat-lineage").inner_text() == "核验中"
+                assert "走势加载中" in page.locator(".stock-card").first.locator(".spark").inner_text()
                 page.wait_for_function("document.getElementById('stat-lineage')?.textContent === 'Stage-B winner'")
+                assert page.locator(".stock-card").first.locator(".sparkline-svg").is_visible()
                 page.close()
                 print("PASS delayed chart: Top20 visible before lineage/chart response")
 
