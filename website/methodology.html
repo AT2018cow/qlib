@@ -3,124 +3,204 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>策略方法论 — A 股每日选股信号</title>
-<style>
-:root {
-    --bg: #0d1117; --card: #161b22; --border: #30363d;
-    --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff;
-    --green: #3fb950; --red: #f85149;
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; min-height: 100vh;
-    padding: 24px 16px;
-}
-#app { width: 100%; max-width: 720px; }
-header { text-align: center; margin-bottom: 28px; }
-header h1 { font-size: 22px; margin-bottom: 4px; }
-.subtitle { color: var(--muted); font-size: 14px; }
-.section {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 8px; padding: 18px 20px; margin-bottom: 16px;
-}
-.section h2 { font-size: 17px; margin-bottom: 10px; color: var(--accent); }
-.section p, .section li { font-size: 14px; line-height: 1.7; color: var(--text); }
-.section ul { padding-left: 20px; margin-top: 6px; }
-.section li { margin-bottom: 4px; }
-.section .note { color: var(--muted); font-size: 13px; margin-top: 8px; }
-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-th, td { padding: 8px; font-size: 13px; text-align: left; border-bottom: 1px solid var(--border); }
-th { color: var(--muted); font-size: 12px; }
-code { color: var(--accent); font-family: monospace; font-size: 13px; }
-a { color: var(--accent); text-decoration: none; }
-a:hover { text-decoration: underline; }
-.back-row { text-align: center; margin-top: 28px; }
-footer {
-    margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border);
-    font-size: 12px; color: var(--muted); text-align: center; line-height: 1.8;
-}
-</style>
+<meta name="description" content="CSI1000 Stage-B winner 生产方法论、验证证据与执行协议">
+<title>生产方法论 · CSI1000 Stage-B Winner</title>
+<link rel="stylesheet" href="styles.css?v=1">
 </head>
 <body>
-<div id="app">
-    <header>
-        <h1>策略方法论</h1>
-        <p class="subtitle">Alpha Generation Framework & Execution Protocol</p>
-    </header>
+<main class="shell doc-shell">
+  <nav class="topbar">
+    <a class="brand" href="./">
+      <span class="brand-mark">Q</span>
+      <span>Qlib Signal Lab</span>
+    </a>
+    <div class="topnav">
+      <a class="nav-link" href="./">每日信号</a>
+    </div>
+  </nav>
 
-    <div class="section">
-        <h2>一、Alpha 模型</h2>
-        <p><strong>LightGBM（梯度提升树）</strong> · 158 维量价特征 · 20 日收益预测标签</p>
+  <header class="doc-hero">
+    <div class="eyebrow"><span class="status-dot"></span> Production methodology · 2026-10-08</div>
+    <h1>CSI1000 Stage-B Winner<br>生产方法论与审计状态</h1>
+    <p>
+      本页只描述当前有效的生产协议。Stage-A/Stage-B 已完成并冻结；2025-01-02 至
+      2026-09-30 的 Stage-B confirmation tail 已被消费，不再用于继续调参。
+    </p>
+    <div class="doc-status">
+      <span class="mini-pill">CSI1000 · canonical production</span>
+      <span class="mini-pill">Stage-B rank #1</span>
+      <span class="mini-pill paused">ChiNext · production paused</span>
+    </div>
+  </header>
+
+  <div class="doc-grid">
+    <aside class="doc-nav" aria-label="方法论目录">
+      <a href="#status">当前状态</a>
+      <a href="#model">模型与训练</a>
+      <a href="#selection">Stage-A / B 选择</a>
+      <a href="#execution">组合与执行</a>
+      <a href="#production">生产链路</a>
+      <a href="#risk">解释与风险</a>
+      <a href="#audit">审计标识</a>
+    </aside>
+
+    <div class="doc-content">
+      <section class="doc-section" id="status">
+        <h2>1. 当前生产状态</h2>
+        <div class="metric-grid">
+          <div class="metric"><span>ACTIVE POOL</span><strong>CSI1000</strong></div>
+          <div class="metric"><span>MODEL</span><strong>Stage-B winner</strong></div>
+          <div class="metric"><span>PORTFOLIO</span><strong>Top20 / Drop2</strong></div>
+          <div class="metric"><span>EXECUTION</span><strong>T+1 Open</strong></div>
+          <div class="metric"><span>RETRAIN</span><strong>20 sessions</strong></div>
+          <div class="metric"><span>CHINEXT</span><strong>Paused</strong></div>
+        </div>
+        <p>
+          当前每日 production 只运行中证 1000。<strong>研究线 · 创业板</strong>的旧模型
+          <strong>每日 production 更新与网页展示已暂停</strong>；研究代码和历史 artifacts
+          保留，待下一代模型完成独立验证并通过 production gate 后再恢复。
+        </p>
+      </section>
+
+      <section class="doc-section" id="model">
+        <h2>2. 模型与训练协议</h2>
+        <div class="kv"><div>模型</div><div>LightGBM + Alpha158</div></div>
+        <div class="kv"><div>预测标签</div><div>原始 20 个交易日前瞻收益：<code>Ref($close, -20) / $close - 1</code></div></div>
+        <div class="kv"><div>训练起点</div><div><code>2016-01-01</code>，expanding window</div></div>
+        <div class="kv"><div>验证窗口</div><div>252 个交易日</div></div>
+        <div class="kv"><div>Purge horizon</div><div>20 个交易日，保证训练/验证边界的 forward label 已成熟</div></div>
+        <div class="kv"><div>重训频率</div><div>每 20 个交易日</div></div>
+        <div class="kv"><div>生产重训原点</div><div><code>2026-09-18</code></div></div>
+        <div class="kv"><div>LightGBM threads</div><div><code>20</code>（冻结；与 Modal worker CPU=8 是不同层级的配置）</div></div>
+
+        <h3>冻结的 winner 参数</h3>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Parameter</th><th>Value</th><th>Parameter</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>learning_rate</td><td>0.08</td><td>colsample_bytree</td><td>0.8</td></tr>
+              <tr><td>lambda_l1</td><td>10</td><td>lambda_l2</td><td>400</td></tr>
+              <tr><td>max_depth</td><td>6</td><td>num_leaves</td><td>63</td></tr>
+              <tr><td>min_data_in_leaf</td><td>50</td><td>num_threads</td><td>20</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>确定性设置</h3>
+        <p>
+          LightGBM 固定 <code>seed=0</code>、<code>data_random_seed=1</code>、
+          <code>feature_fraction_seed=2</code>、<code>bagging_seed=3</code>、
+          <code>drop_seed=4</code>、<code>objective_seed=5</code>、
+          <code>extra_seed=6</code>，并启用 <code>deterministic=true</code>、
+          <code>force_col_wise=true</code>。
+        </p>
+      </section>
+
+      <section class="doc-section" id="selection">
+        <h2>3. Stage-A → Stage-B 模型选择</h2>
+        <p>
+          Stage A 用于候选筛选；Stage B 使用此前预留的 confirmation tail 做最终确认。
+          当前 winner 在 Stage A 不是第一名，而是第 5 名，最终在 Stage B 的跨重训相位稳健性排序中升至第 1 名。
+          这也是为什么当前 production 选择不是简单追逐单一历史区间的最高收益。
+        </p>
+
+        <div class="kv"><div>Stage-B 区间</div><div><code>2025-01-02 → 2026-09-30</code></div></div>
+        <div class="kv"><div>Execution sessions</div><div>424</div></div>
+        <div class="kv"><div>Retrain phases</div><div>0 / 4 / 6 / 10 / 15</div></div>
+        <div class="kv"><div>Winner</div><div>Stage-A rank 5 → <strong>Stage-B rank #1</strong></div></div>
+
+        <div class="metric-grid">
+          <div class="metric"><span>WORST EXCESS CAGR</span><strong>+9.16%</strong></div>
+          <div class="metric"><span>MEDIAN EXCESS CAGR</span><strong>+14.25%</strong></div>
+          <div class="metric"><span>POSITIVE PHASES</span><strong>5 / 5</strong></div>
+          <div class="metric"><span>MEDIAN SHARPE</span><strong>1.276</strong></div>
+          <div class="metric"><span>MEDIAN IR</span><strong>0.641</strong></div>
+          <div class="metric"><span>WORST MAX DRAWDOWN</span><strong>-14.65%</strong></div>
+        </div>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <thead>
+              <tr><th>Phase</th><th>Strategy CAGR</th><th>Benchmark CAGR</th><th>Excess CAGR</th><th>MaxDD</th><th>Sharpe</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>0</td><td>29.32%</td><td>13.19%</td><td>+14.25%</td><td>-12.13%</td><td>1.276</td></tr>
+              <tr><td>4</td><td>30.36%</td><td>13.19%</td><td>+15.17%</td><td>-10.58%</td><td>1.334</td></tr>
+              <tr><td>6</td><td>23.55%</td><td>13.19%</td><td>+9.16%</td><td>-11.61%</td><td>1.110</td></tr>
+              <tr><td>10</td><td>30.73%</td><td>13.19%</td><td>+15.50%</td><td>-12.08%</td><td>1.395</td></tr>
+              <tr><td>15</td><td>24.86%</td><td>13.19%</td><td>+10.32%</td><td>-14.65%</td><td>1.177</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          五个 phase 是<strong>同一历史区间的不同 retraining-calendar offset</strong>，不是五个互不重叠的时间段。
+          排名优先考察 lower-tail excess robustness，而不是选择单次收益最高的配置。
+        </p>
+      </section>
+
+      <section class="doc-section" id="execution">
+        <h2>4. 组合与执行协议</h2>
+        <div class="kv"><div>Signal formation</div><div>T 日收盘后形成分数</div></div>
+        <div class="kv"><div>Execution</div><div>T+1 日开盘</div></div>
+        <div class="kv"><div>Portfolio</div><div>TopK dropout：<code>topk=20</code>，<code>n_drop=2</code></div></div>
+        <div class="kv"><div>Tie break</div><div><code>score desc, instrument asc</code></div></div>
+        <div class="kv"><div>Price limits</div><div>按板块和日期感知涨跌停制度；上市早期规则按对应日期处理</div></div>
+        <div class="kv"><div>Tick size</div><div>0.01 元，原始人民币价格尺度</div></div>
+        <div class="kv"><div>High-open overlay</div><div>关闭；当前 canonical protocol 不叠加 5% 高开过滤</div></div>
+        <p>
+          当前网页展示的是模型排名与 paper production 记录，不应被理解成交易所已成交订单。
+          无法成交的订单不会用榜单中下一只股票自动替补，从而保持与研究回测一致的执行语义。
+        </p>
+      </section>
+
+      <section class="doc-section" id="production">
+        <h2>5. 每日生产链路</h2>
         <ul>
-            <li>特征集 Alpha158：K 线形态（9）、动量与均线（15）、波动率（5）、趋势拟合（15）、位置分位（15）、量能结构（26）等，全部由 OHLCV 衍生</li>
-            <li>标签：<code>Ref($close, -20) / $close - 1</code>（未来 20 个交易日收益率）</li>
-            <li>训练集：2016 年至今 expanding 窗口，每 20 个交易日滚动重训</li>
-            <li>样本边界严格 point-in-time purge，无跨段标签泄漏</li>
+          <li>每个工作日北京时间 07:00 触发 Modal cron。</li>
+          <li>运行时下载最新日频数据包，并读取最新交易日。</li>
+          <li>CSI1000 canonical 必须通过严格 <code>lag=0</code> freshness gate：数据日必须是 signal date 的前一个真实交易日。</li>
+          <li>按固定 20-session 重训时钟决定重训或安全复用已验证模型 cache。</li>
+          <li>对 CSI1000 横截面预测并按确定性规则排序，生成 Top20。</li>
+          <li>GitHub 上的同日 signal artifact 视为不可变记录；若同日内容变化则拒绝覆盖。</li>
+          <li>paper portfolio 使用独立 lineage <code>stage_b_winner_canonical</code>，不继承旧 baseline 的持仓或 pending orders。</li>
         </ul>
-    </div>
+        <p>
+          当前公开生产文件保持稳定命名：<code>YYYY-MM-DD_top20_lgb158.csv</code>、
+          <code>YYYY-MM-DD_chart.json</code>、<code>YYYY-MM-DD_paper_portfolio.json</code>。
+        </p>
+      </section>
 
-    <div class="section">
-        <h2>二、股票池与当前研究状态</h2>
+      <section class="doc-section" id="risk">
+        <h2>6. 如何解释这些数字</h2>
         <ul>
-            <li><strong>生产主池 · 中证 1000</strong>：当前 canonical 为已冻结的 Stage-B winner；成分股含历史真实成分（无幸存者偏差），执行口径 top20 / nd2（每日换 2 只）</li>
-            <li><strong>研究线 · 创业板</strong>：旧模型的每日 production 更新与网页展示已暂停。研究代码和历史 artifacts 保留，待下一代模型完成独立验证并通过 production gate 后再显式恢复。</li>
-            <li><strong>当前每日选股</strong>：生产页面只发布中证 1000 Stage-B winner 的 top 20；创业板历史榜单不再作为当前生产信号展示。</li>
-            <li><strong>调仓</strong>：每日微调（daily rebalance），换掉跌出榜单最差的 nd 只</li>
-            <li><strong>涨跌停过滤（板块感知）</strong>：主板/改革前创业板 ±10%（阈值 9.5%）、科创板/改革后创业板 ±20%（阈值 19.5%）、北交所 ±30%；上市前 5 个交易日无涨跌停不剔除；ST ±5% 需外部名单（未接线，已知限制）</li>
-            <li><strong>科创板说明</strong>：独立 STAR top50/nd2 在 corrected protocol 下尚未通过 prediction-chunk reproducibility gate，因此当前 alpha 结论不可用；688 个股若属于中证 1000 成分，仍在主池中正常参与排名</li>
+          <li><strong>Stage-B 不是未来收益承诺。</strong> 23%~31% 的历史策略 CAGR 与 9%~15% 的历史年化超额只描述已消费 confirmation tail。</li>
+          <li><strong>模型 score 不是保证收益。</strong> 模型训练目标是 20 日 forward return，但每日 score 是排序输入，实际收益受市场 Beta、执行限制和未来分布变化影响。</li>
+          <li><strong>Stage-B tail 已冻结。</strong> 短期 forward 表现不佳本身不能授权回头用这段数据继续调参；新模型研究应建立新的版本与验证协议。</li>
+          <li><strong>数据与执行会失败。</strong> 数据源滞后、交易日历不可验证、cache lineage 不匹配等情况会 fail closed，而不是强行发布陈旧 CSI1000 signal。</li>
+          <li><strong>paper 不等于实盘。</strong> 真实交易仍可能面临滑点、流动性、成交量与券商执行差异。</li>
         </ul>
-    </div>
+      </section>
 
-    <div class="section">
-        <h2>三、执行协议</h2>
-        <ul>
-            <li>信号发布：每个交易日 07:00（北京时间），基于前一交易日收盘数据生成</li>
-            <li>研究回测执行时点：T 收盘形成分数，T+1 开盘调整组合</li>
-            <li>当前 corrected research protocol 不使用 5% 高开过滤叠加；榜单是 research/paper ranking，不是可执行订单</li>
-            <li><strong>Canonical research backtest</strong>：仅包含已审计的 T+1 open、连续账户、TopkDropout、板块/日期感知涨跌停和交易成本；不把 MA20 门控、size 门控或单票硬止损混入当前基线收益。</li>
-            <li class="note">历史 paper/操作层曾记录 MA20、size 风格门控与单票止损等风险规则；它们属于独立的操作性风控假设，尚未作为当前 canonical backtest 的已验证增益，因此不得用来解释上表 corrected CAGR。</li>
-        </ul>
+      <section class="doc-section" id="audit">
+        <h2>7. 审计标识</h2>
+        <p>以下标识用于把当前生产模型精确追溯到冻结的 Stage-B 研究结果。</p>
+        <details>
+          <summary>显示完整 lineage / hashes</summary>
+          <p><strong>Winner candidate ID</strong><br><code>4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2</code></p>
+          <p><strong>Model config SHA256</strong><br><code>0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88</code></p>
+          <p><strong>Stage-B result commit</strong><br><code>7a2676397b0f8e6f69c0bffc98d1764647f644ac</code></p>
+          <p><strong>Stage-B runtime snapshot</strong><br><code>51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1</code></p>
+          <p><strong>Production paper lineage</strong><br><code>stage_b_winner_canonical</code></p>
+        </details>
+      </section>
     </div>
+  </div>
 
-    <div class="section">
-        <h2>四、当前 corrected / reproducible 审计结果</h2>
-        <table>
-            <tr><th>股票池</th><th>当前证据</th><th>研究状态</th></tr>
-            <tr><td>中证 1000 top20/nd2</td><td>Stage-B winner：5/5 retraining phases 为正超额；relative excess CAGR 9.16%~15.50%，median 14.25%；worst strategy MaxDD -14.65%</td><td>Stage-B rank #1；已冻结并晋升为 canonical production</td></tr>
-            <tr><td>创业板 top20/nd3</td><td>旧 corrected screen：phase 0/5/10/15 相对 CAGR = -1.00% / -3.72% / -8.99% / -10.82%</td><td>production paused；仅保留历史研究与下一代模型开发</td></tr>
-            <tr><td>STAR top50/nd2</td><td>prediction-chunk reproducibility gate 未通过</td><td>暂不可评价 alpha；先修复 determinism/data lineage</td></tr>
-        </table>
-        <p class="note">CSI1000 当前生产选择来自已完成的 Stage A + Stage B 冻结协议；Stage-B confirmation tail 不再用于继续调参。创业板旧 +11% 级 Batch C / rolling 数字及旧 daily artifacts 仅保留为历史研究记录，不代表当前生产信号。</p>
-    </div>
-
-    <div class="section">
-        <h2>五、已知风险</h2>
-        <ul>
-            <li><strong>历史结果不等于未来收益</strong>：CSI1000 Stage-B winner 的 5-phase relative excess CAGR 为 9.16%~15.50%，用于确认重训相位稳健性，不应外推为未来收益承诺</li>
-            <li><strong>指数 Beta 全自担</strong>：绝对收益 = 指数涨跌 + 选股超额；2022 年中证 1000 跌 21%，组合约亏 10%</li>
-            <li><strong>小盘股流动性约束</strong>：组合规模上限约 100~400 万元</li>
-            <li><strong>基准口径差异</strong>：CSI1000 使用价格指数；ChiNext/STAR 使用项目内等权合成基准，跨池 relative CAGR 不应直接相加比较</li>
-        </ul>
-    </div>
-
-    <div class="section">
-        <h2>六、数据管道</h2>
-        <ul>
-            <li>数据源：chenditc/investment_data A 股日频全量包（append-only，已实证零修订）</li>
-            <li>计算：Modal serverless（非抢占容器），每交易日 07:00 自动运行</li>
-            <li>信号存证：GitHub 不可变提交（paper trading 审计留痕）</li>
-        </ul>
-    </div>
-
-    <div class="back-row">
-        <a href="./" class="back-link">← 返回信号列表</a>
-    </div>
-
-    <footer>
-        <p>⚠️ <b>免责声明</b>：本页仅为学术研究与实验性工程验证，不构成任何投资建议。据此操作风险自负。</p>
-    </footer>
-</div>
+  <footer class="footer">
+    <span>本页是研究与工程审计文档，不构成投资建议。</span>
+    <span><a href="./">← 返回每日信号</a></span>
+  </footer>
+</main>
 </body>
 </html>
