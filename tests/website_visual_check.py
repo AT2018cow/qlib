@@ -109,7 +109,9 @@ def inspect_viewport(browser, base_url, width: int):
     OUT.mkdir(parents=True, exist_ok=True)
     page.screenshot(path=str(OUT / f"dashboard-fixture-awaiting-{width}.png"), full_page=True)
     page.locator(".date-btn").nth(1).click()
-    assert page.locator("#stat-lineage").inner_text() == "历史 / 未核验"
+    page.wait_for_function("document.getElementById('stat-lineage')?.textContent === '历史 / 未核验'")
+    if width in (390, 320):
+        page.screenshot(path=str(OUT / f"dashboard-fixture-historical-{width}.png"), full_page=True)
     page.close()
     return actual
 
