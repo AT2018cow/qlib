@@ -75,8 +75,8 @@ def test_public_site_uses_shared_stylesheet():
     methodology = (ROOT / "website" / "methodology.html").read_text()
     styles = ROOT / "website" / "styles.css"
     assert styles.is_file()
-    assert 'href="styles.css?v=2"' in index
-    assert 'href="styles.css?v=2"' in methodology
+    assert 'href="styles.css?v=3"' in index
+    assert 'href="styles.css?v=3"' in methodology
 
 
 def test_dashboard_dark_theme_and_responsive_layout():
