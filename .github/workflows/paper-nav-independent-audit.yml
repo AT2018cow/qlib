@@ -1,0 +1,58 @@
+name: Paper NAV independent accounting audit (read-only)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/audit_paper_nav.py'
+      - 'tests/test_paper_nav_independent_audit.py'
+      - '.github/workflows/paper-nav-independent-audit.yml'
+      - 'docs/experiments/24-paper-nav-independent-audit-20261008.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ledger-reconciliation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install minimal test requirements
+        run: python -m pip install --disable-pip-version-check pytest
+      - name: Unit test independent Decimal ledger
+        run: python -m pytest -q tests/test_paper_nav_independent_audit.py
+      - name: Generate public forward JSON from checked-in artifacts (temp only)
+        run: |
+          mkdir -p artifacts/paper-nav-audit
+          python scripts/build_forward_performance.py \
+            --signals results/signals \
+            --output artifacts/paper-nav-audit/forward.json
+      - name: Independently reconcile checked-in paper artifacts
+        run: |
+          python scripts/audit_paper_nav.py \
+            --signals results/signals \
+            --forward artifacts/paper-nav-audit/forward.json \
+            --output artifacts/paper-nav-audit/nav-audit.json
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          row = json.loads(Path("artifacts/paper-nav-audit/nav-audit.json").read_text())
+          summary = (f"### Independent paper NAV audit\n"
+                     f"Status: **{row['status']}**; execution reports: **{row['audited_reports']}**; "
+                     f"issues: **{len(row['issues'])}**.\n\n"
+                     "NOT_STARTED is not a passing real-money/performance audit. "
+                     "External immutable quote/calendar evidence is not available in this CI job.\n")
+          print(summary)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write(summary)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: paper-nav-readonly-audit
+          path: artifacts/paper-nav-audit/
+          if-no-files-found: warn
