@@ -1,0 +1,35 @@
+name: Website visual review (fixture)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'website/**'
+      - 'tests/website_visual_check.py'
+      - '.github/workflows/website-visual-review.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chromium-visual-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Chromium browser runner
+        run: |
+          python -m pip install --disable-pip-version-check playwright==1.55.0
+          python -m playwright install --with-deps chromium
+      - name: Screenshot responsive dashboard and verify geometry
+        run: python tests/website_visual_check.py
+      - name: Upload browser review screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-browser-fixture-screenshots
+          path: artifacts/website-visual-qa/*.png
+          if-no-files-found: warn
