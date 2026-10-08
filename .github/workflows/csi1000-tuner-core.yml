@@ -14,6 +14,8 @@ on:
       - 'signal_publication_gate.py'
       - 'paper_portfolio.py'
       - 'forward_performance.py'
+      - 'chart_series.py'
+      - 'tests/test_chart_series.py'
       - 'scripts/build_forward_performance.py'
       - 'modal_qlib_cn_a10g.py'
       - 'tests/test_csi1000_production_config.py'
@@ -48,6 +50,8 @@ on:
       - 'signal_publication_gate.py'
       - 'paper_portfolio.py'
       - 'forward_performance.py'
+      - 'chart_series.py'
+      - 'tests/test_chart_series.py'
       - 'scripts/build_forward_performance.py'
       - 'modal_qlib_cn_a10g.py'
       - 'tests/test_csi1000_production_config.py'
@@ -90,6 +94,7 @@ jobs:
           signal_publication_gate.py
           paper_portfolio.py
           forward_performance.py
+          chart_series.py
           scripts/build_forward_performance.py
           modal_qlib_cn_a10g.py
       - name: Validate website JavaScript
@@ -102,6 +107,7 @@ jobs:
           tests/test_csi1000_production_config.py
           tests/test_paper_portfolio.py
           tests/test_forward_performance.py
+          tests/test_chart_series.py
           tests/test_cron_gate.py
           tests/test_modal_structure.py
           tests/test_production_surface.py
