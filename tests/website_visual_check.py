@@ -128,11 +128,11 @@ def inspect_viewport(browser, base_url, width: int):
     page.wait_for_function("document.getElementById('stat-lineage')?.textContent === '历史 / 未核验'")
     after_history = len(signals_requests)
     assert after_history == initial_requests + 2, signals_requests
+    if width in (390, 320):
+        page.screenshot(path=str(OUT / f"dashboard-fixture-historical-{width}.png"), full_page=True)
     page.locator(".date-btn").first.click()
     page.wait_for_function("document.getElementById('stat-lineage')?.textContent === 'Stage-B winner'")
     assert len(signals_requests) == after_history, "previously loaded context should be cached"
-    if width in (390, 320):
-        page.screenshot(path=str(OUT / f"dashboard-fixture-historical-{width}.png"), full_page=True)
     page.close()
     return {**actual, "first_load_data_requests": initial_requests, "after_history_data_requests": after_history, "data_404s": 0}
 
