@@ -3914,13 +3914,38 @@ def daily_cron():
 
     print(f"[cron] {signal_date} 为交易日（或日历降级 fail-open）——启动两池训练/推理")
     res = None
+    res_stage_b_winner = None
     res_chi = None
     pool_errors = {}
     try:
-        res = daily_standalone.remote(topk=20, nd=2, market="csi1000")
+        from csi1000_production_config import BASELINE_PROFILE
+
+        res = daily_standalone.remote(
+            topk=20,
+            nd=2,
+            market="csi1000",
+            csi1000_profile=BASELINE_PROFILE,
+        )
     except Exception as csi_err:  # pylint: disable=W0703
         pool_errors["csi1000"] = f"{type(csi_err).__name__}: {str(csi_err)[:300]}"
         print(f"[cron] ⚠️ csi1000 池失败（chinext 仍可独立发布）: {pool_errors['csi1000']}")
+    try:
+        from csi1000_production_config import WINNER_PROFILE
+
+        res_stage_b_winner = daily_standalone.remote(
+            topk=20,
+            nd=2,
+            market="csi1000",
+            csi1000_profile=WINNER_PROFILE,
+        )
+    except Exception as winner_err:  # pylint: disable=W0703
+        pool_errors["csi1000_stage_b_winner"] = (
+            f"{type(winner_err).__name__}: {str(winner_err)[:300]}"
+        )
+        print(
+            "[cron] ⚠️ Stage-B winner shadow 失败（不阻断 canonical 发布）: "
+            f"{pool_errors['csi1000_stage_b_winner']}"
+        )
     try:
         # nd=3 = chinext 批次A 网格胜出值 + 批次C 终审口径（低换手形态）
         # nd 不改变 RANKING-ONLY 榜单内容，仅保证配置元数据与已终审参数一致
@@ -3953,6 +3978,12 @@ def daily_cron():
         print(f"[cron] ⚠️ 双池数据日不一致: csi1000={res['date']} chinext={res_chi['date']}；仅发布 csi1000")
         res_chi = None
         data_date = res["date"]
+    if res_stage_b_winner is not None and res_stage_b_winner["date"] != data_date:
+        print(
+            "[cron] ⚠️ Stage-B winner shadow 数据日与 canonical 不一致: "
+            f"winner={res_stage_b_winner['date']} canonical={data_date}；跳过 shadow"
+        )
+        res_stage_b_winner = None
 
     # R28: build stateful paper artifacts only after the data/publication gate
     # has passed.  State is proposed now but persisted only after immutable
@@ -3966,13 +3997,50 @@ def daily_cron():
         files[f"results/signals/{signal_date}_top20_lgb158.csv"] = res["csv_content"]
         files[f"results/signals/{signal_date}_chart.json"] = res["chart_json"]
         if paper_enabled:
-            paper_proposals["csi1000"] = _apply_paper_portfolio(res, signal_date, topk=20, nd=2)
+            paper_proposals["csi1000"] = _apply_paper_portfolio(
+                res, signal_date, topk=20, nd=2, lineage="canonical"
+            )
             files[f"results/signals/{signal_date}_paper_portfolio.json"] = paper_proposals["csi1000"]["artifact_json"]
+
+            # Forward control starts from an independent zero-inception account
+            # while consuming the exact same Stage-B baseline signal as the
+            # canonical stream.  The historical canonical state is operational
+            # continuity only and is not a clean winner-vs-baseline control.
+            paper_proposals["csi1000_stage_b_baseline_shadow"] = _apply_paper_portfolio(
+                res,
+                signal_date,
+                topk=20,
+                nd=2,
+                lineage="stage_b_baseline_shadow",
+            )
+            files[
+                f"results/signals/{signal_date}_paper_portfolio_stage_b_baseline_shadow.json"
+            ] = paper_proposals["csi1000_stage_b_baseline_shadow"]["artifact_json"]
+    if res_stage_b_winner is not None:
+        files[
+            f"results/signals/{signal_date}_top20_lgb158_stage_b_winner_shadow.csv"
+        ] = res_stage_b_winner["csv_content"]
+        files[
+            f"results/signals/{signal_date}_chart_stage_b_winner_shadow.json"
+        ] = res_stage_b_winner["chart_json"]
+        if paper_enabled:
+            paper_proposals["csi1000_stage_b_winner_shadow"] = _apply_paper_portfolio(
+                res_stage_b_winner,
+                signal_date,
+                topk=20,
+                nd=2,
+                lineage="stage_b_winner_shadow",
+            )
+            files[
+                f"results/signals/{signal_date}_paper_portfolio_stage_b_winner_shadow.json"
+            ] = paper_proposals["csi1000_stage_b_winner_shadow"]["artifact_json"]
     if res_chi is not None:
         files[f"results/signals/{signal_date}_top20_lgb158_chinext.csv"] = res_chi["csv_content"]
         files[f"results/signals/{signal_date}_chart_chinext.json"] = res_chi["chart_json"]
         if paper_enabled:
-            paper_proposals["chinext"] = _apply_paper_portfolio(res_chi, signal_date, topk=20, nd=3)
+            paper_proposals["chinext"] = _apply_paper_portfolio(
+                res_chi, signal_date, topk=20, nd=3, lineage="canonical"
+            )
             files[f"results/signals/{signal_date}_paper_portfolio_chinext.json"] = paper_proposals["chinext"]["artifact_json"]
 
     def _persist_paper_states():
@@ -4020,8 +4088,15 @@ def daily_cron():
         message=f"chore(signal): {signal_date} repair/publish {len(missing_files)} signal artifacts (cron)",
     )
     _persist_paper_states()
-    published_pools = int(res is not None) + int(res_chi is not None)
-    print(f"[cron] ✅ 已补发/推送 {len(missing_files)} 个文件，覆盖 {published_pools} 个成功股票池: {signal_date}")
+    published_streams = (
+        int(res is not None)
+        + int(res_stage_b_winner is not None)
+        + int(res_chi is not None)
+    )
+    print(
+        f"[cron] ✅ 已补发/推送 {len(missing_files)} 个文件，"
+        f"覆盖 {published_streams} 个成功信号流: {signal_date}"
+    )
 
     # ---- 名称映射每日自动更新（akshare 全量拉取，有变化才推送；失败不影响信号）----
     try:
