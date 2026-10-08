@@ -16,6 +16,7 @@ on:
       - 'forward_performance.py'
       - 'chart_series.py'
       - 'tests/test_chart_series.py'
+      - 'tests/test_sparkline_frontend.cjs'
       - 'scripts/build_forward_performance.py'
       - 'modal_qlib_cn_a10g.py'
       - 'tests/test_csi1000_production_config.py'
@@ -52,6 +53,7 @@ on:
       - 'forward_performance.py'
       - 'chart_series.py'
       - 'tests/test_chart_series.py'
+      - 'tests/test_sparkline_frontend.cjs'
       - 'scripts/build_forward_performance.py'
       - 'modal_qlib_cn_a10g.py'
       - 'tests/test_csi1000_production_config.py'
@@ -99,6 +101,8 @@ jobs:
           modal_qlib_cn_a10g.py
       - name: Validate website JavaScript
         run: node --check website/app.js
+      - name: Verify sparkline behavior and CSS layout semantics
+        run: node --test tests/test_sparkline_frontend.cjs
       - name: Run full CSI1000 Stage-A, Stage-B and production contract tests
         run: >-
           python -m pytest -q
