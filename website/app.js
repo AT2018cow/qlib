@@ -2,7 +2,7 @@
 // Historical/research pool artifacts remain in the repository but are not part
 // of the public production surface.
 const CSV_BASE = 'signals';
-const NAME_MAP_URL = `${CSV_BASE}/code_name_map.csv`;
+const DATE_INDEX_URL = CSV_BASE + '/available_dates.json';
 
 const PRODUCTION = {
   pool: '中证1000',
@@ -17,9 +17,10 @@ const PRODUCTION = {
 const qlibCode = inst => inst.replace(/^(SH|SZ|BJ)/, '');
 const sinaUrl = inst => `https://finance.sina.com.cn/realstock/company/${inst.toLowerCase()}/nc.shtml`;
 
-async function fetchText(url) {
+async function fetchText(url, fresh = false) {
   try {
-    const r = await fetch(url, { cache: 'no-store' });
+    // Revalidate changing snapshots; let the browser cache older history.
+    const r = await fetch(url, { cache: fresh ? 'no-cache' : 'default' });
     if (!r.ok) return null;
     return r.text();
   } catch (_) {
@@ -116,42 +117,26 @@ function makeSparkline(values, w = 128, h = 34) {
   return `<svg class="sparkline-svg" viewBox="0 0 ${w} ${h}" aria-hidden="true">${paths}</svg>`;
 }
 
-async function loadNameMap() {
-  const rows = parseCSV(await fetchText(NAME_MAP_URL));
-  const map = {};
-  rows.forEach(r => { if (r.code) map[r.code] = r.name; });
-  return map;
-}
-
 async function loadAvailableDates() {
-  const now = new Date();
-  const candidates = [];
-  for (let i = 0; i < 45; i++) {
-    const d = new Date(now - i * 86400000);
-    if (d.getDay() === 0 || d.getDay() === 6) continue;
-    candidates.push(
-      d.getFullYear() + '-' +
-      String(d.getMonth() + 1).padStart(2, '0') + '-' +
-      String(d.getDate()).padStart(2, '0')
-    );
+  // Pages publishes actual dates; never probe nonexistent calendar weekdays.
+  const manifest = parseJSONLoose(await fetchText(DATE_INDEX_URL, true));
+  if (!manifest || manifest.version !== 1 || !Array.isArray(manifest.dates) ||
+      !manifest.dates.length || manifest.dates.length > 25 ||
+      !manifest.names || typeof manifest.names !== 'object' || Array.isArray(manifest.names) ||
+      manifest.dates.some((day, i) =>
+        !Number.isFinite(dateKeyToUTC(day)) ||
+        (i > 0 && manifest.dates[i - 1] <= day))) {
+    return null;
   }
-
-  const results = await Promise.all(candidates.map(async date => {
-    const text = await fetchText(`${CSV_BASE}/${date}_top20_lgb158.csv`);
-    return text ? { date, text } : null;
-  }));
-  return results.filter(Boolean).sort((a, b) => b.date.localeCompare(a.date));
+  return { dates: manifest.dates.map(date => ({ date })), nameMap: manifest.names };
 }
 
-async function loadDateContext(date) {
+async function loadDateContext(date, fresh = false) {
   const [chartText, paperText] = await Promise.all([
-    fetchText(`${CSV_BASE}/${date}_chart.json`),
-    fetchText(`${CSV_BASE}/${date}_paper_portfolio.json`),
+    fetchText(CSV_BASE + '/' + date + '_chart.json', fresh),
+    fetchText(CSV_BASE + '/' + date + '_paper_portfolio.json', fresh),
   ]);
-  return {
-    chart: parseJSONLoose(chartText),
-    paper: parseJSONLoose(paperText),
-  };
+  return { chart: parseJSONLoose(chartText), paper: parseJSONLoose(paperText) };
 }
 
 // Frontend trust boundary: only a validated forward-only artifact may
@@ -203,7 +188,7 @@ function isPossiblyStale(latestDate, now = new Date()) {
 }
 
 async function loadForwardPerformance() {
-  const text = await fetchText(CSV_BASE + '/csi1000_forward_performance.json');
+  const text = await fetchText(CSV_BASE + '/csi1000_forward_performance.json', true);
   if (text === null) return { status: 'unavailable' };
   return normalizeForwardPerformance(parseJSONLoose(text));
 }
@@ -300,8 +285,7 @@ function isWinnerCanonical(paper) {
   );
 }
 
-function buildRows(dateInfo, nameMap, prev, chartData) {
-  const rows = parseCSV(dateInfo.text);
+function buildRows(rows, nameMap, prev, chartData) {
   const prevCodes = new Set(prev ? prev.map(r => r.instrument) : []);
   const prevRank = {};
   if (prev) prev.forEach(r => { prevRank[r.instrument] = Number(r.rank); });
@@ -490,65 +474,98 @@ function pageShell(dates) {
 
 async function main() {
   const app = document.getElementById('app');
-  const [nameMap, dates, forwardPerformance] = await Promise.all([
-    loadNameMap(),
-    loadAvailableDates(),
-    loadForwardPerformance(),
-  ]);
+  // Forward status is independent and must not delay the ranking.
+  const forwardPromise = loadForwardPerformance();
+  const index = await loadAvailableDates();
 
-  if (!dates.length) {
-    app.innerHTML = `<main class="shell"><nav class="topbar"><a class="brand" href="./">Qlib Signal Lab</a><a href="methodology.html">方法论</a></nav><div class="callout" role="status"><strong>暂无可用信号。</strong> 最近查询范围内没有找到 CSI1000 信号文件，无法确认是尚未发布还是资源不可用。</div></main>`;
+  if (!index) {
+    app.innerHTML = '<main class="shell"><nav class="topbar"><a class="brand" href="./">Qlib Signal Lab</a><a href="methodology.html">方法论</a></nav><div class="callout" role="alert"><strong>日期索引暂不可用。</strong> 无法确认最新 CSI1000 榜单，请稍后刷新。不会以猜测的交易日或过期资料代替生产信号。</div></main>';
     return;
   }
 
+  const { dates, nameMap } = index;
   app.innerHTML = pageShell(dates);
-  renderForwardPerformance(forwardPerformance);
+  forwardPromise.then(renderForwardPerformance);
+
+  // One CSV fetch per date per session, including rank comparisons.
+  const csvCache = new Map();
+  function loadDateRows(date) {
+    if (!csvCache.has(date)) {
+      csvCache.set(date, fetchText(CSV_BASE + '/' + date + '_top20_lgb158.csv',
+        date === dates[0].date).then(parseCSV));
+    }
+    return csvCache.get(date);
+  }
 
   let latestDateRequest = 0;
   async function renderDate(dateInfo) {
     const request = ++latestDateRequest;
-    const container = document.querySelector(".signal-table");
-    if (container) container.setAttribute("aria-busy", "true");
-    document.getElementById("artifact-status").textContent = "正在加载日期记录…";
+    const container = document.querySelector('.signal-table');
+    if (container) container.setAttribute('aria-busy', 'true');
+    document.getElementById('artifact-status').textContent = '正在加载日期记录…';
     const idx = dates.findIndex(d => d.date === dateInfo.date);
-    const prev = idx >= 0 && idx + 1 < dates.length ? parseCSV(dates[idx + 1].text) : null;
-    const ctx = await loadDateContext(dateInfo.date);
-    // A slower prior request must never overwrite a more recent date choice.
+    const previousPromise = idx >= 0 && idx + 1 < dates.length
+      ? loadDateRows(dates[idx + 1].date) : Promise.resolve(null);
+    const ctxPromise = loadDateContext(dateInfo.date, dateInfo.date === dates[0].date);
+    const rows = await loadDateRows(dateInfo.date);
     if (request !== latestDateRequest) return;
-    const rows = buildRows(dateInfo, nameMap, prev, ctx.chart);
-    const winner = isWinnerCanonical(ctx.paper);
 
-    document.getElementById('signal-rows').innerHTML = tableRows(rows);
-    document.getElementById('mobile-cards').innerHTML = mobileCards(rows);
-    document.getElementById('stat-date').textContent = formatDate(dateInfo.date);
-    document.getElementById('stat-data-date').textContent =
-      formatDate(ctx.paper?.signal_data_date || null);
-    document.getElementById('stat-fit-date').textContent =
-      formatDate(ctx.paper?.model_fit_asof || null);
-    document.getElementById('stat-lineage').textContent = winner ? 'Stage-B winner' : '历史 / 未核验';
-    document.getElementById('stat-lineage-sub').textContent = winner
-      ? '当前生产版本'
-      : '历史记录未包含当前版本标识';
-    document.getElementById('artifact-status').innerHTML = winner
-      ? '<span class="status-pill"><span class="status-dot"></span> Stage-B winner · 已核验</span>'
-      : '<span class="status-pill history">历史记录 / 版本未确认</span>';
+    if (!rows.length) {
+      document.getElementById('signal-rows').innerHTML = '';
+      document.getElementById('mobile-cards').innerHTML = '';
+      document.getElementById('artifact-status').textContent = '该日信号文件无法读取';
+      document.getElementById('stat-date').textContent = formatDate(dateInfo.date);
+      document.getElementById('stat-data-date').textContent = '—';
+      document.getElementById('stat-fit-date').textContent = '—';
+      document.getElementById('stat-lineage').textContent = '未核验';
+      document.getElementById('stat-lineage-sub').textContent = '信号文件缺失或读取失败';
+      if (container) container.setAttribute('aria-busy', 'false');
+      return;
+    }
 
-    document.querySelectorAll('.date-btn').forEach(btn => {
-      const active = btn.dataset.date === dateInfo.date;
-      btn.classList.toggle('current', active);
-      btn.setAttribute('aria-pressed', String(active));
-    });
-    if (container) container.setAttribute("aria-busy", "false");
+    function paint(previous, ctx) {
+      if (request !== latestDateRequest) return;
+      const built = buildRows(rows, nameMap, previous, ctx?.chart);
+      document.getElementById('signal-rows').innerHTML = tableRows(built);
+      document.getElementById('mobile-cards').innerHTML = mobileCards(built);
+      document.getElementById('stat-date').textContent = formatDate(dateInfo.date);
+      const paper = ctx?.paper;
+      document.getElementById('stat-data-date').textContent = formatDate(paper?.signal_data_date || null);
+      document.getElementById('stat-fit-date').textContent = formatDate(paper?.model_fit_asof || null);
+      const winner = isWinnerCanonical(paper);
+      document.getElementById('stat-lineage').textContent =
+        ctx ? (winner ? 'Stage-B winner' : '历史 / 未核验') : '核验中';
+      document.getElementById('stat-lineage-sub').textContent = ctx
+        ? (winner ? '当前生产版本' : '历史记录未包含当前版本标识') : '正在加载版本资料';
+      document.getElementById('artifact-status').innerHTML = !ctx
+        ? '预测排名已载入 · 正在获取走势图与版本资料'
+        : (winner
+          ? '<span class="status-pill"><span class="status-dot"></span> Stage-B winner · 已核验</span>'
+          : '<span class="status-pill history">历史记录 / 版本未确认</span>');
+      document.querySelectorAll('.date-btn').forEach(btn => {
+        const active = btn.dataset.date === dateInfo.date;
+        btn.classList.toggle('current', active);
+        btn.setAttribute('aria-pressed', String(active));
+      });
+    }
+
+    // Show real Top20 as soon as its small CSV arrives; metadata is pending.
+    // The interim "无对照" tag is never misrepresented as a new position.
+    paint(null, null);
+    const [previous, ctx] = await Promise.all([previousPromise, ctxPromise]);
+    if (request !== latestDateRequest) return;
+    paint(previous, ctx);
+    if (container) container.setAttribute('aria-busy', 'false');
   }
 
   document.querySelectorAll('.date-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const d = dates.find(x => x.date === btn.dataset.date);
-      if (d) await renderDate(d);
+    btn.addEventListener('click', () => {
+      const d = dates.find(item => item.date === btn.dataset.date);
+      if (d) renderDate(d);
     });
   });
 
-  await renderDate(dates[0]);
+  renderDate(dates[0]);
 }
 
 main();
