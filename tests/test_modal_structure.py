@@ -185,3 +185,18 @@ def test_daily_chart_uses_calendar_aligned_series():
     assert "start_index, values = _read_bin(close_bin)" in src
     assert "calendar_length=len(cal_lines)" in src
     assert "window=60" in src
+
+
+
+def test_factor_aware_paper_execution_context_cannot_silently_drop_qlib_factor():
+    """A source-only guard: production must pass same-day adjusted-price factors."""
+    context = src.split("def _paper_execution_context(", 1)[1].split(
+        "\ndef _apply_paper_portfolio(", 1
+    )[0]
+    settlement = src.split("def _apply_paper_portfolio(", 1)[1].split(
+        "\ndef ", 1
+    )[0]
+    assert '"$open", "Ref($close,1)", "$close", "$factor"' in context
+    assert "factor_by_symbol[inst] = factor" in context
+    assert '"factors": factor_by_symbol' in context
+    assert 'factors=ctx.get("factors", {})' in settlement
