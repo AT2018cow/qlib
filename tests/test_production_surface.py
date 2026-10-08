@@ -74,8 +74,8 @@ def test_public_site_uses_shared_stylesheet():
     methodology = (ROOT / "website" / "methodology.html").read_text()
     styles = ROOT / "website" / "styles.css"
     assert styles.is_file()
-    assert 'href="styles.css?v=3"' in index
-    assert 'href="styles.css?v=3"' in methodology
+    assert 'href="styles.css?v=4"' in index
+    assert 'href="styles.css?v=4"' in methodology
 
 
 def test_dashboard_dark_theme_and_responsive_layout():
@@ -88,7 +88,27 @@ def test_dashboard_dark_theme_and_responsive_layout():
     assert ".table-wrap { display: none; }" in styles
     assert ".mobile-cards { display: grid;" in styles
     assert ".doc-grid { grid-template-columns: 1fr;" in styles
-    assert 'src="app.js?v=19"' in index
+    assert 'src="app.js?v=20"' in index
+
+
+def test_forward_performance_panel_is_forward_only_from_20261012():
+    app = (ROOT / "website" / "app.js").read_text()
+    methodology = (ROOT / "website" / "methodology.html").read_text()
+    styles = (ROOT / "website" / "styles.css").read_text()
+    assert "csi1000_forward_performance.json" in app
+    assert "2026-10-12" in app
+    assert "模型累计收益" in app
+    assert "performance-panel" in app
+    assert ".performance-chart" in styles
+    assert "2026-10-12" in methodology
+    assert "不会把此前回测或历史 paper 收益回填" in methodology
+
+
+def test_pages_builds_forward_performance_artifact():
+    workflow = (ROOT / ".github" / "workflows" / "website-deploy.yml").read_text()
+    assert "scripts/build_forward_performance.py" in workflow
+    assert "--output _site/signals/csi1000_forward_performance.json" in workflow
+    assert "test -s _site/signals/csi1000_forward_performance.json" in workflow
 
 
 def test_missing_history_metadata_is_not_fabricated():
