@@ -1,0 +1,60 @@
+{
+  "state_version": 2,
+  "market": "csi1000",
+  "paper_lineage": "stage_b_winner_canonical",
+  "production_lineage": {
+    "candidate_id": "4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2",
+    "stage_a_rank": 5,
+    "model_params": {
+      "learning_rate": 0.08,
+      "colsample_bytree": 0.8,
+      "lambda_l1": 10.0,
+      "lambda_l2": 400.0,
+      "max_depth": 6,
+      "num_leaves": 63,
+      "min_data_in_leaf": 50
+    },
+    "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+    "profile": "stage_b_winner",
+    "contract_version": "csi1000_stage_b_forward_v1",
+    "stage_b_result_commit": "7a2676397b0f8e6f69c0bffc98d1764647f644ac",
+    "stage_b_snapshot_token": "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1",
+    "stage_b_result_path": "results/csi1000_stage_b/stage_b_full_51756897fc752304.json",
+    "lightgbm_num_threads": 20
+  },
+  "signal_data_date": "2026-10-08",
+  "usage_date": "2026-10-09",
+  "execution_report": null,
+  "pending_orders": {
+    "signal_date": "2026-10-08",
+    "execution_date": "2026-10-09",
+    "sell": [],
+    "buy": [
+      "SH688141",
+      "SH688048",
+      "SH688362",
+      "SH688403",
+      "SH688668",
+      "SZ301392",
+      "SH688146",
+      "SH688372",
+      "SZ002484",
+      "SH688147",
+      "SH605376",
+      "SH603516",
+      "SZ000828",
+      "SH688409",
+      "SH600305",
+      "SH600787",
+      "SH601333",
+      "SH603883",
+      "SZ002091",
+      "SH600033"
+    ]
+  },
+  "cash": 100000000.0,
+  "n_positions": 0,
+  "positions": {},
+  "model_fit_asof": "2026-10-08",
+  "note": "Orders are planned before the execution-day open and settled on a later data refresh using the recorded open. If provider data is stale, the prior pending order remains frozen and no new paper order is invented."
+}
