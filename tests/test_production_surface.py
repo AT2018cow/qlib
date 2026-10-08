@@ -88,7 +88,7 @@ def test_dashboard_dark_theme_and_responsive_layout():
     assert ".table-wrap { display: none; }" in styles
     assert ".mobile-cards { display: grid;" in styles
     assert ".doc-grid { grid-template-columns: 1fr;" in styles
-    assert 'src="app.js?v=18"' in index
+    assert 'src="app.js?v=19"' in index
 
 
 def test_missing_history_metadata_is_not_fabricated():
