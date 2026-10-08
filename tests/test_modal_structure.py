@@ -37,10 +37,17 @@ EXPECTED_FUNCTIONS = [
 
 
 def _decorator_block(func_name):
-    """Return the @app.function(...) parameter text for a given function."""
-    m = re.search(rf"@app\.function\((.*?)\)\ndef {func_name}\(", src, re.DOTALL)
-    assert m is not None, f"function {func_name} not found or not decorated"
-    return m.group(1)
+    """Return only the @app.function(...) immediately decorating func_name."""
+    func_marker = f"\ndef {func_name}("
+    func_pos = src.find(func_marker)
+    assert func_pos >= 0, f"function {func_name} not found"
+    decorator_pos = src.rfind("@app.function(", 0, func_pos)
+    assert decorator_pos >= 0, f"function {func_name} not decorated"
+    end_marker = f")\ndef {func_name}("
+    decorator_end = src.find(end_marker, decorator_pos)
+    assert decorator_end >= 0 and decorator_end < func_pos, \
+        f"decorator for {func_name} is not immediately adjacent"
+    return src[decorator_pos + len("@app.function("):decorator_end]
 
 
 def test_all_functions_defined():
