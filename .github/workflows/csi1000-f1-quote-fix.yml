@@ -1,0 +1,35 @@
+name: CSI1000 F1 quote-universe regression (CPU only)
+
+on:
+  push:
+    branches: ["fix/csi1000-f1-quote-universe-20261009"]
+    paths:
+      - "execution_quote_universe.py"
+      - "csi1000_stage_b.py"
+      - "audit/replay_stage_b_f1.py"
+      - "tests/test_execution_quote_universe.py"
+      - ".github/workflows/csi1000-f1-quote-fix.yml"
+  pull_request:
+    paths:
+      - "execution_quote_universe.py"
+      - "csi1000_stage_b.py"
+      - "audit/replay_stage_b_f1.py"
+      - "tests/test_execution_quote_universe.py"
+      - ".github/workflows/csi1000-f1-quote-fix.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-quote-union:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Parse changed Python modules without importing Modal or Qlib
+        run: python -m py_compile execution_quote_universe.py csi1000_stage_b.py audit/replay_stage_b_f1.py tests/test_execution_quote_universe.py
+      - name: Minimal deterministic F1 quote-universe tests
+        run: python -m unittest discover -s tests -p "test_execution_quote_universe.py" -v
