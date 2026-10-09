@@ -367,7 +367,7 @@ def main() -> None:
                             "candidate": args.candidate,
                             "phases": args.phases,
                             "market_execution": "NOT_CERTIFIED"},
-                           indent=2, allow_nan=False) + "\\n"
+                           indent=2, allow_nan=False) + "\n"
             )
         raise
     print(json.dumps({"cells": len(result["cells"]), "ledger_match": result["all_research_accounting_pass"],
