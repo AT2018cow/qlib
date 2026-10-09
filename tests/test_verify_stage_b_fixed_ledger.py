@@ -117,7 +117,7 @@ class FixedLedgerUnitTest(unittest.TestCase):
             cmd = [sys.executable, "-m", "audit.verify_stage_b_fixed_ledger",
                    "--repo-root", str(repo),
                    "--provider-uri", str(tmp / "missing_provider"),
-                   "--provider-snapshot", str(tmp / "missing_snapshot.json"),
+                   "--provider-snapshot", str(tmp / "snapshot_dir" / "missing_snapshot.json"),
                    "--candidate", "baseline", "--phases", "phase0",
                    "--output-dir", str(out)]
             proc = subprocess.run(cmd, cwd=repo, capture_output=True, text=True)
