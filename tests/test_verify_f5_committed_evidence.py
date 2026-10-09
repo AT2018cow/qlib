@@ -85,7 +85,7 @@ class F5PublishedEvidenceTests(unittest.TestCase):
     def test_mutated_execution_order_or_account_fails(self):
         cases = [
             ("execution_orders.csv", "filled_qty", "0", "decision filled quantity"),
-            ("daily_legacy_vs_fixed.csv", "fixed_account", "1", "cash + holdings"),
+            ("daily_legacy_vs_fixed.csv", "fixed_account", "1", "reconstructed account"),
             ("decision_vs_signal.csv", "match", "False", "signal/order reconstruction"),
         ]
         for filename, col, new_value, diagnostic in cases:
