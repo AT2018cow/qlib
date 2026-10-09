@@ -1,0 +1,67 @@
+name: CSI1000 Stage-B F6 frozen input preflight (CPU only)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "audit/stage_b_f6_preflight.py"
+      - "tests/test_stage_b_f6_preflight.py"
+      - "results/csi1000_stage_b/audit_reports/**"
+      - "results/csi1000_stage_b/stage_b_full_51756897fc752304.json"
+      - ".github/workflows/csi1000-stage-b-f6-preflight.yml"
+  push:
+    branches: ["main", "audit/f6-ten-phase-frozen-input-gates-20261009"]
+    paths:
+      - "audit/stage_b_f6_preflight.py"
+      - "tests/test_stage_b_f6_preflight.py"
+      - "results/csi1000_stage_b/audit_reports/**"
+      - "results/csi1000_stage_b/stage_b_full_51756897fc752304.json"
+      - ".github/workflows/csi1000-stage-b-f6-preflight.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ten-phase-original-inputs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Python syntax checks without Qlib/Modal
+        run: python -m py_compile audit/stage_b_f6_preflight.py tests/test_stage_b_f6_preflight.py
+      - name: Check 10 immutable source report SHA256 values and fail-closed source gates
+        run: python -m unittest discover -s tests -p "test_stage_b_f6_preflight.py" -v
+      - name: Produce read-only F6 input evidence inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m audit.stage_b_f6_preflight | tee f6-frozen-input-preflight.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r = json.loads(Path("f6-frozen-input-preflight.json").read_text())
+          assert r["total_phases"] == 10
+          assert r["report_hashes_verified"] == 10
+          assert r["overall_f6"] == "BLOCKED"
+          assert r["source_pairs_ready"] + r["source_pairs_blocked"] == 10
+          with open("f6-frozen-input-summary.md", "w") as f:
+              f.write(
+                  "### Frozen Stage-B F6 input inventory (not an execution replay)\n\n"
+                  f"- Original phase reports verified: {r['report_hashes_verified']}/10\n"
+                  f"- Original signal+decision pairs ready: {r['source_pairs_ready']}/10\n"
+                  f"- Missing original phase inputs: {r['source_pairs_blocked']}/10\n"
+                  f"- F6 real-market execution: **{r['overall_f6']}**\n"
+                  "- No nine-phase fixed replay, no Qlib/Modal, no training.\n"
+              )
+          PY
+          cat f6-frozen-input-summary.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f6-frozen-input-preflight
+          path: f6-frozen-input-preflight.json
+          if-no-files-found: error
+          retention-days: 30
