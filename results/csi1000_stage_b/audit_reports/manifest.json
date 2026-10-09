@@ -1,0 +1,90 @@
+{
+  "purpose": "doc 24 Gate A: immutable original Stage-B phase reports retrieved read-only from the experimental artifact snapshot; hashes must match the frozen full-run result JSON",
+  "source_snapshot": "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1",
+  "result_json": "results/csi1000_stage_b/stage_b_full_51756897fc752304.json",
+  "winner_candidate_id": "4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2",
+  "baseline_candidate_id": "23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785",
+  "files": [
+    {
+      "file": "baseline_23b92de05cf36c82/phase00__preflight_repeat_b.parquet",
+      "volume_source_path": "/vol/csi1000_stage_b/51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1/_preflight/e56441cbfd5b4242/repeat_b/phases/23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785/phase00/report.parquet",
+      "expected_sha256": "e314814787d638a1cebe8c6b3941a8ff575166062b9c8ad17027a2a405b3cf86",
+      "actual_sha256": "e314814787d638a1cebe8c6b3941a8ff575166062b9c8ad17027a2a405b3cf86",
+      "size_bytes": 29927,
+      "match": true
+    },
+    {
+      "file": "baseline_23b92de05cf36c82/phase04__phases.parquet",
+      "volume_source_path": "/vol/csi1000_stage_b/51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1/phases/23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785/phase04/report.parquet",
+      "expected_sha256": "d69fb393d9b50e16b6149e49d47782130a025b22a8e6ffdcbfaeaf54c281d6cf",
+      "actual_sha256": "d69fb393d9b50e16b6149e49d47782130a025b22a8e6ffdcbfaeaf54c281d6cf",
+      "size_bytes": 35692,
+      "match": true
+    },
+    {
+      "file": "baseline_23b92de05cf36c82/phase06__phases.parquet",
+      "volume_source_path": "/vol/csi1000_stage_b/51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1/phases/23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785/phase06/report.parquet",
+      "expected_sha256": "b34e586ca945e6cb33967df0a8ba93e70e43abf2fc2c4fd0897637c11012cd68",
+      "actual_sha256": "b34e586ca945e6cb33967df0a8ba93e70e43abf2fc2c4fd0897637c11012cd68",
+      "size_bytes": 29927,
+      "match": true
+    },
+    {
+      "file": "baseline_23b92de05cf36c82/phase10__phases.parquet",
+      "volume_source_path": "/vol/csi1000_stage_b/51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1/phases/23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785/phase10/report.parquet",
+      "expected_sha256": "65a5ac0048985abf8902cba55ca5cea04cb1a5c53e243a4c78c1ee43341ed088",
+      "actual_sha256": "65a5ac0048985abf8902cba55ca5cea04cb1a5c53e243a4c78c1ee43341ed088",
+      "size_bytes": 29927,
+      "match": true
+    },
+    {
+      "file": "baseline_23b92de05cf36c82/phase15__phases.parquet",
+      "volume_source_path": "/vol/csi1000_stage_b/51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1/phases/23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785/phase15/report.parquet",
+      "expected_sha256": "b24b75a8cb904bd65367ffa709bbba8657cbb509c00f7f4fcaebf98d965bbb0e",
+      "actual_sha256": "b24b75a8cb904bd65367ffa709bbba8657cbb509c00f7f4fcaebf98d965bbb0e",
+      "size_bytes": 30057,
+      "match": true
+    },
+    {
+      "file": "winner_4e908173705c76fe/phase00__phases.parquet",
+      "volume_source_path": "/vol/csi1000_stage_b/51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1/phases/4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2/phase00/report.parquet",
+      "expected_sha256": "649b26fec1760abeec9923adaa68db7240bfa9fe9f4bb1488e573f9373d39da0",
+      "actual_sha256": "649b26fec1760abeec9923adaa68db7240bfa9fe9f4bb1488e573f9373d39da0",
+      "size_bytes": 30057,
+      "match": true
+    },
+    {
+      "file": "winner_4e908173705c76fe/phase04__phases.parquet",
+      "volume_source_path": "/vol/csi1000_stage_b/51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1/phases/4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2/phase04/report.parquet",
+      "expected_sha256": "d1b0134718238cf535736bdf8c798e5a05692dd8b1897be39872db50c7a17cc3",
+      "actual_sha256": "d1b0134718238cf535736bdf8c798e5a05692dd8b1897be39872db50c7a17cc3",
+      "size_bytes": 35827,
+      "match": true
+    },
+    {
+      "file": "winner_4e908173705c76fe/phase06__phases.parquet",
+      "volume_source_path": "/vol/csi1000_stage_b/51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1/phases/4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2/phase06/report.parquet",
+      "expected_sha256": "f379304b7e4fa92c232b210a7ffc4f62e5646ebde5c7730016f56abb36eb22b1",
+      "actual_sha256": "f379304b7e4fa92c232b210a7ffc4f62e5646ebde5c7730016f56abb36eb22b1",
+      "size_bytes": 35827,
+      "match": true
+    },
+    {
+      "file": "winner_4e908173705c76fe/phase10__phases.parquet",
+      "volume_source_path": "/vol/csi1000_stage_b/51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1/phases/4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2/phase10/report.parquet",
+      "expected_sha256": "d36e4adeed7aa5f67a2f3960b020b8472f7b5176df789a43cecbcce88a89a606",
+      "actual_sha256": "d36e4adeed7aa5f67a2f3960b020b8472f7b5176df789a43cecbcce88a89a606",
+      "size_bytes": 35707,
+      "match": true
+    },
+    {
+      "file": "winner_4e908173705c76fe/phase15__phases.parquet",
+      "volume_source_path": "/vol/csi1000_stage_b/51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1/phases/4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2/phase15/report.parquet",
+      "expected_sha256": "9b1d6b0494d3dd2290efc8418bb83e626491c70d8225f67bb3578cf9ce8a2ad1",
+      "actual_sha256": "9b1d6b0494d3dd2290efc8418bb83e626491c70d8225f67bb3578cf9ce8a2ad1",
+      "size_bytes": 29887,
+      "match": true
+    }
+  ],
+  "all_match": true
+}
