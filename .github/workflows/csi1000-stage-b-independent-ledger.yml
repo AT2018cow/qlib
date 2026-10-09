@@ -5,12 +5,16 @@ on:
     branches: [main]
     paths:
       - "audit/verify_stage_b_fixed_ledger.py"
+      - "audit/modal_stage_b_ledger.py"
+      - "docs/experiments/38-csi1000-baseline-independent-ledger-validation-20261010.md"
       - "tests/test_verify_stage_b_fixed_ledger.py"
       - ".github/workflows/csi1000-stage-b-independent-ledger.yml"
   push:
     branches: [main]
     paths:
       - "audit/verify_stage_b_fixed_ledger.py"
+      - "audit/modal_stage_b_ledger.py"
+      - "docs/experiments/38-csi1000-baseline-independent-ledger-validation-20261010.md"
       - "tests/test_verify_stage_b_fixed_ledger.py"
       - ".github/workflows/csi1000-stage-b-independent-ledger.yml"
   workflow_dispatch:
@@ -30,7 +34,7 @@ jobs:
       - name: Install fixture-only dependencies
         run: python -m pip install --disable-pip-version-check --no-input "pandas==2.2.3"
       - name: Compile auditor
-        run: python -m py_compile audit/verify_stage_b_fixed_ledger.py
+        run: python -m py_compile audit/verify_stage_b_fixed_ledger.py audit/modal_stage_b_ledger.py
       - name: Run synthetic accounting and failure tests (NO provider)
         run: python -m unittest discover -s tests -p "test_verify_stage_b_fixed_ledger.py" -v
       - name: Declare CI limitations
