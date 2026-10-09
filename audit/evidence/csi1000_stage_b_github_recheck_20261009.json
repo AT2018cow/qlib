@@ -1,0 +1,983 @@
+{
+  "audit_version": "stage_b_independent_report_recheck_v2",
+  "audit_date": "2026-10-09",
+  "source_git_commit": "5418956d9858663613d9e9eaedf614d97da019c1",
+  "frozen_results_commit": "7a2676397b0f8e6f69c0bffc98d1764647f644ac",
+  "snapshot_token": "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1",
+  "byte_hash_method": "Independent SHA-256 over decoded original bytes from GitHub file API (SHA-256 implementation self-tested using abc vector)",
+  "parquet_method": "Independent JS Parquet compact-Thrift/Snappy/dictionary decoder, not Qlib nor canonical portfolio metric code",
+  "metric_convention": {
+    "annual_sessions": 238,
+    "rf_annual": 0,
+    "ddof": 1,
+    "cagr_calendar_days_per_year": 365.2425,
+    "initial_cash": 100000000
+  },
+  "data_verdict": {
+    "raw_file_sha256": "PASS",
+    "schema_values_and_internal_dates": "PASS",
+    "provider_calendar": "BLOCKED",
+    "stored_metric_arithmetic": "PASS",
+    "daily_internal_account": "PASS",
+    "order_and_execution": "BLOCKED",
+    "overall": "BLOCKED"
+  },
+  "rows": [
+    {
+      "cohort": "winner",
+      "phase": 0,
+      "source_git_sha256": "649b26fec1760abeec9923adaa68db7240bfa9fe9f4bb1488e573f9373d39da0",
+      "source_byte_sha256_verified": true,
+      "rows": 424,
+      "start": "2025-01-02",
+      "end": "2026-09-30",
+      "n_missing_nonfinite": 0,
+      "date_duplicates": 0,
+      "source_original_provider_calendar_verified": false,
+      "account_return_max_error": 1.1102230246251565e-16,
+      "cash_plus_value_max_error": 1.4901161193847656e-8,
+      "cumulative_fee_rate_error": 0,
+      "metric_comparison": {
+        "sharpe": {
+          "stored": 1.276262,
+          "recalculated": 1.276261947632427,
+          "absolute_error": 5.23675729446893e-8,
+          "within_tolerance": true
+        },
+        "information_ratio": {
+          "stored": 0.687576,
+          "recalculated": 0.6875763247331149,
+          "absolute_error": 3.2473311495362367e-7,
+          "within_tolerance": true
+        },
+        "annual_volatility": {
+          "stored": 0.214666,
+          "recalculated": 0.2146660500785635,
+          "absolute_error": 5.007856349048545e-8,
+          "within_tolerance": true
+        },
+        "strategy_cagr": {
+          "stored": 0.293178,
+          "recalculated": 0.29317813686960914,
+          "absolute_error": 1.368696091463839e-7,
+          "within_tolerance": true
+        },
+        "relative_excess_cagr": {
+          "stored": 0.142516,
+          "recalculated": 0.14251550854084982,
+          "absolute_error": 4.914591501814503e-7,
+          "within_tolerance": true
+        },
+        "strategy_total_return": {
+          "stored": 0.564702,
+          "recalculated": 0.5647021525309217,
+          "absolute_error": 1.5253092167100135e-7,
+          "within_tolerance": true
+        },
+        "benchmark_total_return": {
+          "stored": 0.240726,
+          "recalculated": 0.24072600816110556,
+          "absolute_error": 8.161105569115534e-9,
+          "within_tolerance": true
+        },
+        "strategy_max_drawdown": {
+          "stored": -0.121268,
+          "recalculated": -0.12126777424584445,
+          "absolute_error": 2.2575415555003975e-7,
+          "within_tolerance": true
+        },
+        "relative_max_drawdown": {
+          "stored": -0.226108,
+          "recalculated": -0.2261083682243289,
+          "absolute_error": 3.682243288893883e-7,
+          "within_tolerance": true
+        },
+        "total_cost_sum": {
+          "stored": 0.023593,
+          "recalculated": 0.023593264939625692,
+          "absolute_error": 2.6493962569304474e-7,
+          "within_tolerance": true
+        },
+        "mean_daily_net_return": {
+          "stored": 0.00115113,
+          "recalculated": 0.0011511349208564185,
+          "absolute_error": 4.92085641852491e-9,
+          "within_tolerance": true
+        },
+        "mean_daily_active_return": {
+          "stored": 0.00051642,
+          "recalculated": 0.0005164151801867356,
+          "absolute_error": 4.819813264320995e-9,
+          "within_tolerance": true
+        },
+        "mean_turnover": {
+          "stored": 0.056751,
+          "recalculated": 0.056751445352422214,
+          "absolute_error": 4.453524222111649e-7,
+          "within_tolerance": true
+        }
+      }
+    },
+    {
+      "cohort": "winner",
+      "phase": 4,
+      "source_git_sha256": "d1b0134718238cf535736bdf8c798e5a05692dd8b1897be39872db50c7a17cc3",
+      "source_byte_sha256_verified": true,
+      "rows": 424,
+      "start": "2025-01-02",
+      "end": "2026-09-30",
+      "n_missing_nonfinite": 0,
+      "date_duplicates": 0,
+      "source_original_provider_calendar_verified": false,
+      "account_return_max_error": 1.1102230246251565e-16,
+      "cash_plus_value_max_error": 1.4901161193847656e-8,
+      "cumulative_fee_rate_error": 0,
+      "metric_comparison": {
+        "sharpe": {
+          "stored": 1.334093,
+          "recalculated": 1.3340925691121779,
+          "absolute_error": 4.3088782208933196e-7,
+          "within_tolerance": true
+        },
+        "information_ratio": {
+          "stored": 0.640982,
+          "recalculated": 0.6409822124286508,
+          "absolute_error": 2.124286507809714e-7,
+          "within_tolerance": true
+        },
+        "annual_volatility": {
+          "stored": 0.210544,
+          "recalculated": 0.21054373264495532,
+          "absolute_error": 2.6735504468633486e-7,
+          "within_tolerance": true
+        },
+        "strategy_cagr": {
+          "stored": 0.303561,
+          "recalculated": 0.3035612158538312,
+          "absolute_error": 2.158538311980429e-7,
+          "within_tolerance": true
+        },
+        "relative_excess_cagr": {
+          "stored": 0.151689,
+          "recalculated": 0.15168889960559118,
+          "absolute_error": 1.0039440881404182e-7,
+          "within_tolerance": true
+        },
+        "strategy_total_return": {
+          "stored": 0.586644,
+          "recalculated": 0.586643583919745,
+          "absolute_error": 4.1608025502792856e-7,
+          "within_tolerance": true
+        },
+        "benchmark_total_return": {
+          "stored": 0.240726,
+          "recalculated": 0.24072600816110556,
+          "absolute_error": 8.161105569115534e-9,
+          "within_tolerance": true
+        },
+        "strategy_max_drawdown": {
+          "stored": -0.105777,
+          "recalculated": -0.10577682510739661,
+          "absolute_error": 1.7489260338565682e-7,
+          "within_tolerance": true
+        },
+        "relative_max_drawdown": {
+          "stored": -0.274926,
+          "recalculated": -0.27492628676696973,
+          "absolute_error": 2.8676696972596005e-7,
+          "within_tolerance": true
+        },
+        "total_cost_sum": {
+          "stored": 0.03546,
+          "recalculated": 0.03546014807189425,
+          "absolute_error": 1.4807189425286582e-7,
+          "within_tolerance": true
+        },
+        "mean_daily_net_return": {
+          "stored": 0.00118019,
+          "recalculated": 0.0011801883579612437,
+          "absolute_error": 1.6420387562686434e-9,
+          "within_tolerance": true
+        },
+        "mean_daily_active_return": {
+          "stored": 0.00054547,
+          "recalculated": 0.0005454686172915614,
+          "absolute_error": 1.3827084386318356e-9,
+          "within_tolerance": true
+        },
+        "mean_turnover": {
+          "stored": 0.084721,
+          "recalculated": 0.08472129262932875,
+          "absolute_error": 2.9262932874085656e-7,
+          "within_tolerance": true
+        }
+      }
+    },
+    {
+      "cohort": "winner",
+      "phase": 6,
+      "source_git_sha256": "f379304b7e4fa92c232b210a7ffc4f62e5646ebde5c7730016f56abb36eb22b1",
+      "source_byte_sha256_verified": true,
+      "rows": 424,
+      "start": "2025-01-02",
+      "end": "2026-09-30",
+      "n_missing_nonfinite": 0,
+      "date_duplicates": 0,
+      "source_original_provider_calendar_verified": false,
+      "account_return_max_error": 1.1102230246251565e-16,
+      "cash_plus_value_max_error": 1.4901161193847656e-8,
+      "cumulative_fee_rate_error": 0,
+      "metric_comparison": {
+        "sharpe": {
+          "stored": 1.109734,
+          "recalculated": 1.109733837694526,
+          "absolute_error": 1.6230547394968653e-7,
+          "within_tolerance": true
+        },
+        "information_ratio": {
+          "stored": 0.390042,
+          "recalculated": 0.39004163318146945,
+          "absolute_error": 3.668185305505389e-7,
+          "within_tolerance": true
+        },
+        "annual_volatility": {
+          "stored": 0.205029,
+          "recalculated": 0.2050289746806548,
+          "absolute_error": 2.5319345176022523e-8,
+          "within_tolerance": true
+        },
+        "strategy_cagr": {
+          "stored": 0.235523,
+          "recalculated": 0.23552334864054658,
+          "absolute_error": 3.486405465713549e-7,
+          "within_tolerance": true
+        },
+        "relative_excess_cagr": {
+          "stored": 0.091578,
+          "recalculated": 0.09157783196305291,
+          "absolute_error": 1.6803694709299766e-7,
+          "within_tolerance": true
+        },
+        "strategy_total_return": {
+          "stored": 0.445243,
+          "recalculated": 0.44524303449227487,
+          "absolute_error": 3.449227486962414e-8,
+          "within_tolerance": true
+        },
+        "benchmark_total_return": {
+          "stored": 0.240726,
+          "recalculated": 0.24072600816110556,
+          "absolute_error": 8.161105569115534e-9,
+          "within_tolerance": true
+        },
+        "strategy_max_drawdown": {
+          "stored": -0.116128,
+          "recalculated": -0.11612750062588273,
+          "absolute_error": 4.993741172659716e-7,
+          "within_tolerance": true
+        },
+        "relative_max_drawdown": {
+          "stored": -0.256365,
+          "recalculated": -0.25636471104254277,
+          "absolute_error": 2.889574572395581e-7,
+          "within_tolerance": true
+        },
+        "total_cost_sum": {
+          "stored": 0.035688,
+          "recalculated": 0.035688244940037785,
+          "absolute_error": 2.449400377871336e-7,
+          "within_tolerance": true
+        },
+        "mean_daily_net_return": {
+          "stored": 0.000956,
+          "recalculated": 0.0009559982811383903,
+          "absolute_error": 1.7188616096858872e-9,
+          "within_tolerance": true
+        },
+        "mean_daily_active_return": {
+          "stored": 0.00032128,
+          "recalculated": 0.0003212785404687079,
+          "absolute_error": 1.4595312921032895e-9,
+          "within_tolerance": true
+        },
+        "mean_turnover": {
+          "stored": 0.085269,
+          "recalculated": 0.0852694445379047,
+          "absolute_error": 4.4453790470910803e-7,
+          "within_tolerance": true
+        }
+      }
+    },
+    {
+      "cohort": "winner",
+      "phase": 10,
+      "source_git_sha256": "d36e4adeed7aa5f67a2f3960b020b8472f7b5176df789a43cecbcce88a89a606",
+      "source_byte_sha256_verified": true,
+      "rows": 424,
+      "start": "2025-01-02",
+      "end": "2026-09-30",
+      "n_missing_nonfinite": 0,
+      "date_duplicates": 0,
+      "source_original_provider_calendar_verified": false,
+      "account_return_max_error": 1.1102230246251565e-16,
+      "cash_plus_value_max_error": 1.4901161193847656e-8,
+      "cumulative_fee_rate_error": 0,
+      "metric_comparison": {
+        "sharpe": {
+          "stored": 1.395196,
+          "recalculated": 1.395195890717407,
+          "absolute_error": 1.0928259319697986e-7,
+          "within_tolerance": true
+        },
+        "information_ratio": {
+          "stored": 0.733641,
+          "recalculated": 0.7336414471834005,
+          "absolute_error": 4.471834005315145e-7,
+          "within_tolerance": true
+        },
+        "annual_volatility": {
+          "stored": 0.202383,
+          "recalculated": 0.202382926782528,
+          "absolute_error": 7.321747200195183e-8,
+          "within_tolerance": true
+        },
+        "strategy_cagr": {
+          "stored": 0.307289,
+          "recalculated": 0.3072888382880159,
+          "absolute_error": 1.6171198408132526e-7,
+          "within_tolerance": true
+        },
+        "relative_excess_cagr": {
+          "stored": 0.154982,
+          "recalculated": 0.15498223276644274,
+          "absolute_error": 2.3276644273151348e-7,
+          "within_tolerance": true
+        },
+        "strategy_total_return": {
+          "stored": 0.594552,
+          "recalculated": 0.5945524756751779,
+          "absolute_error": 4.7567517791335945e-7,
+          "within_tolerance": true
+        },
+        "benchmark_total_return": {
+          "stored": 0.240726,
+          "recalculated": 0.24072600816110556,
+          "absolute_error": 8.161105569115534e-9,
+          "within_tolerance": true
+        },
+        "strategy_max_drawdown": {
+          "stored": -0.120782,
+          "recalculated": -0.12078152937366882,
+          "absolute_error": 4.706263311837766e-7,
+          "within_tolerance": true
+        },
+        "relative_max_drawdown": {
+          "stored": -0.221987,
+          "recalculated": -0.22198732310341585,
+          "absolute_error": 3.2310341585573e-7,
+          "within_tolerance": true
+        },
+        "total_cost_sum": {
+          "stored": 0.034951,
+          "recalculated": 0.03495105597634977,
+          "absolute_error": 5.5976349763731115e-8,
+          "within_tolerance": true
+        },
+        "mean_daily_net_return": {
+          "stored": 0.0011864,
+          "recalculated": 0.001186402637808172,
+          "absolute_error": 2.6378081719770352e-9,
+          "within_tolerance": true
+        },
+        "mean_daily_active_return": {
+          "stored": 0.00055168,
+          "recalculated": 0.0005516828971384902,
+          "absolute_error": 2.897138490155944e-9,
+          "within_tolerance": true
+        },
+        "mean_turnover": {
+          "stored": 0.083537,
+          "recalculated": 0.08353716603058281,
+          "absolute_error": 1.6603058280995064e-7,
+          "within_tolerance": true
+        }
+      }
+    },
+    {
+      "cohort": "winner",
+      "phase": 15,
+      "source_git_sha256": "9b1d6b0494d3dd2290efc8418bb83e626491c70d8225f67bb3578cf9ce8a2ad1",
+      "source_byte_sha256_verified": true,
+      "rows": 424,
+      "start": "2025-01-02",
+      "end": "2026-09-30",
+      "n_missing_nonfinite": 0,
+      "date_duplicates": 0,
+      "source_original_provider_calendar_verified": false,
+      "account_return_max_error": 1.1102230246251565e-16,
+      "cash_plus_value_max_error": 1.4901161193847656e-8,
+      "cumulative_fee_rate_error": 0,
+      "metric_comparison": {
+        "sharpe": {
+          "stored": 1.177063,
+          "recalculated": 1.1770626581754888,
+          "absolute_error": 3.4182451114084245e-7,
+          "within_tolerance": true
+        },
+        "information_ratio": {
+          "stored": 0.365065,
+          "recalculated": 0.3650654582363129,
+          "absolute_error": 4.5823631295016654e-7,
+          "within_tolerance": true
+        },
+        "annual_volatility": {
+          "stored": 0.201244,
+          "recalculated": 0.20124422361087155,
+          "absolute_error": 2.2361087154143533e-7,
+          "within_tolerance": true
+        },
+        "strategy_cagr": {
+          "stored": 0.248637,
+          "recalculated": 0.24863696540084312,
+          "absolute_error": 3.459915687287207e-8,
+          "within_tolerance": true
+        },
+        "relative_excess_cagr": {
+          "stored": 0.103164,
+          "recalculated": 0.10316363757987834,
+          "absolute_error": 3.624201216634315e-7,
+          "within_tolerance": true
+        },
+        "strategy_total_return": {
+          "stored": 0.472059,
+          "recalculated": 0.472058902508238,
+          "absolute_error": 9.749176199669307e-8,
+          "within_tolerance": true
+        },
+        "benchmark_total_return": {
+          "stored": 0.240726,
+          "recalculated": 0.24072600816110556,
+          "absolute_error": 8.161105569115534e-9,
+          "within_tolerance": true
+        },
+        "strategy_max_drawdown": {
+          "stored": -0.146542,
+          "recalculated": -0.1465415535323643,
+          "absolute_error": 4.4646763569522463e-7,
+          "within_tolerance": true
+        },
+        "relative_max_drawdown": {
+          "stored": -0.284847,
+          "recalculated": -0.2848472150405049,
+          "absolute_error": 2.1504050490284143e-7,
+          "within_tolerance": true
+        },
+        "total_cost_sum": {
+          "stored": 0.021211,
+          "recalculated": 0.021210997245759793,
+          "absolute_error": 2.75424020743098e-9,
+          "within_tolerance": true
+        },
+        "mean_daily_net_return": {
+          "stored": 0.00099528,
+          "recalculated": 0.000995281768007878,
+          "absolute_error": 1.7680078779041403e-9,
+          "within_tolerance": true
+        },
+        "mean_daily_active_return": {
+          "stored": 0.00036056,
+          "recalculated": 0.00036056202733819533,
+          "absolute_error": 2.0273381953241076e-9,
+          "within_tolerance": true
+        },
+        "mean_turnover": {
+          "stored": 0.051175,
+          "recalculated": 0.05117530884591757,
+          "absolute_error": 3.088459175695779e-7,
+          "within_tolerance": true
+        }
+      }
+    },
+    {
+      "cohort": "baseline",
+      "phase": 0,
+      "source_git_sha256": "e314814787d638a1cebe8c6b3941a8ff575166062b9c8ad17027a2a405b3cf86",
+      "source_byte_sha256_verified": true,
+      "rows": 424,
+      "start": "2025-01-02",
+      "end": "2026-09-30",
+      "n_missing_nonfinite": 0,
+      "date_duplicates": 0,
+      "source_original_provider_calendar_verified": false,
+      "account_return_max_error": 1.1102230246251565e-16,
+      "cash_plus_value_max_error": 1.4901161193847656e-8,
+      "cumulative_fee_rate_error": 0,
+      "metric_comparison": {
+        "sharpe": {
+          "stored": 1.122058,
+          "recalculated": 1.122057878126923,
+          "absolute_error": 1.2187307696365224e-7,
+          "within_tolerance": true
+        },
+        "information_ratio": {
+          "stored": 0.356593,
+          "recalculated": 0.35659313783930185,
+          "absolute_error": 1.378393018613977e-7,
+          "within_tolerance": true
+        },
+        "annual_volatility": {
+          "stored": 0.197482,
+          "recalculated": 0.19748192747528226,
+          "absolute_error": 7.252471773133706e-8,
+          "within_tolerance": true
+        },
+        "strategy_cagr": {
+          "stored": 0.230149,
+          "recalculated": 0.23014868637593322,
+          "absolute_error": 3.1362406677226673e-7,
+          "within_tolerance": true
+        },
+        "relative_excess_cagr": {
+          "stored": 0.086829,
+          "recalculated": 0.08682934850558066,
+          "absolute_error": 3.485055806579096e-7,
+          "within_tolerance": true
+        },
+        "strategy_total_return": {
+          "stored": 0.434313,
+          "recalculated": 0.4343131433573275,
+          "absolute_error": 1.433573275089195e-7,
+          "within_tolerance": true
+        },
+        "benchmark_total_return": {
+          "stored": 0.240726,
+          "recalculated": 0.24072600816110556,
+          "absolute_error": 8.161105569115534e-9,
+          "within_tolerance": true
+        },
+        "strategy_max_drawdown": {
+          "stored": -0.096486,
+          "recalculated": -0.09648617498651613,
+          "absolute_error": 1.7498651612435356e-7,
+          "within_tolerance": true
+        },
+        "relative_max_drawdown": {
+          "stored": -0.255581,
+          "recalculated": -0.25558082176318775,
+          "absolute_error": 1.7823681225381804e-7,
+          "within_tolerance": true
+        },
+        "total_cost_sum": {
+          "stored": 0.02343,
+          "recalculated": 0.02342952079056696,
+          "absolute_error": 4.792094330380303e-7,
+          "within_tolerance": true
+        },
+        "mean_daily_net_return": {
+          "stored": 0.00093103,
+          "recalculated": 0.0009310342542492863,
+          "absolute_error": 4.25424928629254e-9,
+          "within_tolerance": true
+        },
+        "mean_daily_active_return": {
+          "stored": 0.00029631,
+          "recalculated": 0.0002963145135796041,
+          "absolute_error": 4.513579604091978e-9,
+          "within_tolerance": true
+        },
+        "mean_turnover": {
+          "stored": 0.056408,
+          "recalculated": 0.05640818323413161,
+          "absolute_error": 1.8323413161075441e-7,
+          "within_tolerance": true
+        }
+      }
+    },
+    {
+      "cohort": "baseline",
+      "phase": 4,
+      "source_git_sha256": "d69fb393d9b50e16b6149e49d47782130a025b22a8e6ffdcbfaeaf54c281d6cf",
+      "source_byte_sha256_verified": true,
+      "rows": 424,
+      "start": "2025-01-02",
+      "end": "2026-09-30",
+      "n_missing_nonfinite": 0,
+      "date_duplicates": 0,
+      "source_original_provider_calendar_verified": false,
+      "account_return_max_error": 1.1102230246251565e-16,
+      "cash_plus_value_max_error": 1.4901161193847656e-8,
+      "cumulative_fee_rate_error": 0,
+      "metric_comparison": {
+        "sharpe": {
+          "stored": 0.848922,
+          "recalculated": 0.8489221280064723,
+          "absolute_error": 1.280064723108154e-7,
+          "within_tolerance": true
+        },
+        "information_ratio": {
+          "stored": -0.112234,
+          "recalculated": -0.11223418701843199,
+          "absolute_error": 1.8701843199075974e-7,
+          "within_tolerance": true
+        },
+        "annual_volatility": {
+          "stored": 0.153262,
+          "recalculated": 0.15326209325013743,
+          "absolute_error": 9.325013741734445e-8,
+          "within_tolerance": true
+        },
+        "strategy_cagr": {
+          "stored": 0.128643,
+          "recalculated": 0.12864337452913577,
+          "absolute_error": 3.7452913576041524e-7,
+          "within_tolerance": true
+        },
+        "relative_excess_cagr": {
+          "stored": -0.00285,
+          "recalculated": -0.0028500155957741358,
+          "absolute_error": 1.5595774135665486e-8,
+          "within_tolerance": true
+        },
+        "strategy_total_return": {
+          "stored": 0.234575,
+          "recalculated": 0.23457509210688898,
+          "absolute_error": 9.210688897698383e-8,
+          "within_tolerance": true
+        },
+        "benchmark_total_return": {
+          "stored": 0.240726,
+          "recalculated": 0.24072600816110556,
+          "absolute_error": 8.161105569115534e-9,
+          "within_tolerance": true
+        },
+        "strategy_max_drawdown": {
+          "stored": -0.128443,
+          "recalculated": -0.12844338080722617,
+          "absolute_error": 3.808072261690665e-7,
+          "within_tolerance": true
+        },
+        "relative_max_drawdown": {
+          "stored": -0.260117,
+          "recalculated": -0.26011740714636844,
+          "absolute_error": 4.071463684529597e-7,
+          "within_tolerance": true
+        },
+        "total_cost_sum": {
+          "stored": 0.035444,
+          "recalculated": 0.03544350307107448,
+          "absolute_error": 4.969289255224441e-7,
+          "within_tolerance": true
+        },
+        "mean_daily_net_return": {
+          "stored": 0.00054667,
+          "recalculated": 0.0005466705140530801,
+          "absolute_error": 5.140530801592616e-10,
+          "within_tolerance": true
+        },
+        "mean_daily_active_return": {
+          "stored": -0.00008805,
+          "recalculated": -0.00008804922661660144,
+          "absolute_error": 7.733833985550109e-10,
+          "within_tolerance": true
+        },
+        "mean_turnover": {
+          "stored": 0.084728,
+          "recalculated": 0.0847280887009018,
+          "absolute_error": 8.870090180412848e-8,
+          "within_tolerance": true
+        }
+      }
+    },
+    {
+      "cohort": "baseline",
+      "phase": 6,
+      "source_git_sha256": "b34e586ca945e6cb33967df0a8ba93e70e43abf2fc2c4fd0897637c11012cd68",
+      "source_byte_sha256_verified": true,
+      "rows": 424,
+      "start": "2025-01-02",
+      "end": "2026-09-30",
+      "n_missing_nonfinite": 0,
+      "date_duplicates": 0,
+      "source_original_provider_calendar_verified": false,
+      "account_return_max_error": 1.1102230246251565e-16,
+      "cash_plus_value_max_error": 1.4901161193847656e-8,
+      "cumulative_fee_rate_error": 0,
+      "metric_comparison": {
+        "sharpe": {
+          "stored": 1.523323,
+          "recalculated": 1.523323125407407,
+          "absolute_error": 1.2540740712552179e-7,
+          "within_tolerance": true
+        },
+        "information_ratio": {
+          "stored": 0.848577,
+          "recalculated": 0.8485770198017131,
+          "absolute_error": 1.9801713047051805e-8,
+          "within_tolerance": true
+        },
+        "annual_volatility": {
+          "stored": 0.196792,
+          "recalculated": 0.19679173122371785,
+          "absolute_error": 2.6877628214738714e-7,
+          "within_tolerance": true
+        },
+        "strategy_cagr": {
+          "stored": 0.332183,
+          "recalculated": 0.33218291972159597,
+          "absolute_error": 8.027840403546094e-8,
+          "within_tolerance": true
+        },
+        "relative_excess_cagr": {
+          "stored": 0.176976,
+          "recalculated": 0.17697601173458488,
+          "absolute_error": 1.17345848871242e-8,
+          "within_tolerance": true
+        },
+        "strategy_total_return": {
+          "stored": 0.647799,
+          "recalculated": 0.6477986951389458,
+          "absolute_error": 3.048610541789287e-7,
+          "within_tolerance": true
+        },
+        "benchmark_total_return": {
+          "stored": 0.240726,
+          "recalculated": 0.24072600816110556,
+          "absolute_error": 8.161105569115534e-9,
+          "within_tolerance": true
+        },
+        "strategy_max_drawdown": {
+          "stored": -0.117009,
+          "recalculated": -0.11700921103048234,
+          "absolute_error": 2.1103048233883648e-7,
+          "within_tolerance": true
+        },
+        "relative_max_drawdown": {
+          "stored": -0.156659,
+          "recalculated": -0.15665882312926394,
+          "absolute_error": 1.7687073605721082e-7,
+          "within_tolerance": true
+        },
+        "total_cost_sum": {
+          "stored": 0.023326,
+          "recalculated": 0.0233257531689246,
+          "absolute_error": 2.4683107539835714e-7,
+          "within_tolerance": true
+        },
+        "mean_daily_net_return": {
+          "stored": 0.00125957,
+          "recalculated": 0.001259568886815329,
+          "absolute_error": 1.1131846709613175e-9,
+          "within_tolerance": true
+        },
+        "mean_daily_active_return": {
+          "stored": 0.00062485,
+          "recalculated": 0.0006248491461456452,
+          "absolute_error": 8.538543548423927e-10,
+          "within_tolerance": true
+        },
+        "mean_turnover": {
+          "stored": 0.056163,
+          "recalculated": 0.05616287366890572,
+          "absolute_error": 1.2633109428006328e-7,
+          "within_tolerance": true
+        }
+      }
+    },
+    {
+      "cohort": "baseline",
+      "phase": 10,
+      "source_git_sha256": "65a5ac0048985abf8902cba55ca5cea04cb1a5c53e243a4c78c1ee43341ed088",
+      "source_byte_sha256_verified": true,
+      "rows": 424,
+      "start": "2025-01-02",
+      "end": "2026-09-30",
+      "n_missing_nonfinite": 0,
+      "date_duplicates": 0,
+      "source_original_provider_calendar_verified": false,
+      "account_return_max_error": 1.1102230246251565e-16,
+      "cash_plus_value_max_error": 1.4901161193847656e-8,
+      "cumulative_fee_rate_error": 0,
+      "metric_comparison": {
+        "sharpe": {
+          "stored": 1.332491,
+          "recalculated": 1.332490874702945,
+          "absolute_error": 1.2529705517572154e-7,
+          "within_tolerance": true
+        },
+        "information_ratio": {
+          "stored": 0.606024,
+          "recalculated": 0.606024164456476,
+          "absolute_error": 1.6445647599283575e-7,
+          "within_tolerance": true
+        },
+        "annual_volatility": {
+          "stored": 0.20124,
+          "recalculated": 0.20123965632900834,
+          "absolute_error": 3.4367099166487947e-7,
+          "within_tolerance": true
+        },
+        "strategy_cagr": {
+          "stored": 0.28906,
+          "recalculated": 0.28906032077284594,
+          "absolute_error": 3.2077284595199984e-7,
+          "within_tolerance": true
+        },
+        "relative_excess_cagr": {
+          "stored": 0.138877,
+          "recalculated": 0.1388774415045022,
+          "absolute_error": 4.415045022077013e-7,
+          "within_tolerance": true
+        },
+        "strategy_total_return": {
+          "stored": 0.556036,
+          "recalculated": 0.5560364643444033,
+          "absolute_error": 4.643444033725075e-7,
+          "within_tolerance": true
+        },
+        "benchmark_total_return": {
+          "stored": 0.240726,
+          "recalculated": 0.24072600816110556,
+          "absolute_error": 8.161105569115534e-9,
+          "within_tolerance": true
+        },
+        "strategy_max_drawdown": {
+          "stored": -0.128344,
+          "recalculated": -0.12834434967004738,
+          "absolute_error": 3.4967004736152774e-7,
+          "within_tolerance": true
+        },
+        "relative_max_drawdown": {
+          "stored": -0.224172,
+          "recalculated": -0.22417234588699175,
+          "absolute_error": 3.4588699174276094e-7,
+          "within_tolerance": true
+        },
+        "total_cost_sum": {
+          "stored": 0.023323,
+          "recalculated": 0.023322708292906984,
+          "absolute_error": 2.9170709301556963e-7,
+          "within_tolerance": true
+        },
+        "mean_daily_net_return": {
+          "stored": 0.00112668,
+          "recalculated": 0.0011266806961628588,
+          "absolute_error": 6.961628589135377e-10,
+          "within_tolerance": true
+        },
+        "mean_daily_active_return": {
+          "stored": 0.00049196,
+          "recalculated": 0.0004919609554931769,
+          "absolute_error": 9.554931768756061e-10,
+          "within_tolerance": true
+        },
+        "mean_turnover": {
+          "stored": 0.056154,
+          "recalculated": 0.05615446715879518,
+          "absolute_error": 4.6715879517544856e-7,
+          "within_tolerance": true
+        }
+      }
+    },
+    {
+      "cohort": "baseline",
+      "phase": 15,
+      "source_git_sha256": "b24b75a8cb904bd65367ffa709bbba8657cbb509c00f7f4fcaebf98d965bbb0e",
+      "source_byte_sha256_verified": true,
+      "rows": 424,
+      "start": "2025-01-02",
+      "end": "2026-09-30",
+      "n_missing_nonfinite": 0,
+      "date_duplicates": 0,
+      "source_original_provider_calendar_verified": false,
+      "account_return_max_error": 1.1102230246251565e-16,
+      "cash_plus_value_max_error": 1.4901161193847656e-8,
+      "cumulative_fee_rate_error": 0,
+      "metric_comparison": {
+        "sharpe": {
+          "stored": 1.450837,
+          "recalculated": 1.450837314233085,
+          "absolute_error": 3.1423308510802883e-7,
+          "within_tolerance": true
+        },
+        "information_ratio": {
+          "stored": 0.766764,
+          "recalculated": 0.766764173340805,
+          "absolute_error": 1.7334080504305405e-7,
+          "within_tolerance": true
+        },
+        "annual_volatility": {
+          "stored": 0.20749,
+          "recalculated": 0.20748974253794011,
+          "absolute_error": 2.5746205989385373e-7,
+          "within_tolerance": true
+        },
+        "strategy_cagr": {
+          "stored": 0.331489,
+          "recalculated": 0.3314889467898552,
+          "absolute_error": 5.3210144790316605e-8,
+          "within_tolerance": true
+        },
+        "relative_excess_cagr": {
+          "stored": 0.176363,
+          "recalculated": 0.17636289060732802,
+          "absolute_error": 1.093926719764049e-7,
+          "within_tolerance": true
+        },
+        "strategy_total_return": {
+          "stored": 0.646304,
+          "recalculated": 0.6463042679301465,
+          "absolute_error": 2.6793014651360636e-7,
+          "within_tolerance": true
+        },
+        "benchmark_total_return": {
+          "stored": 0.240726,
+          "recalculated": 0.24072600816110556,
+          "absolute_error": 8.161105569115534e-9,
+          "within_tolerance": true
+        },
+        "strategy_max_drawdown": {
+          "stored": -0.102897,
+          "recalculated": -0.1028974970912806,
+          "absolute_error": 4.970912805962735e-7,
+          "within_tolerance": true
+        },
+        "relative_max_drawdown": {
+          "stored": -0.216581,
+          "recalculated": -0.21658145501155868,
+          "absolute_error": 4.550115586809955e-7,
+          "within_tolerance": true
+        },
+        "total_cost_sum": {
+          "stored": 0.02385,
+          "recalculated": 0.023849898691787216,
+          "absolute_error": 1.0130821278403479e-7,
+          "within_tolerance": true
+        },
+        "mean_daily_net_return": {
+          "stored": 0.00126485,
+          "recalculated": 0.001264848154599409,
+          "absolute_error": 1.8454005910190086e-9,
+          "within_tolerance": true
+        },
+        "mean_daily_active_return": {
+          "stored": 0.00063013,
+          "recalculated": 0.0006301284139297271,
+          "absolute_error": 1.5860702729485199e-9,
+          "within_tolerance": true
+        },
+        "mean_turnover": {
+          "stored": 0.057348,
+          "recalculated": 0.05734833155657647,
+          "absolute_error": 3.315565764647199e-7,
+          "within_tolerance": true
+        }
+      }
+    }
+  ],
+  "notes": [
+    "All 10 independently calculated file SHA256 hashes matched frozen report_artifact.sha256 and new GitHub export manifest.",
+    "All listed stored/recomputed metric deltas are within the preregistered numeric tolerance.",
+    "Original provider trading calendar and signal/decision artifacts are not in the GitHub export, so full calendar/execution PASS is not asserted.",
+    "Existing check-in CI workflow has not produced a run at report creation; this audit comes from an independent in-session JavaScript decoder."
+  ]
+}

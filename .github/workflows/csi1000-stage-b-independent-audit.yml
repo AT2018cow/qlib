@@ -1,0 +1,51 @@
+name: Independent CSI1000 Stage-B frozen Parquet audit
+
+on:
+  push:
+    branches: ["audit/csi1000-stage-b-independent-20261009"]
+    paths:
+      - "audit/**"
+      - "tests/test_independent_stage_b_metrics.py"
+      - ".github/workflows/csi1000-stage-b-independent-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage-b-independent-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout isolated auditor branch
+        uses: actions/checkout@v4
+      - name: Checkout exactly pinned original-data commit
+        uses: actions/checkout@v4
+        with:
+          ref: 5418956d9858663613d9e9eaedf614d97da019c1
+          path: frozen-main
+          persist-credentials: false
+      - name: Set up CPU-only Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install minimal Parquet dependencies
+        run: python -m pip install --disable-pip-version-check --no-input "pandas==2.2.3" "pyarrow==17.0.0"
+      - name: Synthetic independent audit checks
+        run: python -m unittest discover -s tests -p 'test_independent_stage_b_metrics.py' -v
+      - name: Audit ten original GitHub Parquets without Qlib
+        env:
+          AUDIT_EXPORT_ROOT: frozen-main/results/csi1000_stage_b/audit_reports
+        run: python audit/run_stage_b_github_export.py
+      - name: Preserve machine-checkable independent evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: csi1000-stage-b-independent-audit-evidence
+          path: audit-output/
+          if-no-files-found: warn
+          retention-days: 30
