@@ -235,7 +235,7 @@ def verify_repo(root: Path) -> dict:
              tolerance=ACCOUNT_TOL, label="ledger daily fees " + day)
         near(acct["reconstructed_account"], row["fixed_account"],
              tolerance=ACCOUNT_TOL, label="reconstructed account " + day)
-        near(row["fixed_cash"] + float(row["fixed_value"]), row["fixed_account"],
+        near(number(row["fixed_cash"], "fixed_cash") + number(row["fixed_value"], "fixed_value"), row["fixed_account"],
              tolerance=ACCOUNT_TOL, label="cash + holdings " + day)
         near(acct["reconstructed_gross_return"], row["fixed_return"],
              tolerance=RATE_TOL, label="ledger return " + day)
