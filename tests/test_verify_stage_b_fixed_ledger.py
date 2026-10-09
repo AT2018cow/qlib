@@ -2,6 +2,8 @@
 import datetime as dt
 import hashlib
 import json
+import subprocess
+import sys
 import math
 import tempfile
 import unittest
@@ -106,6 +108,37 @@ class FixedLedgerUnitTest(unittest.TestCase):
         result = reconstruct(decisions, report, quotes, days)
         self.assertLess(result["extra_cost_bps_on_original_notional_not_new_fills"]["20"]["strategy_total_return"],
                         result["extra_cost_bps_on_original_notional_not_new_fills"]["0"]["strategy_total_return"])
+
+    def test_preflight_error_keeps_isolated_failure_json(self):
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            out = tmp / "new-result"
+            repo = Path(__file__).resolve().parents[1]
+            cmd = [sys.executable, "-m", "audit.verify_stage_b_fixed_ledger",
+                   "--repo-root", str(repo),
+                   "--provider-uri", str(tmp / "missing_provider"),
+                   "--provider-snapshot", str(tmp / "missing_snapshot.json"),
+                   "--candidate", "baseline", "--phases", "phase0",
+                   "--output-dir", str(out)]
+            proc = subprocess.run(cmd, cwd=repo, capture_output=True, text=True)
+            self.assertNotEqual(proc.returncode, 0)
+            failure = json.loads((out / "audit_failure.json").read_text())
+            self.assertEqual(failure["status"], "BLOCKED_OR_FAILED_NOT_PASS")
+            self.assertIn("provider", failure["reason"])
+            self.assertFalse((out / "independent_ledger.json").exists())
+
+    def test_forbidden_volume_failure_output_is_not_created(self):
+        with tempfile.TemporaryDirectory() as t:
+            repo = Path(__file__).resolve().parents[1]
+            forbidden = repo / "must-not-be-written-by-this-test"
+            cmd = [sys.executable, "-m", "audit.verify_stage_b_fixed_ledger",
+                   "--repo-root", str(repo),
+                   "--provider-uri", str(Path(t) / "missing"),
+                   "--provider-snapshot", str(Path(t) / "missing-snapshot"),
+                   "--output-dir", str(forbidden)]
+            proc = subprocess.run(cmd, cwd=repo, capture_output=True, text=True)
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertFalse(forbidden.exists())
 
 
 if __name__ == "__main__":
