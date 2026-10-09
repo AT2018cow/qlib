@@ -3,6 +3,8 @@
 Covers the replacement of the old ">4 natural days" mechanical rule with a
 trading-day-lag rule, including the Golden Week reopen case that the old rule
 would have silently broken (10-08 with data through 09-30 = 8 natural days).
+
+Watched by .github/workflows/csi1000-tuner-core.yml (push to main).
 """
 import os
 import sys
