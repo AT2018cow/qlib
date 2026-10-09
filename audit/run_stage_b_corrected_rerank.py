@@ -111,7 +111,7 @@ def order_key(rows: list[dict]) -> list[list[tuple]]:
 def compare_phase(phase: dict, legacy_report, legacy_decisions: list[dict],
                   fixed_report, fixed_decisions: list[dict]) -> dict:
     """Independent metric arithmetic; no promotion claims."""
-    _compare_original_report(legacy_report, legacy_report)  # protects schema/date assumptions
+    require(len(legacy_report) == DAYS and legacy_report.index.is_unique, "legacy calendar coverage drift")
     require(legacy_report.index.equals(fixed_report.index), "fixed calendar changed")
     legacy_metrics, _, _, _ = _metrics(legacy_report)
     fixed_metrics, _, _, _ = _metrics(fixed_report)
