@@ -33,7 +33,7 @@ jobs:
         run: python -m py_compile audit/run_stage_b_corrected_rerank.py tests/test_stage_b_corrected_rerank.py
       - name: Verify published ten-report SHA gates
         run: python -m unittest discover -s tests -p "test_stage_b_f6_preflight.py" -v
-      - name: Negative controls: all 55 frozen signal/decisions/report pointers and diagnostic ranking
+      - name: "Negative controls: all 55 frozen signal/decision/report pointers and diagnostic ranking"
         run: python -m unittest discover -s tests -p "test_stage_b_corrected_rerank.py" -v
       - name: Explicit limit of CI result
         run: |
