@@ -162,6 +162,9 @@ def diagnose_ranking(result: dict, records: list[dict], scope: str) -> dict:
         return {"status": "BLOCKED_NOT_ALL_11_CANDIDATES",
                 "compared_candidates": sorted({r["candidate_id"] for r in records}),
                 "new_winner_certified": False}
+    require(len(records) == 55 and
+            len({(r["candidate_id"], r["phase"]) for r in records}) == 55,
+            "not all frozen candidates and phases completed")
     per_candidate = {}
     for row in records:
         per_candidate.setdefault(row["candidate_id"], []).append(
