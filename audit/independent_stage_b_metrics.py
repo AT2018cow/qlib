@@ -102,10 +102,18 @@ def metrics(dates, values):
         "sharpe_238_rf2pct_ddof1": _ratio(r, annual_rf=0.02),
         "sharpe_238_rf0_ddof0": _mean(r) / statistics.pstdev(r) * math.sqrt(238) if statistics.pstdev(r) else None,
     }
+    # Cumulative absolute fee and turnover columns need first differences.
+    inc_cost = [values["total_cost"][0]] + [values["total_cost"][i] - values["total_cost"][i-1] for i in range(1, n)]
+    inc_turnover = [values["total_turnover"][0]] + [values["total_turnover"][i] - values["total_turnover"][i-1] for i in range(1, n)]
     diagnostics = {
         "max_account_return_delta": result["account_return_max_error"],
         "max_value_plus_cash_discrepancy": max(abs(a[i] - values["value"][i] - values["cash"][i]) for i in range(n)),
-        "total_cost_absolute_sum": math.fsum(values["total_cost"]),
+        "total_cost_cny": values["total_cost"][-1],
+        "total_turnover_cny": values["total_turnover"][-1],
+        "min_daily_fee_cny": min(inc_cost),
+        "min_daily_turnover_cny": min(inc_turnover),
+        "max_cost_rate_delta": max(abs(inc_cost[i] / prior[i] - values["cost"][i]) for i in range(n)),
+        "max_turnover_rate_delta": max(abs(inc_turnover[i] / prior[i] - values["turnover"][i]) for i in range(n)),
         "max_abs_net_return_date": dates[max(range(n), key=lambda i: abs(r[i]))].isoformat(),
         "max_net_return": max(r),
         "min_net_return": min(r),
@@ -185,11 +193,17 @@ def audit_one(item, snapshot, artifact_root, calendar, out_dir):
                              "within_tolerance": abs(old - new) <= tol}
         row["comparison"] = errors
         wrong = [k for k, v in errors.items() if not v["within_tolerance"]]
+        accounting_issues = []
         if diagnostics["max_account_return_delta"] > 1e-10:
-            row["daily_account"] = "FAIL"
-            wrong.append("account_vs_daily_net")
-        else:
-            row["daily_account"] = "INCONCLUSIVE"  # Account/net agrees, fill provenance is missing.
+            accounting_issues.append("account_vs_daily_net")
+        if diagnostics["max_value_plus_cash_discrepancy"] > 0.01:
+            accounting_issues.append("account_vs_cash_plus_value")
+        if diagnostics["min_daily_fee_cny"] < -0.01 or diagnostics["max_cost_rate_delta"] > 1e-10:
+            accounting_issues.append("cumulative_fees_vs_daily_cost")
+        if diagnostics["min_daily_turnover_cny"] < -0.01 or diagnostics["max_turnover_rate_delta"] > 1e-10:
+            accounting_issues.append("cumulative_turnover_vs_daily_turnover")
+        row["daily_account"] = "FAIL" if accounting_issues else "PASS"
+        wrong.extend(accounting_issues)
         row["metric_formula"] = "FAIL" if wrong else ("PASS" if calendar is not None else "BLOCKED")
         row["reason"] = ("metric mismatches: " + ", ".join(wrong)) if wrong else (
             "calendar missing" if calendar is None else "metrics agree; execution not examined")
