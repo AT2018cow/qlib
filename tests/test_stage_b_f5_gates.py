@@ -1,4 +1,8 @@
-"""Negative controls for Stage-B F5; no Qlib, provider or Modal required."""
+"""Negative controls for Stage-B F5; no Qlib, provider or Modal required.
+
+CI trigger note: this file is watched by .github/workflows/csi1000-stage-b-f5-gates.yml
+(push to main). Touching it exercises the F5 gates on main.
+"""
 from __future__ import annotations
 
 import hashlib
