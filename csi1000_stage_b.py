@@ -450,12 +450,21 @@ def _run_signal_backtest(signal):
     from qlib.backtest import collect_data
 
     from board_execution import research_exchange
+    from execution_quote_universe import execution_quote_codes
 
     qlib.init(
         **{
             **_load_task(stage_b_candidates()[-1]["model_params"])["qlib_init"],
             "skip_if_reg": True,
         }
+    )
+    # F1 repair: the SIGNAL remains point-in-time CSI1000; only the EXCHANGE
+    # gets a static union of symbols with any membership during this window.
+    # Passing codes=MARKET instead truncates quotes when a holding leaves the
+    # index, making it impossible to sell and freezing its end-of-day marks.
+    # This path changes future replays; frozen Stage-B artifacts stay immutable.
+    quote_codes = execution_quote_codes(
+        MARKET, RESERVED_EXECUTION_START, RESERVED_EXECUTION_END
     )
     executor = {
         "class": "SimulatorExecutor",
@@ -488,7 +497,7 @@ def _run_signal_backtest(signal):
             exchange_kwargs=research_exchange(
                 RESERVED_EXECUTION_START,
                 RESERVED_EXECUTION_END,
-                codes=MARKET,
+                codes=quote_codes,
             ),
             return_value=return_value,
         )
