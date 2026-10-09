@@ -1,0 +1,67 @@
+name: CSI1000 Stage-B urgent frozen-trading triage
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "audit/triage_stage_b_execution.py"
+      - ".github/workflows/csi1000-stage-b-rapid-triage.yml"
+  push:
+    branches: ["main", "audit/rapid-ten-phase-execution-triage-20261010"]
+    paths:
+      - "audit/triage_stage_b_execution.py"
+      - ".github/workflows/csi1000-stage-b-rapid-triage.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frozen-trade-blackout-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install only CPU Parquet readers
+        run: python -m pip install --disable-pip-version-check --no-input "pandas==2.2.3" "pyarrow==17.0.0"
+      - name: Original ten-report SHA and calendar identity
+        run: python -m unittest discover -s tests -p "test_stage_b_f6_preflight.py" -v
+      - name: Quantify all ten frozen execution blackouts and decision risks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m audit.triage_stage_b_execution | tee stage-b-frozen-execution-triage.json
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          x = json.loads(Path("stage-b-frozen-execution-triage.json").read_text())
+          assert x["rows_checked"] == 10
+          assert x["original_report_sha_verified"] == 10
+          assert x["original_winner_ranking_valid_for_promotion"] is False
+          assert x["retune_now"] == "NO"
+          assert x["real_market_execution"] == "BLOCKED"
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write("### Stage-B frozen execution diagnostic (not a repaired replay)\n\n")
+              f.write("| Group | Phase | Historical Sharpe | 240-day zero-turnover sessions | Longest zero-turnover run |\n")
+              f.write("|---|---:|---:|---:|---:|\n")
+              for r in x["rows"]:
+                  f.write(
+                      f"| {r['cohort']} | {r['phase']} | {r['original_sharpe']:.4f} | "
+                      f"{r['zero_turnover_days_within_f1_240_session_window']} | "
+                      f"{r['longest_consecutive_zero_turnover_sessions']} |\n"
+                  )
+              f.write("\n**Decision:** old ranking not valid for production; repair & rerank "
+                      "same frozen candidates first; do NOT retune on spent tail. "
+                      "Nine corrected runs and real-market execution remain BLOCKED.\n")
+          PY
+      - name: Publish decision evidence JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage-b-frozen-execution-triage
+          path: stage-b-frozen-execution-triage.json
+          if-no-files-found: error
+          retention-days: 30
