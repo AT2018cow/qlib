@@ -1,9 +1,10 @@
 # 实验文档导览
 
-> **2026-10-08：按任务拆分为两个并行交接入口。**
+> **2026-10-09：按任务拆分为三个相互独立的对话入口。**
 >
-> - **[22 — STAR/ChiNext 模型研究交接](22-handoff-star-chinext-research-20261008.md)**：只负责科创板 reproducibility 和创业板新模型研究。
-> - **[23 — 网站/UI 交接](23-web-ui-handoff-20261008.md)**：只负责深色响应式网页、图表和 forward performance 展示。
+> - **[22 — STAR/ChiNext 模型研究交接](22-handoff-star-chinext-research-20261008.md)**：科创板 reproducibility 和创业板新模型研究。
+> - **[23 — 网站/UI 交接](23-web-ui-handoff-20261008.md)**：深色响应式网页、图表和 forward performance 展示。
+> - **[24 — CSI1000 Sharpe 独立核验交接](24-csi1000-independent-sharpe-audit-handoff-20261009.md)**：从逐日报告独立复算 Sharpe、收益、IR、波动率与执行/账户完整性；**核验尚未完成**。
 >
 > [21 — 综合历史交接](21-next-conversation-handoff-star-chinext-20261008.md) 继续保留详细研究背景，但不再是两条并行工作的共同操作入口。
 > 旧 handover、Batch A/B/C 与已 supersede 的双池生产描述只作历史记录。
@@ -24,6 +25,7 @@
 |---|---|
 | [22-handoff-star-chinext-research-20261008.md](22-handoff-star-chinext-research-20261008.md) | **研究对话入口**：STAR reproducibility、ChiNext 新模型、冻结/OOS 约束 |
 | [23-web-ui-handoff-20261008.md](23-web-ui-handoff-20261008.md) | **网页对话入口**：深色响应式、Top20/走势图/forward 累计收益、Pages 发布与视觉验收 |
+| [24-csi1000-independent-sharpe-audit-handoff-20261009.md](24-csi1000-independent-sharpe-audit-handoff-20261009.md) | **独立核验对话入口**：Sharpe、IR、账户逐日收益、交易数据/成本与时间完整性审计（PENDING） |
 | [21-next-conversation-handoff-star-chinext-20261008.md](21-next-conversation-handoff-star-chinext-20261008.md) | 综合历史交接与研究背景（请优先使用 22/23 分工） |
 | [20-csi1000-stage-b-winner-canonical-promotion-20261008.md](20-csi1000-stage-b-winner-canonical-promotion-20261008.md) | CSI1000 Stage-B winner canonical promotion 决策 |
 | [19-csi1000-stage-b-final-audit-forward-contract-20261008.md](19-csi1000-stage-b-final-audit-forward-contract-20261008.md) | Stage-B 最终审计；其中 shadow deployment topology 已由 20 supersede |
