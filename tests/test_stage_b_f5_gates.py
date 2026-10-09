@@ -2,6 +2,7 @@
 
 CI trigger note: this file is watched by .github/workflows/csi1000-stage-b-f5-gates.yml
 (push to main). Touching it exercises the F5 gates on main.
+(Actions trigger health-check push: verifies push-to-main runs execute.)
 """
 from __future__ import annotations
 
