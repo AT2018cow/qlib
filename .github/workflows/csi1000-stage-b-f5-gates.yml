@@ -1,36 +1,79 @@
 name: CSI1000 Stage-B F5 evidence fail-closed gates
 
 on:
+  # Explicit manual entry point. A merged workflow file or a watched push
+  # cannot by itself prove that the repository's Actions are enabled.
+  workflow_dispatch:
   pull_request:
+    branches: [main]
     paths:
       - "audit/run_winner_phase0_execution_audit.py"
       - "audit/stage_b_f5_gates.py"
+      - "audit/verify_f5_committed_evidence.py"
       - "tests/test_stage_b_f5_gates.py"
+      - "tests/test_verify_f5_committed_evidence.py"
+      - "audit/evidence/winner_phase0_fixed/**"
+      - "audit/evidence/winner_phase0/raw/**"
       - ".github/workflows/csi1000-stage-b-f5-gates.yml"
   push:
-    # main is included so merged commits exercise these gates on main; a push
-    # that only edits this trigger list is evaluated against the previous file
-    # version, so the first main run appears on the next matching push.
-    branches: ["audit/harden-stage-b-f5-evidence-gates-20261009", "main"]
+    branches: ["main", "ci/f5-evidence-manual-dispatch-20261009"]
     paths:
       - "audit/run_winner_phase0_execution_audit.py"
       - "audit/stage_b_f5_gates.py"
+      - "audit/verify_f5_committed_evidence.py"
       - "tests/test_stage_b_f5_gates.py"
+      - "tests/test_verify_f5_committed_evidence.py"
+      - "audit/evidence/winner_phase0_fixed/**"
+      - "audit/evidence/winner_phase0/raw/**"
       - ".github/workflows/csi1000-stage-b-f5-gates.yml"
 
 permissions:
   contents: read
 
 jobs:
-  negative-controls:
+  f5-published-evidence:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Parse audit modules (no Qlib or Modal)
-        run: python -m py_compile audit/stage_b_f5_gates.py audit/run_winner_phase0_execution_audit.py tests/test_stage_b_f5_gates.py
-      - name: F5 positive and negative evidence gates
-        run: python -m unittest discover -s tests -p "test_stage_b_f5_gates.py" -v
+      - name: Compile audit scripts without importing Qlib or Modal
+        run: >-
+          python -m py_compile
+          audit/stage_b_f5_gates.py
+          audit/run_winner_phase0_execution_audit.py
+          audit/verify_f5_committed_evidence.py
+          tests/test_stage_b_f5_gates.py
+          tests/test_verify_f5_committed_evidence.py
+      - name: Run F5 positive and negative controls
+        run: >-
+          python -m unittest discover -s tests
+          -p "test_stage_b_f5_gates.py" -v
+      - name: Run published-ledger tamper and metrics regression
+        run: >-
+          python -m unittest discover -s tests
+          -p "test_verify_f5_committed_evidence.py" -v
+      - name: Produce independent published-evidence verification record
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m audit.verify_f5_committed_evidence | tee f5-published-evidence-check.json
+          {
+            echo '### Frozen F5 published-evidence check'
+            echo ''
+            echo 'This verifies committed bytes, orders, daily ledger and metric arithmetic.'
+            echo 'It does **not** certify provider data or real-market execution.'
+            echo ''
+            echo '```json'
+            cat f5-published-evidence-check.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve per-run evidence verdict
+        uses: actions/upload-artifact@v4
+        with:
+          name: f5-published-evidence-check
+          path: f5-published-evidence-check.json
+          if-no-files-found: error
+          retention-days: 30
