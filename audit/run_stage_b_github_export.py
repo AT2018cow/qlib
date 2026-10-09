@@ -5,12 +5,13 @@ Missing historical provider calendar prevents formal metric_formula PASS.
 """
 import importlib.util
 import json
+import os
 import shutil
 import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-EXPORT = ROOT / "results/csi1000_stage_b/audit_reports"
+EXPORT = Path(os.environ.get("AUDIT_EXPORT_ROOT", str(ROOT / "results/csi1000_stage_b/audit_reports")))
 AUDIT = ROOT / "audit/independent_stage_b_metrics.py"
 TARGET = ROOT / "audit/evidence/csi1000_stage_b_frozen_manifest_20261009.json"
 OUTPUT = ROOT / "audit-output"
