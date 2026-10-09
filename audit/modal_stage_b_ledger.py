@@ -39,7 +39,7 @@ def audit_once(candidate: str, phases: str) -> dict:
 
     with tempfile.TemporaryDirectory(prefix="ledger-") as temp_dir:
         result_dir = Path(temp_dir) / "result"
-        subprocess.run([
+        proc = subprocess.run([
             "python", "-m", "audit.verify_stage_b_fixed_ledger",
             "--repo-root", REPO_DIR,
             "--provider-uri", "/vol/cn_data",
@@ -48,8 +48,23 @@ def audit_once(candidate: str, phases: str) -> dict:
             "--candidate", candidate,
             "--phases", phases,
             "--output-dir", str(result_dir),
-        ], cwd=REPO_DIR, check=True, timeout=3300)
-        return json.loads((result_dir / "independent_ledger.json").read_text())
+        ], cwd=REPO_DIR, check=False, timeout=3300,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        # On mismatches the verifier exits nonzero AFTER writing its report.
+        # Always return that evidence to the local CLI before /tmp vanishes.
+        accounting = result_dir / "independent_ledger.json"
+        failure = result_dir / "audit_failure.json"
+        if accounting.is_file():
+            result = json.loads(accounting.read_text())
+        elif failure.is_file():
+            result = json.loads(failure.read_text())
+        else:
+            result = {"status": "RUN_FAILED_WITHOUT_REPORT"}
+        result["modal_command_exit_code"] = proc.returncode
+        if proc.returncode != 0:
+            result["status"] = "BLOCKED_OR_FAILED_NOT_PASS"
+            result["diagnostic_output_tail"] = proc.stdout[-2000:]
+        return result
 
 
 @app.local_entrypoint()
@@ -62,4 +77,7 @@ def main(candidate: str = "baseline", phases: str = "phase0",
         raise ValueError("output path must not exist and parent must exist")
     result = audit_once.remote(candidate, phases)
     dest.write_text(json.dumps(result, indent=2, allow_nan=False) + "\n")
-    print(f"Audit JSON written locally: {dest}; cells={len(result['cells'])}")
+    print(f"Audit JSON written locally: {dest}; cells={len(result.get('cells', []))}; "
+          f"exit={result['modal_command_exit_code']}")
+    if result["modal_command_exit_code"] != 0:
+        raise RuntimeError(f"Audit did not pass; inspect the retained local JSON: {dest}")
