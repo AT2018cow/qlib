@@ -1,0 +1,46 @@
+name: CSI1000 Stage-B corrected replay and 11-candidate ranking gates
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "audit/run_stage_b_corrected_rerank.py"
+      - "tests/test_stage_b_corrected_rerank.py"
+      - ".github/workflows/csi1000-stage-b-corrected-rerank.yml"
+  push:
+    branches: ["main", "audit/full-frozen-replay-rerank-20261010"]
+    paths:
+      - "audit/run_stage_b_corrected_rerank.py"
+      - "tests/test_stage_b_corrected_rerank.py"
+      - ".github/workflows/csi1000-stage-b-corrected-rerank.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frozen-source-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install minimal CPU Parquet dependencies
+        run: python -m pip install --disable-pip-version-check --no-input "pandas==2.2.3" "pyarrow==17.0.0"
+      - name: Compile batch replay without importing provider
+        run: python -m py_compile audit/run_stage_b_corrected_rerank.py tests/test_stage_b_corrected_rerank.py
+      - name: Verify published ten-report SHA gates
+        run: python -m unittest discover -s tests -p "test_stage_b_f6_preflight.py" -v
+      - name: "Negative controls: all 55 frozen signal/decision/report pointers and diagnostic ranking"
+        run: python -m unittest discover -s tests -p "test_stage_b_corrected_rerank.py" -v
+      - name: Explicit limit of CI result
+        run: |
+          {
+            echo "### CPU-only batch replay safety checks"
+            echo ""
+            echo "This workflow tests SHA gates and all-11 candidate ranking with fixtures."
+            echo "It DOES NOT execute 55 Qlib backtests, load private provider data, or certify a new winner."
+            echo "Real frozen-provider replay remains BLOCKED until authorized snapshot inputs are available."
+          } >> "$GITHUB_STEP_SUMMARY"
