@@ -23,9 +23,18 @@ class IndependentMetricsTests(unittest.TestCase):
         for r, c in zip(self.gross, self.cost):
             nav *= 1 + r - c
             self.account.append(nav)
+        previous = [100_000_000.0] + self.account[:-1]
+        turnovers = [0.1, 0.2, 0.1]
+        cum_fees, cum_turn = [], []
+        fee, turn = 0.0, 0.0
+        for i in range(3):
+            fee += self.cost[i] * previous[i]
+            turn += turnovers[i] * previous[i]
+            cum_fees.append(fee)
+            cum_turn.append(turn)
         self.values = dict(account=self.account, return_=self.gross, cost=self.cost,
-                           bench=[0.005, -0.01, 0.02], turnover=[0.1, 0.2, 0.1],
-                           total_turnover=[0.1, 0.2, 0.1], total_cost=[10, 20, 30],
+                           bench=[0.005, -0.01, 0.02], turnover=turnovers,
+                           total_turnover=cum_turn, total_cost=cum_fees,
                            cash=[0, 0, 0], value=self.account)
         self.values['return'] = self.values.pop('return_')
 
@@ -61,7 +70,7 @@ class IndependentMetricsTests(unittest.TestCase):
             with patch.object(pd, 'read_parquet', return_value=frame):
                 check = audit.audit_one(item, 'snapshot', root, self.dates, root)
             self.assertEqual(check['metric_formula'], 'PASS', check)
-            self.assertEqual(check['daily_account'], 'INCONCLUSIVE')
+            self.assertEqual(check['daily_account'], 'PASS')
             with patch.object(pd, 'read_parquet', return_value=frame):
                 check_no_cal = audit.audit_one(item, 'snapshot', root, None, root)
             self.assertEqual(check_no_cal['metric_formula'], 'BLOCKED')
