@@ -267,10 +267,21 @@ def main():
         str(old_report.index[i].date()) for i, difference in enumerate(diffs)
         if difference > ACCOUNT_TOL_CNY
     ]
-    if not changed_order_days or not changed_nav_dates:
+    frozen_stall = ("2025-07-02", "2026-06-29")
+    stall_old = sum(
+        len(day["orders"]) for day in old_orders
+        if frozen_stall[0] <= day["start_time"][:10] <= frozen_stall[1]
+    )
+    stall_fixed = sum(
+        len(day["orders"]) for day in fixed_orders
+        if frozen_stall[0] <= day["start_time"][:10] <= frozen_stall[1]
+    )
+    if stall_old != 0:
+        raise ValueError(f"frozen F1 stall not reproduced: {stall_old} original orders")
+    if not changed_order_days or not changed_nav_dates or stall_fixed == 0:
         raise ValueError(
-            "F1 FIX DID NOT CHANGE ORDERS AND NAV: do not call this a repaired "
-            "execution replay; examine static quote coverage, signal, and cash constraints"
+            "F1 FIX DID NOT RESUME TRADING in the frozen 240-session stall "
+            "or did not change NAV: do not claim a repaired execution replay"
         )
     output = {
         "audit_type": "diagnostic_Qlib_replay_not_independent_execution_proof",
@@ -288,6 +299,8 @@ def main():
         ).hexdigest(),
         "fixed_quote_codes_include_f1_removed_holdings": True,
         "legacy_reproduction": "PASS",
+        "frozen_stall_original_orders": stall_old,
+        "frozen_stall_fixed_orders": stall_fixed,
         "first_changed_order_date": changed_order_days[0] if changed_order_days else None,
         "changed_order_days_count": len(changed_order_days),
         "first_changed_nav_date": changed_nav_dates[0] if changed_nav_dates else None,
@@ -325,6 +338,7 @@ def main():
         "first_changed_order_date": output["first_changed_order_date"],
         "first_changed_nav_date": output["first_changed_nav_date"],
         "changed_order_days": len(changed_order_days),
+        "frozen_stall_fixed_orders": stall_fixed,
         "legacy_sharpe": old_m["sharpe"],
         "fixed_sharpe": fixed_m["sharpe"],
         "legacy_CAGR": old_m["strategy_cagr"],
