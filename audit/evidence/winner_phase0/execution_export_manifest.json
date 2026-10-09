@@ -1,0 +1,45 @@
+{
+  "audit_schema": "csi1000_stage_b_execution_evidence_v1",
+  "frozen_result_commit": "7a2676397b0f8e6f69c0bffc98d1764647f644ac",
+  "snapshot_token": "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1",
+  "candidate_id": "4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2",
+  "phase": 0,
+  "provider_fingerprint": "see csi1000_stage_b/provider_snapshot.json on the volume (not duplicated here)",
+  "calendar": {
+    "source": "original cn_data/calendars/day.txt",
+    "lines": 6482,
+    "sha256": "941cdb775ed173b1add3f5d402e14e3d199ce99b036a9555ce8b77a352461396"
+  },
+  "artifacts": {
+    "report": {
+      "expected_sha256": "649b26fec1760abeec9923adaa68db7240bfa9fe9f4bb1488e573f9373d39da0",
+      "actual_sha256": "649b26fec1760abeec9923adaa68db7240bfa9fe9f4bb1488e573f9373d39da0",
+      "match": true,
+      "size_bytes": 30057
+    },
+    "signal": {
+      "expected_sha256": "189d06cce7cdc52b1908439fb18fd9e3f1b8dcc8875a87bf5b6ec75d82e0278e",
+      "actual_sha256": "189d06cce7cdc52b1908439fb18fd9e3f1b8dcc8875a87bf5b6ec75d82e0278e",
+      "match": true,
+      "size_bytes": 2843214
+    },
+    "decisions": {
+      "expected_sha256": "8675619a028db77bad613aeede11b168ea4c40ba95f6be5e0a1039252da25db9",
+      "actual_sha256": "8675619a028db77bad613aeede11b168ea4c40ba95f6be5e0a1039252da25db9",
+      "match": true,
+      "size_bytes": 144833
+    }
+  },
+  "auxiliary_raw": {
+    "csi1000_instruments.txt": {
+      "sha256": "301fdd634bad134b563ac71bf23d6eeb72d628fb6e4289880660a46858d88ccb",
+      "purpose": "point-in-time csi1000 membership spans (dynamic universe replication)"
+    },
+    "market_data.parquet": {
+      "sha256": "7537ea8f204cef55d56a43d235523fd50e74111dea8aee9894faa701f98b93d7",
+      "purpose": "read-only provider export for the 206 ordered instruments ($open/$close/$factor/$volume, 2024-12-30..2026-09-30); source dataset is the public chenditc release"
+    }
+  },
+  "listing_st_pit_source": "no historical ST / PIT listing data in provider export; BLOCKED",
+  "audit_asof_utc": "2026-10-09T06:50:09.323383+00:00"
+}

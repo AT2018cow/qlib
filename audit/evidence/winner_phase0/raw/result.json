@@ -1,0 +1,282 @@
+{
+  "protocol": "csi1000_lgb_stage_b_v1",
+  "snapshot_token": "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1",
+  "candidate_id": "4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2",
+  "candidate": {
+    "candidate_id": "4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2",
+    "stage_a_rank": 5,
+    "is_baseline": false,
+    "model_params": {
+      "learning_rate": 0.08,
+      "colsample_bytree": 0.8,
+      "lambda_l1": 10.0,
+      "lambda_l2": 400.0,
+      "max_depth": 6,
+      "num_leaves": 63,
+      "min_data_in_leaf": 50
+    }
+  },
+  "stage_a_rank": 5,
+  "phase": 0,
+  "artifact_namespace": null,
+  "source": "deterministic_full_rolling",
+  "n_retrains": 22,
+  "chunk_predictions": [
+    {
+      "retrain_asof": "2024-12-31",
+      "signal_end": "2025-02-05",
+      "best_iteration": 26,
+      "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+      "prediction_content_sha256": "1e9712265d8bc8075da1274bf3fed0c0ebca5e67920d281de40af8cf417dad8b",
+      "source": "deterministic_fit"
+    },
+    {
+      "retrain_asof": "2025-02-06",
+      "signal_end": "2025-03-05",
+      "best_iteration": 22,
+      "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+      "prediction_content_sha256": "02d5874fc1a89aef6009886d0e03a76f113df244488308e4903dc8b4f2fe3fd2",
+      "source": "deterministic_fit"
+    },
+    {
+      "retrain_asof": "2025-03-06",
+      "signal_end": "2025-04-02",
+      "best_iteration": 14,
+      "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+      "prediction_content_sha256": "93691b6b3b195fa32868251b9002c8801d7045717930245ce8cb9f77f6f151a0",
+      "source": "deterministic_fit"
+    },
+    {
+      "retrain_asof": "2025-04-03",
+      "signal_end": "2025-05-06",
+      "best_iteration": 11,
+      "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+      "prediction_content_sha256": "87e62ece9cce04b994c70fa4346605a026c3d50fa16dcd9f3a46f4797471c0ef",
+      "source": "deterministic_fit"
+    },
+    {
+      "retrain_asof": "2025-05-07",
+      "signal_end": "2025-06-04",
+      "best_iteration": 25,
+      "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+      "prediction_content_sha256": "0460ff3c22003c7935fdce8bcc8737e82bd3ff662fc040c71d4171895202f1e0",
+      "source": "deterministic_fit"
+    },
+    {
+      "retrain_asof": "2025-06-05",
+      "signal_end": "2025-07-02",
+      "best_iteration": 18,
+      "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+      "prediction_content_sha256": "acb39c51a63fd4017a33efe9b5e384b1c2e7abf2f818f267f7d2d5cb7101bd8f",
+      "source": "deterministic_fit"
+    },
+    {
+      "retrain_asof": "2025-07-03",
+      "signal_end": "2025-07-30",
+      "best_iteration": 18,
+      "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+      "prediction_content_sha256": "86124c422124940baaa7753f989e20ed1ed9a51ae63e3f4cc415255ca17a91e8",
+      "source": "deterministic_fit"
+    },
+    {
+      "retrain_asof": "2025-07-31",
+      "signal_end": "2025-08-27",
+      "best_iteration": 11,
+      "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+      "prediction_content_sha256": "78d7a1bf5776c5d2df24a28fb193736c8da9c7da1c4374a710a1a0c023063b44",
+      "source": "deterministic_fit"
+    },
+    {
+      "retrain_asof": "2025-08-28",
+      "signal_end": "2025-09-24",
+      "best_iteration": 6,
+      "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+      "prediction_content_sha256": "47a3b178512f2658aad5420d90409c312d834e61c7a1ee146a6872b25ecb3813",
+      "source": "deterministic_fit"
+    },
+    {
+      "retrain_asof": "2025-09-25",
+      "signal_end": "2025-10-30",
+      "best_iteration": 8,
+      "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+      "prediction_content_sha256": "556ffb131a814ff41dd05be5b70c2e815e4a0a070394596471c9a07125616746",
+      "source": "deterministic_fit"
+    },
+    {
+      "retrain_asof": "2025-10-31",
+      "signal_end": "2025-11-27",
+      "best_iteration": 11,
+      "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+      "prediction_content_sha256": "9f65eaea7a7580f5502d40992a622c8154296345b0b19d2065076a8686baa03a",
+      "source": "deterministic_fit"
+    },
+    {
+      "retrain_asof": "2025-11-28",
+      "signal_end": "2025-12-25",
+      "best_iteration": 19,
+      "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+      "prediction_content_sha256": "d66248ab20f6ffc25fe38bdf43524e65ddc03652d6990c37c3a7392487122b5e",
+      "source": "deterministic_fit"
+    },
+    {
+      "retrain_asof": "2025-12-26",
+      "signal_end": "2026-01-26",
+      "best_iteration": 30,
+      "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+      "prediction_content_sha256": "9bf3a7662d0aab3046dbdaa35f4f973b7e5b25d3b2b499e64ec49896651fd0c9",
+      "source": "deterministic_fit"
+    },
+    {
+      "retrain_asof": "2026-01-27",
+      "signal_end": "2026-03-03",
+      "best_iteration": 11,
+      "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+      "prediction_content_sha256": "0b28c4307e9c6aba1ff44bf7e4e56c1fd5a7592fed2c704884c6431b33b8dcb5",
+      "source": "deterministic_fit"
+    },
+    {
+      "retrain_asof": "2026-03-04",
+      "signal_end": "2026-03-31",
+      "best_iteration": 14,
+      "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+      "prediction_content_sha256": "30a5b1de4395dfa0224866d1006ba8fc67a0b50856396db3ae0d2e715de8f131",
+      "source": "deterministic_fit"
+    },
+    {
+      "retrain_asof": "2026-04-01",
+      "signal_end": "2026-04-29",
+      "best_iteration": 16,
+      "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+      "prediction_content_sha256": "b37d0efcb85b76fa08a6e853b391066b0375796d68239fd3cf2554af8df8d69a",
+      "source": "deterministic_fit"
+    },
+    {
+      "retrain_asof": "2026-04-30",
+      "signal_end": "2026-06-01",
+      "best_iteration": 11,
+      "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+      "prediction_content_sha256": "fbcdc1d852050bf98063aa73c32f0a5786bfafe302f9bbc359d91697afac356b",
+      "source": "deterministic_fit"
+    },
+    {
+      "retrain_asof": "2026-06-02",
+      "signal_end": "2026-06-30",
+      "best_iteration": 1,
+      "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+      "prediction_content_sha256": "5b89bbeda14b6757b852637476df4b9a736ee745d8d461718dfeb55127a7c186",
+      "source": "deterministic_fit"
+    },
+    {
+      "retrain_asof": "2026-07-01",
+      "signal_end": "2026-07-28",
+      "best_iteration": 1,
+      "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+      "prediction_content_sha256": "ae825ca1895f5b7697e2b5c3032008be6aeeaa017b19b6b92721c63d7f4d8883",
+      "source": "deterministic_fit"
+    },
+    {
+      "retrain_asof": "2026-07-29",
+      "signal_end": "2026-08-25",
+      "best_iteration": 1,
+      "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+      "prediction_content_sha256": "b0d30cc8177d04e8880924690ec8919df7e13221fa7f1fae49df8c8d330e267d",
+      "source": "deterministic_fit"
+    },
+    {
+      "retrain_asof": "2026-08-26",
+      "signal_end": "2026-09-22",
+      "best_iteration": 5,
+      "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+      "prediction_content_sha256": "d0b7d9650c5cbe9a72089d57c1fd199c21d49ceb02eaf691581d6e09d345f629",
+      "source": "deterministic_fit"
+    },
+    {
+      "retrain_asof": "2026-09-23",
+      "signal_end": "2026-09-29",
+      "best_iteration": 18,
+      "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+      "prediction_content_sha256": "dcf26f025e9aea1775ac32be7dacb500e5a4edbc8ecaf2d6850fe06523f94c7c",
+      "source": "deterministic_fit"
+    }
+  ],
+  "signal_artifact": {
+    "path": "/vol/csi1000_stage_b/51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1/phases/4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2/phase00/signal.parquet",
+    "sha256": "189d06cce7cdc52b1908439fb18fd9e3f1b8dcc8875a87bf5b6ec75d82e0278e",
+    "content_sha256": "c3770b90e6fb66cb601b2b27564105985a88a54959bd7cd96fc035e1a14ce485",
+    "rows": 423876
+  },
+  "decision_artifact": {
+    "path": "/vol/csi1000_stage_b/51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1/phases/4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2/phase00/decisions.json",
+    "sha256": "8675619a028db77bad613aeede11b168ea4c40ba95f6be5e0a1039252da25db9",
+    "content_sha256": "8675619a028db77bad613aeede11b168ea4c40ba95f6be5e0a1039252da25db9",
+    "audit_version": "topk_decisions_v1",
+    "decision_count": 424,
+    "order_count": 482
+  },
+  "report_artifact": {
+    "path": "/vol/csi1000_stage_b/51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1/phases/4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2/phase00/report.parquet",
+    "sha256": "649b26fec1760abeec9923adaa68db7240bfa9fe9f4bb1488e573f9373d39da0",
+    "content_sha256": "f9d78bbbbc056d2af4bb15b6a0dc736721af29a19ea6d837281f1b2582f2832e",
+    "rows": 424,
+    "columns": [
+      "account",
+      "return",
+      "total_turnover",
+      "turnover",
+      "total_cost",
+      "cost",
+      "value",
+      "cash",
+      "bench"
+    ]
+  },
+  "result_path": "/vol/csi1000_stage_b/51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1/phases/4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2/phase00/result.json",
+  "phase_metrics": {
+    "metric_version": "portfolio_compound_v1",
+    "start": "2025-01-02",
+    "end": "2026-09-30",
+    "years": 1.741309,
+    "n_days": 424,
+    "strategy_total_return": 0.564702,
+    "strategy_cagr": 0.293178,
+    "benchmark_total_return": 0.240726,
+    "benchmark_cagr": 0.131869,
+    "relative_total_return": 0.261118,
+    "relative_excess_cagr": 0.142516,
+    "strategy_max_drawdown": -0.121268,
+    "benchmark_max_drawdown": -0.229446,
+    "relative_max_drawdown": -0.226108,
+    "sharpe": 1.276262,
+    "information_ratio": 0.687576,
+    "annual_volatility": 0.214666,
+    "mean_daily_net_return": 0.00115113,
+    "mean_daily_active_return": 0.00051642,
+    "account_return_max_error": 0.0,
+    "mean_turnover": 0.056751,
+    "turnover_source": "turnover",
+    "total_cost_sum": 0.023593
+  },
+  "metric_version": "portfolio_compound_v1",
+  "start": "2025-01-02",
+  "end": "2026-09-30",
+  "years": 1.741309,
+  "n_days": 424,
+  "strategy_total_return": 0.564702,
+  "strategy_cagr": 0.293178,
+  "benchmark_total_return": 0.240726,
+  "benchmark_cagr": 0.131869,
+  "relative_total_return": 0.261118,
+  "relative_excess_cagr": 0.142516,
+  "strategy_max_drawdown": -0.121268,
+  "benchmark_max_drawdown": -0.229446,
+  "relative_max_drawdown": -0.226108,
+  "sharpe": 1.276262,
+  "information_ratio": 0.687576,
+  "annual_volatility": 0.214666,
+  "mean_daily_net_return": 0.00115113,
+  "mean_daily_active_return": 0.00051642,
+  "account_return_max_error": 0.0,
+  "mean_turnover": 0.056751,
+  "turnover_source": "turnover",
+  "total_cost_sum": 0.023593
+}
