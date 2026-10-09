@@ -56,7 +56,9 @@ class InputIdentityTests(unittest.TestCase):
                 verify_input(Path(directory) / "missing", "a" * 64, "decisions")
 
     def test_committed_fixed_diagnostics_match_self_reported_input_hashes(self):
-        base = Path("audit/evidence/winner_phase0_fixed")
+        # Anchor to the repo root (same convention as test_modal_structure.py)
+        # so the test passes regardless of the pytest invocation directory.
+        base = Path(__file__).resolve().parent.parent / "audit/evidence/winner_phase0_fixed"
         summary = json.loads((base / "fixed_independent_ledger_summary.json").read_text())
         for label, filename in (
             ("report", "fixed_diagnostic_report.parquet"),
