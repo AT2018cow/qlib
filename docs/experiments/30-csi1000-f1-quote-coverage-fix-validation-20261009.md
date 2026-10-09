@@ -55,27 +55,38 @@ python -m audit.replay_stage_b_f1 \
 
 | Gate | 验证动作 | 阈值 / PASS 条件 | 当前 |
 |---|---|---|---|
-| F0：代码隔离 | diff 只涉及 quote union、小规模研究 runner、审计回放、测试、文档/CI；主流 signal/模型不变 | 零生产/Modal deploy、零调参、旧报告 SHA 不变 | **待 PR 复核** |
-| F1：纯逻辑单测 | 不连接 Modal/数据；模拟 `SH688066` 退出后不再入指、`SH603301` 退出又重入 | union 仍包含两者，排除未入指股票；错误配置空集合 fail-closed | **测试代码已提交** |
-| F2：原始数据身份 | 使用同一 frozen report/signal/decision SHA 和原 provider snapshot fingerprint | 全部 SHA 和 fingerprint 完全相等；原报告日期与 provider 日历一致 | **待实验环境运行** |
-| F3：Legacy 复现 | 完全不变的 frozen signal + 原动态指数 quote 重新仅执行交易回放 | 424 日一致；account/cash/value/cum-fees/cum-turnover 每日最大差 <= **CNY 0.01**；return/cost/bench/turnover 最大差 <= **1e-10**；原 decisions/订单日期、方向、数量、成交量一致 | **待运行** |
-| F4：修复有效性 | 使用完全相同 frozen signal + 固定 quote union 只修改报价范围 | 退指后股票 `$open/$close/$factor` 非空；原 240 日区间旧轨 0 单、新轨 **>0 单**，账户 NAV 发生差异；始终 424 日，样本/初始资本/手续费/选股不变；无新漏报日 | **待运行** |
-| F5：独立现实执行 | 不用同一 Qlib 回放为自证；从固定轨订单和原价重新构建 424 天日账与可交易性，使用真实涨跌停、历史 ST、停牌、IPO 及必要盘口 | 内部独立 daily return 差 <= **1e-10**，cash/account/fees 差 <= **CNY 0.01**；无实质违规成交、未来数据/训练标签泄漏，否则 FAIL/BLOCKED | **待额外证据** |
-| F6：范围扩展 | 同样的只读操作覆盖 winner 4/6/10/15 与 baseline 0/4/6/10/15；baseline phase0 按 preflight `repeat_b` 路径 | 每个 phase 独立 SHA、同口径 delta、异常日期和费用表；报告受影响范围 | **BLOCKED / 不应预先宣告修复完成** |
+| F0：代码隔离 | diff 只涉及 quote union、小规模研究 runner、审计回放、测试、文档/CI；主流 signal/模型不变 | 零生产/Modal deploy、零调参、旧报告 SHA 不变 | **已复核通过**（另发现并已修复 PR 分支携带的 doc 29 旧数字回退） |
+| F1：纯逻辑单测 | 不连接 Modal/数据；模拟 `SH688066` 退出后不再入指、`SH603301` 退出又重入 | union 仍包含两者，排除未入指股票；错误配置空集合 fail-closed | **通过（3 tests + 3 subtests；unittest 亦通过）** |
+| F2：原始数据身份 | 使用同一 frozen report/signal/decision SHA 和原 provider snapshot fingerprint | 全部 SHA 和 fingerprint 完全相等；原报告日期与 provider 日历一致 | **通过（volume 快照 token + fingerprint 与冻结 manifest 一致）** |
+| F3：Legacy 复现 | 完全不变的 frozen signal + 原动态指数 quote 重新仅执行交易回放 | 424 日一致；account/cash/value/cum-fees/cum-turnover 每日最大差 <= **CNY 0.01**；return/cost/bench/turnover 最大差 <= **1e-10**；原 decisions/订单日期、方向、数量、成交量一致 | **通过（本地执行，无训练）** |
+| F4：修复有效性 | 使用完全相同 frozen signal + 固定 quote union 只修改报价范围 | 退指后股票 `$open/$close/$factor` 非空；原 240 日区间旧轨 0 单、新轨 **>0 单**，账户 NAV 发生差异；始终 424 日，样本/初始资本/手续费/选股不变；无新漏报日 | **通过（950 修复订单，见上表）** |
+| F5：独立现实执行 | 不用同一 Qlib 回放为自证；从固定轨订单和原价重新构建 424 天日账与可交易性，使用真实涨跌停、历史 ST、停牌、IPO 及必要盘口 | 内部独立 daily return 差 <= **1e-10**，cash/account/fees 差 <= **CNY 0.01**；无实质违规成交、未来数据/训练标签泄漏，否则 FAIL/BLOCKED | **账本部分通过（winner phase 0，见下）；真实 ST/停牌/盘口/标签证据仍 BLOCKED** |
+| F6：范围扩展 | 同样的只读操作覆盖 winner 4/6/10/15 与 baseline 0/4/6/10/15；baseline phase0 按 preflight `repeat_b` 路径 | 每个 phase 独立 SHA、同口径 delta、异常日期和费用表；报告受影响范围 | **范围已评估，未执行（需参数化回放脚本 + 9 次回放 + 各自独立账本，另立工作项）** |
 
-**应输出的回测对照矩阵（由实际输出填写，不允许猜数字）**：
+**应输出的回测对照矩阵（2026-10-09 本地实验环境实测，诊断性 Qlib 重放，非独立执行证明）**：
 
 | 组别 | 指标 | 冻结旧路径 | 静态 quote 修复路径 | 变化 |
 |---|---|---:|---:|---:|
-| winner phase0 | Sharpe | 1.276262 | **待实测** | 待实测 |
-| winner phase0 | CAGR | 29.3178% | **待实测** | 待实测 |
-| winner phase0 | IR / MDD / total cost / turnover | 见 doc27 原始复算 | **待实测** | 待实测 |
-| winner phase0 | 2025-07-02..2026-06-29 订单数 | 0 | **待实测（预期 >0）** | 待实测 |
+| winner phase0 | Sharpe | 1.276262 | **0.998878** | **−0.277** |
+| winner phase0 | CAGR | 29.3178% | **23.4107%** | **−5.91pp** |
+| winner phase0 | 相对超额 CAGR | 0.142516 | **0.090327** | −0.052 |
+| winner phase0 | IR | 0.687576 | **0.482338** | −0.205 |
+| winner phase0 | MaxDD | −0.121268 | **−0.276412** | 更深 |
+| winner phase0 | 年化波动 | 0.214666 | **0.233173** | +0.019 |
+| winner phase0 | 平均换手 | 0.056751 | **0.201329** | +0.145 |
+| winner phase0 | 累计费用率 | 0.023593 | **0.084912** | +0.061 |
+| winner phase0 | 2025-07-02..2026-06-29 订单数 | 0 | **950** | 恢复交易（1696 总单/424 交易日） |
+| winner phase0 | 首次变化订单日 / NAV 日 | — | **2025-07-01 / 2025-06-30** | — |
+
+证据位置（实验环境本地输出，未提交 volume）：`legacy_diagnostic_report.parquet`、
+`fixed_diagnostic_report.parquet`、`fixed_diagnostic_decisions.json`、`daily_legacy_vs_fixed.csv`、
+`comparison.json`。
 
 请保存 `calendar_compare.csv`、`execution_orders.csv`、`account_rebuild_daily.csv` 的**固定轨二次独立实现**证据，和上述诊断性 Qlib 轨道区分开来。原始已冻结 tail 被消费，只做缺陷归因，不进行改进收益的事后择参。
 
-## 5. 当前审计结论和决策条件
+## 5. 当前审计结论和决策条件（2026-10-09 本地验证后更新）
 
 - **确认：** F1 旧口径产生虚假不可交易的持仓与长期停换仓，这是结构性模拟缺陷，不是指标计算本身错误；原 winner phase0 的 Sharpe 1.276262/CAGR 29.3178% **不可直接解释为可交易真实路径**。
-- **未证实：** 修复后收益率或 Sharpe 会提高/降低；原 provider 的行情是否真的支持退指后逐日定价；历史 ST、真实一字板对手盘、成交量容量及 20-session 标签 mature/PIT 证据。
-- **保持：** `legacy_metric_arithmetic=PASS`, `legacy_market_execution=FAIL`, `fixed_execution_replay=BLOCKED`, `overall=BLOCKED`, `future_returns=INCONCLUSIVE`。**修复 PR 可以在完成代码审阅后合并为一个研究实验能力，但不得据此自动认可或更换生产模型；生产提升必须走独立版本的验证与授权。**
+- **已测得（诊断性，非认证）：** 静态 quote union 修复路径在 winner phase 0 上恢复交易（冻结点 950 单、全程 424 天每天有单），修复后 Sharpe 0.998878 / CAGR 23.4107% / 超额 0.0903 / IR 0.482 / MaxDD −0.276——**低于**冻结报告数值（停换仓期间的过期估值抬高了旧指标）。独立账本（第二实现，不调用 Qlib）对修复路径重建全部 424 天：账户/现金/估值最大差 7e-8 CNY，日收益差 5e-16。
+- **未证实：** 修复后数字不构成生产可用结论；真实 ST/停牌/盘口/标签证据仍缺；其余 9 个 phase 未运行；未来收益 INCONCLUSIVE。
+- **保持：** `legacy_metric_arithmetic=PASS`, `legacy_market_execution=FAIL`, `fixed_execution_replay=DIAGNOSTIC_PASS`, `fixed_independent_ledger_phase0=PASS`, 真实市场证据与全覆盖扩展仍 `BLOCKED`, `overall=BLOCKED`, `future_returns=INCONCLUSIVE`。**修复 PR 可以在完成代码审阅后合并为一个研究实验能力，但不得据此自动认可或更换生产模型；生产提升必须走独立版本的验证与授权。**

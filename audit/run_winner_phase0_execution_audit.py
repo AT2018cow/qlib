@@ -141,11 +141,14 @@ def load_inputs(args):
     winner = next(c for c in result["ranked_candidates"] if c["candidate_id"] == CANDIDATE_ID)
     phase = next(x for x in winner["phase_results"] if x["phase"] == 0)
 
-    report_path = repo / "results/csi1000_stage_b/audit_reports/winner_4e908173705c76fe/phase00__phases.parquet"
+    report_path = Path(args.report_file) if args.report_file else (
+        repo / "results/csi1000_stage_b/audit_reports/winner_4e908173705c76fe/phase00__phases.parquet")
+    decisions_file = Path(args.decisions_file) if args.decisions_file else raw / "decisions.json"
+    market_file = Path(args.market_file) if args.market_file else raw / "market_data.parquet"
     artifacts = {
-        "report": {"path": report_path, "expected": phase["report_artifact"]["sha256"]},
+        "report": {"path": report_path, "expected": phase["report_artifact"]["sha256"] if not args.fixed_mode else None},
         "signal": {"path": raw / "signal.parquet", "expected": phase["signal_artifact"]["sha256"]},
-        "decisions": {"path": raw / "decisions.json", "expected": phase["decision_artifact"]["sha256"]},
+        "decisions": {"path": decisions_file, "expected": phase["decision_artifact"]["sha256"] if not args.fixed_mode else None},
     }
     identity = {}
     for key, meta in artifacts.items():
@@ -153,16 +156,16 @@ def load_inputs(args):
         identity[key] = {
             "expected_sha256": meta["expected"],
             "actual_sha256": actual,
-            "match": actual == meta["expected"],
+            "match": (actual == meta["expected"]) if meta["expected"] is not None else None,
             "size_bytes": meta["path"].stat().st_size,
         }
 
     calendar = [line.strip() for line in (raw / "day.txt").read_text().splitlines() if line.strip()]
-    decisions = json.loads((raw / "decisions.json").read_text())
+    decisions = json.loads(decisions_file.read_text())
     result_json_phase = json.loads((raw / "result.json").read_text())
     report = pd.read_parquet(report_path)
     signal = pd.read_parquet(raw / "signal.parquet")
-    market = pd.read_parquet(raw / "market_data.parquet")
+    market = pd.read_parquet(market_file)
     return result, phase, result_json_phase, identity, calendar, decisions, report, signal, market
 
 
@@ -171,6 +174,15 @@ def main():
     parser.add_argument("--raw-dir", default="audit/evidence/winner_phase0/raw")
     parser.add_argument("--repo-dir", default=".")
     parser.add_argument("--out-dir", default="audit/evidence/winner_phase0")
+    parser.add_argument("--report-file", default=None,
+                        help="override report parquet (e.g. fixed replay output)")
+    parser.add_argument("--decisions-file", default=None,
+                        help="override decisions json (e.g. fixed replay output)")
+    parser.add_argument("--market-file", default=None,
+                        help="override market parquet (e.g. fixed-path 565-instrument export)")
+    parser.add_argument("--fixed-mode", action="store_true",
+                        help="F5: audit a repaired (static-union) replay; skips frozen SHA "
+                             "expectations and span-restricted data availability")
     args = parser.parse_args()
 
     out_dir = Path(args.repo_dir) / args.out_dir if not Path(args.out_dir).is_absolute() else Path(args.out_dir)
@@ -206,14 +218,16 @@ def main():
     # Point-in-time universe spans: the frozen exchange built its quote over the
     # dynamic csi1000 membership, so a stock has NO quote data outside its
     # membership spans (verified: index-removal causes permanent suspension in
-    # the frozen simulation).
+    # the frozen simulation). In fixed_mode the static union gives full quotes,
+    # so the span restriction is disabled.
     spans: dict[str, list[tuple[str, str]]] = {}
-    spans_path = Path(args.raw_dir) / "csi1000_instruments.txt"
-    if spans_path.exists():
-        for line in spans_path.read_text().splitlines():
-            parts = line.strip().split("\t")
-            if len(parts) == 3:
-                spans.setdefault(parts[0], []).append((parts[1], parts[2]))
+    if not args.fixed_mode:
+        spans_path = Path(args.raw_dir) / "csi1000_instruments.txt"
+        if spans_path.exists():
+            for line in spans_path.read_text().splitlines():
+                parts = line.strip().split("\t")
+                if len(parts) == 3:
+                    spans.setdefault(parts[0], []).append((parts[1], parts[2]))
 
     def has_quote(stock: str, day: str) -> bool:
         sp = spans.get(stock)
