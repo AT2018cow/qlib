@@ -31,6 +31,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from audit.stage_b_f5_gates import (
+    check_complete_sell, check_full_buy, require_pass, verify_input,
+)
+
 # ---------------------------------------------------------------------------
 # Frozen constants (transcribed from frozen code / runbook)
 # ---------------------------------------------------------------------------
@@ -57,7 +61,11 @@ RESULT_JSON = "results/csi1000_stage_b/stage_b_full_51756897fc752304.json"
 
 
 def sha256_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def board_of(stock_id: str) -> str:
@@ -145,19 +153,58 @@ def load_inputs(args):
         repo / "results/csi1000_stage_b/audit_reports/winner_4e908173705c76fe/phase00__phases.parquet")
     decisions_file = Path(args.decisions_file) if args.decisions_file else raw / "decisions.json"
     market_file = Path(args.market_file) if args.market_file else raw / "market_data.parquet"
+    source_manifest = json.loads(
+        (repo / "audit/evidence/winner_phase0/execution_export_manifest.json").read_text()
+    )
+    # The expected SHA pins must pre-exist the audit run. The current file's
+    # own freshly calculated digest is NEVER accepted as its expected digest.
+    if args.fixed_mode:
+        for label, value in (
+            ("report", args.expected_report_sha256),
+            ("decisions", args.expected_decisions_sha256),
+            ("market", args.expected_market_sha256),
+        ):
+            if not value:
+                raise ValueError(f"--fixed-mode requires --expected-{label}-sha256")
+        if not args.provider_snapshot_file:
+            raise ValueError("--fixed-mode requires --provider-snapshot-file")
+        if not args.report_file or not args.decisions_file or not args.market_file:
+            raise ValueError("--fixed-mode requires explicit report, decisions, and market paths")
+    if args.fixed_mode:
+        expected_report = args.expected_report_sha256
+        expected_decisions = args.expected_decisions_sha256
+        expected_market = args.expected_market_sha256
+    else:
+        expected_report = phase["report_artifact"]["sha256"]
+        expected_decisions = phase["decision_artifact"]["sha256"]
+        expected_market = args.expected_market_sha256 or source_manifest["auxiliary_raw"]["market_data.parquet"]["sha256"]
     artifacts = {
-        "report": {"path": report_path, "expected": phase["report_artifact"]["sha256"] if not args.fixed_mode else None},
-        "signal": {"path": raw / "signal.parquet", "expected": phase["signal_artifact"]["sha256"]},
-        "decisions": {"path": decisions_file, "expected": phase["decision_artifact"]["sha256"] if not args.fixed_mode else None},
+        "report": (report_path, expected_report),
+        "signal": (raw / "signal.parquet", phase["signal_artifact"]["sha256"]),
+        "decisions": (decisions_file, expected_decisions),
+        "market": (market_file, expected_market),
+        "calendar": (raw / "day.txt", source_manifest["calendar"]["sha256"]),
+        "instruments": (
+            raw / "csi1000_instruments.txt",
+            source_manifest["auxiliary_raw"]["csi1000_instruments.txt"]["sha256"],
+        ),
     }
-    identity = {}
-    for key, meta in artifacts.items():
-        actual = sha256_file(meta["path"])
-        identity[key] = {
-            "expected_sha256": meta["expected"],
-            "actual_sha256": actual,
-            "match": (actual == meta["expected"]) if meta["expected"] is not None else None,
-            "size_bytes": meta["path"].stat().st_size,
+    identity = {
+        label: verify_input(src, expected, label)
+        for label, (src, expected) in artifacts.items()
+    }
+    if args.provider_snapshot_file:
+        expected_snapshot = result["manifest"]
+        snapshot_file = Path(args.provider_snapshot_file)
+        provider_manifest = json.loads(snapshot_file.read_text())
+        if (provider_manifest.get("snapshot_token") != expected_snapshot["snapshot_token"]
+                or provider_manifest.get("provider_fingerprint") != expected_snapshot["provider_fingerprint"]):
+            raise ValueError("original provider fingerprint or snapshot token mismatch")
+        identity["provider_snapshot"] = {
+            "name": snapshot_file.name,
+            "sha256": sha256_file(snapshot_file),
+            "token_match": True,
+            "provider_fingerprint_match": True,
         }
 
     calendar = [line.strip() for line in (raw / "day.txt").read_text().splitlines() if line.strip()]
@@ -173,7 +220,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--raw-dir", default="audit/evidence/winner_phase0/raw")
     parser.add_argument("--repo-dir", default=".")
-    parser.add_argument("--out-dir", default="audit/evidence/winner_phase0")
+    parser.add_argument("--out-dir", required=True,
+                        help="must be a new path; never overwrite existing derived audit evidence")
     parser.add_argument("--report-file", default=None,
                         help="override report parquet (e.g. fixed replay output)")
     parser.add_argument("--decisions-file", default=None,
@@ -181,12 +229,24 @@ def main():
     parser.add_argument("--market-file", default=None,
                         help="override market parquet (e.g. fixed-path 565-instrument export)")
     parser.add_argument("--fixed-mode", action="store_true",
-                        help="F5: audit a repaired (static-union) replay; skips frozen SHA "
-                             "expectations and span-restricted data availability")
+                        help="F5: audit repaired static-union replay; requires externally pinned SHA inputs")
+    parser.add_argument("--expected-report-sha256", default=None,
+                        help="fixed-mode: digest captured separately from the repaired report")
+    parser.add_argument("--expected-decisions-sha256", default=None,
+                        help="fixed-mode: digest captured separately from the repaired decisions")
+    parser.add_argument("--expected-market-sha256", default=None,
+                        help="digest of the ACTUAL --market-file export, pinned before this audit")
+    parser.add_argument("--provider-snapshot-file", default=None,
+                        help="fixed-mode: frozen provider_snapshot.json, matching token and fingerprint")
     args = parser.parse_args()
 
     out_dir = Path(args.repo_dir) / args.out_dir if not Path(args.out_dir).is_absolute() else Path(args.out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    if out_dir.exists():
+        parser.error("audit output already exists; never overwrite saved evidence")
+    if out_dir.resolve() == Path("/vol") or Path("/vol") in out_dir.resolve().parents:
+        parser.error("audit outputs must not be written under the frozen /vol")
+    if Path(args.raw_dir).resolve() == out_dir.resolve() or Path(args.raw_dir).resolve() in out_dir.resolve().parents:
+        parser.error("audit outputs must not be written into the input evidence directory")
 
     result, phase, result_json_phase, identity, calendar, decisions, report, signal, market = load_inputs(args)
 
@@ -204,7 +264,6 @@ def main():
             "in_provider_calendar": e in cal_pos,
             "report_day_match": report_days[i] == e,
         })
-    pd.DataFrame(calendar_rows).to_csv(out_dir / "calendar_compare.csv", index=False)
     calendar_exact = (
         report_days == decision_days
         and all(r["in_provider_calendar"] for r in calendar_rows)
@@ -272,6 +331,10 @@ def main():
     negative_cash_events = 0
     max_account_diff = Decimal("0")
     max_return_diff = 0.0
+    max_fee_diff = Decimal("0")
+    max_turnover_diff = Decimal("0")
+    max_fee_rate_diff = Decimal("0")
+    max_turnover_rate_diff = Decimal("0")
     first_divergence = None
 
     for i, decision in enumerate(decisions):
@@ -373,16 +436,17 @@ def main():
                     lot_violations += 1
 
             if direction == 0:
+                # Check BEFORE mutation: a sell must request and execute the
+                # entire held quantity. Detect even if replayed NAV happens to match.
+                try:
+                    check_complete_sell(float_pos.amount.get(stock, 0.0),
+                                        amount, deal_amount, stock)
+                except ValueError:
+                    sell_amount_mismatches += 1
                 trade_val, cost = float_pos.sell(stock, deal_amount, open_adj)
-                expected_amount = float_pos.amount.get(stock, None)
-                if expected_amount is None:
-                    expected_amount = 0.0
-                if not np.isclose(expected_amount, 0.0, atol=1e-5) and False:
-                    pass
-                # sell amount must equal the full pre-trade position amount
-                # (checked implicitly by the position bookkeeping above)
                 dec_cash += Decimal(str(trade_val)) - Decimal(str(cost))
             else:
+                check_full_buy(amount, deal_amount, stock)
                 if not buys_done:
                     # frozen strategy sizes buys from post-sell cash with the
                     # FULL (pre-tradability-filter) buy list length
@@ -392,9 +456,6 @@ def main():
                 expected_amount = round_lot(buy_value_per / open_adj, f_mkt) if buy_value_per is not None else float("nan")
                 if math.isfinite(expected_amount) and abs(expected_amount - amount) > max(1e-6, abs(expected_amount) * 1e-9):
                     buy_amount_mismatches += 1
-                    orders_csv[-1]["discrepancy_reason"] = (
-                        f"buy_amount_diff expected={expected_amount!r} actual={amount!r}"
-                    )
                 dec_cash -= Decimal(str(trade_val)) + Decimal(str(cost))
                 if dec_cash < 0:
                     negative_cash_events += 1
@@ -425,6 +486,17 @@ def main():
         account_f = float_pos.cash + value_f
 
         rep = report.iloc[i]
+        # Compare reconstructed fee/turnover CNY totals and their DAILY
+        # account-relative rates, not only cash/account and gross return.
+        rep_fee_total = Decimal(str(rep["total_cost"]))
+        rep_turn_total = Decimal(str(rep["total_turnover"]))
+        rep_fee_rate = Decimal(str(rep["cost"]))
+        rep_turn_rate = Decimal(str(rep["turnover"]))
+        prev_account = Decimal(str(account_prev))
+        max_fee_diff = max(max_fee_diff, abs(cum_cost - rep_fee_total))
+        max_turnover_diff = max(max_turnover_diff, abs(cum_turnover - rep_turn_total))
+        max_fee_rate_diff = max(max_fee_rate_diff, abs(day_fees / prev_account - rep_fee_rate))
+        max_turnover_rate_diff = max(max_turnover_rate_diff, abs(day_turnover / prev_account - rep_turn_rate))
         rep_account = Decimal(str(rep["account"]))
         rep_cash = Decimal(str(rep["cash"]))
         rep_value = Decimal(str(rep["value"]))
@@ -463,6 +535,27 @@ def main():
         })
 
         account_prev = Decimal(str(account_f))
+
+    # A single strict acceptance gate; FAIL before writing any PASS summaries
+    # or derived files. This gate is shared with negative-control unit tests.
+    require_pass(
+        calendar_exact=bool(calendar_exact),
+        decisions_n=len(decisions),
+        report_n=len(report_days),
+        decision_mismatches=dvs_mismatches,
+        tradability_violations=tradability_violations,
+        lot_violations=lot_violations,
+        factor_mismatches=factor_mismatches,
+        buy_amount_mismatches=buy_amount_mismatches,
+        sell_amount_mismatches=sell_amount_mismatches,
+        negative_cash_events=negative_cash_events,
+        max_account_diff=max_account_diff,
+        max_return_diff=max_return_diff,
+        max_fee_diff=max_fee_diff,
+        max_turnover_diff=max_turnover_diff,
+        max_fee_rate_diff=max_fee_rate_diff,
+        max_turnover_rate_diff=max_turnover_rate_diff,
+    )
 
     # retrain boundary continuity (from frozen result metadata)
     chunks = result_json_phase["chunk_predictions"]
@@ -505,6 +598,10 @@ def main():
         "ledger": {
             "max_abs_account_diff_cny": str(max_account_diff),
             "max_abs_return_diff": max_return_diff,
+            "max_abs_cumulative_fee_diff_cny": str(max_fee_diff),
+            "max_abs_cumulative_turnover_diff_cny": str(max_turnover_diff),
+            "max_abs_daily_fee_rate_diff": str(max_fee_rate_diff),
+            "max_abs_daily_turnover_rate_diff": str(max_turnover_rate_diff),
             "account_tolerance_cny": str(ACCOUNT_TOL),
             "return_tolerance": RETURN_TOL,
             "first_divergence": first_divergence,
@@ -548,9 +645,8 @@ def main():
                 "PASS" if (tradability_violations == 0 and lot_violations == 0
                            and factor_mismatches == 0 and buy_amount_mismatches == 0) else "FAIL"
             ),
-            "independent_execution_account": (
-                "PASS" if (max_account_diff <= ACCOUNT_TOL and max_return_diff <= RETURN_TOL) else "FAIL"
-            ),
+            "independent_execution_account": "PASS",
+            "f5_internal_evidence_gate": "PASS",
             "execution_integrity": "BLOCKED",
             "overall": "BLOCKED",
             "notes": [
@@ -562,13 +658,17 @@ def main():
         },
     }
 
+    out_dir.mkdir(parents=True, exist_ok=False)
+    pd.DataFrame(calendar_rows).to_csv(out_dir / "calendar_compare.csv", index=False)
     (out_dir / "execution_export_manifest.json").write_text(json.dumps({
         "audit_schema": "csi1000_stage_b_execution_evidence_v1",
         "frozen_result_commit": FROZEN_RESULT_COMMIT,
         "snapshot_token": SNAPSHOT,
         "candidate_id": CANDIDATE_ID,
         "phase": 0,
-        "provider_fingerprint": "see csi1000_stage_b/provider_snapshot.json on the volume (not duplicated here)",
+        "provider_fingerprint": result["manifest"]["provider_fingerprint"],
+        "fixed_mode": bool(args.fixed_mode),
+        "verified_inputs": identity,
         "calendar": {
             "source": "original cn_data/calendars/day.txt",
             "lines": len(calendar),
@@ -581,8 +681,8 @@ def main():
                 "purpose": "point-in-time csi1000 membership spans (dynamic universe replication)",
             },
             "market_data.parquet": {
-                "sha256": sha256_file(Path(args.raw_dir) / "market_data.parquet"),
-                "purpose": "read-only provider export for the 206 ordered instruments ($open/$close/$factor/$volume, 2024-12-30..2026-09-30); source dataset is the public chenditc release",
+                "sha256": identity["market"]["actual_sha256"],
+                "purpose": "ACTUAL market input used for this audit (original or fixed export), byte-pinned before run",
             },
         },
         "listing_st_pit_source": "no historical ST / PIT listing data in provider export; BLOCKED",
@@ -602,6 +702,8 @@ def main():
         "buy_amount_mismatches": buy_amount_mismatches,
         "max_account_diff": str(max_account_diff),
         "max_return_diff": max_return_diff,
+        "max_fee_diff": str(max_fee_diff),
+        "max_turnover_diff": str(max_turnover_diff),
         "first_divergence": first_divergence,
     }, indent=1))
 
