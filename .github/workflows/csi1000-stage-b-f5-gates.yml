@@ -8,6 +8,9 @@ on:
       - "tests/test_stage_b_f5_gates.py"
       - ".github/workflows/csi1000-stage-b-f5-gates.yml"
   push:
+    # main is included so merged commits exercise these gates on main; a push
+    # that only edits this trigger list is evaluated against the previous file
+    # version, so the first main run appears on the next matching push.
     branches: ["audit/harden-stage-b-f5-evidence-gates-20261009", "main"]
     paths:
       - "audit/run_winner_phase0_execution_audit.py"
