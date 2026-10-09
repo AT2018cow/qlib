@@ -1,0 +1,19 @@
+ValueError: instrument not exists: /root/work/isolated-home/.qlib/qlib_data/cn_data/instruments/csi500.txt
+[198:MainThread](2026-10-09 22:16:33,120) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+[198:MainThread](2026-10-09 22:16:34,865) INFO - qlib.Initialization - [__init__.py:82] - qlib successfully initialized based on client settings.
+[198:MainThread](2026-10-09 22:16:34,866) INFO - qlib.Initialization - [__init__.py:84] - data_path={'__DEFAULT_FREQ': PosixPath('/root/work/isolated-home/.qlib/qlib_data/cn_data')}
+[198:MainThread](2026-10-09 22:16:34,896) ERROR - qlib.workflow - [utils.py:41] - An exception has been raised[ValueError: instrument not exists: /root/work/isolated-home/.qlib/qlib_data/cn_data/instruments/csi500.txt].
+  File "<string>", line 7, in <module>
+  File "/root/work/upstream-qlib/qlib/data/data.py", line 1162, in list_instruments
+    return Inst.list_instruments(instruments, start_time, end_time, freq, as_list)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/work/upstream-qlib/qlib/data/data.py", line 698, in list_instruments
+    _instruments = self._load_instruments(market, freq=freq)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/work/upstream-qlib/qlib/data/data.py", line 691, in _load_instruments
+    return self.backend_obj(market=market, freq=freq).data
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/work/upstream-qlib/qlib/data/storage/file_storage.py", line 243, in data
+    self.check()
+  File "/root/work/upstream-qlib/qlib/data/storage/file_storage.py", line 73, in check
+    raise ValueError(f"{self.storage_name} not exists: {self.uri}")

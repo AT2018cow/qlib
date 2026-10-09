@@ -1,0 +1,1 @@
+557a9ef7a12fbefb654270f7cd825d72faa68a10da4ceed09d1b1031fe12ef4c  calendars/day.txt (from official v1 package)

@@ -1,0 +1,13 @@
+{
+ "status": "BLOCKED_PREFLIGHT_FAILED",
+ "steps": {
+  "clone": 0,
+  "yaml_unmodified_before": true,
+  "venv": 0,
+  "pip_install_upstream": 0,
+  "download_v1": 0,
+  "preflight": 1
+ },
+ "upstream_commit": "54355232463878d2eebb91fe0ee5fa7fa1f5976c",
+ "yaml_blob": "aa017bc9bff75961c2d2437afcd10e0ed261a4f5"
+}
