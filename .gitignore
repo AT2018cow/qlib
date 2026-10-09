@@ -17,6 +17,9 @@ dist/
 # 实验结果数据（P0/P1 诊断等，随仓库跟踪）
 !results/**
 
+# 独立审计证据（runbook 要求的派生 CSV/报告，随仓库跟踪以便复现）
+!audit/evidence/**
+
 .env
 .venv/
 .vim
