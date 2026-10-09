@@ -267,6 +267,11 @@ def main():
         str(old_report.index[i].date()) for i, difference in enumerate(diffs)
         if difference > ACCOUNT_TOL_CNY
     ]
+    if not changed_order_days or not changed_nav_dates:
+        raise ValueError(
+            "F1 FIX DID NOT CHANGE ORDERS AND NAV: do not call this a repaired "
+            "execution replay; examine static quote coverage, signal, and cash constraints"
+        )
     output = {
         "audit_type": "diagnostic_Qlib_replay_not_independent_execution_proof",
         "frozen_original_result_commit": SOURCE_SHA,
