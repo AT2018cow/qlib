@@ -1,0 +1,33 @@
+name: CSI1000 Stage-B F5 evidence fail-closed gates
+
+on:
+  pull_request:
+    paths:
+      - "audit/run_winner_phase0_execution_audit.py"
+      - "audit/stage_b_f5_gates.py"
+      - "tests/test_stage_b_f5_gates.py"
+      - ".github/workflows/csi1000-stage-b-f5-gates.yml"
+  push:
+    branches: ["audit/harden-stage-b-f5-evidence-gates-20261009"]
+    paths:
+      - "audit/run_winner_phase0_execution_audit.py"
+      - "audit/stage_b_f5_gates.py"
+      - "tests/test_stage_b_f5_gates.py"
+      - ".github/workflows/csi1000-stage-b-f5-gates.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  negative-controls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Parse audit modules (no Qlib or Modal)
+        run: python -m py_compile audit/stage_b_f5_gates.py audit/run_winner_phase0_execution_audit.py tests/test_stage_b_f5_gates.py
+      - name: F5 positive and negative evidence gates
+        run: python -m unittest discover -s tests -p "test_stage_b_f5_gates.py" -v
