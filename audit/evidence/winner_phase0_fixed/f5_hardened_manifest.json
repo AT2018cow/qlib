@@ -1,0 +1,126 @@
+{
+  "audit_schema": "csi1000_stage_b_execution_evidence_v1",
+  "frozen_result_commit": "7a2676397b0f8e6f69c0bffc98d1764647f644ac",
+  "snapshot_token": "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1",
+  "candidate_id": "4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2",
+  "phase": 0,
+  "provider_fingerprint": "cd2e68f571c6bd19fbb2b79089e891bb1c43b96ab1fcdb4d2b2a9b1fdd9ce5d5",
+  "fixed_mode": true,
+  "verified_inputs": {
+    "report": {
+      "name": "fixed_diagnostic_report.parquet",
+      "expected_sha256": "0e9ba034b94d363117dbb924639178f26af4a116763e9868d9960f321b601048",
+      "actual_sha256": "0e9ba034b94d363117dbb924639178f26af4a116763e9868d9960f321b601048",
+      "match": true,
+      "size_bytes": 43237
+    },
+    "signal": {
+      "name": "signal.parquet",
+      "expected_sha256": "189d06cce7cdc52b1908439fb18fd9e3f1b8dcc8875a87bf5b6ec75d82e0278e",
+      "actual_sha256": "189d06cce7cdc52b1908439fb18fd9e3f1b8dcc8875a87bf5b6ec75d82e0278e",
+      "match": true,
+      "size_bytes": 2843214
+    },
+    "decisions": {
+      "name": "fixed_diagnostic_decisions.json",
+      "expected_sha256": "4694e67bd1a1870707d02d0eaf0e9bb0b29533cb209707e894d648fdd2a11063",
+      "actual_sha256": "4694e67bd1a1870707d02d0eaf0e9bb0b29533cb209707e894d648fdd2a11063",
+      "match": true,
+      "size_bytes": 574145
+    },
+    "market": {
+      "name": "fixed_market_data.parquet",
+      "expected_sha256": "288346c2875a5db009b2b80a5935d489136eeda22458f6a372d3234b79ecf656",
+      "actual_sha256": "288346c2875a5db009b2b80a5935d489136eeda22458f6a372d3234b79ecf656",
+      "match": true,
+      "size_bytes": 5328827
+    },
+    "calendar": {
+      "name": "day.txt",
+      "expected_sha256": "941cdb775ed173b1add3f5d402e14e3d199ce99b036a9555ce8b77a352461396",
+      "actual_sha256": "941cdb775ed173b1add3f5d402e14e3d199ce99b036a9555ce8b77a352461396",
+      "match": true,
+      "size_bytes": 71302
+    },
+    "instruments": {
+      "name": "csi1000_instruments.txt",
+      "expected_sha256": "301fdd634bad134b563ac71bf23d6eeb72d628fb6e4289880660a46858d88ccb",
+      "actual_sha256": "301fdd634bad134b563ac71bf23d6eeb72d628fb6e4289880660a46858d88ccb",
+      "match": true,
+      "size_bytes": 1023248
+    },
+    "provider_snapshot": {
+      "name": "provider_snapshot.json",
+      "sha256": "1d693911db026f0828ab9922617e19c7a3cde7211320a5b69be8ea26077c7b88",
+      "token_match": true,
+      "provider_fingerprint_match": true
+    }
+  },
+  "calendar": {
+    "source": "original cn_data/calendars/day.txt",
+    "lines": 6482,
+    "sha256": "941cdb775ed173b1add3f5d402e14e3d199ce99b036a9555ce8b77a352461396"
+  },
+  "artifacts": {
+    "report": {
+      "name": "fixed_diagnostic_report.parquet",
+      "expected_sha256": "0e9ba034b94d363117dbb924639178f26af4a116763e9868d9960f321b601048",
+      "actual_sha256": "0e9ba034b94d363117dbb924639178f26af4a116763e9868d9960f321b601048",
+      "match": true,
+      "size_bytes": 43237
+    },
+    "signal": {
+      "name": "signal.parquet",
+      "expected_sha256": "189d06cce7cdc52b1908439fb18fd9e3f1b8dcc8875a87bf5b6ec75d82e0278e",
+      "actual_sha256": "189d06cce7cdc52b1908439fb18fd9e3f1b8dcc8875a87bf5b6ec75d82e0278e",
+      "match": true,
+      "size_bytes": 2843214
+    },
+    "decisions": {
+      "name": "fixed_diagnostic_decisions.json",
+      "expected_sha256": "4694e67bd1a1870707d02d0eaf0e9bb0b29533cb209707e894d648fdd2a11063",
+      "actual_sha256": "4694e67bd1a1870707d02d0eaf0e9bb0b29533cb209707e894d648fdd2a11063",
+      "match": true,
+      "size_bytes": 574145
+    },
+    "market": {
+      "name": "fixed_market_data.parquet",
+      "expected_sha256": "288346c2875a5db009b2b80a5935d489136eeda22458f6a372d3234b79ecf656",
+      "actual_sha256": "288346c2875a5db009b2b80a5935d489136eeda22458f6a372d3234b79ecf656",
+      "match": true,
+      "size_bytes": 5328827
+    },
+    "calendar": {
+      "name": "day.txt",
+      "expected_sha256": "941cdb775ed173b1add3f5d402e14e3d199ce99b036a9555ce8b77a352461396",
+      "actual_sha256": "941cdb775ed173b1add3f5d402e14e3d199ce99b036a9555ce8b77a352461396",
+      "match": true,
+      "size_bytes": 71302
+    },
+    "instruments": {
+      "name": "csi1000_instruments.txt",
+      "expected_sha256": "301fdd634bad134b563ac71bf23d6eeb72d628fb6e4289880660a46858d88ccb",
+      "actual_sha256": "301fdd634bad134b563ac71bf23d6eeb72d628fb6e4289880660a46858d88ccb",
+      "match": true,
+      "size_bytes": 1023248
+    },
+    "provider_snapshot": {
+      "name": "provider_snapshot.json",
+      "sha256": "1d693911db026f0828ab9922617e19c7a3cde7211320a5b69be8ea26077c7b88",
+      "token_match": true,
+      "provider_fingerprint_match": true
+    }
+  },
+  "auxiliary_raw": {
+    "csi1000_instruments.txt": {
+      "sha256": "301fdd634bad134b563ac71bf23d6eeb72d628fb6e4289880660a46858d88ccb",
+      "purpose": "point-in-time csi1000 membership spans (dynamic universe replication)"
+    },
+    "market_data.parquet": {
+      "sha256": "288346c2875a5db009b2b80a5935d489136eeda22458f6a372d3234b79ecf656",
+      "purpose": "ACTUAL market input used for this audit (original or fixed export), byte-pinned before run"
+    }
+  },
+  "listing_st_pit_source": "no historical ST / PIT listing data in provider export; BLOCKED",
+  "audit_asof_utc": "2026-10-09T11:46:22.568779+00:00"
+}

@@ -1,0 +1,226 @@
+{
+  "audit_schema": "csi1000_stage_b_execution_evidence_v1",
+  "frozen_result_commit": "7a2676397b0f8e6f69c0bffc98d1764647f644ac",
+  "snapshot_token": "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1",
+  "candidate_id": "4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2",
+  "phase": 0,
+  "audit_asof_utc": "2026-10-09T11:46:22.560371+00:00",
+  "artifacts": {
+    "report": {
+      "name": "fixed_diagnostic_report.parquet",
+      "expected_sha256": "0e9ba034b94d363117dbb924639178f26af4a116763e9868d9960f321b601048",
+      "actual_sha256": "0e9ba034b94d363117dbb924639178f26af4a116763e9868d9960f321b601048",
+      "match": true,
+      "size_bytes": 43237
+    },
+    "signal": {
+      "name": "signal.parquet",
+      "expected_sha256": "189d06cce7cdc52b1908439fb18fd9e3f1b8dcc8875a87bf5b6ec75d82e0278e",
+      "actual_sha256": "189d06cce7cdc52b1908439fb18fd9e3f1b8dcc8875a87bf5b6ec75d82e0278e",
+      "match": true,
+      "size_bytes": 2843214
+    },
+    "decisions": {
+      "name": "fixed_diagnostic_decisions.json",
+      "expected_sha256": "4694e67bd1a1870707d02d0eaf0e9bb0b29533cb209707e894d648fdd2a11063",
+      "actual_sha256": "4694e67bd1a1870707d02d0eaf0e9bb0b29533cb209707e894d648fdd2a11063",
+      "match": true,
+      "size_bytes": 574145
+    },
+    "market": {
+      "name": "fixed_market_data.parquet",
+      "expected_sha256": "288346c2875a5db009b2b80a5935d489136eeda22458f6a372d3234b79ecf656",
+      "actual_sha256": "288346c2875a5db009b2b80a5935d489136eeda22458f6a372d3234b79ecf656",
+      "match": true,
+      "size_bytes": 5328827
+    },
+    "calendar": {
+      "name": "day.txt",
+      "expected_sha256": "941cdb775ed173b1add3f5d402e14e3d199ce99b036a9555ce8b77a352461396",
+      "actual_sha256": "941cdb775ed173b1add3f5d402e14e3d199ce99b036a9555ce8b77a352461396",
+      "match": true,
+      "size_bytes": 71302
+    },
+    "instruments": {
+      "name": "csi1000_instruments.txt",
+      "expected_sha256": "301fdd634bad134b563ac71bf23d6eeb72d628fb6e4289880660a46858d88ccb",
+      "actual_sha256": "301fdd634bad134b563ac71bf23d6eeb72d628fb6e4289880660a46858d88ccb",
+      "match": true,
+      "size_bytes": 1023248
+    },
+    "provider_snapshot": {
+      "name": "provider_snapshot.json",
+      "sha256": "1d693911db026f0828ab9922617e19c7a3cde7211320a5b69be8ea26077c7b88",
+      "token_match": true,
+      "provider_fingerprint_match": true
+    }
+  },
+  "counts": {
+    "decisions": 424,
+    "orders": 1696,
+    "report_days": 424,
+    "calendar_days_span": 424
+  },
+  "calendar_exact_match": true,
+  "decision_reconstruction": {
+    "days_compared": 424,
+    "mismatch_days": 0
+  },
+  "tradability_and_amounts": {
+    "orders_checked": 1696,
+    "tradability_violations": 0,
+    "lot_violations": 0,
+    "factor_mismatches": 0,
+    "buy_amount_mismatches": 0,
+    "sell_amount_mismatches": 0,
+    "negative_cash_events": 0
+  },
+  "ledger": {
+    "max_abs_account_diff_cny": "7E-8",
+    "max_abs_return_diff": 4.996003610813204e-16,
+    "max_abs_cumulative_fee_diff_cny": "3.12649E-8",
+    "max_abs_cumulative_turnover_diff_cny": "0.0000249384",
+    "max_abs_daily_fee_rate_diff": "2.50688495177833E-17",
+    "max_abs_daily_turnover_rate_diff": "1.76009021859860E-14",
+    "account_tolerance_cny": "0.01",
+    "return_tolerance": 1e-10,
+    "first_divergence": null
+  },
+  "retrain_boundaries": {
+    "n_chunks": 22,
+    "rows": [
+      {
+        "retrain_asof": "2024-12-31",
+        "signal_end": "2025-02-05",
+        "prediction_content_sha256": "1e9712265d8bc8075da1274bf3fed0c0ebca5e67920d281de40af8cf417dad8b"
+      },
+      {
+        "retrain_asof": "2025-02-06",
+        "signal_end": "2025-03-05",
+        "prediction_content_sha256": "02d5874fc1a89aef6009886d0e03a76f113df244488308e4903dc8b4f2fe3fd2"
+      },
+      {
+        "retrain_asof": "2025-03-06",
+        "signal_end": "2025-04-02",
+        "prediction_content_sha256": "93691b6b3b195fa32868251b9002c8801d7045717930245ce8cb9f77f6f151a0"
+      },
+      {
+        "retrain_asof": "2025-04-03",
+        "signal_end": "2025-05-06",
+        "prediction_content_sha256": "87e62ece9cce04b994c70fa4346605a026c3d50fa16dcd9f3a46f4797471c0ef"
+      },
+      {
+        "retrain_asof": "2025-05-07",
+        "signal_end": "2025-06-04",
+        "prediction_content_sha256": "0460ff3c22003c7935fdce8bcc8737e82bd3ff662fc040c71d4171895202f1e0"
+      },
+      {
+        "retrain_asof": "2025-06-05",
+        "signal_end": "2025-07-02",
+        "prediction_content_sha256": "acb39c51a63fd4017a33efe9b5e384b1c2e7abf2f818f267f7d2d5cb7101bd8f"
+      },
+      {
+        "retrain_asof": "2025-07-03",
+        "signal_end": "2025-07-30",
+        "prediction_content_sha256": "86124c422124940baaa7753f989e20ed1ed9a51ae63e3f4cc415255ca17a91e8"
+      },
+      {
+        "retrain_asof": "2025-07-31",
+        "signal_end": "2025-08-27",
+        "prediction_content_sha256": "78d7a1bf5776c5d2df24a28fb193736c8da9c7da1c4374a710a1a0c023063b44"
+      },
+      {
+        "retrain_asof": "2025-08-28",
+        "signal_end": "2025-09-24",
+        "prediction_content_sha256": "47a3b178512f2658aad5420d90409c312d834e61c7a1ee146a6872b25ecb3813"
+      },
+      {
+        "retrain_asof": "2025-09-25",
+        "signal_end": "2025-10-30",
+        "prediction_content_sha256": "556ffb131a814ff41dd05be5b70c2e815e4a0a070394596471c9a07125616746"
+      },
+      {
+        "retrain_asof": "2025-10-31",
+        "signal_end": "2025-11-27",
+        "prediction_content_sha256": "9f65eaea7a7580f5502d40992a622c8154296345b0b19d2065076a8686baa03a"
+      },
+      {
+        "retrain_asof": "2025-11-28",
+        "signal_end": "2025-12-25",
+        "prediction_content_sha256": "d66248ab20f6ffc25fe38bdf43524e65ddc03652d6990c37c3a7392487122b5e"
+      },
+      {
+        "retrain_asof": "2025-12-26",
+        "signal_end": "2026-01-26",
+        "prediction_content_sha256": "9bf3a7662d0aab3046dbdaa35f4f973b7e5b25d3b2b499e64ec49896651fd0c9"
+      },
+      {
+        "retrain_asof": "2026-01-27",
+        "signal_end": "2026-03-03",
+        "prediction_content_sha256": "0b28c4307e9c6aba1ff44bf7e4e56c1fd5a7592fed2c704884c6431b33b8dcb5"
+      },
+      {
+        "retrain_asof": "2026-03-04",
+        "signal_end": "2026-03-31",
+        "prediction_content_sha256": "30a5b1de4395dfa0224866d1006ba8fc67a0b50856396db3ae0d2e715de8f131"
+      },
+      {
+        "retrain_asof": "2026-04-01",
+        "signal_end": "2026-04-29",
+        "prediction_content_sha256": "b37d0efcb85b76fa08a6e853b391066b0375796d68239fd3cf2554af8df8d69a"
+      },
+      {
+        "retrain_asof": "2026-04-30",
+        "signal_end": "2026-06-01",
+        "prediction_content_sha256": "fbcdc1d852050bf98063aa73c32f0a5786bfafe302f9bbc359d91697afac356b"
+      },
+      {
+        "retrain_asof": "2026-06-02",
+        "signal_end": "2026-06-30",
+        "prediction_content_sha256": "5b89bbeda14b6757b852637476df4b9a736ee745d8d461718dfeb55127a7c186"
+      },
+      {
+        "retrain_asof": "2026-07-01",
+        "signal_end": "2026-07-28",
+        "prediction_content_sha256": "ae825ca1895f5b7697e2b5c3032008be6aeeaa017b19b6b92721c63d7f4d8883"
+      },
+      {
+        "retrain_asof": "2026-07-29",
+        "signal_end": "2026-08-25",
+        "prediction_content_sha256": "b0d30cc8177d04e8880924690ec8919df7e13221fa7f1fae49df8c8d330e267d"
+      },
+      {
+        "retrain_asof": "2026-08-26",
+        "signal_end": "2026-09-22",
+        "prediction_content_sha256": "d0b7d9650c5cbe9a72089d57c1fd199c21d49ceb02eaf691581d6e09d345f629"
+      },
+      {
+        "retrain_asof": "2026-09-23",
+        "signal_end": "2026-09-29",
+        "prediction_content_sha256": "dcf26f025e9aea1775ac32be7dacb500e5a4edbc8ecaf2d6850fe06523f94c7c"
+      }
+    ]
+  },
+  "findings": [
+    {
+      "id": "F1_dynamic_universe_freeze",
+      "severity": "material_simulation_artifact",
+      "finding": "The frozen exchange built quotes over the dynamic csi1000 membership. SH603301 and SH688066 left the index effective 2025-06-30; their quotes disappeared from the exchange, making them permanently unsellable and freezing their valuation at the last available close. With 22 holdings the TopK/Drop2 buy slot was always empty (buy list = today[:n_sell+20-22] = empty), so the portfolio could not trade at all from 2025-07-02 until SH603301 re-entered the index on 2026-06-30 (then sold, cash used to buy SZ000603). SH688066 remains frozen to the end of the window.",
+      "evidence": "Order timeline: last regular orders 2025-07-01, next order 2026-06-30 (sell SH603301) and 2026-07-01 (buy SZ000603). Day-116 (2025-06-30) value gap of CNY +242,577.44 decomposes exactly into stale-price effects of the two index-removed holdings (SH603301 +71,983.29, SH688066 +170,594.15). With membership-span-restricted data the full 424-day independent ledger matches the frozen report to 7e-8 CNY.",
+      "impact": "The frozen backtest is internally consistent, but its market-access assumption diverges from reality: in a real account these index-removed stocks remained fully tradable on the exchange. The reported Sharpe/CAGR is a property of this simulation convention, not of a tradeable real-world strategy path."
+    }
+  ],
+  "verdicts": {
+    "calendar_gate": "PASS",
+    "decision_logic_full_coverage": "PASS",
+    "order_tradability_and_amounts": "PASS",
+    "independent_execution_account": "PASS",
+    "f5_internal_evidence_gate": "PASS",
+    "execution_integrity": "BLOCKED",
+    "overall": "BLOCKED",
+    "notes": [
+      "execution_integrity remains BLOCKED pending doc-28 D4 full-coverage extension, real-world suspension/ST/limit liquidity evidence, and PIT label-maturation proof.",
+      "Suspension verified against the frozen same-day-close-NaN rule only; real-world suspension/ST status not verifiable from provider data (st_symbols passed empty)."
+    ]
+  }
+}
