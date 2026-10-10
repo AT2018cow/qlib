@@ -7,6 +7,8 @@ on:
       - "audit/verify_stage_b_fixed_ledger.py"
       - "audit/modal_stage_b_ledger.py"
       - "docs/experiments/38-csi1000-baseline-independent-ledger-validation-20261010.md"
+      - "docs/experiments/39-stage-b-audit-closeout-modal-runbook-20261010.md"
+      - "docs/experiments/40-csi1000-mvp-handoff-20261010.md"
       - "tests/test_verify_stage_b_fixed_ledger.py"
       - ".github/workflows/csi1000-stage-b-independent-ledger.yml"
   push:
@@ -15,6 +17,8 @@ on:
       - "audit/verify_stage_b_fixed_ledger.py"
       - "audit/modal_stage_b_ledger.py"
       - "docs/experiments/38-csi1000-baseline-independent-ledger-validation-20261010.md"
+      - "docs/experiments/39-stage-b-audit-closeout-modal-runbook-20261010.md"
+      - "docs/experiments/40-csi1000-mvp-handoff-20261010.md"
       - "tests/test_verify_stage_b_fixed_ledger.py"
       - ".github/workflows/csi1000-stage-b-independent-ledger.yml"
   workflow_dispatch:
