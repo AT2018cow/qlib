@@ -3,6 +3,9 @@ import copy
 import unittest
 
 from audit.stage_b_quote_inventory import scan_holding_quotes
+from audit.verify_stage_b_fixed_ledger import (
+    VERIFIED_SUSPENSION_DATES, KNOWN_ST_EXECUTION_REVIEW,
+)
 from audit.mvp_entry_review import evaluate_paper_artifact
 from csi1000_production_config import (
     CANONICAL_PAPER_LINEAGE, CANONICAL_PROFILE, profile_manifest,
@@ -103,6 +106,107 @@ class QuoteInventoryTests(unittest.TestCase):
         days, decisions, quotes = self.sample()
         with self.assertRaisesRegex(ValueError, "coverage drift"):
             scan_holding_quotes(decisions, quotes, days[:-1] + days[-2:-1], {})
+
+
+class DatedSuspensionEvidenceRegressionTests(unittest.TestCase):
+    # Exact frozen baseline p00 held-price gaps from the PR #54 Modal JSON.
+    SEVEN_GAPS = {
+        ("2025-04-30", "SH603398"),
+        ("2025-04-30", "SZ300379"),
+        ("2025-12-18", "SZ002036"),
+        ("2025-12-19", "SZ002036"),
+        ("2025-12-22", "SZ002036"),
+        ("2025-12-23", "SZ002036"),
+        ("2025-12-24", "SZ002036"),
+    }
+
+    @staticmethod
+    def _multiday_fixture():
+        dates = [
+            "2025-04-29", "2025-04-30", "2025-05-06",
+            "2025-12-17", "2025-12-18", "2025-12-19",
+            "2025-12-22", "2025-12-23", "2025-12-24", "2025-12-25",
+        ]
+        first = ["SH603398", "SZ300379"]
+        last = ["SZ002036"]
+        def orders(day, symbols, direction):
+            return [
+                {"order_index": i, "start_time": day, "stock_id": s,
+                 "direction": direction, "deal_amount": 2.0, "amount": 2.0}
+                for i, s in enumerate(symbols)
+            ]
+        decisions = []
+        quotes = {}
+        for i, day in enumerate(dates):
+            o = (orders(day, first, 1) if i == 0 else
+                 orders(day, first, 0) if i == 2 else
+                 orders(day, last, 1) if i == 3 else
+                 orders(day, last, 0) if i == 9 else [])
+            decisions.append({"decision_index": i, "start_time": day, "orders": o})
+            for s in first + last:
+                quotes[(day, s)] = (10.0, 10.0, 1.0, 10000.0)
+        for item in DatedSuspensionEvidenceRegressionTests.SEVEN_GAPS:
+            quotes[item] = (None, None, None, None)
+        return dates, decisions, quotes
+
+    def test_all_seven_from_original_modal_are_exactly_allowlisted(self):
+        previous = {("2025-02-20", "SZ000488"),
+                    ("2025-04-28", "SZ002214")}
+        self.assertEqual(set(VERIFIED_SUSPENSION_DATES), previous | self.SEVEN_GAPS)
+        for date, stock in self.SEVEN_GAPS:
+            url = VERIFIED_SUSPENSION_DATES[(date, stock)]
+            self.assertTrue(url.startswith("https://"))
+            self.assertTrue(url.lower().endswith(".pdf"))
+        self.assertNotIn(("2025-12-25", "SZ002036"), VERIFIED_SUSPENSION_DATES)
+        self.assertNotIn(("2025-05-06", "SH603398"), VERIFIED_SUSPENSION_DATES)
+        self.assertNotIn(("2025-05-06", "SZ300379"), VERIFIED_SUSPENSION_DATES)
+
+    def test_seven_suspensions_carry_prior_mark_without_claiming_fills(self):
+        dates, decisions, quotes = self._multiday_fixture()
+        inv = scan_holding_quotes(
+            decisions, quotes, dates, VERIFIED_SUSPENSION_DATES,
+            KNOWN_ST_EXECUTION_REVIEW)
+        self.assertEqual(inv["status"], "READY_FOR_ACCOUNTING_ONLY")
+        self.assertEqual(inv["documented_suspension_carry_count"], 7)
+        self.assertEqual(inv["unknown_held_close_count"], 0)
+        self.assertEqual(inv["blocking_count"], 0)
+        self.assertEqual(inv["st_execution_warning_count"], 2)
+        self.assertEqual(inv["market_execution"], "NOT_CERTIFIED")
+        self.assertEqual(
+            {(x["date"], x["stock_id"]) for x in inv["issues"]
+             if x["issue"] == "DOCUMENTED_SUSPENSION_CARRY_MARK"},
+            self.SEVEN_GAPS,
+        )
+        multi = [x for x in inv["issues"]
+                 if x["issue"] == "DOCUMENTED_SUSPENSION_CARRY_MARK"
+                 and x["stock_id"] == "SZ002036"]
+        self.assertEqual({x["prior_mark_date"] for x in multi}, {"2025-12-17"})
+        self.assertEqual(
+            KNOWN_ST_EXECUTION_REVIEW[("2025-05-06", "SZ300379")]["issue"],
+            "HISTORIC_ST_20PCT_LIMIT_SELL_NOT_EXTERNALLY_VALIDATED",
+        )
+
+    def test_unknown_new_missing_day_still_blocks(self):
+        dates, decisions, quotes = self._multiday_fixture()
+        # A valid held position on 2025-12-17 must not be silently ffilled.
+        # New gaps must still be visible in the full inventory.
+        quotes[("2025-12-17", "SZ002036")] = (None, None, None, None)
+        result = scan_holding_quotes(
+            decisions, quotes, dates, VERIFIED_SUSPENSION_DATES,
+            KNOWN_ST_EXECUTION_REVIEW)
+        self.assertEqual(result["status"], "BLOCKED_INPUT_QUOTES")
+        self.assertTrue(any(x["issue"] == "INVALID_FROZEN_FILL_QUOTE"
+                            for x in result["issues"]))
+        self.assertGreater(result["blocking_count"], 0)
+
+    def test_halt_with_valid_quote_conflicts_and_blocks(self):
+        dates, decisions, quotes = self._multiday_fixture()
+        quotes[("2025-12-22", "SZ002036")] = (10.0, 10.0, 1.0, 10000)
+        result = scan_holding_quotes(
+            decisions, quotes, dates, VERIFIED_SUSPENSION_DATES)
+        self.assertIn("DOCUMENTED_SUSPENSION_HAS_CLOSE",
+                      [x["issue"] for x in result["issues"]])
+        self.assertEqual(result["status"], "BLOCKED_INPUT_QUOTES")
 
 
 class MVPEntryReviewTests(unittest.TestCase):

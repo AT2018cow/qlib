@@ -38,9 +38,25 @@ RATE_TOL = 1e-10
 CHENMING_NOTICE = ("https://disc.static.szse.cn/download/disc/disk03/finalpage/"
                    "2025-02-19/b0f90573-61df-4bcc-953f-edf8738c84e1.PDF")
 DALI_NOTICE = "https://static.cninfo.com.cn/finalpage/2025-04-26/1223329081.PDF"
+# Three additional events, exactly seven missing-held-close rows from the
+# immutable PR #54 full-calendar inventory. Evidence is the original dated
+# company announcement; NEVER treat an arbitrary missing close as a halt.
+MUBANG_NOTICE = (
+    "https://static.sse.com.cn/disclosure/listedinfo/announcement/c/new/"
+    "2025-04-30/603398_20250430_AUP6.pdf"
+)
+DONGFANG_NOTICE = "https://static.cninfo.com.cn/finalpage/2025-04-30/1223423862.PDF"
+LIANCHUANG_NOTICE = "https://static.cninfo.com.cn/finalpage/2025-12-25/1224897232.PDF"
 VERIFIED_SUSPENSION_DATES = {
     ("2025-02-20", "SZ000488"): CHENMING_NOTICE,
     ("2025-04-28", "SZ002214"): DALI_NOTICE,
+    ("2025-04-30", "SH603398"): MUBANG_NOTICE,
+    ("2025-04-30", "SZ300379"): DONGFANG_NOTICE,
+    ("2025-12-18", "SZ002036"): LIANCHUANG_NOTICE,
+    ("2025-12-19", "SZ002036"): LIANCHUANG_NOTICE,
+    ("2025-12-22", "SZ002036"): LIANCHUANG_NOTICE,
+    ("2025-12-23", "SZ002036"): LIANCHUANG_NOTICE,
+    ("2025-12-24", "SZ002036"): LIANCHUANG_NOTICE,
 }
 KNOWN_ST_EXECUTION_REVIEW = {
     ("2025-02-21", "SZ000488"): {
@@ -50,6 +66,16 @@ KNOWN_ST_EXECUTION_REVIEW = {
     ("2025-04-29", "SZ002214"): {
         "issue": "HISTORIC_ST_5PCT_LIMIT_SELL_NOT_EXTERNALLY_VALIDATED",
         "notice": DALI_NOTICE,
+    },
+    # These are warnings on frozen fills, NOT inferred unfilled orders.
+    # SSE main-board *ST uses 5%; ChiNext *ST retains a 20% band.
+    ("2025-05-06", "SH603398"): {
+        "issue": "HISTORIC_ST_5PCT_LIMIT_SELL_NOT_EXTERNALLY_VALIDATED",
+        "notice": MUBANG_NOTICE,
+    },
+    ("2025-05-06", "SZ300379"): {
+        "issue": "HISTORIC_ST_20PCT_LIMIT_SELL_NOT_EXTERNALLY_VALIDATED",
+        "notice": DONGFANG_NOTICE,
     },
 }
 
