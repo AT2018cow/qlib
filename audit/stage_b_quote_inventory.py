@@ -16,6 +16,16 @@ def _positive(value) -> bool:
         return False
 
 
+def _conflicting_suspension_close(value) -> bool:
+    """Match verifier: on a documented halt only None / nonfinite is absent."""
+    if value is None:
+        return False
+    try:
+        return math.isfinite(float(value))
+    except (TypeError, ValueError, OverflowError):
+        return True
+
+
 def scan_holding_quotes(decisions, quotes, dates, documented_suspensions,
                         known_st_execution=None):
     """Scan held stocks *after* the day's frozen fills, across every date.
@@ -69,7 +79,7 @@ def scan_holding_quotes(decisions, quotes, dates, documented_suspensions,
             close = q[1] if q is not None else None
             evidence = documented_suspensions.get((today, symbol))
             if evidence:
-                if _positive(close):
+                if _conflicting_suspension_close(close):
                     issues.append({"date": today, "stock_id": symbol,
                                    "issue": "DOCUMENTED_SUSPENSION_HAS_CLOSE", "blocking": True,
                                    "evidence": evidence})
