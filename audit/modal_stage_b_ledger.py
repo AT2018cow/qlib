@@ -25,7 +25,12 @@ image = (
                            (".git", ".venv", "__pycache__", "mlruns"))
                        or str(path).endswith((".so", ".cpp"))
                    ))
-    .run_commands("cd /root/qlib && pip install . --no-build-isolation")
+    .run_commands(
+        "cd /root/qlib && pip install . --no-build-isolation 'numpy==1.26.4'"
+        # Pin numpy: without it pip re-resolves qlib's loose bounds to numpy
+        # 2.x, breaking Cython extensions compiled against 1.26 headers
+        # ("numpy.core.multiarray failed to import").
+    )
 )
 
 app = modal.App("qlib-stage-b-independent-ledger-check", image=image)
@@ -39,16 +44,21 @@ def audit_once(candidate: str, phases: str) -> dict:
 
     with tempfile.TemporaryDirectory(prefix="ledger-") as temp_dir:
         result_dir = Path(temp_dir) / "result"
+        # Run the verifier by file path from /tmp (NOT via -m, NOT with the
+        # repo on sys.path): this guarantees `import qlib` resolves to the
+        # pip-installed Cython-compiled package in site-packages instead of
+        # the uncompiled source tree. The verifier only needs stdlib + pandas
+        # + qlib; all repo inputs are read via absolute --repo-root paths.
         proc = subprocess.run([
-            "python", "-m", "audit.verify_stage_b_fixed_ledger",
+            "python", f"{REPO_DIR}/audit/verify_stage_b_fixed_ledger.py",
             "--repo-root", REPO_DIR,
             "--provider-uri", "/vol/cn_data",
             "--provider-snapshot",
-            f"/vol/csi1000_stage_b/{SNAPSHOT}/provider_snapshot.json",
+            "/vol/csi1000_stage_b/provider_snapshot.json",
             "--candidate", candidate,
             "--phases", phases,
             "--output-dir", str(result_dir),
-        ], cwd=REPO_DIR, check=False, timeout=3300,
+        ], cwd="/tmp", check=False, timeout=3300,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         # On mismatches the verifier exits nonzero AFTER writing its report.
         # Always return that evidence to the local CLI before /tmp vanishes.

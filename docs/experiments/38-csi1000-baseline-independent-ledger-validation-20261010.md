@@ -16,7 +16,7 @@
 | `audit/evidence/stage_b_corrected_rerank/batch_result.json` | SHA256 固定为 `ce0075f5d8c73325a12a4ecdf8fa4be856443a6fc1bac933f3b82d5c5035ff1c`；其原始 snapshot token、provider fingerprint、55 完成数与 no-train 标签必须匹配 |
 | corrected `fixed_diagnostic_report.parquet` / `fixed_diagnostic_decisions.json` | 每格文件 SHA 必须与上述批次中该 `candidate_id, phase` 的 `corrected_*_sha256` 匹配；不信任用户自报摘要 |
 | 原 provider | `/vol/cn_data`（或单独只读副本），不能是公开 Qlib v1/v2 或当前更新过的数据 |
-| 原 provider snapshot | `/vol/csi1000_stage_b/51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1/provider_snapshot.json`，原 token 和 fingerprint 双校验 |
+| 原 provider snapshot | `/vol/csi1000_stage_b/provider_snapshot.json`（位于 snapshot 目录同级，非 token 子目录内），原 token 和 fingerprint 双校验 |
 | Qlib 用途 | **仅 `D.calendar` 与 `D.features`**，用明确的静态订单股票列表读 `$open/$close/$factor/$volume`，关闭 `disk_cache`；账本纯 Python 另算 |
 
 固定 baseline ID `23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785`；第二名 `c98856b460aba687640d422e85a82a545bf5b6ca932e906a180699e0f6cad19b`，phase `{0,4,6,10,15}`；交易日 424 天，初始 CNY 100m，买入费用 5bp、卖出 15bp、最低 CNY 5。
