@@ -1,0 +1,123 @@
+{
+  "status": "BLOCKED_OR_FAILED_NOT_PASS",
+  "reason": "full-calendar quote inventory has unresolved blocking rows; no NAV PASS",
+  "snapshot": "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1",
+  "provider_fingerprint": "cd2e68f571c6bd19fbb2b79089e891bb1c43b96ab1fcdb4d2b2a9b1fdd9ce5d5",
+  "candidate": "baseline",
+  "phases": "phase0",
+  "inventory_cells": [
+    {
+      "candidate_id": "23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785",
+      "phase": 0,
+      "fixed_sha256": {
+        "report": {
+          "sha256": "7d8fbf8f03c608fc6e4e839ef116a9e34d439d772cacf04569fa85785d52f436",
+          "bytes": 43237
+        },
+        "decisions": {
+          "sha256": "ce7d37cdeb65b095114ad2ef16798b55958150a743692db8e3a292ee1badf8d7",
+          "bytes": 575364
+        }
+      },
+      "inventory": {
+        "status": "BLOCKED_INPUT_QUOTES",
+        "complete_inventory_calendar_days": 424,
+        "frozen_orders_scanned": 1700,
+        "anomaly_count": 11,
+        "blocking_count": 7,
+        "unknown_held_close_count": 7,
+        "documented_suspension_carry_count": 2,
+        "st_execution_warning_count": 2,
+        "issues": [
+          {
+            "date": "2025-02-20",
+            "stock_id": "SZ000488",
+            "issue": "DOCUMENTED_SUSPENSION_CARRY_MARK",
+            "prior_mark_date": "2025-02-19",
+            "blocking": false,
+            "evidence": "https://disc.static.szse.cn/download/disc/disk03/finalpage/2025-02-19/b0f90573-61df-4bcc-953f-edf8738c84e1.PDF"
+          },
+          {
+            "date": "2025-02-21",
+            "stock_id": "SZ000488",
+            "issue": "HISTORICAL_ST_FILL_NOT_CERTIFIED",
+            "blocking": false,
+            "evidence": "https://disc.static.szse.cn/download/disc/disk03/finalpage/2025-02-19/b0f90573-61df-4bcc-953f-edf8738c84e1.PDF"
+          },
+          {
+            "date": "2025-04-28",
+            "stock_id": "SZ002214",
+            "issue": "DOCUMENTED_SUSPENSION_CARRY_MARK",
+            "prior_mark_date": "2025-04-25",
+            "blocking": false,
+            "evidence": "https://static.cninfo.com.cn/finalpage/2025-04-26/1223329081.PDF"
+          },
+          {
+            "date": "2025-04-29",
+            "stock_id": "SZ002214",
+            "issue": "HISTORICAL_ST_FILL_NOT_CERTIFIED",
+            "blocking": false,
+            "evidence": "https://static.cninfo.com.cn/finalpage/2025-04-26/1223329081.PDF"
+          },
+          {
+            "date": "2025-04-30",
+            "stock_id": "SH603398",
+            "issue": "UNKNOWN_HELD_CLOSE",
+            "blocking": true,
+            "last_valid_mark_date": "2025-04-29"
+          },
+          {
+            "date": "2025-04-30",
+            "stock_id": "SZ300379",
+            "issue": "UNKNOWN_HELD_CLOSE",
+            "blocking": true,
+            "last_valid_mark_date": "2025-04-29"
+          },
+          {
+            "date": "2025-12-18",
+            "stock_id": "SZ002036",
+            "issue": "UNKNOWN_HELD_CLOSE",
+            "blocking": true,
+            "last_valid_mark_date": "2025-12-17"
+          },
+          {
+            "date": "2025-12-19",
+            "stock_id": "SZ002036",
+            "issue": "UNKNOWN_HELD_CLOSE",
+            "blocking": true,
+            "last_valid_mark_date": "2025-12-17"
+          },
+          {
+            "date": "2025-12-22",
+            "stock_id": "SZ002036",
+            "issue": "UNKNOWN_HELD_CLOSE",
+            "blocking": true,
+            "last_valid_mark_date": "2025-12-17"
+          },
+          {
+            "date": "2025-12-23",
+            "stock_id": "SZ002036",
+            "issue": "UNKNOWN_HELD_CLOSE",
+            "blocking": true,
+            "last_valid_mark_date": "2025-12-17"
+          },
+          {
+            "date": "2025-12-24",
+            "stock_id": "SZ002036",
+            "issue": "UNKNOWN_HELD_CLOSE",
+            "blocking": true,
+            "last_valid_mark_date": "2025-12-17"
+          }
+        ],
+        "market_execution": "NOT_CERTIFIED",
+        "model_training": false
+      }
+    }
+  ],
+  "blocking_cells": 1,
+  "market_execution": "NOT_CERTIFIED",
+  "model_training": false,
+  "production_promotion": false,
+  "modal_command_exit_code": 1,
+  "diagnostic_output_tail": "[4:MainThread](2026-10-10 16:35:18,449) INFO - qlib.Initialization - [config.py:473] - default_conf: client.\n[4:MainThread](2026-10-10 16:35:19,500) INFO - qlib.Initialization - [__init__.py:82] - qlib successfully initialized based on client settings.\n[4:MainThread](2026-10-10 16:35:19,500) INFO - qlib.Initialization - [__init__.py:84] - data_path={'__DEFAULT_FREQ': PosixPath('/__modal/volumes/vo-WAoZpTYOZ961v879DcK584/cn_data')}\n[4:MainThread](2026-10-10 16:35:28,899) ERROR - qlib.workflow - [utils.py:41] - An exception has been raised[ValueError: unresolved frozen holding quote inventory; see audit_failure.json].\n  File \"/root/qlib/audit/verify_stage_b_fixed_ledger.py\", line 476, in <module>\n    main()\n  File \"/root/qlib/audit/verify_stage_b_fixed_ledger.py\", line 451, in main\n    result = run(args)\n             ^^^^^^^^^\n  File \"/root/qlib/audit/verify_stage_b_fixed_ledger.py\", line 388, in run\n    raise ValueError(\"unresolved frozen holding quote inventory; see audit_failure.json\")\nValueError: unresolved frozen holding quote inventory; see audit_failure.json\n"
+}
