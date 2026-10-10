@@ -77,6 +77,14 @@ class QuoteInventoryTests(unittest.TestCase):
         self.assertIn("DOCUMENTED_SUSPENSION_HAS_CLOSE", [x["issue"] for x in r["issues"]])
         self.assertGreater(r["blocking_count"], 0)
 
+    def test_zero_close_on_documented_halt_is_not_silently_carried(self):
+        days, decisions, quotes = self.sample()
+        quotes[("2025-02-20", "SZ000488")] = (None, 0.0, None, None)
+        r = scan_holding_quotes(decisions, quotes, days,
+                                {("2025-02-20", "SZ000488"): "https://example.test"})
+        self.assertIn("DOCUMENTED_SUSPENSION_HAS_CLOSE", [x["issue"] for x in r["issues"]])
+        self.assertEqual(r["status"], "BLOCKED_INPUT_QUOTES")
+
     def test_st_risk_flag_does_not_masquerade_as_trade_approval(self):
         days, decisions, quotes = self.sample()
         r = scan_holding_quotes(decisions, quotes, days, {},
