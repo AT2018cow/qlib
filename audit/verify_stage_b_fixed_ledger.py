@@ -14,6 +14,12 @@ import statistics
 from datetime import date
 from pathlib import Path
 
+# Direct-file Modal invocation has no audit package context. Unit tests do.
+if __package__:
+    from .stage_b_quote_inventory import scan_holding_quotes
+else:
+    from stage_b_quote_inventory import scan_holding_quotes
+
 BASELINE = "23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785"
 RUNNER_UP = "c98856b460aba687640d422e85a82a545bf5b6ca932e906a180699e0f6cad19b"
 CANDIDATES = (BASELINE, RUNNER_UP)
@@ -31,12 +37,20 @@ RATE_TOL = 1e-10
 # merely because a bar is missing from the research provider.
 CHENMING_NOTICE = ("https://disc.static.szse.cn/download/disc/disk03/finalpage/"
                    "2025-02-19/b0f90573-61df-4bcc-953f-edf8738c84e1.PDF")
-VERIFIED_SUSPENSION_DATES = {("2025-02-20", "SZ000488"): CHENMING_NOTICE}
+DALI_NOTICE = "https://static.cninfo.com.cn/finalpage/2025-04-26/1223329081.PDF"
+VERIFIED_SUSPENSION_DATES = {
+    ("2025-02-20", "SZ000488"): CHENMING_NOTICE,
+    ("2025-04-28", "SZ002214"): DALI_NOTICE,
+}
 KNOWN_ST_EXECUTION_REVIEW = {
     ("2025-02-21", "SZ000488"): {
         "issue": "HISTORIC_ST_5PCT_LIMIT_SELL_NOT_EXTERNALLY_VALIDATED",
         "notice": CHENMING_NOTICE,
-    }
+    },
+    ("2025-04-29", "SZ002214"): {
+        "issue": "HISTORIC_ST_5PCT_LIMIT_SELL_NOT_EXTERNALLY_VALIDATED",
+        "notice": DALI_NOTICE,
+    },
 }
 
 
@@ -344,10 +358,40 @@ def run(args):
             tasks.append((candidate, phase, dates, report, decisions, identity, row))
     # One provider read shared by all 10 cells; avoid repeated market scans.
     quotes = provider_prices(provider, sorted(all_codes), [x.isoformat() for x in tasks[0][2]])
-    outputs = []
+    # Full sweep precedes all valuation, so a later unknown suspension cannot
+    # hide additional missing holding quotes behind the first exception.
+    inventory_by_cell = []
     for candidate, phase, dates, report, decisions, identity, row in tasks:
         require(dates == tasks[0][2], "cross-phase calendar disagreement")
+        inventory_by_cell.append({
+            "candidate_id": candidate, "phase": phase,
+            "fixed_sha256": identity,
+            "inventory": scan_holding_quotes(
+                decisions, quotes, dates,
+                VERIFIED_SUSPENSION_DATES, KNOWN_ST_EXECUTION_REVIEW),
+        })
+    blocked = [x for x in inventory_by_cell if x["inventory"]["blocking_count"]]
+    if blocked:
+        out.mkdir(parents=True)
+        payload = {
+            "status": "BLOCKED_OR_FAILED_NOT_PASS",
+            "reason": "full-calendar quote inventory has unresolved blocking rows; no NAV PASS",
+            "snapshot": SNAPSHOT, "provider_fingerprint": FINGERPRINT,
+            "candidate": args.candidate, "phases": args.phases,
+            "inventory_cells": inventory_by_cell,
+            "blocking_cells": len(blocked),
+            "market_execution": "NOT_CERTIFIED",
+            "model_training": False, "production_promotion": False,
+        }
+        (out / "audit_failure.json").write_text(
+            json.dumps(payload, indent=2, allow_nan=False) + "\n")
+        raise ValueError("unresolved frozen holding quote inventory; see audit_failure.json")
+
+    outputs = []
+    for task, inv in zip(tasks, inventory_by_cell):
+        candidate, phase, dates, report, decisions, identity, row = task
         result = reconstruct(decisions, report, quotes, dates)
+        result["full_calendar_quote_inventory"] = inv["inventory"]
         report_metrics = row["fixed_metrics"]
         metric_aliases = {"sharpe_238_rf0": "sharpe", "strategy_cagr": "strategy_cagr",
                           "relative_excess_cagr": "relative_excess_cagr",
@@ -381,6 +425,7 @@ def run(args):
     payload = {"audit": "independent_price_to_cash_nav_no_qlib_backtest",
                "snapshot": SNAPSHOT, "provider_fingerprint": FINGERPRINT,
                "cells": outputs, "phase_completeness": len(outputs),
+               "quote_inventory_completed_before_ledger": True,
                "cohort_summaries": cohort_summaries,
                "all_research_accounting_pass": all(c["ledger"] == "PASS_RESEARCH_ACCOUNTING_ONLY" for c in outputs),
                "market_execution": "BLOCKED_EXTERNAL_HISTORICAL_RULES_AND_LIQUIDITY",
