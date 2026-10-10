@@ -5,6 +5,10 @@ on:
     branches: [main]
     paths:
       - "audit/verify_stage_b_fixed_ledger.py"
+      - "audit/stage_b_quote_inventory.py"
+      - "audit/mvp_entry_review.py"
+      - "tests/test_stage_b_mvp_closeout.py"
+      - "docs/experiments/41-final-csi1000-mvp-readiness-audit-20261010.md"
       - "audit/modal_stage_b_ledger.py"
       - "docs/experiments/38-csi1000-baseline-independent-ledger-validation-20261010.md"
       - "docs/experiments/39-stage-b-audit-closeout-modal-runbook-20261010.md"
@@ -15,6 +19,10 @@ on:
     branches: [main]
     paths:
       - "audit/verify_stage_b_fixed_ledger.py"
+      - "audit/stage_b_quote_inventory.py"
+      - "audit/mvp_entry_review.py"
+      - "tests/test_stage_b_mvp_closeout.py"
+      - "docs/experiments/41-final-csi1000-mvp-readiness-audit-20261010.md"
       - "audit/modal_stage_b_ledger.py"
       - "docs/experiments/38-csi1000-baseline-independent-ledger-validation-20261010.md"
       - "docs/experiments/39-stage-b-audit-closeout-modal-runbook-20261010.md"
@@ -38,9 +46,17 @@ jobs:
       - name: Install fixture-only dependencies
         run: python -m pip install --disable-pip-version-check --no-input "pandas==2.2.3"
       - name: Compile auditor
-        run: python -m py_compile audit/verify_stage_b_fixed_ledger.py audit/modal_stage_b_ledger.py
+        run: python -m py_compile audit/verify_stage_b_fixed_ledger.py audit/stage_b_quote_inventory.py audit/mvp_entry_review.py audit/modal_stage_b_ledger.py
       - name: Run synthetic accounting and failure tests (NO provider)
         run: python -m unittest discover -s tests -p "test_verify_stage_b_fixed_ledger.py" -v
+      - name: Run full-quote-inventory and paper readiness negative controls
+        run: python -m unittest discover -s tests -p "test_stage_b_mvp_closeout.py" -v
+      - name: Check current committed paper artifact identity (NOT live deployment)
+        run: |
+          python audit/mvp_entry_review.py \
+            --paper-artifact results/signals/2026-10-09_paper_portfolio.json \
+            --output /tmp/csi1000-mvp-static-gate-ci.json
+          python -c 'import json; r=json.load(open("/tmp/csi1000-mvp-static-gate-ci.json")); assert r["static_artifact_contract"] == "PASS_STATIC_ONLY"; assert r["mvp_activation_approved"] is False'
       - name: Declare CI limitations
         run: |
           {
