@@ -42,7 +42,8 @@ def test_methodology_marks_chinext_production_paused():
     assert "研究线 · 创业板" in page
     assert "production paused" in page
     assert "每日 production 更新与网页展示已暂停" in page
-    assert "Stage-B rank #1" in page
+    assert "Stage-B winner · frozen" in page
+    assert "Audit Closure" in page
 
 
 def test_historical_chinext_files_are_not_deleted_by_runtime():
@@ -58,12 +59,13 @@ def test_methodology_tracks_current_frozen_stage_b_contract():
     for marker in (
         "2025-01-02",
         "2026-09-30",
-        "424",
-        "0 / 4 / 6 / 10 / 15",
-        "+9.16%",
-        "+14.25%",
-        "5 / 5",
+        "PASS_RESEARCH_ACCOUNTING_ONLY",
+        "不因 closure 后的事后排名变化重新调参或换模型",
         "2026-09-18",
+        "2026-10-12",
+        "metadata sidecar",
+        "PIT=1000",
+        "ST / 停牌",
         "治理与公开边界",
     ):
         assert marker in page, f"methodology missing current Stage-B marker: {marker}"
@@ -74,8 +76,8 @@ def test_public_site_uses_shared_stylesheet():
     methodology = (ROOT / "website" / "methodology.html").read_text()
     styles = ROOT / "website" / "styles.css"
     assert styles.is_file()
-    assert 'href="styles.css?v=10"' in index
-    assert 'href="styles.css?v=10"' in methodology
+    assert 'href="styles.css?v=11"' in index
+    assert 'href="styles.css?v=11"' in methodology
 
 
 def test_dashboard_dark_theme_and_responsive_layout():
@@ -88,7 +90,7 @@ def test_dashboard_dark_theme_and_responsive_layout():
     assert ".table-wrap { display: none; }" in styles
     assert ".mobile-cards { display: grid;" in styles
     assert ".doc-grid { grid-template-columns: 1fr;" in styles
-    assert 'src="app.js?v=26"' in index
+    assert 'src="app.js?v=27"' in index
 
 
 def test_forward_performance_panel_is_forward_only_from_20261012():
@@ -116,8 +118,26 @@ def test_pages_builds_forward_performance_artifact():
 def test_missing_history_metadata_is_not_fabricated():
     app = (ROOT / "website" / "app.js").read_text()
     assert "formatDate(paper?.signal_data_date || null)" in app
-    assert "isWinnerCanonical(paper)" in app
+    assert "_mvp_metadata.json" in app
+    assert "evaluateMvpContract" in app
+    assert "MVP metadata sidecar missing" in app
+    assert "不会把 winner 标识单独解释为“已核验”" in app
     assert "paper.paper_lineage === 'stage_b_winner_canonical'" in app
+
+
+def test_dashboard_exposes_forward_mvp_contract_without_tradeability_claim():
+    app = (ROOT / "website" / "app.js").read_text()
+    styles = (ROOT / "website" / "styles.css").read_text()
+    for marker in (
+        "MVP publication contract · PASS",
+        "PIT / 标签",
+        "Paper / 风险",
+        "Label20 PASS",
+        "停牌待执行后确认",
+        "risk.tradeability_certified !== false",
+    ):
+        assert marker in app
+    assert ".status-grid.mvp-grid" in styles
 
 
 def test_pages_deployment_packages_stylesheet():
@@ -148,16 +168,19 @@ def test_public_methodology_does_not_expose_internal_audit_identifiers():
 
 
 def test_current_handoff_is_present_and_indexed():
-    handoff = ROOT / "docs" / "experiments" / "21-next-conversation-handoff-star-chinext-20261008.md"
+    handoff = ROOT / "docs" / "experiments" / "42-csi1000-mvp-handoff-after-ledger-pass-20261011.md"
     index = (ROOT / "docs" / "experiments" / "README.md").read_text()
     assert handoff.is_file()
     text = handoff.read_text()
     for marker in (
-        "CSI1000 research selection is complete and frozen",
-        "STAR reproducibility repair first",
-        "ChiNext",
-        "2025-01-02",
-        "2026-09-30",
+        "Audit Closure Register",
+        "CANONICAL_PROFILE",
+        "CANONICAL_PAPER_LINEAGE",
+        "每日数据",
+        "PIT",
+        "Top20",
+        "paper",
+        "smoke",
     ):
         assert marker in text
     assert handoff.name in index
