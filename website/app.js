@@ -144,11 +144,16 @@ async function loadAvailableDates() {
 }
 
 async function loadDateContext(date, fresh = false) {
-  const [chartText, paperText] = await Promise.all([
+  const [chartText, paperText, metadataText] = await Promise.all([
     fetchText(CSV_BASE + '/' + date + '_chart.json', fresh),
     fetchText(CSV_BASE + '/' + date + '_paper_portfolio.json', fresh),
+    fetchText(CSV_BASE + '/' + date + '_mvp_metadata.json', fresh),
   ]);
-  return { chart: parseJSONLoose(chartText), paper: parseJSONLoose(paperText) };
+  return {
+    chart: parseJSONLoose(chartText),
+    paper: parseJSONLoose(paperText),
+    metadata: parseJSONLoose(metadataText),
+  };
 }
 
 // Frontend trust boundary: only a validated forward-only artifact may
@@ -297,6 +302,76 @@ function isWinnerCanonical(paper) {
   );
 }
 
+const MVP_CONTRACT_VERSION = 'csi1000_mvp_daily_v1';
+
+function evaluateMvpContract(metadata, paper, date, rows) {
+  if (!metadata) {
+    return {
+      ok: false,
+      legacy: true,
+      errors: ['MVP metadata sidecar missing'],
+      pitText: '未记录',
+      riskText: '未记录',
+    };
+  }
+  const errors = [];
+  const top20 = rows.map(row => row.instrument);
+  const metaTop20 = metadata.signal_lineage?.display_top20_instruments;
+  const production = metadata.production_lineage;
+  const pit = metadata.pit_universe;
+  const label = metadata.label_maturity;
+  const risk = metadata.risk;
+
+  if (metadata.contract_version !== MVP_CONTRACT_VERSION) errors.push('contract version mismatch');
+  if (metadata.market !== 'csi1000') errors.push('market mismatch');
+  if (metadata.publication?.status !== 'PASS' || metadata.publication?.usage_date !== date) {
+    errors.push('publication gate not bound to selected date');
+  }
+  if (!paper || metadata.publication?.signal_data_date !== paper.signal_data_date ||
+      paper.usage_date !== date) {
+    errors.push('paper date lineage mismatch');
+  }
+  if (!isWinnerCanonical(paper) || production?.profile !== 'stage_b_winner' ||
+      production?.candidate_id !== paper?.production_lineage?.candidate_id ||
+      production?.model_config_sha256 !== paper?.production_lineage?.model_config_sha256) {
+    errors.push('frozen winner lineage mismatch');
+  }
+  if (metadata.provider?.calendar_end !== metadata.publication?.signal_data_date) {
+    errors.push('provider freshness evidence mismatch');
+  }
+  if (pit?.status !== 'PASS' || pit?.member_count !== 1000 ||
+      pit?.asof !== metadata.publication?.signal_data_date) {
+    errors.push('PIT universe gate failed');
+  }
+  if (label?.status !== 'PASS' || label?.horizon_sessions !== 20 ||
+      label?.signal_data_date !== metadata.publication?.signal_data_date) {
+    errors.push('label maturity gate failed');
+  }
+  if (!Array.isArray(metaTop20) || metaTop20.length !== 20 ||
+      metaTop20.some((symbol, i) => symbol !== top20[i])) {
+    errors.push('display Top20 lineage mismatch');
+  }
+  if (!risk || risk.tradeability_certified !== false ||
+      !risk.st || !risk.usage_day_suspension) {
+    errors.push('risk boundary missing');
+  }
+
+  const st = risk?.st;
+  const stText = st?.status === 'SOURCE_SNAPSHOT_AVAILABLE'
+    ? (st.top20_st_count ? `ST命中 ${st.top20_st_count}` : 'ST快照无命中')
+    : 'ST状态未知';
+  const suspensionText = risk?.usage_day_suspension?.status === 'NOT_INDEPENDENTLY_VERIFIED_PREOPEN'
+    ? '停牌待执行后确认' : '停牌状态异常';
+  return {
+    ok: errors.length === 0,
+    legacy: false,
+    errors,
+    pitText: pit?.status === 'PASS' && label?.status === 'PASS'
+      ? `${pit.member_count}只 · Label20 PASS` : '未通过',
+    riskText: `${stText} · ${suspensionText}`,
+  };
+}
+
 function buildRows(rows, nameMap, prev, chartData) {
   const prevCodes = new Set(prev ? prev.map(r => r.instrument) : []);
   const prevRank = {};
@@ -391,7 +466,7 @@ function pageShell(dates) {
         </aside>
       </section>
 
-      <section class="status-grid" aria-label="信号状态">
+      <section class="status-grid mvp-grid" aria-label="信号状态">
         <div class="stat-card">
           <div class="stat-label">榜单日期</div>
           <div class="stat-value" id="stat-date">—</div>
@@ -408,11 +483,25 @@ function pageShell(dates) {
           <div class="stat-sub">model fit as-of</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">记录状态</div>
+          <div class="stat-label">模型谱系</div>
           <div class="stat-value" id="stat-lineage">—</div>
           <div class="stat-sub" id="stat-lineage-sub">版本说明</div>
         </div>
+        <div class="stat-card">
+          <div class="stat-label">PIT / 标签</div>
+          <div class="stat-value" id="stat-pit">—</div>
+          <div class="stat-sub">当日成分与 20-session maturity</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Paper / 风险</div>
+          <div class="stat-value" id="stat-risk">—</div>
+          <div class="stat-sub">ST / 停牌不等于可成交认证</div>
+        </div>
       </section>
+
+      <div id="mvp-health" class="callout mvp-health" role="status">
+        正在核对每日 MVP 发布合同…
+      </div>
 
       <section class="panel" id="ranking">
         <div class="panel-head">
@@ -542,6 +631,10 @@ async function main() {
       document.getElementById('stat-fit-date').textContent = '—';
       document.getElementById('stat-lineage').textContent = '未核验';
       document.getElementById('stat-lineage-sub').textContent = '信号文件缺失或读取失败';
+      document.getElementById('stat-pit').textContent = '—';
+      document.getElementById('stat-risk').textContent = '—';
+      document.getElementById('mvp-health').textContent =
+        '该日信号文件缺失或读取失败，无法建立 MVP 发布合同。';
       if (container) container.setAttribute('aria-busy', 'false');
       return;
     }
@@ -556,15 +649,30 @@ async function main() {
       document.getElementById('stat-data-date').textContent = formatDate(paper?.signal_data_date || null);
       document.getElementById('stat-fit-date').textContent = formatDate(paper?.model_fit_asof || null);
       const winner = isWinnerCanonical(paper);
+      const contract = ctx ? evaluateMvpContract(ctx.metadata, paper, dateInfo.date, rows) : null;
       document.getElementById('stat-lineage').textContent =
         ctx ? (winner ? 'Stage-B winner' : '历史 / 未核验') : '核验中';
       document.getElementById('stat-lineage-sub').textContent = ctx
-        ? (winner ? '当前生产版本' : '历史记录未包含当前版本标识') : '正在加载版本资料';
+        ? (winner ? '冻结 canonical · 不事后重选' : '历史记录未包含当前版本标识') : '正在加载版本资料';
+      document.getElementById('stat-pit').textContent =
+        !ctx ? '核验中' : contract.pitText;
+      document.getElementById('stat-risk').textContent =
+        !ctx ? '核验中' : contract.riskText;
       document.getElementById('artifact-status').innerHTML = !ctx
-        ? '预测排名已载入 · 正在获取走势图与版本资料'
-        : (winner
-          ? '<span class="status-pill"><span class="status-dot"></span> Stage-B winner · 已核验</span>'
-          : '<span class="status-pill history">历史记录 / 版本未确认</span>');
+        ? '预测排名已载入 · 正在获取发布合同与版本资料'
+        : (contract.ok
+          ? '<span class="status-pill"><span class="status-dot"></span> MVP publication contract · PASS</span>'
+          : '<span class="status-pill history">历史记录 / MVP 合同不完整</span>');
+      const health = document.getElementById('mvp-health');
+      if (health) {
+        health.textContent = !ctx
+          ? '正在核对 provider、PIT 股票池、标签成熟、Top20 lineage、paper 与风险状态。'
+          : contract.ok
+            ? '每日发布合同已通过 freshness / PIT / Label20 / frozen lineage / paper 绑定。ST 为独立风险快照；执行日停牌与真实成交仍未获认证。'
+            : contract.legacy
+              ? '该历史日期没有 MVP metadata sidecar，因此不会把 winner 标识单独解释为“已核验”。旧 artifact 保持只读。'
+              : 'MVP 发布合同未通过：' + contract.errors.join('；');
+      }
       document.querySelectorAll('.date-btn').forEach(btn => {
         const active = btn.dataset.date === dateInfo.date;
         btn.classList.toggle('current', active);
@@ -582,12 +690,14 @@ async function main() {
   }
 
   document.querySelectorAll('.date-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const d = dates.find(item => item.date === btn.dataset.date);
       if (d) {
-        renderDate(d);
-        // The date rail now follows the ranking; return to the updated result.
-        document.getElementById('ranking').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Render first: the MVP health/risk copy can change height between a
+        // current contract and a legacy date. Scrolling before that reflow
+        // makes the final Top20 position drift on tablet/mobile viewports.
+        await renderDate(d);
+        document.getElementById('ranking').scrollIntoView({ behavior: 'auto', block: 'start' });
       }
     });
   });

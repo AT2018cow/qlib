@@ -73,10 +73,50 @@ def make_fixture(root: Path):
             "model_fit_asof": days[-2 - offset].isoformat(),
         }
         if offset == 0:
+            lineage = {
+                "profile": "stage_b_winner",
+                "candidate_id": "a" * 64,
+                "model_config_sha256": "b" * 64,
+            }
             paper.update({
                 "paper_lineage": "stage_b_winner_canonical",
-                "production_lineage": {"profile": "stage_b_winner"},
+                "production_lineage": lineage,
+                "usage_date": key,
             })
+            metadata = {
+                "contract_version": "csi1000_mvp_daily_v1",
+                "market": "csi1000",
+                "publication": {
+                    "status": "PASS",
+                    "signal_data_date": paper["signal_data_date"],
+                    "usage_date": key,
+                },
+                "provider": {"calendar_end": paper["signal_data_date"]},
+                "pit_universe": {
+                    "status": "PASS",
+                    "asof": paper["signal_data_date"],
+                    "member_count": 1000,
+                },
+                "label_maturity": {
+                    "status": "PASS",
+                    "horizon_sessions": 20,
+                    "signal_data_date": paper["signal_data_date"],
+                },
+                "production_lineage": lineage,
+                "signal_lineage": {"display_top20_instruments": codes},
+                "risk": {
+                    "tradeability_certified": False,
+                    "st": {
+                        "status": "SOURCE_SNAPSHOT_AVAILABLE",
+                        "top20_st": [],
+                        "top20_st_count": 0,
+                    },
+                    "usage_day_suspension": {
+                        "status": "NOT_INDEPENDENTLY_VERIFIED_PREOPEN",
+                    },
+                },
+            }
+            (signals / (key + "_mvp_metadata.json")).write_text(json.dumps(metadata))
         (signals / (key + "_paper_portfolio.json")).write_text(json.dumps(paper))
     waiting = {
         "start_date": "2026-10-12",
@@ -107,7 +147,7 @@ def inspect_viewport(browser, base_url, width: int):
     page.locator("#signal-rows tr").first.wait_for(state="attached", timeout=20000)
     assert page.locator("#signal-rows tr").count() == 20
     page.wait_for_function("document.getElementById('stat-lineage')?.textContent === 'Stage-B winner'")
-    assert len(signals_requests) == 6, signals_requests
+    assert len(signals_requests) == 7, signals_requests
     assert all(status == 200 for _, status in statuses), statuses
     assert not any("code_name_map.csv" in url for url in signals_requests)
     initial_requests = len(signals_requests)
@@ -163,14 +203,24 @@ def inspect_viewport(browser, base_url, width: int):
     assert page.locator("#signal-rows tr").first.locator(".tag").inner_text() == "无对照"
     page.wait_for_function("Math.abs(document.querySelector('#ranking').getBoundingClientRect().top) < 30")
     after_history = len(signals_requests)
-    assert after_history == initial_requests + 2, signals_requests
+    assert after_history == initial_requests + 3, signals_requests
+    metadata_404s = [
+        url for url, status in statuses
+        if url.endswith("_mvp_metadata.json") and status == 404
+    ]
+    assert len(metadata_404s) == 1, statuses
     if width in (390, 320):
         page.screenshot(path=str(OUT / f"dashboard-fixture-historical-{width}.png"), full_page=True)
     page.locator(".date-btn").first.click()
     page.wait_for_function("document.getElementById('stat-lineage')?.textContent === 'Stage-B winner'")
     assert len(signals_requests) == after_history, "previously loaded context should be cached"
     page.close()
-    return {**actual, "first_load_data_requests": initial_requests, "after_history_data_requests": after_history, "data_404s": 0}
+    return {
+        **actual,
+        "first_load_data_requests": initial_requests,
+        "after_history_data_requests": after_history,
+        "data_404s": len(metadata_404s),
+    }
 
 
 def main():

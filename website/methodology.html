@@ -6,7 +6,7 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg?v=1">
 <meta name="description" content="CSI1000 Stage-B winner 生产方法论、验证证据与执行协议">
 <title>生产方法论 · CSI1000 Stage-B Winner</title>
-<link rel="stylesheet" href="styles.css?v=10">
+<link rel="stylesheet" href="styles.css?v=11">
 </head>
 <body>
 <main class="shell doc-shell">
@@ -21,15 +21,15 @@
   </nav>
 
   <header class="doc-hero">
-    <div class="eyebrow"><span class="status-dot"></span> Production methodology · 2026-10-08</div>
-    <h1>CSI1000 Stage-B Winner<br>生产方法论与审计状态</h1>
+    <div class="eyebrow"><span class="status-dot"></span> Research MVP methodology · 2026-10-11</div>
+    <h1>CSI1000 研究型 MVP<br>生产协议与 forward 边界</h1>
     <p>
       本页只描述当前有效的生产协议。Stage-A/Stage-B 已完成并冻结；2025-01-02 至
       2026-09-30 的 Stage-B confirmation tail 已被消费，不再用于继续调参。
     </p>
     <div class="doc-status">
       <span class="mini-pill">CSI1000 · canonical production</span>
-      <span class="mini-pill">Stage-B rank #1</span>
+      <span class="mini-pill">Stage-B winner · frozen</span>
       <span class="mini-pill paused">ChiNext · production paused</span>
     </div>
   </header>
@@ -98,45 +98,20 @@
       </section>
 
       <section class="doc-section" id="selection">
-        <h2>3. Stage-A → Stage-B 模型选择</h2>
+        <h2>3. 冻结选择与 Audit Closure</h2>
         <p>
-          Stage A 用于候选筛选；Stage B 使用此前预留的 confirmation tail 做最终确认。
-          当前 winner 在 Stage A 不是第一名，而是第 5 名，最终在 Stage B 的跨重训相位稳健性排序中升至第 1 名。
-          这也是为什么当前 production 选择不是简单追逐单一历史区间的最高收益。
+          Stage-A / Stage-B 的模型选择已经完成并冻结，confirmation tail 已被消费。
+          2026-10-11 的 Audit Closure Register 正式收口历史审计；严格独立账本收口后的
+          事后历史排序不再被用来重新选择候选、修改参数或回头优化已消费区间。
         </p>
-
-        <div class="kv"><div>Stage-B 区间</div><div><code>2025-01-02 → 2026-09-30</code></div></div>
-        <div class="kv"><div>Execution sessions</div><div>424</div></div>
-        <div class="kv"><div>Retrain phases</div><div>0 / 4 / 6 / 10 / 15</div></div>
-        <div class="kv"><div>Winner</div><div>Stage-A rank 5 → <strong>Stage-B rank #1</strong></div></div>
-
-        <div class="metric-grid">
-          <div class="metric"><span>WORST EXCESS CAGR</span><strong>+9.16%</strong></div>
-          <div class="metric"><span>MEDIAN EXCESS CAGR</span><strong>+14.25%</strong></div>
-          <div class="metric"><span>POSITIVE PHASES</span><strong>5 / 5</strong></div>
-          <div class="metric"><span>MEDIAN SHARPE</span><strong>1.276</strong></div>
-          <div class="metric"><span>MEDIAN IR</span><strong>0.641</strong></div>
-          <div class="metric"><span>WORST MAX DRAWDOWN</span><strong>-14.65%</strong></div>
-        </div>
-
-        <div class="doc-table-wrap">
-          <table class="doc-table">
-            <thead>
-              <tr><th>Phase</th><th>Strategy CAGR</th><th>Benchmark CAGR</th><th>Excess CAGR</th><th>MaxDD</th><th>Sharpe</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>0</td><td>29.32%</td><td>13.19%</td><td>+14.25%</td><td>-12.13%</td><td>1.276</td></tr>
-              <tr><td>4</td><td>30.36%</td><td>13.19%</td><td>+15.17%</td><td>-10.58%</td><td>1.334</td></tr>
-              <tr><td>6</td><td>23.55%</td><td>13.19%</td><td>+9.16%</td><td>-11.61%</td><td>1.110</td></tr>
-              <tr><td>10</td><td>30.73%</td><td>13.19%</td><td>+15.50%</td><td>-12.08%</td><td>1.395</td></tr>
-              <tr><td>15</td><td>24.86%</td><td>13.19%</td><td>+10.32%</td><td>-14.65%</td><td>1.177</td></tr>
-            </tbody>
-          </table>
-        </div>
-
+        <div class="kv"><div>当前 canonical</div><div>已冻结的 Stage-B winner（Stage-A rank 5）</div></div>
+        <div class="kv"><div>历史审计状态</div><div><code>PASS_RESEARCH_ACCOUNTING_ONLY</code> 只代表研究会计口径，不是实盘成交认证</div></div>
+        <div class="kv"><div>治理规则</div><div>不因 closure 后的事后排名变化重新调参或换模型</div></div>
+        <div class="kv"><div>Forward 起点</div><div><code>2026-10-12</code> 起只看新的 paper / 网站 / smoke 证据</div></div>
         <p>
-          五个 phase 是<strong>同一历史区间的不同 retraining-calendar offset</strong>，不是五个互不重叠的时间段。
-          排名优先考察 lower-tail excess robustness，而不是选择单次收益最高的配置。
+          因此本页不再把历史 winner 描述成“当前 Stage-B rank #1”，也不把历史回测收益当作
+          MVP 已上线的证据。当前工程判断来自每天独立生成的 freshness、PIT、Label20、
+          lineage、paper 与风险状态。
         </p>
       </section>
 
@@ -163,6 +138,7 @@
           <li>只有前一真实交易日的数据已经完整可用时，CSI1000 才发布新信号；数据陈旧或日历不可验证时不发布。</li>
           <li>按固定 20-session 重训时钟决定重训或安全复用已核验模型。</li>
           <li>对 CSI1000 横截面预测并按确定性规则排序，生成 Top20。</li>
+          <li>同一提交发布 metadata sidecar，绑定 provider 指纹、PIT=1000、20-session 标签成熟、Top20 / paper lineage 与风险状态。</li>
           <li>同日公开记录保持不可变；如果重跑结果与既有记录不一致，则拒绝静默覆盖。</li>
           <li>当前 winner 使用独立的新 paper 状态，不继承旧 baseline 的持仓或待执行订单。</li>
         </ul>
@@ -185,6 +161,7 @@
           <li><strong>模型 score 不是保证收益。</strong> 模型训练目标是 20 日 forward return，但每日 score 是排序输入，实际收益受市场 Beta、执行限制和未来分布变化影响。</li>
           <li><strong>Stage-B tail 已冻结。</strong> 短期 forward 表现不佳本身不能授权回头用这段数据继续调参；新模型研究应建立新的版本与验证协议。</li>
           <li><strong>数据与执行会失败。</strong> 数据源滞后、交易日历不可验证、cache lineage 不匹配等情况会 fail closed，而不是强行发布陈旧 CSI1000 signal。</li>
+          <li><strong>ST / 停牌不是隐含可交易状态。</strong> ST 只记录当日可获得的风险快照；执行日停牌在开盘前未获独立确认时显示为未知，并等待后续 provider 数据结算 paper。</li>
           <li><strong>paper 不等于实盘。</strong> 真实交易仍可能面临滑点、流动性、成交量与券商执行差异。</li>
         </ul>
       </section>
@@ -192,12 +169,13 @@
       <section class="doc-section" id="audit">
         <h2>7. 治理与公开边界</h2>
         <p>
-          当前模型已经通过 versioned Stage-A / Stage-B 选择与独立审计，精确的配置哈希、结果提交和运行快照
-          保存在仓库的 versioned research docs / source manifests 中，便于工程追溯。
+          历史审计已经按 Audit Closure Register 收口。本 MVP 不继续扩展历史审计，也不把
+          closure 后的账本结果当作重新调参依据。当前只验证每日 forward 生产是否满足
+          数据新鲜度、PIT 股票池、标签成熟、冻结模型 lineage、paper 状态与风险边界。
         </p>
         <p>
-          公开网页不展示访问凭据、私有运行环境、内部资源名称或不必要的 lineage/hash。
-          这里保留用户理解模型证据所需的信息：验证区间、重训相位、收益/回撤统计、执行协议与风险边界。
+          网站可以显示“发布合同 PASS”，但不会把 ST 快照、停牌未知状态或 paper 成交模拟
+          表述成交易所已成交或可交易认证。精确 hash 保留在每日 sidecar 中用于工程追溯。
         </p>
       </section>
     </div>

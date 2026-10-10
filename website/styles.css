@@ -178,6 +178,13 @@ h1, h2, h3, p { margin-top: 0; }
   border-right: 1px solid var(--border);
 }
 .stat-card:last-child { border-right: 0; }
+
+/* Six forward-MVP status cells: two rows on desktop, two columns on mobile. */
+.status-grid.mvp-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.status-grid.mvp-grid .stat-card { border-bottom: 1px solid var(--border); }
+.status-grid.mvp-grid .stat-card:nth-child(3n) { border-right: 0; }
+.status-grid.mvp-grid .stat-card:nth-last-child(-n+3) { border-bottom: 0; }
+.mvp-health { border-left-color: var(--amber); }
 .stat-label {
   color: var(--muted);
   font-size: 12px;
@@ -531,6 +538,10 @@ details p { margin: 12px 0 0; }
   .protocol-row { gap: 8px; }
   .protocol-row span, .protocol-row strong { font-size: 11px; }
   .status-grid { grid-template-columns: 1fr 1fr; }
+  .status-grid.mvp-grid { grid-template-columns: 1fr 1fr; }
+  .status-grid.mvp-grid .stat-card { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .status-grid.mvp-grid .stat-card:nth-child(2n) { border-right: 0; }
+  .status-grid.mvp-grid .stat-card:nth-last-child(-n+2) { border-bottom: 0; }
   .stat-card { padding: 15px; border-bottom: 1px solid var(--border); }
   .stat-card:nth-child(2n) { border-right: 0; }
   .stat-card:nth-last-child(-n+2) { border-bottom: 0; }

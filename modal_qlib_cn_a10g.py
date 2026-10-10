@@ -1502,6 +1502,8 @@ def _apply_paper_portfolio(
         "n_positions": len(pp.positions),
         "positions": pp.positions,
         "model_fit_asof": res["model_fit_asof"],
+        "training_contract": res.get("training_contract"),
+        "provider_calendar_end": (res.get("provider_identity") or {}).get("calendar_end"),
         "note": (
             "Orders are planned before the execution-day open and settled on a later "
             "data refresh using the recorded open. If provider data is stale, the prior "
@@ -1509,6 +1511,7 @@ def _apply_paper_portfolio(
         ),
     }
     return {
+        "artifact": artifact,
         "artifact_json": _json.dumps(artifact, ensure_ascii=False, indent=2) + "\n",
         "state_path": str(state_path),
         "state_json": _json.dumps(pp.to_dict(), ensure_ascii=False, indent=2) + "\n",
@@ -3537,7 +3540,19 @@ def daily_standalone(
                 break
     shutil.move(str(base), str(data_dir))
     cal_lines = (data_dir / "calendars" / "day.txt").read_text().strip().splitlines()
-    print(f"[daily] 数据就绪：日历 {cal_lines[0]} ~ {cal_lines[-1]}（{len(cal_lines)} 个交易日）")
+    from csi1000_mvp_contract import sha256_file
+
+    provider_identity = {
+        "name": "chenditc",
+        "source_url": CHENDITC_LATEST_URL,
+        "archive_sha256": sha256_file(zip_path),
+        "calendar_sha256": sha256_file(data_dir / "calendars" / "day.txt"),
+        "calendar_end": cal_lines[-1],
+    }
+    print(
+        f"[daily] 数据就绪：日历 {cal_lines[0]} ~ {cal_lines[-1]}（{len(cal_lines)} 个交易日）"
+        f"，archive={provider_identity['archive_sha256'][:12]}"
+    )
 
     # ---- 1b) 新池（chinext/star）：容器本地数据没有合成等权基准（chenditc 包不含），
     # 训练前必须用 board_rules.build_ew_bench_files 构建并与 Volume 研究路径共用同一实现 ----
@@ -3584,6 +3599,19 @@ def daily_standalone(
     production_lineage = cfg.get("_csi1000_production_manifest")
     calendar = read_trading_calendar(data_dir)
     asof = calendar[-1]
+    pit_universe = None
+    if market == "csi1000":
+        from csi1000_mvp_contract import pit_universe_snapshot
+
+        pit_universe = pit_universe_snapshot(
+            data_dir / "instruments" / "csi1000.txt",
+            asof,
+            expected_count=1000,
+        )
+        print(
+            f"[daily] CSI1000 PIT universe PASS: {pit_universe['member_count']} members "
+            f"asof={pit_universe['asof']} sha={pit_universe['membership_sha256'][:12]}"
+        )
     # Today is a feature/prediction date, NEVER a training/validation label date.
     live_split = configure_asof(cfg, calendar, asof, horizon=20)
     runtime_lineage = _runtime_cache_lineage()
@@ -3685,6 +3713,26 @@ def daily_standalone(
         with model_file.open("rb") as f:
             model_obj = pickle.load(f)
         print(f"[daily] 复用模型，训练日期={saved['fit_asof']}，距今未满 {RETRAIN_EVERY_SESSIONS} 交易日")
+
+    training_contract = {
+        "fit_asof": saved["fit_asof"],
+        "horizon": saved["horizon"],
+        "train_start": saved["train"][0],
+        "train_end": saved["train"][1],
+        "valid_start": saved["valid"][0],
+        "valid_end": saved["valid"][1],
+    }
+    label_maturity = None
+    if market == "csi1000":
+        from csi1000_mvp_contract import validate_label_maturity
+
+        label_maturity = validate_label_maturity(calendar, training_contract, asof)
+        print(
+            "[daily] 20-session label maturity PASS: "
+            f"train_end={label_maturity['train_end']} "
+            f"valid_end={label_maturity['valid_end']} fit_asof={label_maturity['fit_asof']}"
+        )
+
     pred = model_obj.predict(dataset, segment="test")
     if pred.empty:
         raise RuntimeError(f"No inference predictions for {asof}")
@@ -3698,6 +3746,13 @@ def daily_standalone(
     # unfiltered vector drives paper decisions; display filtering below does
     # not alter the portfolio planner input.
     ranking_order = deterministic_score_order(day.items())
+    if pit_universe is not None:
+        active_members = set(pit_universe["active_members"])
+        outside_pit = sorted(str(inst) for inst in day.index if str(inst) not in active_members)
+        if outside_pit:
+            raise RuntimeError(
+                f"CSI1000 prediction contains non-PIT members at {asof}: {outside_pit[:10]}"
+            )
     ranking_full = [
         [str(inst), float(day.loc[inst])]
         for inst in ranking_order
@@ -3774,6 +3829,11 @@ def daily_standalone(
         "model_fit_asof": saved["fit_asof"],
         "train_end": saved["train"][-1],
         "valid_end": saved["valid"][-1],
+        "training_contract": training_contract,
+        "label_maturity": label_maturity,
+        "pit_universe": pit_universe,
+        "provider_identity": provider_identity,
+        "display_top20": [str(inst) for inst in top.index],
         "retrained_today": train_now,
         "production_lineage": production_lineage,
         "chart_json": chart_json,
@@ -3856,6 +3916,59 @@ def _cn_trading_calendar():
     return cal
 
 
+def _current_st_risk_snapshot(instruments: list[str]) -> dict:
+    """Best-effort current risk-warning snapshot; never masquerades as fill certification.
+
+    The canonical strategy is frozen, so this observation does NOT add a new ST
+    selection filter.  It is published only as an explicit research-MVP risk
+    boundary.  Source failure is surfaced as UNAVAILABLE rather than silently
+    claiming the names are clean.
+    """
+    import time
+
+    import akshare as ak
+
+    wanted = [str(x).upper() for x in instruments]
+    last_err = None
+    for attempt in (1, 2):
+        try:
+            frame = ak.stock_zh_a_st_em()
+            code_col = next(
+                (col for col in frame.columns if str(col).strip().lower() in ("代码", "证券代码", "code")),
+                None,
+            )
+            if code_col is None:
+                raise RuntimeError(f"ST source has no code column: {list(frame.columns)}")
+            st_codes = {
+                str(value).strip().split(".")[0].zfill(6)[-6:]
+                for value in frame[code_col].dropna().tolist()
+            }
+            matches = sorted(inst for inst in wanted if inst[2:] in st_codes)
+            return {
+                "status": "SOURCE_SNAPSHOT_AVAILABLE",
+                "source": "akshare.stock_zh_a_st_em",
+                "scope": "current risk-warning board snapshot",
+                "top20_st": matches,
+                "top20_st_count": len(matches),
+                "selection_filter_applied": False,
+                "tradeability_certified": False,
+            }
+        except Exception as exc:  # pylint: disable=W0703
+            last_err = exc
+            if attempt == 1:
+                time.sleep(5)
+    return {
+        "status": "UNAVAILABLE",
+        "source": "akshare.stock_zh_a_st_em",
+        "scope": "current risk-warning board snapshot",
+        "top20_st": [],
+        "top20_st_count": None,
+        "selection_filter_applied": False,
+        "tradeability_certified": False,
+        "detail": f"{type(last_err).__name__}: {str(last_err)[:180]}",
+    }
+
+
 def _early_gate(cal, signal_date: str) -> str:
     """Gate 前移的预判定（成本优化，语义最小化）。
 
@@ -3892,6 +4005,7 @@ def daily_cron():
       - results/signals/<date>_top20_lgb158.csv
       - results/signals/<date>_chart.json
       - results/signals/<date>_paper_portfolio.json
+      - results/signals/<date>_mvp_metadata.json
 
     ChiNext 日更暂时停用；研究函数和历史 artifacts 保留，待新模型重新通过
     production gate 后再显式恢复 scheduled publication。
@@ -3920,7 +4034,11 @@ def daily_cron():
         return
 
     print(f"[cron] {signal_date} 为交易日——启动 CSI1000 Stage-B winner canonical")
-    from csi1000_production_config import CANONICAL_PAPER_LINEAGE, CANONICAL_PROFILE
+    from csi1000_production_config import (
+        CANONICAL_PAPER_LINEAGE,
+        CANONICAL_PROFILE,
+        profile_manifest,
+    )
 
     try:
         res = daily_standalone.remote(
@@ -3982,6 +4100,38 @@ def daily_cron():
         files[f"results/signals/{signal_date}_paper_portfolio.json"] = (
             paper_proposals["csi1000"]["artifact_json"]
         )
+
+        from csi1000_mvp_contract import build_mvp_metadata, dumps_metadata
+
+        risk = {
+            "st": _current_st_risk_snapshot(res["display_top20"]),
+            "usage_day_suspension": {
+                "status": "NOT_INDEPENDENTLY_VERIFIED_PREOPEN",
+                "scope": signal_date,
+                "selection_filter_applied": False,
+                "tradeability_certified": False,
+                "note": (
+                    "Execution-day suspension cannot be certified from the prior close package. "
+                    "Paper settlement waits for the later provider refresh and records blocked orders."
+                ),
+            },
+            "tradeability_certified": False,
+        }
+        mvp_metadata = build_mvp_metadata(
+            signal_csv=res["csv_content"],
+            ranking_full=res["ranking_full"],
+            signal_data_date=res["date"],
+            usage_date=signal_date,
+            provider=res["provider_identity"],
+            pit_universe=res["pit_universe"],
+            label_maturity=res["label_maturity"],
+            production_lineage=res["production_lineage"],
+            expected_lineage=profile_manifest(CANONICAL_PROFILE),
+            paper=paper_proposals["csi1000"]["artifact"],
+            risk=risk,
+            publication_detail=csi_detail,
+        )
+        files[f"results/signals/{signal_date}_mvp_metadata.json"] = dumps_metadata(mvp_metadata)
 
     def _persist_paper_states():
         if not paper_proposals:
