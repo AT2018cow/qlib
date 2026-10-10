@@ -11,6 +11,7 @@ import argparse
 import hashlib
 import json
 import sys
+from datetime import date
 from pathlib import Path
 
 # Direct-file invocation from the repository's audit/ subdirectory.
@@ -42,8 +43,14 @@ def evaluate_paper_artifact(paper, calendar=None):
     data_date = paper.get("signal_data_date")
     use_date = paper.get("usage_date")
     fit_asof = paper.get("model_fit_asof")
-    if not all(isinstance(x, str) and len(x) == 10 and
-               x[4] == "-" and x[7] == "-" for x in (data_date, use_date, fit_asof)):
+    try:
+        for value in (data_date, use_date, fit_asof):
+            if not isinstance(value, str) or date.fromisoformat(value).isoformat() != value:
+                raise ValueError("invalid date")
+        valid_dates = True
+    except ValueError:
+        valid_dates = False
+    if not valid_dates:
         errors.append("INVALID_OR_MISSING_SIGNAL_FIT_USAGE_DATE")
     elif not (fit_asof <= data_date < use_date):
         errors.append("FUTURE_OR_OUT_OF_ORDER_MODEL_SIGNAL_DATE")
@@ -57,13 +64,21 @@ def evaluate_paper_artifact(paper, calendar=None):
         buys, sells = pending.get("buy"), pending.get("sell")
         if not isinstance(buys, list) or not isinstance(sells, list):
             errors.append("PENDING_ORDER_LISTS_MISSING")
-        elif (len(buys) > 20 or len(set(buys)) != len(buys)
+        elif (not all(isinstance(x, str) and x for x in buys + sells)
+              or len(buys) > 20 or len(set(buys)) != len(buys)
               or len(set(sells)) != len(sells) or set(buys) & set(sells)):
             errors.append("PENDING_ORDER_SET_INVALID")
     if calendar is not None:
         # The caller must document/verify the calendar source. Do NOT infer a
         # trading session from consecutive calendar dates or a chart series.
-        if not isinstance(calendar, list) or calendar != sorted(set(calendar)):
+        try:
+            valid_calendar = (isinstance(calendar, list)
+                              and calendar == sorted(set(calendar))
+                              and all(isinstance(x, str) and
+                                      date.fromisoformat(x).isoformat() == x for x in calendar))
+        except (TypeError, ValueError):
+            valid_calendar = False
+        if not valid_calendar:
             errors.append("INVALID_SUPPLIED_TRADING_CALENDAR")
         elif isinstance(data_date, str) and isinstance(use_date, str):
             action, detail = _csi1000_canonical_publication_decision(
