@@ -54,6 +54,17 @@ def stable_json_sha256(obj) -> str:
     )
 
 
+def sha256_file(path: str | Path, *, chunk_size: int = 1 << 20) -> str:
+    """Stream a file hash without materializing a large provider archive."""
+    if chunk_size < 1:
+        raise ValueError("chunk_size must be positive")
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as stream:
+        for chunk in iter(lambda: stream.read(chunk_size), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _validate_sha(value, label: str) -> str:
     value = str(value)
     if not _SHA256.fullmatch(value):
