@@ -29,6 +29,35 @@
 
 **审计工作在这个阶段停止**。不要再围绕过去每个停牌事件建逐日审计 PR、扩展 10/55 格或重训参数。若 MVP 的实际信号出现穿越或重要数据错误，需阻断发布/修复的是**当前产品链路**，不是在此重启历史审计。
 
+## 1A. Audit Closure Register — 历史审计正式收口
+
+以下状态是**项目生命周期决策**，不是把所有风险“做成 PASS”。新对话应按此处理；除非触发对应重启条件，不再把 DEFERRED 项重新变成历史审计主线。
+
+| 审计/研究项 | 最终状态 | 对 MVP 的处理 | 重新启动条件 |
+|---|---|---|---|
+| 原 F1：动态 CSI1000 成分被误作持仓报价范围 | **CLOSED / FIXED** | 保留回归测试；信号 PIT 股票池与持仓 quote-union 必须继续分离 | 当前链路再次出现退指持仓失价/无法卖出的同类故障 |
+| baseline phase0 424 日独立现金/持仓/费用/NAV 账本 | **CLOSED / PASS_RESEARCH_ACCOUNTING_ONLY** | 作为只读历史证据；不得包装成真实成交/OOS | 冻结输入、账务规则或 provider 身份被修改 |
+| 9 个公告支持的历史停牌估值日 | **CLOSED / ACCOUNTING EVIDENCE ACCEPTED** | 保留日期精确的证据和负控；不再逐日扩审 | 出现与公告冲突的行情或发现该证据错误 |
+| 4 笔历史 ST 复牌 SELL 的真实可成交性 | **DEFERRED / NOT_CERTIFIED** | MVP 必须把模拟成交与真实可成交性区分；不阻塞研究榜单 | 准备自动实盘/真实资金，或前向 paper 出现系统性不可成交 |
+| 历史 benchmark 独立价格复核 | **DEFERRED** | 历史“相对超额”不得标成独立外部认证；不影响 Top20 生成 | 对外正式发布经独立认证的相对收益，或 benchmark 数据出现异常 |
+| 全历史 ST / IPO / 涨跌停盘口 / 流动性 / 市场冲击 | **DEFERRED TO LIVE-TRADING READINESS** | 研究型 MVP 仅做清楚风险状态与模拟假设 | 进入自动下单/实盘准备阶段 |
+| 其余 54 个 Stage-B cell 的独立账本逐格复核 | **CLOSED / NOT REQUIRED FOR MVP** | 不再扩大历史审计；55 格 corrected 排名仍只是 consumed-tail 诊断 | 只有发现系统性账务 bug 会跨 cell 影响现有结论时才重启 |
+| 旧 Stage-B winner vs corrected baseline 的最终模型选择 | **TRANSFERRED TO FORWARD RESEARCH** | 当前 canonical 不变；未来冻结并行观察，不回填预测 | 新的真正前向数据达到预先定义的决策条件 |
+| 当前 CSI1000 PIT 股票池正确性 | **TRANSFERRED TO MVP / HARD GATE** | 当日/使用日时点错误必须 fail-closed；直接影响“今天选谁” | 每日 MVP 验收持续执行，不属于历史审计 |
+| 当前标签成熟、训练/预测时点、防未来信息 | **TRANSFERRED TO MVP / HARD GATE** | 模型 fit/train_end/as-of 不合格不得发布新鲜信号 | 每日/重训 smoke 与 CI 持续检查 |
+| 当前 provider 新鲜度、交易日历、Modal cron、发布幂等 | **TRANSFERRED TO MVP / HARD GATE** | 过期或状态不明时必须阻断或显著降级 | 日常运维/发布监控持续检查 |
+| 当前 ST / 停牌 / 不可交易风险状态 | **TRANSFERRED TO MVP** | 至少标记“未知/受限”；不能将未验证状态宣传为可交易 | 当前数据源/规则实现变化或前向异常 |
+| PR #51：官方 Qlib CSI500 / Alpha158 / LightGBM 原版复现实验 | **CLOSED / SUPERSEDED** | 不是 CSI1000 MVP 前置项；实际 qrun 从未被宣称执行或 PASS | 未来确有需要做独立 upstream-Qlib sanity experiment 时可重开/复用分支 |
+
+**统一状态口径：**
+
+- `CLOSED`：本阶段不再继续投入；其中 `PASS_RESEARCH_ACCOUNTING_ONLY` 只表示研究账务一致。
+- `DEFERRED`：已知风险被明确保留，不阻塞研究型 MVP；到了表格中的触发条件必须重新进入验证。
+- `TRANSFERRED TO MVP`：从现在起属于**当前产品正确性/运行质量**，如果失败应修复或 fail-closed，而不是重新扩大历史审计。
+- `TRANSFERRED TO FORWARD RESEARCH`：需要新的不可回填前向证据，不得继续消费旧 reserved tail 以制造“新最优”。
+
+仓库层面，PR #51 已于 2026-10-11 按 **superseded / not required for CSI1000 MVP** 关闭；关闭不代表其官方 CSI500 reproduction 实验已运行或通过。
+
 ## 2. 当前模型选择状态（不得静默更改）
 
 `csi1000_production_config.py` 的 `CANONICAL_PROFILE=WINNER_PROFILE`，对应旧 Stage-B “winner” candidate `4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2`，`CANONICAL_PAPER_LINEAGE=stage_b_winner_canonical`。
