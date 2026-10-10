@@ -131,9 +131,22 @@ class MVPEntryReviewTests(unittest.TestCase):
         self.assertEqual(r["static_artifact_contract"], "FAIL")
 
     def test_not_prior_trading_session_rejected(self):
-        r = evaluate_paper_artifact(self.artifact(),
-                                    ["2026-10-08", "2026-10-08a", "2026-10-09"])
+        obj = self.artifact()
+        obj["signal_data_date"] = "2026-10-07"
+        obj["model_fit_asof"] = "2026-10-07"
+        obj["pending_orders"]["signal_date"] = "2026-10-07"
+        r = evaluate_paper_artifact(obj, ["2026-10-07", "2026-10-08", "2026-10-09"])
         self.assertIn("PUBLICATION_NOT_APPROVED", " ".join(r["errors"]))
+
+    def test_invalid_calendar_rejected_without_exception(self):
+        r = evaluate_paper_artifact(self.artifact(), ["2026-10-08", "2026-10-99"])
+        self.assertIn("INVALID_SUPPLIED_TRADING_CALENDAR", r["errors"])
+
+    def test_invalid_pending_order_object_rejected_without_exception(self):
+        obj = self.artifact()
+        obj["pending_orders"]["buy"] = [{"not": "a stock id"}]
+        r = evaluate_paper_artifact(obj)
+        self.assertIn("PENDING_ORDER_SET_INVALID", r["errors"])
 
     def test_date_and_order_binding_rejected(self):
         obj = self.artifact()
