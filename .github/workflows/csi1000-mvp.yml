@@ -1,0 +1,52 @@
+name: CSI1000 MVP publication contract
+
+on:
+  pull_request:
+    paths:
+      - 'csi1000_mvp_contract.py'
+      - 'modal_qlib_cn_a10g.py'
+      - 'signal_publication_gate.py'
+      - 'csi1000_production_config.py'
+      - 'paper_portfolio.py'
+      - 'website/**'
+      - 'tests/test_csi1000_mvp_contract.py'
+      - 'tests/test_cron_gate.py'
+      - 'tests/test_website_index.py'
+      - 'tests/test_production_surface.py'
+      - '.github/workflows/csi1000-mvp.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'csi1000_mvp_contract.py'
+      - 'modal_qlib_cn_a10g.py'
+      - 'signal_publication_gate.py'
+      - 'csi1000_production_config.py'
+      - 'paper_portfolio.py'
+      - 'website/**'
+      - 'tests/test_csi1000_mvp_contract.py'
+      - 'tests/test_cron_gate.py'
+      - 'tests/test_website_index.py'
+      - 'tests/test_production_surface.py'
+      - '.github/workflows/csi1000-mvp.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install lightweight test dependency
+        run: python -m pip install pytest
+      - name: Run forward-MVP gates
+        run: |
+          python -m pytest -q \
+            tests/test_csi1000_mvp_contract.py \
+            tests/test_cron_gate.py \
+            tests/test_website_index.py \
+            tests/test_production_surface.py
