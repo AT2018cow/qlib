@@ -43,6 +43,10 @@ jobs:
           python-version: '3.11'
       - name: Install lightweight test dependency
         run: python -m pip install pytest
+      - name: Static syntax gates
+        run: |
+          python -m py_compile csi1000_mvp_contract.py modal_qlib_cn_a10g.py
+          node --check website/app.js
       - name: Run forward-MVP gates
         run: |
           python -m pytest -q \
