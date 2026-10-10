@@ -68,7 +68,7 @@ KNOWN_ST_EXECUTION_REVIEW = {
         "notice": DALI_NOTICE,
     },
     # These are warnings on frozen fills, NOT inferred unfilled orders.
-    # STAR/Main-board *ST remains 5%; ChiNext *ST keeps the 20% band.
+    # SSE main-board *ST uses 5%; ChiNext *ST retains a 20% band.
     ("2025-05-06", "SH603398"): {
         "issue": "HISTORIC_ST_5PCT_LIMIT_SELL_NOT_EXTERNALLY_VALIDATED",
         "notice": MUBANG_NOTICE,
