@@ -1,0 +1,10 @@
+✓ Initialized. View run at 
+https://modal.com/apps/infi/main/ap-Jfyd7OKxlTgUeSkPE5rKAC
+✓ Created objects.
+├── ✓ Uploaded ~/git_repos/qlib/audit/modal_stage_b_ledger.py
+├── ✓ Uploaded ~/git_repos/qlib
+└── ✓ Created Function audit_once.
+Audit JSON written locally: /tmp/csi1000-seven-halts-p00-20261010b.json; cells=1; exit=0
+Stopping app - local entrypoint completed.
+✓ App completed. View run at 
+https://modal.com/apps/infi/main/ap-Jfyd7OKxlTgUeSkPE5rKAC

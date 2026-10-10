@@ -1,0 +1,333 @@
+{
+  "audit": "independent_price_to_cash_nav_no_qlib_backtest",
+  "snapshot": "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1",
+  "provider_fingerprint": "cd2e68f571c6bd19fbb2b79089e891bb1c43b96ab1fcdb4d2b2a9b1fdd9ce5d5",
+  "cells": [
+    {
+      "ledger": "PASS_RESEARCH_ACCOUNTING_ONLY",
+      "fail_fields": [],
+      "first_diff_date": {},
+      "max_abs_diff": {
+        "account": 5.960464477539063e-08,
+        "cash": 0.0,
+        "value": 5.960464477539063e-08,
+        "total_cost": 3.5390257835388184e-08,
+        "total_turnover": 8.58306884765625e-06,
+        "net_return": 6.746990119377294e-16,
+        "cost_rate": 2.2415879916137804e-17,
+        "turnover_rate": 1.479372180313021e-14
+      },
+      "matched_trading_days": 424,
+      "filled_orders": 1700,
+      "daily_net_notional_summary": {
+        "total": 11525272100.76583,
+        "avg_turnover_ratio": 0.20296663053039782
+      },
+      "reported_price_volume_warnings": [],
+      "reported_price_volume_warning_count": 0,
+      "verified_suspension_marks": [
+        {
+          "date": "2025-02-20",
+          "stock_id": "SZ000488",
+          "prior_mark_date": "2025-02-19",
+          "valuation": "CARRY_LAST_VALID_HELD_CLOSE",
+          "notice": "https://disc.static.szse.cn/download/disc/disk03/finalpage/2025-02-19/b0f90573-61df-4bcc-953f-edf8738c84e1.PDF"
+        },
+        {
+          "date": "2025-04-28",
+          "stock_id": "SZ002214",
+          "prior_mark_date": "2025-04-25",
+          "valuation": "CARRY_LAST_VALID_HELD_CLOSE",
+          "notice": "https://static.cninfo.com.cn/finalpage/2025-04-26/1223329081.PDF"
+        },
+        {
+          "date": "2025-04-30",
+          "stock_id": "SH603398",
+          "prior_mark_date": "2025-04-29",
+          "valuation": "CARRY_LAST_VALID_HELD_CLOSE",
+          "notice": "https://static.sse.com.cn/disclosure/listedinfo/announcement/c/new/2025-04-30/603398_20250430_AUP6.pdf"
+        },
+        {
+          "date": "2025-04-30",
+          "stock_id": "SZ300379",
+          "prior_mark_date": "2025-04-29",
+          "valuation": "CARRY_LAST_VALID_HELD_CLOSE",
+          "notice": "https://static.cninfo.com.cn/finalpage/2025-04-30/1223423862.PDF"
+        },
+        {
+          "date": "2025-12-18",
+          "stock_id": "SZ002036",
+          "prior_mark_date": "2025-12-17",
+          "valuation": "CARRY_LAST_VALID_HELD_CLOSE",
+          "notice": "https://static.cninfo.com.cn/finalpage/2025-12-25/1224897232.PDF"
+        },
+        {
+          "date": "2025-12-19",
+          "stock_id": "SZ002036",
+          "prior_mark_date": "2025-12-17",
+          "valuation": "CARRY_LAST_VALID_HELD_CLOSE",
+          "notice": "https://static.cninfo.com.cn/finalpage/2025-12-25/1224897232.PDF"
+        },
+        {
+          "date": "2025-12-22",
+          "stock_id": "SZ002036",
+          "prior_mark_date": "2025-12-17",
+          "valuation": "CARRY_LAST_VALID_HELD_CLOSE",
+          "notice": "https://static.cninfo.com.cn/finalpage/2025-12-25/1224897232.PDF"
+        },
+        {
+          "date": "2025-12-23",
+          "stock_id": "SZ002036",
+          "prior_mark_date": "2025-12-17",
+          "valuation": "CARRY_LAST_VALID_HELD_CLOSE",
+          "notice": "https://static.cninfo.com.cn/finalpage/2025-12-25/1224897232.PDF"
+        },
+        {
+          "date": "2025-12-24",
+          "stock_id": "SZ002036",
+          "prior_mark_date": "2025-12-17",
+          "valuation": "CARRY_LAST_VALID_HELD_CLOSE",
+          "notice": "https://static.cninfo.com.cn/finalpage/2025-12-25/1224897232.PDF"
+        }
+      ],
+      "verified_suspension_marks_count": 9,
+      "known_st_execution_review": [
+        {
+          "date": "2025-02-21",
+          "stock_id": "SZ000488",
+          "direction": "SELL",
+          "issue": "HISTORIC_ST_5PCT_LIMIT_SELL_NOT_EXTERNALLY_VALIDATED",
+          "notice": "https://disc.static.szse.cn/download/disc/disk03/finalpage/2025-02-19/b0f90573-61df-4bcc-953f-edf8738c84e1.PDF",
+          "status": "BLOCKED_MARKET_EXECUTION_NOT_CERTIFIED"
+        },
+        {
+          "date": "2025-04-29",
+          "stock_id": "SZ002214",
+          "direction": "SELL",
+          "issue": "HISTORIC_ST_5PCT_LIMIT_SELL_NOT_EXTERNALLY_VALIDATED",
+          "notice": "https://static.cninfo.com.cn/finalpage/2025-04-26/1223329081.PDF",
+          "status": "BLOCKED_MARKET_EXECUTION_NOT_CERTIFIED"
+        },
+        {
+          "date": "2025-05-06",
+          "stock_id": "SH603398",
+          "direction": "SELL",
+          "issue": "HISTORIC_ST_5PCT_LIMIT_SELL_NOT_EXTERNALLY_VALIDATED",
+          "notice": "https://static.sse.com.cn/disclosure/listedinfo/announcement/c/new/2025-04-30/603398_20250430_AUP6.pdf",
+          "status": "BLOCKED_MARKET_EXECUTION_NOT_CERTIFIED"
+        },
+        {
+          "date": "2025-05-06",
+          "stock_id": "SZ300379",
+          "direction": "SELL",
+          "issue": "HISTORIC_ST_20PCT_LIMIT_SELL_NOT_EXTERNALLY_VALIDATED",
+          "notice": "https://static.cninfo.com.cn/finalpage/2025-04-30/1223423862.PDF",
+          "status": "BLOCKED_MARKET_EXECUTION_NOT_CERTIFIED"
+        }
+      ],
+      "known_st_execution_review_count": 4,
+      "computed_metrics": {
+        "sharpe_238_rf0": 1.192139266404713,
+        "strategy_cagr": 0.2796863413010533,
+        "relative_excess_cagr": 0.13059558410379468,
+        "strategy_max_drawdown": -0.2435216513080376,
+        "strategy_total_return": 0.536385972274664
+      },
+      "extra_cost_bps_on_original_notional_not_new_fills": {
+        "0": {
+          "sharpe_238_rf0": 1.192139266404713,
+          "strategy_cagr": 0.2796863413010533,
+          "relative_excess_cagr": 0.13059558410379468,
+          "strategy_max_drawdown": -0.2435216513080376,
+          "strategy_total_return": 0.536385972274664
+        },
+        "5": {
+          "sharpe_238_rf0": 1.0753657826936465,
+          "strategy_cagr": 0.25189785332675974,
+          "relative_excess_cagr": 0.10604461346460226,
+          "strategy_max_drawdown": -0.2552465497514478,
+          "strategy_total_return": 0.4787596117708348
+        },
+        "10": {
+          "sharpe_238_rf0": 0.9592341889046737,
+          "strategy_cagr": 0.2236443643731434,
+          "relative_excess_cagr": 0.08108281711221843,
+          "strategy_max_drawdown": -0.2676132119517035,
+          "strategy_total_return": 0.42113325126700585
+        },
+        "20": {
+          "sharpe_238_rf0": 0.7295387790394421,
+          "strategy_cagr": 0.1656310510920036,
+          "relative_excess_cagr": 0.029828385695687132,
+          "strategy_max_drawdown": -0.2944947938130472,
+          "strategy_total_return": 0.30588053025934747
+        }
+      },
+      "external_fill_liquidity_st_ipo_pit_maturity": "BLOCKED_NOT_TESTED",
+      "full_calendar_quote_inventory": {
+        "status": "READY_FOR_ACCOUNTING_ONLY",
+        "complete_inventory_calendar_days": 424,
+        "frozen_orders_scanned": 1700,
+        "anomaly_count": 13,
+        "blocking_count": 0,
+        "unknown_held_close_count": 0,
+        "documented_suspension_carry_count": 9,
+        "st_execution_warning_count": 4,
+        "issues": [
+          {
+            "date": "2025-02-20",
+            "stock_id": "SZ000488",
+            "issue": "DOCUMENTED_SUSPENSION_CARRY_MARK",
+            "prior_mark_date": "2025-02-19",
+            "blocking": false,
+            "evidence": "https://disc.static.szse.cn/download/disc/disk03/finalpage/2025-02-19/b0f90573-61df-4bcc-953f-edf8738c84e1.PDF"
+          },
+          {
+            "date": "2025-02-21",
+            "stock_id": "SZ000488",
+            "issue": "HISTORICAL_ST_FILL_NOT_CERTIFIED",
+            "blocking": false,
+            "evidence": "https://disc.static.szse.cn/download/disc/disk03/finalpage/2025-02-19/b0f90573-61df-4bcc-953f-edf8738c84e1.PDF"
+          },
+          {
+            "date": "2025-04-28",
+            "stock_id": "SZ002214",
+            "issue": "DOCUMENTED_SUSPENSION_CARRY_MARK",
+            "prior_mark_date": "2025-04-25",
+            "blocking": false,
+            "evidence": "https://static.cninfo.com.cn/finalpage/2025-04-26/1223329081.PDF"
+          },
+          {
+            "date": "2025-04-29",
+            "stock_id": "SZ002214",
+            "issue": "HISTORICAL_ST_FILL_NOT_CERTIFIED",
+            "blocking": false,
+            "evidence": "https://static.cninfo.com.cn/finalpage/2025-04-26/1223329081.PDF"
+          },
+          {
+            "date": "2025-04-30",
+            "stock_id": "SH603398",
+            "issue": "DOCUMENTED_SUSPENSION_CARRY_MARK",
+            "prior_mark_date": "2025-04-29",
+            "blocking": false,
+            "evidence": "https://static.sse.com.cn/disclosure/listedinfo/announcement/c/new/2025-04-30/603398_20250430_AUP6.pdf"
+          },
+          {
+            "date": "2025-04-30",
+            "stock_id": "SZ300379",
+            "issue": "DOCUMENTED_SUSPENSION_CARRY_MARK",
+            "prior_mark_date": "2025-04-29",
+            "blocking": false,
+            "evidence": "https://static.cninfo.com.cn/finalpage/2025-04-30/1223423862.PDF"
+          },
+          {
+            "date": "2025-05-06",
+            "stock_id": "SH603398",
+            "issue": "HISTORICAL_ST_FILL_NOT_CERTIFIED",
+            "blocking": false,
+            "evidence": "https://static.sse.com.cn/disclosure/listedinfo/announcement/c/new/2025-04-30/603398_20250430_AUP6.pdf"
+          },
+          {
+            "date": "2025-05-06",
+            "stock_id": "SZ300379",
+            "issue": "HISTORICAL_ST_FILL_NOT_CERTIFIED",
+            "blocking": false,
+            "evidence": "https://static.cninfo.com.cn/finalpage/2025-04-30/1223423862.PDF"
+          },
+          {
+            "date": "2025-12-18",
+            "stock_id": "SZ002036",
+            "issue": "DOCUMENTED_SUSPENSION_CARRY_MARK",
+            "prior_mark_date": "2025-12-17",
+            "blocking": false,
+            "evidence": "https://static.cninfo.com.cn/finalpage/2025-12-25/1224897232.PDF"
+          },
+          {
+            "date": "2025-12-19",
+            "stock_id": "SZ002036",
+            "issue": "DOCUMENTED_SUSPENSION_CARRY_MARK",
+            "prior_mark_date": "2025-12-17",
+            "blocking": false,
+            "evidence": "https://static.cninfo.com.cn/finalpage/2025-12-25/1224897232.PDF"
+          },
+          {
+            "date": "2025-12-22",
+            "stock_id": "SZ002036",
+            "issue": "DOCUMENTED_SUSPENSION_CARRY_MARK",
+            "prior_mark_date": "2025-12-17",
+            "blocking": false,
+            "evidence": "https://static.cninfo.com.cn/finalpage/2025-12-25/1224897232.PDF"
+          },
+          {
+            "date": "2025-12-23",
+            "stock_id": "SZ002036",
+            "issue": "DOCUMENTED_SUSPENSION_CARRY_MARK",
+            "prior_mark_date": "2025-12-17",
+            "blocking": false,
+            "evidence": "https://static.cninfo.com.cn/finalpage/2025-12-25/1224897232.PDF"
+          },
+          {
+            "date": "2025-12-24",
+            "stock_id": "SZ002036",
+            "issue": "DOCUMENTED_SUSPENSION_CARRY_MARK",
+            "prior_mark_date": "2025-12-17",
+            "blocking": false,
+            "evidence": "https://static.cninfo.com.cn/finalpage/2025-12-25/1224897232.PDF"
+          }
+        ],
+        "market_execution": "NOT_CERTIFIED",
+        "model_training": false
+      },
+      "metrics_comparison": {
+        "sharpe_238_rf0": {
+          "independent": 1.192139266404713,
+          "saved": 1.1921392664047148,
+          "difference": 1.7763568394002505e-15
+        },
+        "strategy_cagr": {
+          "independent": 0.2796863413010533,
+          "saved": 0.2796863413010535,
+          "difference": 2.220446049250313e-16
+        },
+        "relative_excess_cagr": {
+          "independent": 0.13059558410379468,
+          "saved": 0.1305955841037949,
+          "difference": 2.220446049250313e-16
+        },
+        "strategy_max_drawdown": {
+          "independent": -0.2435216513080376,
+          "saved": -0.2435216513080376,
+          "difference": 0.0
+        },
+        "strategy_total_return": {
+          "independent": 0.536385972274664,
+          "saved": 0.5363859722746644,
+          "difference": 4.440892098500626e-16
+        }
+      },
+      "candidate_id": "23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785",
+      "phase": 0,
+      "fixed_sha256": {
+        "report": {
+          "sha256": "7d8fbf8f03c608fc6e4e839ef116a9e34d439d772cacf04569fa85785d52f436",
+          "bytes": 43237
+        },
+        "decisions": {
+          "sha256": "ce7d37cdeb65b095114ad2ef16798b55958150a743692db8e3a292ee1badf8d7",
+          "bytes": 575364
+        }
+      }
+    }
+  ],
+  "phase_completeness": 1,
+  "quote_inventory_completed_before_ledger": true,
+  "cohort_summaries": {},
+  "all_research_accounting_pass": true,
+  "market_execution": "BLOCKED_EXTERNAL_HISTORICAL_RULES_AND_LIQUIDITY",
+  "parameter_search": false,
+  "model_training": false,
+  "production_promotion": false,
+  "selection_on_consumed_tail": "DIAGNOSTIC_ONLY",
+  "independent_benchmark_price_audit": "BLOCKED_SAVED_BENCH_RETURNS_USED",
+  "modal_command_exit_code": 0
+}
