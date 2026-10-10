@@ -27,6 +27,18 @@ BATCH_SHA = "ce0075f5d8c73325a12a4ecdf8fa4be856443a6fc1bac933f3b82d5c5035ff1c"
 CNY_TOL = 0.01
 RATE_TOL = 1e-10
 
+# Explicitly documented, date-scoped exceptions. Never infer a suspension
+# merely because a bar is missing from the research provider.
+CHENMING_NOTICE = ("https://disc.static.szse.cn/download/disc/disk03/finalpage/"
+                   "2025-02-19/b0f90573-61df-4bcc-953f-edf8738c84e1.PDF")
+VERIFIED_SUSPENSION_DATES = {("2025-02-20", "SZ000488"): CHENMING_NOTICE}
+KNOWN_ST_EXECUTION_REVIEW = {
+    ("2025-02-21", "SZ000488"): {
+        "issue": "HISTORIC_ST_5PCT_LIMIT_SELL_NOT_EXTERNALLY_VALIDATED",
+        "notice": CHENMING_NOTICE,
+    }
+}
+
 
 def require(ok: bool, reason: str) -> None:
     if not ok:
@@ -100,12 +112,18 @@ def reconstruct(decisions: list[dict], report, quotes: dict, dates: list[date],
     """Independent unit bookkeeping. Orders hold Qlib *adjusted* quantities.
 
     quotes[(date ISO, stock)] = (adjusted open, adjusted close, factor, volume).
-    Missing held close fails closed; no forward price fill / invented suspension.
+    Unknown missing held close fails closed. Only explicitly documented
+    suspension dates carry the last valid held mark, as in Qlib Account.
+    This is accounting, NOT proof of a later executable sale.
     Qlib Position/Account/Exchange/strategy and their fee helpers NOT imported.
     """
     require(len(decisions) == len(report) == len(dates) == DAYS, "424 daily inputs required")
     assert cost_bps_extra[0] == 0
     held: dict[str, float] = {}
+    last_valid_mark: dict[str, float] = {}
+    last_valid_mark_date: dict[str, str] = {}
+    suspension_marks = []
+    st_execution_review = []
     cash = CAPITAL
     fees = turnover = 0.0
     max_diff = {k: 0.0 for k in ("account", "cash", "value", "total_cost", "total_turnover",
@@ -128,6 +146,8 @@ def reconstruct(decisions: list[dict], report, quotes: dict, dates: list[date],
             require(direction in (0, 1), f"direction {today}/{symbol}")
             require(order["order_index"] == pos and
                     str(order["start_time"])[:10] == today, f"order time/index {today}")
+            require((today, symbol) not in VERIFIED_SUSPENSION_DATES,
+                    f"order on verified suspension {today}/{symbol}")
             require(not sells_done or direction != 0, f"sell after buy {today}")
             if direction == 1:
                 sells_done = True
@@ -140,7 +160,8 @@ def reconstruct(decisions: list[dict], report, quotes: dict, dates: list[date],
             open_px, close_px, factor, volume = quote
             open_px = numeric(open_px, "open", strictly_positive=True)
             factor = numeric(factor, "factor", strictly_positive=True)
-            assert close_px is None or math.isfinite(close_px)
+            require(close_px is not None and math.isfinite(close_px) and close_px > 0,
+                    f"filled order despite missing close {today}/{symbol}")
             recorded_factor = numeric(order["factor"], "order factor", strictly_positive=True)
             require(math.isclose(factor, recorded_factor, abs_tol=1e-8, rel_tol=1e-6),
                     f"factor mismatch {today}/{symbol}")
@@ -152,6 +173,8 @@ def reconstruct(decisions: list[dict], report, quotes: dict, dates: list[date],
                 require(before > 0 and math.isclose(before, qty, abs_tol=1e-5, rel_tol=1e-9),
                         f"not a full sell of held adjusted shares {today}/{symbol}")
                 del held[symbol]
+                last_valid_mark.pop(symbol, None)
+                last_valid_mark_date.pop(symbol, None)
                 cash += notional - fee
             else:
                 require(cash + 1e-5 >= notional + fee, f"negative cash buy {today}/{symbol}")
@@ -162,16 +185,42 @@ def reconstruct(decisions: list[dict], report, quotes: dict, dates: list[date],
             else:
                 # No capacity claim: source $volume unit/auction participation unverified.
                 pass
+            flagged = KNOWN_ST_EXECUTION_REVIEW.get((today, symbol))
+            if flagged:
+                st_execution_review.append({
+                    "date": today, "stock_id": symbol,
+                    "direction": "SELL" if direction == 0 else "BUY",
+                    "issue": flagged["issue"], "notice": flagged["notice"],
+                    "status": "BLOCKED_MARKET_EXECUTION_NOT_CERTIFIED",
+                })
             daily_fee += fee
             daily_volume += notional
             total_fills += 1
         stock_value = 0.0
         for symbol, shares in held.items():
             quote = quotes.get((today, symbol))
-            require(quote is not None and quote[1] is not None and
-                    math.isfinite(float(quote[1])) and float(quote[1]) > 0,
-                    f"missing held close {today}/{symbol}; suspension needs external evidence")
-            stock_value += shares * float(quote[1])
+            close_px = quote[1] if quote is not None else None
+            verified_notice = VERIFIED_SUSPENSION_DATES.get((today, symbol))
+            if verified_notice is not None:
+                require(close_px is None or not math.isfinite(float(close_px)),
+                        f"verified suspension conflicts with quoted close {today}/{symbol}")
+                require(symbol in last_valid_mark,
+                        f"verified suspension has no prior held mark {today}/{symbol}")
+                mark = last_valid_mark[symbol]
+                suspension_marks.append({
+                    "date": today, "stock_id": symbol,
+                    "prior_mark_date": last_valid_mark_date[symbol],
+                    "valuation": "CARRY_LAST_VALID_HELD_CLOSE",
+                    "notice": verified_notice,
+                })
+            else:
+                require(close_px is not None and math.isfinite(float(close_px)) and
+                        float(close_px) > 0,
+                        f"unknown missing held close {today}/{symbol}; no blanket forward fill")
+                mark = float(close_px)
+                last_valid_mark[symbol] = mark
+                last_valid_mark_date[symbol] = today
+            stock_value += shares * mark
         account = cash + stock_value
         require(cash >= -1e-4 and account > 0, f"negative cash or NAV {today}")
         fees += daily_fee
@@ -226,6 +275,10 @@ def reconstruct(decisions: list[dict], report, quotes: dict, dates: list[date],
         "daily_net_notional_summary": {"total": turnover, "avg_turnover_ratio": statistics.mean(daily_turnover)},
         "reported_price_volume_warnings": violations[:25],
         "reported_price_volume_warning_count": len(violations),
+        "verified_suspension_marks": suspension_marks,
+        "verified_suspension_marks_count": len(suspension_marks),
+        "known_st_execution_review": st_execution_review,
+        "known_st_execution_review_count": len(st_execution_review),
         "computed_metrics": score(dates, daily_nav, daily_bench),
         "extra_cost_bps_on_original_notional_not_new_fills": stresses,
         "external_fill_liquidity_st_ipo_pit_maturity": "BLOCKED_NOT_TESTED",
