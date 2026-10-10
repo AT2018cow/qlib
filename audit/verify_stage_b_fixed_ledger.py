@@ -349,7 +349,27 @@ def main() -> None:
     parser.add_argument("--phases", choices=("phase0", "all"), default="phase0")
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
-    result = run(args)
+    try:
+        result = run(args)
+    except Exception as exc:
+        # A failed preflight used to leave no artifact; preserve a minimal,
+        # sanitized failure record only in an isolated, never-reused output dir.
+        # Never write even a failure report to /vol, provider, snapshot or repo.
+        out = args.output_dir.resolve()
+        prohibited = (args.repo_root.resolve(), args.provider_uri.resolve(),
+                      args.provider_snapshot.resolve().parent, Path("/vol"))
+        if not out.exists() and not any(out.is_relative_to(p) for p in prohibited):
+            out.mkdir(parents=True, exist_ok=False)
+            (out / "audit_failure.json").write_text(
+                json.dumps({"status": "BLOCKED_OR_FAILED_NOT_PASS",
+                            "error_type": type(exc).__name__,
+                            "reason": str(exc)[:1000],
+                            "candidate": args.candidate,
+                            "phases": args.phases,
+                            "market_execution": "NOT_CERTIFIED"},
+                           indent=2, allow_nan=False) + "\n"
+            )
+        raise
     print(json.dumps({"cells": len(result["cells"]), "ledger_match": result["all_research_accounting_pass"],
                       "market_execution": result["market_execution"], "output": "independent_ledger.json"}))
 
