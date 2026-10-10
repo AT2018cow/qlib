@@ -690,12 +690,14 @@ async function main() {
   }
 
   document.querySelectorAll('.date-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const d = dates.find(item => item.date === btn.dataset.date);
       if (d) {
-        renderDate(d);
-        // The date rail now follows the ranking; return to the updated result.
-        document.getElementById('ranking').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Render first: the MVP health/risk copy can change height between a
+        // current contract and a legacy date. Scrolling before that reflow
+        // makes the final Top20 position drift on tablet/mobile viewports.
+        await renderDate(d);
+        document.getElementById('ranking').scrollIntoView({ behavior: 'auto', block: 'start' });
       }
     });
   });
