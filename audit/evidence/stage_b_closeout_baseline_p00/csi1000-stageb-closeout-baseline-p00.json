@@ -1,0 +1,10 @@
+{
+  "status": "BLOCKED_OR_FAILED_NOT_PASS",
+  "error_type": "ValueError",
+  "reason": "independent-ledger BLOCKED/FAIL: unknown missing held close 2025-04-28/SZ002214; no blanket forward fill",
+  "candidate": "baseline",
+  "phases": "phase0",
+  "market_execution": "NOT_CERTIFIED",
+  "modal_command_exit_code": 1,
+  "diagnostic_output_tail": "[4:MainThread](2026-10-10 15:09:44,928) INFO - qlib.Initialization - [config.py:473] - default_conf: client.\n[4:MainThread](2026-10-10 15:09:46,368) INFO - qlib.Initialization - [__init__.py:82] - qlib successfully initialized based on client settings.\n[4:MainThread](2026-10-10 15:09:46,368) INFO - qlib.Initialization - [__init__.py:84] - data_path={'__DEFAULT_FREQ': PosixPath('/__modal/volumes/vo-WAoZpTYOZ961v879DcK584/cn_data')}\n[4:MainThread](2026-10-10 15:09:54,086) ERROR - qlib.workflow - [utils.py:41] - An exception has been raised[ValueError: independent-ledger BLOCKED/FAIL: unknown missing held close 2025-04-28/SZ002214; no blanket forward fill].\n  File \"/root/qlib/audit/verify_stage_b_fixed_ledger.py\", line 431, in <module>\n    main()\n  File \"/root/qlib/audit/verify_stage_b_fixed_ledger.py\", line 406, in main\n    result = run(args)\n             ^^^^^^^^^\n  File \"/root/qlib/audit/verify_stage_b_fixed_ledger.py\", line 350, in run\n    result = reconstruct(decisions, report, quotes, dates)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/root/qlib/audit/verify_stage_b_fixed_ledger.py\", line 217, in reconstruct\n    require(close_px is not None and math.isfinite(float(close_px)) and\n  File \"/root/qlib/audit/verify_stage_b_fixed_ledger.py\", line 45, in require\n    raise ValueError(\"independent-ledger BLOCKED/FAIL: \" + reason)\nValueError: independent-ledger BLOCKED/FAIL: unknown missing held close 2025-04-28/SZ002214; no blanket forward fill\n"
+}
