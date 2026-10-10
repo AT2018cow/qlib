@@ -109,6 +109,92 @@ class FixedLedgerUnitTest(unittest.TestCase):
         self.assertLess(result["extra_cost_bps_on_original_notional_not_new_fills"]["20"]["strategy_total_return"],
                         result["extra_cost_bps_on_original_notional_not_new_fills"]["0"]["strategy_total_return"])
 
+    def _suspended_holding_fixture(self):
+        days, decisions, report, quotes = fixture()
+        suspend = "2025-02-20"
+        resume = "2025-02-21"
+        index = {day.isoformat(): i for i, day in enumerate(days)}
+        suspend_i, sell_i = index[suspend], index[resume]
+        self.assertLess(suspend_i, sell_i)
+        self.assertEqual(days[0].isoformat(), "2025-01-02")
+        # Keep the first buy from fixture, postpone its sale until after the
+        # documented suspension. The exact 424-day Qlib research calendar is
+        # not needed in a deterministic unit fixture.
+        sale = decisions[1]["orders"].pop()
+        sale["start_time"] = resume
+        decisions[sell_i]["orders"].append(sale)
+        quotes[(suspend, "SH600000")] = (None, None, None, None)
+        # The allowance is intentionally limited to SZ000488; rename the
+        # *whole* fixture instrument to test the real notice-scoped exception.
+        for decision in decisions:
+            for order in decision["orders"]:
+                order["stock_id"] = "SZ000488"
+        quotes = {(day, "SZ000488"): data for (day, stock), data in quotes.items()}
+        nav, cash, value, total_fee, total_turnover = [], [], [], [], []
+        returns, costs, turnrates = [], [], []
+        previous = CAPITAL
+        for i in range(DAYS):
+            active = i < sell_i
+            holding_close = 11.0 if i == 1 else 10.0
+            today_cash = CAPITAL - 25 if active else CAPITAL - 10
+            today_value = 2 * holding_close if active else 0.0
+            account = today_cash + today_value
+            today_fee = 5 if i in (0, sell_i) else 0
+            today_notional = 20 if i in (0, sell_i) else 0
+            today_cost = today_fee / previous
+            nav.append(account)
+            cash.append(today_cash)
+            value.append(today_value)
+            total_fee.append(5 if i < sell_i else 10)
+            total_turnover.append(20 if i < sell_i else 40)
+            costs.append(today_cost)
+            turnrates.append(today_notional / previous)
+            returns.append(account / previous - 1 + today_cost)
+            previous = account
+        report = pd.DataFrame({
+            "account": nav, "cash": cash, "value": value,
+            "total_cost": total_fee, "total_turnover": total_turnover,
+            "return": returns, "cost": costs, "turnover": turnrates,
+            "bench": [0.0] * DAYS,
+        })
+        return days, decisions, report, quotes, suspend, resume
+
+    def test_documented_suspension_preserves_last_held_mark(self):
+        days, decisions, report, quotes, suspend, resume = self._suspended_holding_fixture()
+        result = reconstruct(decisions, report, quotes, days)
+        self.assertEqual(result["ledger"], "PASS_RESEARCH_ACCOUNTING_ONLY")
+        self.assertEqual(result["verified_suspension_marks_count"], 1)
+        mark = result["verified_suspension_marks"][0]
+        self.assertEqual((mark["date"], mark["stock_id"], mark["prior_mark_date"]),
+                         (suspend, "SZ000488", "2025-02-19"))
+        self.assertEqual(result["known_st_execution_review_count"], 1)
+        self.assertEqual(result["known_st_execution_review"][0]["date"], resume)
+        self.assertEqual(result["known_st_execution_review"][0]["direction"], "SELL")
+        self.assertEqual(result["external_fill_liquidity_st_ipo_pit_maturity"], "BLOCKED_NOT_TESTED")
+
+    def test_unknown_missing_held_close_stays_blocked(self):
+        days, decisions, report, quotes, suspend, _ = self._suspended_holding_fixture()
+        quotes[("2025-02-18", "SZ000488")] = (None, None, None, None)
+        with self.assertRaisesRegex(ValueError, "unknown missing held close"):
+            reconstruct(decisions, report, quotes, days)
+
+    def test_documented_suspension_rejects_order_even_with_quote(self):
+        days, decisions, report, quotes, suspend, _ = self._suspended_holding_fixture()
+        target = next(x for x in decisions if x["start_time"] == suspend)
+        target["orders"].append({
+            "order_index": len(target["orders"]), "start_time": suspend,
+            "stock_id": "SZ000488", "direction": 0,
+            "amount": 2, "deal_amount": 2, "factor": 1,
+        })
+        with self.assertRaisesRegex(ValueError, "order on verified suspension"):
+            reconstruct(decisions, report, quotes, days)
+
+    def test_documented_suspension_rejects_conflicting_close(self):
+        days, decisions, report, quotes, suspend, _ = self._suspended_holding_fixture()
+        quotes[(suspend, "SZ000488")] = (10, 10, 1, 100)
+        with self.assertRaisesRegex(ValueError, "verified suspension conflicts"):
+            reconstruct(decisions, report, quotes, days)
+
     def test_preflight_error_keeps_isolated_failure_json(self):
         with tempfile.TemporaryDirectory() as t:
             tmp = Path(t)
