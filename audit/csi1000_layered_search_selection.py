@@ -218,6 +218,18 @@ def screen_l1(stage: str, research_cells: str | Path,
             baseline[spec["phase"]] = _checked_persisted_cell(baseline_root / spec["cell_key"], spec)
     require(set(baseline) == {0, 10}, "P0 Baseline phases missing")
     import pandas as pd
+    for r in records.values():
+        b = baseline[r["phase"]]
+        for key in ("quote_sha256", "provider_fingerprint", "provider_snapshot_sha256",
+                    "execution", "quote_path"):
+            require(r.get(key) and r.get(key) == b.get(key),
+                    f"candidate/baseline execution lineage mismatch: {key}")
+        trial_dates = pd.read_parquet(root / r["cell_key"] / "fixed_report.parquet")
+        base_dates = pd.read_parquet(baseline_root / b["cell_key"] / "fixed_report.parquet")
+        require(trial_dates.index.equals(base_dates.index),
+                "candidate/baseline execution dates differ")
+        require(trial_dates["bench"].equals(base_dates["bench"]),
+                "candidate/baseline saved benchmark differs")
 
     def loader_for(directory: Path):
         return lambda rec: pd.read_parquet(directory / rec["cell_key"] / "fixed_report.parquet")
