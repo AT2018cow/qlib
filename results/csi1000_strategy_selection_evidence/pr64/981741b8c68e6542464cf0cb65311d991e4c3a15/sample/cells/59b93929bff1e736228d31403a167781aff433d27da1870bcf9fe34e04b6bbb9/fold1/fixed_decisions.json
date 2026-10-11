@@ -1,0 +1,1102 @@
+[
+  {
+    "decision_index": 0,
+    "end_time": "2021-01-05 23:59:59",
+    "orders": [
+      {
+        "amount": 7600325.653706482,
+        "deal_amount": 7600325.653706482,
+        "direction": 1,
+        "end_time": "2021-01-05 23:59:59",
+        "factor": 0.1610720455646515,
+        "order_index": 0,
+        "start_time": "2021-01-05 00:00:00",
+        "stock_id": "SZ002512"
+      },
+      {
+        "amount": 10158990.036407748,
+        "deal_amount": 10158990.036407748,
+        "direction": 1,
+        "end_time": "2021-01-05 23:59:59",
+        "factor": 0.1217542290687561,
+        "order_index": 1,
+        "start_time": "2021-01-05 00:00:00",
+        "stock_id": "SZ300038"
+      },
+      {
+        "amount": 2117321.76977517,
+        "deal_amount": 2117321.76977517,
+        "direction": 1,
+        "end_time": "2021-01-05 23:59:59",
+        "factor": 0.15406255424022675,
+        "order_index": 2,
+        "start_time": "2021-01-05 00:00:00",
+        "stock_id": "SZ300149"
+      },
+      {
+        "amount": 2796774.108251226,
+        "deal_amount": 2796774.108251226,
+        "direction": 1,
+        "end_time": "2021-01-05 23:59:59",
+        "factor": 0.3825121223926544,
+        "order_index": 3,
+        "start_time": "2021-01-05 00:00:00",
+        "stock_id": "SH600825"
+      },
+      {
+        "amount": 637860.8737089821,
+        "deal_amount": 637860.8737089821,
+        "direction": 1,
+        "end_time": "2021-01-05 23:59:59",
+        "factor": 0.19643782079219818,
+        "order_index": 4,
+        "start_time": "2021-01-05 00:00:00",
+        "stock_id": "SZ000710"
+      },
+      {
+        "amount": 2407977.596578466,
+        "deal_amount": 2407977.596578466,
+        "direction": 1,
+        "end_time": "2021-01-05 23:59:59",
+        "factor": 0.2228841334581375,
+        "order_index": 5,
+        "start_time": "2021-01-05 00:00:00",
+        "stock_id": "SZ300248"
+      },
+      {
+        "amount": 7861546.010929737,
+        "deal_amount": 7861546.010929737,
+        "direction": 1,
+        "end_time": "2021-01-05 23:59:59",
+        "factor": 0.045156512409448624,
+        "order_index": 6,
+        "start_time": "2021-01-05 00:00:00",
+        "stock_id": "SH688108"
+      },
+      {
+        "amount": 7977242.861389459,
+        "deal_amount": 7977242.861389459,
+        "direction": 1,
+        "end_time": "2021-01-05 23:59:59",
+        "factor": 0.08591940999031067,
+        "order_index": 7,
+        "start_time": "2021-01-05 00:00:00",
+        "stock_id": "SH601366"
+      },
+      {
+        "amount": 352226.04380805086,
+        "deal_amount": 352226.04380805086,
+        "direction": 1,
+        "end_time": "2021-01-05 23:59:59",
+        "factor": 0.13741175830364227,
+        "order_index": 8,
+        "start_time": "2021-01-05 00:00:00",
+        "stock_id": "SZ300573"
+      },
+      {
+        "amount": 3100501.2084671594,
+        "deal_amount": 3100501.2084671594,
+        "direction": 1,
+        "end_time": "2021-01-05 23:59:59",
+        "factor": 0.29804858565330505,
+        "order_index": 9,
+        "start_time": "2021-01-05 00:00:00",
+        "stock_id": "SZ300300"
+      },
+      {
+        "amount": 1031171.7244803685,
+        "deal_amount": 1031171.7244803685,
+        "direction": 1,
+        "end_time": "2021-01-05 23:59:59",
+        "factor": 0.2065611332654953,
+        "order_index": 10,
+        "start_time": "2021-01-05 00:00:00",
+        "stock_id": "SZ300846"
+      },
+      {
+        "amount": 4502886.171218856,
+        "deal_amount": 4502886.171218856,
+        "direction": 1,
+        "end_time": "2021-01-05 23:59:59",
+        "factor": 0.0285150445997715,
+        "order_index": 11,
+        "start_time": "2021-01-05 00:00:00",
+        "stock_id": "SZ002989"
+      },
+      {
+        "amount": 1597893.612664061,
+        "deal_amount": 1597893.612664061,
+        "direction": 1,
+        "end_time": "2021-01-05 23:59:59",
+        "factor": 0.21853770315647125,
+        "order_index": 12,
+        "start_time": "2021-01-05 00:00:00",
+        "stock_id": "SZ300559"
+      },
+      {
+        "amount": 3370327.2160721137,
+        "deal_amount": 3370327.2160721137,
+        "direction": 1,
+        "end_time": "2021-01-05 23:59:59",
+        "factor": 0.135773167014122,
+        "order_index": 13,
+        "start_time": "2021-01-05 00:00:00",
+        "stock_id": "SH603815"
+      },
+      {
+        "amount": 1666269.1968501825,
+        "deal_amount": 1666269.1968501825,
+        "direction": 1,
+        "end_time": "2021-01-05 23:59:59",
+        "factor": 0.22673407196998596,
+        "order_index": 14,
+        "start_time": "2021-01-05 00:00:00",
+        "stock_id": "SH600984"
+      },
+      {
+        "amount": 4727374.264286239,
+        "deal_amount": 4727374.264286239,
+        "direction": 1,
+        "end_time": "2021-01-05 23:59:59",
+        "factor": 0.09956901520490646,
+        "order_index": 15,
+        "start_time": "2021-01-05 00:00:00",
+        "stock_id": "SZ300209"
+      },
+      {
+        "amount": 1796242.321192941,
+        "deal_amount": 1796242.321192941,
+        "direction": 1,
+        "end_time": "2021-01-05 23:59:59",
+        "factor": 1.106420874595642,
+        "order_index": 16,
+        "start_time": "2021-01-05 00:00:00",
+        "stock_id": "SH600239"
+      },
+      {
+        "amount": 2358274.579619344,
+        "deal_amount": 2358274.579619344,
+        "direction": 1,
+        "end_time": "2021-01-05 23:59:59",
+        "factor": 0.10706980526447296,
+        "order_index": 17,
+        "start_time": "2021-01-05 00:00:00",
+        "stock_id": "SZ300233"
+      },
+      {
+        "amount": 6490949.564366227,
+        "deal_amount": 6490949.564366227,
+        "direction": 1,
+        "end_time": "2021-01-05 23:59:59",
+        "factor": 0.27718594670295715,
+        "order_index": 18,
+        "start_time": "2021-01-05 00:00:00",
+        "stock_id": "SH600751"
+      },
+      {
+        "amount": 3130556.8035426815,
+        "deal_amount": 3130556.8035426815,
+        "direction": 1,
+        "end_time": "2021-01-05 23:59:59",
+        "factor": 0.01807985082268715,
+        "order_index": 19,
+        "start_time": "2021-01-05 00:00:00",
+        "stock_id": "SZ002991"
+      }
+    ],
+    "start_time": "2021-01-05 00:00:00"
+  },
+  {
+    "decision_index": 1,
+    "end_time": "2021-01-06 23:59:59",
+    "orders": [
+      {
+        "amount": 3370327.2160721137,
+        "deal_amount": 3370327.2160721137,
+        "direction": 0,
+        "end_time": "2021-01-06 23:59:59",
+        "factor": 0.13576601445674896,
+        "order_index": 0,
+        "start_time": "2021-01-06 00:00:00",
+        "stock_id": "SH603815"
+      },
+      {
+        "amount": 3130556.8035426815,
+        "deal_amount": 3130556.8035426815,
+        "direction": 0,
+        "end_time": "2021-01-06 23:59:59",
+        "factor": 0.01807871088385582,
+        "order_index": 1,
+        "start_time": "2021-01-06 00:00:00",
+        "stock_id": "SZ002991"
+      },
+      {
+        "amount": 2285638.487578596,
+        "deal_amount": 2285638.487578596,
+        "direction": 1,
+        "end_time": "2021-01-06 23:59:59",
+        "factor": 0.23669534921646118,
+        "order_index": 2,
+        "start_time": "2021-01-06 00:00:00",
+        "stock_id": "SH603718"
+      },
+      {
+        "amount": 5978161.908367405,
+        "deal_amount": 5978161.908367405,
+        "direction": 1,
+        "end_time": "2021-01-06 23:59:59",
+        "factor": 0.07781656086444855,
+        "order_index": 3,
+        "start_time": "2021-01-06 00:00:00",
+        "stock_id": "SZ002291"
+      }
+    ],
+    "start_time": "2021-01-06 00:00:00"
+  },
+  {
+    "decision_index": 2,
+    "end_time": "2021-01-07 23:59:59",
+    "orders": [
+      {
+        "amount": 2358274.579619344,
+        "deal_amount": 2358274.579619344,
+        "direction": 0,
+        "end_time": "2021-01-07 23:59:59",
+        "factor": 0.10705910623073578,
+        "order_index": 0,
+        "start_time": "2021-01-07 00:00:00",
+        "stock_id": "SZ300233"
+      },
+      {
+        "amount": 1597893.612664061,
+        "deal_amount": 1597893.612664061,
+        "direction": 0,
+        "end_time": "2021-01-07 23:59:59",
+        "factor": 0.2185356467962265,
+        "order_index": 1,
+        "start_time": "2021-01-07 00:00:00",
+        "stock_id": "SZ300559"
+      },
+      {
+        "amount": 11311429.933755185,
+        "deal_amount": 11311429.933755185,
+        "direction": 1,
+        "end_time": "2021-01-07 23:59:59",
+        "factor": 0.0827658399939537,
+        "order_index": 2,
+        "start_time": "2021-01-07 00:00:00",
+        "stock_id": "SZ300140"
+      },
+      {
+        "amount": 1989022.7955527932,
+        "deal_amount": 1989022.7955527932,
+        "direction": 1,
+        "end_time": "2021-01-07 23:59:59",
+        "factor": 0.3398151099681854,
+        "order_index": 3,
+        "start_time": "2021-01-07 00:00:00",
+        "stock_id": "SZ300448"
+      }
+    ],
+    "start_time": "2021-01-07 00:00:00"
+  },
+  {
+    "decision_index": 3,
+    "end_time": "2021-01-10 23:59:59",
+    "orders": [
+      {
+        "amount": 1796242.3211929407,
+        "deal_amount": 1796242.3211929407,
+        "direction": 0,
+        "end_time": "2021-01-10 23:59:59",
+        "factor": 1.1062785387039185,
+        "order_index": 0,
+        "start_time": "2021-01-08 00:00:00",
+        "stock_id": "SH600239"
+      },
+      {
+        "amount": 7977242.861389459,
+        "deal_amount": 7977242.861389459,
+        "direction": 0,
+        "end_time": "2021-01-10 23:59:59",
+        "factor": 0.08590886741876602,
+        "order_index": 1,
+        "start_time": "2021-01-08 00:00:00",
+        "stock_id": "SH601366"
+      },
+      {
+        "amount": 3266843.4644023725,
+        "deal_amount": 3266843.4644023725,
+        "direction": 1,
+        "end_time": "2021-01-10 23:59:59",
+        "factor": 0.17545989155769348,
+        "order_index": 2,
+        "start_time": "2021-01-08 00:00:00",
+        "stock_id": "SZ300353"
+      },
+      {
+        "amount": 12426719.179272156,
+        "deal_amount": 12426719.179272156,
+        "direction": 1,
+        "end_time": "2021-01-10 23:59:59",
+        "factor": 0.06800668686628342,
+        "order_index": 3,
+        "start_time": "2021-01-08 00:00:00",
+        "stock_id": "SZ300102"
+      }
+    ],
+    "start_time": "2021-01-08 00:00:00"
+  },
+  {
+    "decision_index": 4,
+    "end_time": "2021-01-11 23:59:59",
+    "orders": [
+      {
+        "amount": 10158990.036407748,
+        "deal_amount": 10158990.036407748,
+        "direction": 0,
+        "end_time": "2021-01-11 23:59:59",
+        "factor": 0.12173202633857727,
+        "order_index": 0,
+        "start_time": "2021-01-11 00:00:00",
+        "stock_id": "SZ300038"
+      },
+      {
+        "amount": 352226.04380805086,
+        "deal_amount": 352226.04380805086,
+        "direction": 0,
+        "end_time": "2021-01-11 23:59:59",
+        "factor": 0.1374192088842392,
+        "order_index": 1,
+        "start_time": "2021-01-11 00:00:00",
+        "stock_id": "SZ300573"
+      },
+      {
+        "amount": 4095753.8892558687,
+        "deal_amount": 4095753.8892558687,
+        "direction": 1,
+        "end_time": "2021-01-11 23:59:59",
+        "factor": 0.1260329633951187,
+        "order_index": 2,
+        "start_time": "2021-01-11 00:00:00",
+        "stock_id": "SZ300798"
+      },
+      {
+        "amount": 3963510.893978129,
+        "deal_amount": 3963510.893978129,
+        "direction": 1,
+        "end_time": "2021-01-11 23:59:59",
+        "factor": 0.2849998474121094,
+        "order_index": 3,
+        "start_time": "2021-01-11 00:00:00",
+        "stock_id": "SZ000802"
+      }
+    ],
+    "start_time": "2021-01-11 00:00:00"
+  },
+  {
+    "decision_index": 5,
+    "end_time": "2021-01-12 23:59:59",
+    "orders": [
+      {
+        "amount": 6490949.564366227,
+        "deal_amount": 6490949.564366227,
+        "direction": 0,
+        "end_time": "2021-01-12 23:59:59",
+        "factor": 0.2771308720111847,
+        "order_index": 0,
+        "start_time": "2021-01-12 00:00:00",
+        "stock_id": "SH600751"
+      },
+      {
+        "amount": 5978161.908367405,
+        "deal_amount": 5978161.908367405,
+        "direction": 0,
+        "end_time": "2021-01-12 23:59:59",
+        "factor": 0.07782819867134094,
+        "order_index": 1,
+        "start_time": "2021-01-12 00:00:00",
+        "stock_id": "SZ002291"
+      },
+      {
+        "amount": 5660116.422509845,
+        "deal_amount": 5660116.422509845,
+        "direction": 1,
+        "end_time": "2021-01-12 23:59:59",
+        "factor": 0.31873902678489685,
+        "order_index": 2,
+        "start_time": "2021-01-12 00:00:00",
+        "stock_id": "SZ002685"
+      },
+      {
+        "amount": 3985163.8635176886,
+        "deal_amount": 3985163.8635176886,
+        "direction": 1,
+        "end_time": "2021-01-12 23:59:59",
+        "factor": 0.12350809574127197,
+        "order_index": 3,
+        "start_time": "2021-01-12 00:00:00",
+        "stock_id": "SH603956"
+      }
+    ],
+    "start_time": "2021-01-12 00:00:00"
+  },
+  {
+    "decision_index": 6,
+    "end_time": "2021-01-13 23:59:59",
+    "orders": [
+      {
+        "amount": 2285638.487578596,
+        "deal_amount": 2285638.487578596,
+        "direction": 0,
+        "end_time": "2021-01-13 23:59:59",
+        "factor": 0.23668302595615387,
+        "order_index": 0,
+        "start_time": "2021-01-13 00:00:00",
+        "stock_id": "SH603718"
+      },
+      {
+        "amount": 2117321.76977517,
+        "deal_amount": 2117321.76977517,
+        "direction": 0,
+        "end_time": "2021-01-13 23:59:59",
+        "factor": 0.15406474471092224,
+        "order_index": 1,
+        "start_time": "2021-01-13 00:00:00",
+        "stock_id": "SZ300149"
+      },
+      {
+        "amount": 2283270.0053616343,
+        "deal_amount": 2283270.0053616343,
+        "direction": 1,
+        "end_time": "2021-01-13 23:59:59",
+        "factor": 1.1063518524169922,
+        "order_index": 2,
+        "start_time": "2021-01-13 00:00:00",
+        "stock_id": "SH600239"
+      },
+      {
+        "amount": 1865413.5657625983,
+        "deal_amount": 1865413.5657625983,
+        "direction": 1,
+        "end_time": "2021-01-13 23:59:59",
+        "factor": 0.15385328233242035,
+        "order_index": 3,
+        "start_time": "2021-01-13 00:00:00",
+        "stock_id": "SZ300520"
+      }
+    ],
+    "start_time": "2021-01-13 00:00:00"
+  },
+  {
+    "decision_index": 7,
+    "end_time": "2021-01-14 23:59:59",
+    "orders": [
+      {
+        "amount": 637860.8737089821,
+        "deal_amount": 637860.8737089821,
+        "direction": 0,
+        "end_time": "2021-01-14 23:59:59",
+        "factor": 0.19644798338413239,
+        "order_index": 0,
+        "start_time": "2021-01-14 00:00:00",
+        "stock_id": "SZ000710"
+      },
+      {
+        "amount": 5660116.422509845,
+        "deal_amount": 5660116.422509845,
+        "direction": 0,
+        "end_time": "2021-01-14 23:59:59",
+        "factor": 0.31883129477500916,
+        "order_index": 1,
+        "start_time": "2021-01-14 00:00:00",
+        "stock_id": "SZ002685"
+      },
+      {
+        "amount": 7296498.592983124,
+        "deal_amount": 7296498.592983124,
+        "direction": 1,
+        "end_time": "2021-01-14 23:59:59",
+        "factor": 0.06563422083854675,
+        "order_index": 2,
+        "start_time": "2021-01-14 00:00:00",
+        "stock_id": "SZ300109"
+      },
+      {
+        "amount": 2273615.7436143733,
+        "deal_amount": 2273615.7436143733,
+        "direction": 1,
+        "end_time": "2021-01-14 23:59:59",
+        "factor": 0.4673173129558563,
+        "order_index": 3,
+        "start_time": "2021-01-14 00:00:00",
+        "stock_id": "SZ300311"
+      }
+    ],
+    "start_time": "2021-01-14 00:00:00"
+  },
+  {
+    "decision_index": 8,
+    "end_time": "2021-01-17 23:59:59",
+    "orders": [
+      {
+        "amount": 3963510.8939781287,
+        "deal_amount": 3963510.8939781287,
+        "direction": 0,
+        "end_time": "2021-01-17 23:59:59",
+        "factor": 0.28493615984916687,
+        "order_index": 0,
+        "start_time": "2021-01-15 00:00:00",
+        "stock_id": "SZ000802"
+      },
+      {
+        "amount": 4502886.171218856,
+        "deal_amount": 4502886.171218856,
+        "direction": 0,
+        "end_time": "2021-01-17 23:59:59",
+        "factor": 0.028521159663796425,
+        "order_index": 1,
+        "start_time": "2021-01-15 00:00:00",
+        "stock_id": "SZ002989"
+      },
+      {
+        "amount": 4349614.251821553,
+        "deal_amount": 4349614.251821553,
+        "direction": 1,
+        "end_time": "2021-01-17 23:59:59",
+        "factor": 0.0683508887887001,
+        "order_index": 2,
+        "start_time": "2021-01-15 00:00:00",
+        "stock_id": "SZ300805"
+      },
+      {
+        "amount": 2852511.1309680636,
+        "deal_amount": 2852511.1309680636,
+        "direction": 1,
+        "end_time": "2021-01-17 23:59:59",
+        "factor": 0.46162834763526917,
+        "order_index": 3,
+        "start_time": "2021-01-15 00:00:00",
+        "stock_id": "SZ300276"
+      }
+    ],
+    "start_time": "2021-01-15 00:00:00"
+  },
+  {
+    "decision_index": 9,
+    "end_time": "2021-01-18 23:59:59",
+    "orders": [
+      {
+        "amount": 2283270.0053616343,
+        "deal_amount": 2283270.0053616343,
+        "direction": 0,
+        "end_time": "2021-01-18 23:59:59",
+        "factor": 1.1063637733459473,
+        "order_index": 0,
+        "start_time": "2021-01-18 00:00:00",
+        "stock_id": "SH600239"
+      },
+      {
+        "amount": 2796774.108251226,
+        "deal_amount": 2796774.108251226,
+        "direction": 0,
+        "end_time": "2021-01-18 23:59:59",
+        "factor": 0.3825301229953766,
+        "order_index": 1,
+        "start_time": "2021-01-18 00:00:00",
+        "stock_id": "SH600825"
+      },
+      {
+        "amount": 1643295.9259162233,
+        "deal_amount": 1643295.9259162233,
+        "direction": 1,
+        "end_time": "2021-01-18 23:59:59",
+        "factor": 0.29805952310562134,
+        "order_index": 2,
+        "start_time": "2021-01-18 00:00:00",
+        "stock_id": "SZ300368"
+      },
+      {
+        "amount": 3144251.1594996755,
+        "deal_amount": 3144251.1594996755,
+        "direction": 1,
+        "end_time": "2021-01-18 23:59:59",
+        "factor": 0.19972959160804749,
+        "order_index": 3,
+        "start_time": "2021-01-18 00:00:00",
+        "stock_id": "SZ000796"
+      }
+    ],
+    "start_time": "2021-01-18 00:00:00"
+  },
+  {
+    "decision_index": 10,
+    "end_time": "2021-01-19 23:59:59",
+    "orders": [
+      {
+        "amount": 1666269.1968501825,
+        "deal_amount": 1666269.1968501825,
+        "direction": 0,
+        "end_time": "2021-01-19 23:59:59",
+        "factor": 0.22671079635620117,
+        "order_index": 0,
+        "start_time": "2021-01-19 00:00:00",
+        "stock_id": "SH600984"
+      },
+      {
+        "amount": 3985163.8635176886,
+        "deal_amount": 3985163.8635176886,
+        "direction": 0,
+        "end_time": "2021-01-19 23:59:59",
+        "factor": 0.12350451201200485,
+        "order_index": 1,
+        "start_time": "2021-01-19 00:00:00",
+        "stock_id": "SH603956"
+      },
+      {
+        "amount": 905086.0699063992,
+        "deal_amount": 905086.0699063992,
+        "direction": 1,
+        "end_time": "2021-01-19 23:59:59",
+        "factor": 0.19644540548324585,
+        "order_index": 2,
+        "start_time": "2021-01-19 00:00:00",
+        "stock_id": "SZ000710"
+      },
+      {
+        "amount": 3505885.340441365,
+        "deal_amount": 3505885.340441365,
+        "direction": 1,
+        "end_time": "2021-01-19 23:59:59",
+        "factor": 0.09455528855323792,
+        "order_index": 3,
+        "start_time": "2021-01-19 00:00:00",
+        "stock_id": "SZ300386"
+      }
+    ],
+    "start_time": "2021-01-19 00:00:00"
+  },
+  {
+    "decision_index": 11,
+    "end_time": "2021-01-20 23:59:59",
+    "orders": [
+      {
+        "amount": 12426719.179272156,
+        "deal_amount": 12426719.179272156,
+        "direction": 0,
+        "end_time": "2021-01-20 23:59:59",
+        "factor": 0.06801818311214447,
+        "order_index": 0,
+        "start_time": "2021-01-20 00:00:00",
+        "stock_id": "SZ300102"
+      },
+      {
+        "amount": 4727374.264286239,
+        "deal_amount": 4727374.264286239,
+        "direction": 0,
+        "end_time": "2021-01-20 23:59:59",
+        "factor": 0.09956078231334686,
+        "order_index": 1,
+        "start_time": "2021-01-20 00:00:00",
+        "stock_id": "SZ300209"
+      },
+      {
+        "amount": 1856823.881746371,
+        "deal_amount": 1856823.881746371,
+        "direction": 1,
+        "end_time": "2021-01-20 23:59:59",
+        "factor": 0.23669449985027313,
+        "order_index": 2,
+        "start_time": "2021-01-20 00:00:00",
+        "stock_id": "SH603718"
+      },
+      {
+        "amount": 2453047.93950435,
+        "deal_amount": 2453047.93950435,
+        "direction": 1,
+        "end_time": "2021-01-20 23:59:59",
+        "factor": 0.07468260079622269,
+        "order_index": 3,
+        "start_time": "2021-01-20 00:00:00",
+        "stock_id": "SZ300857"
+      }
+    ],
+    "start_time": "2021-01-20 00:00:00"
+  },
+  {
+    "decision_index": 12,
+    "end_time": "2021-01-21 23:59:59",
+    "orders": [
+      {
+        "amount": 1865413.5657625983,
+        "deal_amount": 1865413.5657625983,
+        "direction": 0,
+        "end_time": "2021-01-21 23:59:59",
+        "factor": 0.15381984412670135,
+        "order_index": 0,
+        "start_time": "2021-01-21 00:00:00",
+        "stock_id": "SZ300520"
+      },
+      {
+        "amount": 4349614.251821553,
+        "deal_amount": 4349614.251821553,
+        "direction": 0,
+        "end_time": "2021-01-21 23:59:59",
+        "factor": 0.0683416798710823,
+        "order_index": 1,
+        "start_time": "2021-01-21 00:00:00",
+        "stock_id": "SZ300805"
+      },
+      {
+        "amount": 3560125.2352,
+        "deal_amount": 3560125.2352,
+        "direction": 1,
+        "end_time": "2021-01-21 23:59:59",
+        "factor": 0.14901161193847656,
+        "order_index": 2,
+        "start_time": "2021-01-21 00:00:00",
+        "stock_id": "SZ300288"
+      },
+      {
+        "amount": 10769745.685477782,
+        "deal_amount": 10769745.685477782,
+        "direction": 1,
+        "end_time": "2021-01-21 23:59:59",
+        "factor": 0.1120360717177391,
+        "order_index": 3,
+        "start_time": "2021-01-21 00:00:00",
+        "stock_id": "SZ300158"
+      }
+    ],
+    "start_time": "2021-01-21 00:00:00"
+  },
+  {
+    "decision_index": 13,
+    "end_time": "2021-01-24 23:59:59",
+    "orders": [
+      {
+        "amount": 905086.0699063992,
+        "deal_amount": 905086.0699063992,
+        "direction": 0,
+        "end_time": "2021-01-24 23:59:59",
+        "factor": 0.1964493840932846,
+        "order_index": 0,
+        "start_time": "2021-01-22 00:00:00",
+        "stock_id": "SZ000710"
+      },
+      {
+        "amount": 1643295.9259162233,
+        "deal_amount": 1643295.9259162233,
+        "direction": 0,
+        "end_time": "2021-01-24 23:59:59",
+        "factor": 0.2980520725250244,
+        "order_index": 1,
+        "start_time": "2021-01-22 00:00:00",
+        "stock_id": "SZ300368"
+      },
+      {
+        "amount": 648022.691163705,
+        "deal_amount": 648022.691163705,
+        "direction": 1,
+        "end_time": "2021-01-24 23:59:59",
+        "factor": 0.10385438799858093,
+        "order_index": 2,
+        "start_time": "2021-01-22 00:00:00",
+        "stock_id": "SZ300598"
+      },
+      {
+        "amount": 14576470.597053664,
+        "deal_amount": 14576470.597053664,
+        "direction": 1,
+        "end_time": "2021-01-24 23:59:59",
+        "factor": 0.12174414843320847,
+        "order_index": 3,
+        "start_time": "2021-01-22 00:00:00",
+        "stock_id": "SZ300038"
+      }
+    ],
+    "start_time": "2021-01-22 00:00:00"
+  },
+  {
+    "decision_index": 14,
+    "end_time": "2021-01-25 23:59:59",
+    "orders": [
+      {
+        "amount": 7861546.010929736,
+        "deal_amount": 7861546.010929736,
+        "direction": 0,
+        "end_time": "2021-01-25 23:59:59",
+        "factor": 0.04517447203397751,
+        "order_index": 0,
+        "start_time": "2021-01-25 00:00:00",
+        "stock_id": "SH688108"
+      },
+      {
+        "amount": 7296498.592983124,
+        "deal_amount": 7296498.592983124,
+        "direction": 0,
+        "end_time": "2021-01-25 23:59:59",
+        "factor": 0.06563162803649902,
+        "order_index": 1,
+        "start_time": "2021-01-25 00:00:00",
+        "stock_id": "SZ300109"
+      },
+      {
+        "amount": 1661696.629766476,
+        "deal_amount": 1661696.629766476,
+        "direction": 1,
+        "end_time": "2021-01-25 23:59:59",
+        "factor": 0.26292404532432556,
+        "order_index": 2,
+        "start_time": "2021-01-25 00:00:00",
+        "stock_id": "SZ300429"
+      },
+      {
+        "amount": 2808333.171396149,
+        "deal_amount": 2808333.171396149,
+        "direction": 1,
+        "end_time": "2021-01-25 23:59:59",
+        "factor": 0.23284274339675903,
+        "order_index": 3,
+        "start_time": "2021-01-25 00:00:00",
+        "stock_id": "SZ300366"
+      }
+    ],
+    "start_time": "2021-01-25 00:00:00"
+  },
+  {
+    "decision_index": 15,
+    "end_time": "2021-01-26 23:59:59",
+    "orders": [
+      {
+        "amount": 1856823.881746371,
+        "deal_amount": 1856823.881746371,
+        "direction": 0,
+        "end_time": "2021-01-26 23:59:59",
+        "factor": 0.23671898245811462,
+        "order_index": 0,
+        "start_time": "2021-01-26 00:00:00",
+        "stock_id": "SH603718"
+      },
+      {
+        "amount": 14576470.597053664,
+        "deal_amount": 14576470.597053664,
+        "direction": 0,
+        "end_time": "2021-01-26 23:59:59",
+        "factor": 0.12170781940221786,
+        "order_index": 1,
+        "start_time": "2021-01-26 00:00:00",
+        "stock_id": "SZ300038"
+      },
+      {
+        "amount": 3837317.6801867126,
+        "deal_amount": 3837317.6801867126,
+        "direction": 1,
+        "end_time": "2021-01-26 23:59:59",
+        "factor": 0.4633966088294983,
+        "order_index": 2,
+        "start_time": "2021-01-26 00:00:00",
+        "stock_id": "SZ300292"
+      },
+      {
+        "amount": 6180033.446046241,
+        "deal_amount": 6180033.446046241,
+        "direction": 1,
+        "end_time": "2021-01-26 23:59:59",
+        "factor": 0.16779844462871552,
+        "order_index": 3,
+        "start_time": "2021-01-26 00:00:00",
+        "stock_id": "SZ300495"
+      }
+    ],
+    "start_time": "2021-01-26 00:00:00"
+  },
+  {
+    "decision_index": 16,
+    "end_time": "2021-01-27 23:59:59",
+    "orders": [
+      {
+        "amount": 10769745.685477782,
+        "deal_amount": 10769745.685477782,
+        "direction": 0,
+        "end_time": "2021-01-27 23:59:59",
+        "factor": 0.11203804612159729,
+        "order_index": 0,
+        "start_time": "2021-01-27 00:00:00",
+        "stock_id": "SZ300158"
+      },
+      {
+        "amount": 1031171.7244803685,
+        "deal_amount": 1031171.7244803685,
+        "direction": 0,
+        "end_time": "2021-01-27 23:59:59",
+        "factor": 0.2066318541765213,
+        "order_index": 1,
+        "start_time": "2021-01-27 00:00:00",
+        "stock_id": "SZ300846"
+      },
+      {
+        "amount": 1108433.5055354396,
+        "deal_amount": 1108433.5055354396,
+        "direction": 1,
+        "end_time": "2021-01-27 23:59:59",
+        "factor": 1.4192100763320923,
+        "order_index": 2,
+        "start_time": "2021-01-27 00:00:00",
+        "stock_id": "SZ000903"
+      },
+      {
+        "amount": 4047821.8158526174,
+        "deal_amount": 4047821.8158526174,
+        "direction": 1,
+        "end_time": "2021-01-27 23:59:59",
+        "factor": 0.34462979435920715,
+        "order_index": 3,
+        "start_time": "2021-01-27 00:00:00",
+        "stock_id": "SZ300198"
+      }
+    ],
+    "start_time": "2021-01-27 00:00:00"
+  },
+  {
+    "decision_index": 17,
+    "end_time": "2021-01-28 23:59:59",
+    "orders": [
+      {
+        "amount": 2407977.596578466,
+        "deal_amount": 2407977.596578466,
+        "direction": 0,
+        "end_time": "2021-01-28 23:59:59",
+        "factor": 0.22288887202739716,
+        "order_index": 0,
+        "start_time": "2021-01-28 00:00:00",
+        "stock_id": "SZ300248"
+      },
+      {
+        "amount": 2453047.93950435,
+        "deal_amount": 2453047.93950435,
+        "direction": 0,
+        "end_time": "2021-01-28 23:59:59",
+        "factor": 0.07468260079622269,
+        "order_index": 1,
+        "start_time": "2021-01-28 00:00:00",
+        "stock_id": "SZ300857"
+      },
+      {
+        "amount": 6498498.9810604155,
+        "deal_amount": 6498498.9810604155,
+        "direction": 1,
+        "end_time": "2021-01-28 23:59:59",
+        "factor": 0.09956145286560059,
+        "order_index": 2,
+        "start_time": "2021-01-28 00:00:00",
+        "stock_id": "SZ300209"
+      },
+      {
+        "amount": 2089864.4174181733,
+        "deal_amount": 2089864.4174181733,
+        "direction": 1,
+        "end_time": "2021-01-28 23:59:59",
+        "factor": 0.2547055184841156,
+        "order_index": 3,
+        "start_time": "2021-01-28 00:00:00",
+        "stock_id": "SZ300302"
+      }
+    ],
+    "start_time": "2021-01-28 00:00:00"
+  },
+  {
+    "decision_index": 18,
+    "end_time": "2021-01-31 23:59:59",
+    "orders": [
+      {
+        "amount": 3560125.2352,
+        "deal_amount": 3560125.2352,
+        "direction": 0,
+        "end_time": "2021-01-31 23:59:59",
+        "factor": 0.14901675283908844,
+        "order_index": 0,
+        "start_time": "2021-01-29 00:00:00",
+        "stock_id": "SZ300288"
+      },
+      {
+        "amount": 2273615.7436143733,
+        "deal_amount": 2273615.7436143733,
+        "direction": 0,
+        "end_time": "2021-01-31 23:59:59",
+        "factor": 0.46733909845352173,
+        "order_index": 1,
+        "start_time": "2021-01-29 00:00:00",
+        "stock_id": "SZ300311"
+      },
+      {
+        "amount": 3476397.665120029,
+        "deal_amount": 3476397.665120029,
+        "direction": 1,
+        "end_time": "2021-01-31 23:59:59",
+        "factor": 0.10424584150314331,
+        "order_index": 2,
+        "start_time": "2021-01-29 00:00:00",
+        "stock_id": "SZ300397"
+      },
+      {
+        "amount": 1833241.8141782915,
+        "deal_amount": 1833241.8141782915,
+        "direction": 1,
+        "end_time": "2021-01-31 23:59:59",
+        "factor": 0.10402337461709976,
+        "order_index": 3,
+        "start_time": "2021-01-29 00:00:00",
+        "stock_id": "SH603283"
+      }
+    ],
+    "start_time": "2021-01-29 00:00:00"
+  },
+  {
+    "decision_index": 19,
+    "end_time": "2021-02-01 23:59:59",
+    "orders": [
+      {
+        "amount": 11311429.933755185,
+        "deal_amount": 11311429.933755185,
+        "direction": 0,
+        "end_time": "2021-02-01 23:59:59",
+        "factor": 0.08278724551200867,
+        "order_index": 0,
+        "start_time": "2021-02-01 00:00:00",
+        "stock_id": "SZ300140"
+      },
+      {
+        "amount": 4095753.889255869,
+        "deal_amount": 4095753.889255869,
+        "direction": 0,
+        "end_time": "2021-02-01 23:59:59",
+        "factor": 0.12602907419204712,
+        "order_index": 1,
+        "start_time": "2021-02-01 00:00:00",
+        "stock_id": "SZ300798"
+      },
+      {
+        "amount": 3300741.2770416364,
+        "deal_amount": 3300741.2770416364,
+        "direction": 1,
+        "end_time": "2021-02-01 23:59:59",
+        "factor": 0.19837968051433563,
+        "order_index": 2,
+        "start_time": "2021-02-01 00:00:00",
+        "stock_id": "SZ300252"
+      },
+      {
+        "amount": 2105138.549430183,
+        "deal_amount": 2105138.549430183,
+        "direction": 1,
+        "end_time": "2021-02-01 23:59:59",
+        "factor": 0.0485953763127327,
+        "order_index": 3,
+        "start_time": "2021-02-01 00:00:00",
+        "stock_id": "SZ300799"
+      }
+    ],
+    "start_time": "2021-02-01 00:00:00"
+  }
+]

@@ -1,0 +1,20 @@
+{
+ "git_sha": "981741b8c68e6542464cf0cb65311d991e4c3a15 (detached, clean tree; pytest 10 passed)",
+ "modal_app_note": "ephemeral sample app stopped and cleaned by Modal; app ID not separately retained (see billing_report.json for costed apps)",
+ "modal_environment": "infi/main",
+ "scope": "sample (8 controls resumed by hash + 8 new: stage_a rank 1 and rank 80 x 4 folds)",
+ "cells_attempted": 16,
+ "cells_passed": 16,
+ "worker_cpu": 2,
+ "worker_memory_mib": 4096,
+ "max_workers": 2,
+ "training_performed": false,
+ "promotion_authorized": false,
+ "source_volume_read_only": true,
+ "spending_estimate_usd": 0.03,
+ "billing_evidence": "billing_report.json",
+ "cli_transcript": "NOT separately persisted for the successful run; result artifacts (with per-file SHAs, UTC timestamps) + billing + this record constitute the evidence. A re-run attempt correctly refused to overwrite (fail-closed verified).",
+ "submitted_utc": "2026-10-11T11:35:17.981825+00:00",
+ "key_finding": "rank-1 (59b93929) and rank-80 (cc3c3f07) fold4 cells both changed after quote correction (Sharpe -0.21 and -0.25); folds 1-3 unchanged in both. Quote-coverage effect is real but concentrated in the latest fold; no ranking-metric changes made.",
+ "strategy_decision": "KEEP_CANONICAL_PENDING_FORWARD (unchanged)"
+}
