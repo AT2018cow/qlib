@@ -67,6 +67,9 @@
 
 ## 5. Modal 具体操作手册（只读源数据，单独研究资源）
 
+**OpenCode 前台执行硬规则（适用于后续所有实验指南）：** 由 OpenCode 工具发起的 Modal 实验命令不得传入 `--detach`，必须保持 `modal run` 前台附着直到真实退出。在该操作环境中，脱离运行可能受工具超时影响而中断。启动前配置 OpenCode 命令的超时，预留镜像构建、排队、工作单元、汇总及输出下载耗时；推荐 `set -o pipefail`、`modal run ... 2>&1 | tee /tmp/<run>.log`（注意真实命令中替换占位符）。若当前工具调用无法覆盖预计总时长，则停止启动，先安排可持续的前台会话或另外审核的分批方案；不能用 `--detach`、`nohup` 或 shell 后台符号 `&` 绕开。运行时保留 CLI 日志、退出码、Modal App ID、实际账单，超时/断线按 `RUN_STATUS_UNKNOWN` 处理，不得宣称成功。此限制**不影响**冻结 Git SHA 所用的 `git checkout --detach`。
+
+
 **运行前提：** 在有原 `qlib-cn-data` Volume 访问权限的 Modal workspace；`modal` CLI 已安装并完成用户自己授权的 token/profile；任何账户 token / Secret 均留在授权 workspace，不复制到 GitHub、日志或新对话。
 
 ### 5.1 现成、可直接执行的盘点命令
@@ -111,7 +114,7 @@ modal run audit/stage_a_corrected_replay_modal.py \
   --scope controls --max-workers 2
 
 # smoke 通过后，在同一快照上跑 320 格。长任务脱离本地终端：
-modal run --detach audit/stage_a_corrected_replay_modal.py \
+modal run audit/stage_a_corrected_replay_modal.py \
   --scope all --max-workers 16
 
 # 如需查看进度/日志，先用 modal app list 找到独立研究 App 名称
