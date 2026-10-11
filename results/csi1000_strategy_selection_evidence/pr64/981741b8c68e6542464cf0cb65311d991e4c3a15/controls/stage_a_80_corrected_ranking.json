@@ -1,0 +1,71 @@
+{
+  "lofo_omitted_fold_ranks": {},
+  "promotion_authorized": false,
+  "rows": [
+    {
+      "candidate_id": "4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2",
+      "corrected_rank": null,
+      "fixed_four_fold": {
+        "ids": [
+          "fold1",
+          "fold2",
+          "fold3",
+          "fold4"
+        ],
+        "information_ratio_median": 3.1326275,
+        "mean_turnover_median": 0.24008600000000002,
+        "n": 4,
+        "positive_ratio": 1.0,
+        "relative_excess_cagr_median": 0.517282,
+        "relative_excess_cagr_q25": 0.40556200000000003,
+        "relative_excess_cagr_worst": 0.154225,
+        "sharpe_median": -0.38930149999999997,
+        "strategy_max_drawdown_worst": -0.084689,
+        "total_cost_sum_median": 0.0043064999999999996
+      },
+      "original_rank": 5,
+      "params": {
+        "colsample_bytree": 0.8,
+        "lambda_l1": 10.0,
+        "lambda_l2": 400.0,
+        "learning_rate": 0.08,
+        "max_depth": 6,
+        "min_data_in_leaf": 50,
+        "num_leaves": 63
+      }
+    },
+    {
+      "candidate_id": "23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785",
+      "corrected_rank": null,
+      "fixed_four_fold": {
+        "ids": [
+          "fold1",
+          "fold2",
+          "fold3",
+          "fold4"
+        ],
+        "information_ratio_median": 4.1268595,
+        "mean_turnover_median": 0.239956,
+        "n": 4,
+        "positive_ratio": 0.75,
+        "relative_excess_cagr_median": 1.0872845,
+        "relative_excess_cagr_q25": 0.2049555,
+        "relative_excess_cagr_worst": -0.236337,
+        "sharpe_median": 0.5689879999999999,
+        "strategy_max_drawdown_worst": -0.091499,
+        "total_cost_sum_median": 0.004306
+      },
+      "original_rank": 48,
+      "params": {
+        "colsample_bytree": 0.9,
+        "lambda_l1": 205.6999,
+        "lambda_l2": 580.9768,
+        "learning_rate": 0.1,
+        "max_depth": 8,
+        "min_data_in_leaf": 20,
+        "num_leaves": 250
+      }
+    }
+  ],
+  "status": "PILOT_ONLY_NO_FULL_RANK"
+}

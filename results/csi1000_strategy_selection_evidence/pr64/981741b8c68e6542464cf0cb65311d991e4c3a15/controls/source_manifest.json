@@ -1,0 +1,106 @@
+{
+  "cells": [
+    {
+      "candidate_id": "4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2",
+      "fold_id": "fold1",
+      "reason": null,
+      "source_sha256": {
+        "decision": "1a0c99900e549c25f2b88e3719d2a1b3a354daa948c840801ade9aca3b9bae18",
+        "report": "24554c78d19b4170137803f8611234387c25fa45403de235982356b17ad81ac9",
+        "result": "09e603aa84a16a1b7d50d3cf76382f17775897e0b59e2ab7513f0bd15b53f1ab",
+        "signal": "d4d8ef2274d50e3054717576a1ac448ca939d43fb46ec3472c4c264be454541b"
+      },
+      "status": "PASS"
+    },
+    {
+      "candidate_id": "4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2",
+      "fold_id": "fold2",
+      "reason": null,
+      "source_sha256": {
+        "decision": "cdc44884d0d9380ce971940a607cd4bb6c9cb11e6fd1648cd56bb1abf6e4f1af",
+        "report": "f67d9d9b21165c5fc087b0a6f91828d9c68008b6cc985ec4e70fbd111ae85505",
+        "result": "b9386d4ded7b028020a8f09818a4117a4ad7fa87634e35b130fa4d7242265b6c",
+        "signal": "5b9b27d15cfaa524b3d9a2464ef48ecedb503995f2c16174add5ed5a6ec8f875"
+      },
+      "status": "PASS"
+    },
+    {
+      "candidate_id": "4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2",
+      "fold_id": "fold3",
+      "reason": null,
+      "source_sha256": {
+        "decision": "8d999e0af2bd2794f52ade42bfa97afc3668bfbe8335d84ff14f66bd27dd4277",
+        "report": "50890359b57b6f3a178f5fad0a24962e2a8f4577bbe833a5ef03baa9235c9c0a",
+        "result": "16a4f8f5a5ddee495390131e284379596f525b6d3db4f5ffce320b2bb4f1af0e",
+        "signal": "2c2eff6c08827e005edbba1fedd6999988fa28ac3d8ead7ae0a7f9b1d0ee6708"
+      },
+      "status": "PASS"
+    },
+    {
+      "candidate_id": "4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2",
+      "fold_id": "fold4",
+      "reason": null,
+      "source_sha256": {
+        "decision": "223ccfb6da0c67a96ab3aa1393aa35c34f5686cefe04e0b2e60d812510861626",
+        "report": "9cbcf9e9f70a015109118deae22d03e97b2924dfb43a590e4f4ac120f5f2bf38",
+        "result": "b772fafcda848b6625776b24872eb1017d08419f1712896a3b838f5d483dcdbe",
+        "signal": "beba0f5ef1d40d986df3887b3db0dfd0157f3211f334a4e122985be9d2dced22"
+      },
+      "status": "PASS"
+    },
+    {
+      "candidate_id": "23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785",
+      "fold_id": "fold1",
+      "reason": null,
+      "source_sha256": {
+        "decision": "e574d3047cb3004848348198a2c1ed9feef696007aef8c6771cccdb9e961e1b7",
+        "report": "c704fb739f1cccce711ebf61b190186d1a7964c684287a5d82014f2be57201e0",
+        "result": "e35f7a542dfc543c78fa59df0c6461e99a064c13c3311856f429f5d8105b2b0a",
+        "signal": "9b64ef86e005a62f3e6eb61bb76bd867cb72eac94151754e6d7806cdc17d4b68"
+      },
+      "status": "PASS"
+    },
+    {
+      "candidate_id": "23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785",
+      "fold_id": "fold2",
+      "reason": null,
+      "source_sha256": {
+        "decision": "01bd3deaa31388d664e47e3056122fb7728188c18d3b75a801a1352166215f2d",
+        "report": "d8886a8ab25ad05eb7f1ad183474c03cdd186bddfdf4cbb181ed40f4beffd68e",
+        "result": "ac3011085efb24ff1c26af5577ea3cbb07b976c4939a3a9ce91598c0ec1be046",
+        "signal": "d1f819a51b415154a6c5796544e81cd00ae3f2a6bdfde06beda3a23854c087d2"
+      },
+      "status": "PASS"
+    },
+    {
+      "candidate_id": "23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785",
+      "fold_id": "fold3",
+      "reason": null,
+      "source_sha256": {
+        "decision": "35382d5defaaa996e1d341086710966a151d3c0d7b02d6a67d2a3805f81039a6",
+        "report": "71bd4f158a73a735425a417c72df325959abd311f3035d74a42b981238bc5cea",
+        "result": "b7ddcd5979561833735b97a9615b7d662ac9238be42cf2a23b1ac58aafe71f04",
+        "signal": "7c062b50f50edd453c342beb1b8e4bc11ce47226d6a8a6c15931676fe96196ba"
+      },
+      "status": "PASS"
+    },
+    {
+      "candidate_id": "23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785",
+      "fold_id": "fold4",
+      "reason": null,
+      "source_sha256": {
+        "decision": "edc111fff4c378e5f3cd7da33554d2076f6f4d7ad2a2e67e95d419d83a5a34f7",
+        "report": "8f804600f4beed6d7a9f311c44690a64c7079c8143f213ed2abb653816ffb383",
+        "result": "e9ef53ade8467ec6e01d71dc1c4712dc4ba8d700bda3f5eaf7b0f70ca9a7052c",
+        "signal": "f43cc9cf3c67846a9988ba2ec5b58e1ff093c31e261e974d80c3512c4af332cf"
+      },
+      "status": "PASS"
+    }
+  ],
+  "code_sha": "981741b8c68e6542464cf0cb65311d991e4c3a15",
+  "promotion_authorized": false,
+  "provider_fingerprint": "cd2e68f571c6bd19fbb2b79089e891bb1c43b96ab1fcdb4d2b2a9b1fdd9ce5d5",
+  "provider_snapshot_sha256": "4505bfe465cb6b07a173a0873af71e9b6f3029a82637c9f844c921844b44f07b",
+  "snapshot": "a2ecd8d1cadf404670762a81b1fd33a377f2ef2aaf27a0d9ac6787366defd65b",
+  "training_performed": false
+}
