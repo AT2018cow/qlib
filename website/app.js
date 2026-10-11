@@ -288,7 +288,7 @@ function renderForwardPerformance(data) {
   value.className = 'performance-value ' + (data.cumulative_return >= 0 ? 'gain' : 'loss');
   latest.textContent = '最新估值 ' + formatDate(data.latest_date) + (stale ? ' · 可能滞后' : '');
   if (stale) latest.classList.add('stale');
-  status.textContent = 'Forward tracking · ' + formatDate(data.start_date) + ' 起' +
+  status.textContent = 'Forward tracking · ' + formatDate(data.inception_date) + ' 首次核验起' +
     (stale ? ' · 请核对估值时效' : '');
   if (stale) status.classList.add('stale');
   chart.innerHTML = makePerformanceChart(data.points);
