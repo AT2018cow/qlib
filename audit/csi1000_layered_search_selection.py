@@ -181,10 +181,13 @@ def _checked_persisted_cell(path: Path, expected: dict) -> dict:
             record["phase"] == expected["phase"] and
             record["topk"] == expected["topk"] and
             record["dropn"] == expected["dropn"], "candidate/phase/portfolio identity drift")
-    require(sha_bytes(path / "daily_nav.csv") == record["output_sha256"],
-            "daily NAV bytes SHA drift")
-    for filename in ("fixed_report.parquet", "fixed_decisions.json", "metrics.json"):
-        require((path / filename).is_file(), f"missing evidence {filename}")
+    files = ("daily_nav.csv", "fixed_report.parquet", "fixed_decisions.json", "metrics.json")
+    hashes = record.get("artifact_sha256")
+    require(isinstance(hashes, dict) and set(hashes) == set(files), "artifact hashes absent")
+    for filename in files:
+        require((path / filename).is_file() and sha_bytes(path / filename) == hashes[filename],
+                f"missing or tampered evidence {filename}")
+    require(hashes["daily_nav.csv"] == record["output_sha256"], "NAV SHA drift")
     import pandas as pd
     frame = pd.read_parquet(path / "fixed_report.parquet")
     actual, _ = report_metrics(frame)
