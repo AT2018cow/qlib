@@ -166,6 +166,72 @@ if _HAS_MODAL:
                 "training_performed": False,
             }
 
+    @app.function(
+        volumes={str(SOURCE): original.with_mount_options(read_only=True), str(RESULTS): research},
+        cpu=1, memory=2048, timeout=900,
+    )
+    def inventory_frozen_sources_remote(prefix: str) -> Dict[str, Any]:
+        """SHA-verify all 11x5 frozen signals before P0 portfolio selection."""
+        from audit.csi1000_layered_search_replay import (
+            load_frozen_result, resolve_phase_sources, sha_bytes,
+        )
+        from audit.csi1000_layered_search_core import sha256_file
+        research.reload()
+        frozen = load_frozen_result(REPO)
+        info = frozen["manifest"]
+        snapshot = SOURCE / "csi1000_stage_b" / "provider_snapshot.json"
+        if not snapshot.is_file():
+            raise ValueError("STOP_SOURCE_UNAVAILABLE: provider snapshot manifest absent")
+        actual = json.loads(snapshot.read_text(encoding="utf-8"))
+        if actual.get("snapshot_token") != info.get("snapshot_token") or actual.get("provider_fingerprint") != info.get("provider_fingerprint"):
+            raise ValueError("STOP_P0: provider token/fingerprint mismatch")
+        entries = []
+        source_root = SOURCE / "csi1000_stage_b" / info["snapshot_token"]
+        for candidate in frozen.get("ranked_candidates", []):
+            cid = candidate["candidate_id"]
+            for row in candidate["phase_results"]:
+                phase = int(row["phase"])
+                sources = resolve_phase_sources(source_root, row, cid, phase)
+                expected_model = info["candidate_model_config_sha256"].get(cid)
+                if not expected_model:
+                    raise ValueError("STOP_SOURCE_UNAVAILABLE: model config identity missing")
+                chunks = row.get("chunk_predictions")
+                if not isinstance(chunks, list) or not chunks:
+                    raise ValueError("STOP_SOURCE_UNAVAILABLE: retrain chunk lineage missing")
+                if any(chunk.get("model_config_sha256") != expected_model for chunk in chunks):
+                    raise ValueError("STOP_P0: retrain model config drift")
+                entries.append({
+                    "candidate_id": cid,
+                    "phase": phase,
+                    "model_config_sha256": expected_model,
+                    "signal_sha256": sources["signal_sha256"],
+                    "report_sha256": sources["report_sha256"],
+                    "decision_sha256": sources["decision_sha256"],
+                    "n_retrain_chunks": len(chunks),
+                    "chunk_prediction_sha256": [
+                        chunk.get("prediction_content_sha256") for chunk in chunks
+                    ],
+                })
+        if len(entries) != 55 or len({(e["candidate_id"],e["phase"]) for e in entries}) != 55:
+            raise ValueError("STOP_P0: original frozen 11x5 source inventory incomplete")
+        payload = {
+            "status": "SOURCE_11x5_SHA_VERIFIED", "protocol": PROTOCOL_VERSION,
+            "provider_fingerprint": actual["provider_fingerprint"],
+            "provider_snapshot_sha256": sha256_file(snapshot),
+            "snapshot_token": actual["snapshot_token"],
+            "sources": entries,
+        }
+        target = RESULTS / prefix / "frozen_source_11x5.json"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        encoded = json.dumps(payload, indent=2, sort_keys=True, allow_nan=False) + "\n"
+        if target.exists():
+            if target.read_text(encoding="utf-8") != encoded:
+                raise ValueError("STOP_P0: frozen source inventory conflict")
+        else:
+            target.write_text(encoded, encoding="utf-8")
+            research.commit()
+        return {"status": payload["status"], "count": len(entries), "manifest_sha256": sha256_file(target)}
+
     @app.function(volumes={str(RESULTS): research}, cpu=1, memory=1024, timeout=120)
     def inventory_completed_remote(prefix: str, stage: str) -> List[str]:
         """Read existing research artifacts and accept only verified output hashes."""
@@ -294,7 +360,15 @@ if _HAS_MODAL:
             raise RuntimeError("STOP_P0: frozen protocol already exists with different content")
         if not protocol_path.exists():
             protocol_path.write_text(protocol_bytes, encoding="utf-8")
+        source_55_file = RESULTS / prefix / "frozen_source_11x5.json"
+        if not source_55_file.is_file():
+            raise RuntimeError("STOP_P0: 11x5 source SHA inventory absent")
+        source_55 = json.loads(source_55_file.read_text(encoding="utf-8"))
+        if len(source_55.get("sources", [])) != 55:
+            raise RuntimeError("STOP_P0: 11x5 source inventory incomplete")
         manifest = {
+            "frozen_11x5_manifest_sha256": sha256_file(source_55_file),
+            "frozen_11x5_sources": len(source_55["sources"]),
             "protocol": PROTOCOL_VERSION,
             "run_id": run_id,
             "stage": stage,
@@ -362,6 +436,10 @@ if _HAS_MODAL:
             note="reserve before any billable remote inventory or replay",
         )
         ledger_obj.save(ledger)
+        if stage == "p0":
+            verified_roster = inventory_frozen_sources_remote.remote(prefix)
+            if verified_roster.get("count") != 55:
+                raise RuntimeError("STOP_P0: missing 11x5 source inventory")
         completed = set(inventory_completed_remote.remote(prefix, stage))
         planned = sorted(enumerate_cells(stage), key=lambda c: c["cell_key"])
         pending = [c for c in planned if c["cell_key"] not in completed]
