@@ -258,6 +258,7 @@ def main():
                 # A separate synthetic active-series example covers chart layout.
                 active = {
                     "start_date": "2026-10-12",
+                    "inception_date": "2026-10-12",
                     "status": "active",
                     "latest_date": "2026-10-13",
                     "cumulative_return": -0.012,

@@ -174,7 +174,8 @@ function normalizeForwardPerformance(raw) {
       ? raw : invalid;
   }
   if (raw.status !== 'active' || raw.points.length === 0 ||
-      raw.points[0]?.date !== FORWARD_START) return invalid;
+      raw.points[0]?.date < FORWARD_START ||
+      raw.inception_date !== raw.points[0]?.date) return invalid;
   let previousDate = '';
   let previousNav = 1;
   for (const point of raw.points) {
@@ -254,7 +255,7 @@ function makePerformanceChart(points, w = 760, h = 180) {
       <path d="${path}" class="performance-line ${positive ? 'gain' : 'loss'}"/>
       <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="4" class="performance-dot ${positive ? 'gain' : 'loss'}"/>
     </svg>
-    <div class="performance-axis"><span>2026.10.12 · 起点</span><span>${formatDate(rows[rows.length - 1].date)} · 最近估值</span></div>
+    <div class="performance-axis"><span>${formatDate(rows[0].date)} · 首次已核验估值</span><span>${formatDate(rows[rows.length - 1].date)} · 最近估值</span></div>
   `;
 }
 
@@ -287,7 +288,7 @@ function renderForwardPerformance(data) {
   value.className = 'performance-value ' + (data.cumulative_return >= 0 ? 'gain' : 'loss');
   latest.textContent = '最新估值 ' + formatDate(data.latest_date) + (stale ? ' · 可能滞后' : '');
   if (stale) latest.classList.add('stale');
-  status.textContent = 'Forward tracking · ' + formatDate(data.start_date) + ' 起' +
+  status.textContent = 'Forward tracking · ' + formatDate(data.inception_date) + ' 首次核验起' +
     (stale ? ' · 请核对估值时效' : '');
   if (stale) status.classList.add('stale');
   chart.innerHTML = makePerformanceChart(data.points);

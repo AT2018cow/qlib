@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
 from csi1000_tuner_core import deterministic_score_order
+from paper_accounting import close_valuation, verify_ledger
 
 STATE_VERSION = 2
 
@@ -190,6 +191,8 @@ class PaperPortfolio:
         close_prices: Optional[Dict[str, float]] = None,
         *,
         factors: Dict[str, float],
+        strict_valuation: bool = False,
+        confirmed_halts: Optional[set[str]] = None,
     ) -> dict:
         """Settle adjusted Qlib share units; factor is mandatory for lot-aligned buys.
 
@@ -210,6 +213,7 @@ class PaperPortfolio:
         buy_tradable = buy_tradable or {}
         sell_tradable = sell_tradable or {}
         close_prices = close_prices or {}
+        confirmed_halts = set(confirmed_halts or ())
         if not isinstance(factors, dict):
             raise ValueError("execution-day Qlib $factor mapping is required")
         decision = self.decision_from_ranking(pending["ranking"])
@@ -222,6 +226,22 @@ class PaperPortfolio:
             factor = factors.get(sym)
             if factor is None or not math.isfinite(float(factor)) or factor <= 0:
                 raise ValueError(f"missing/invalid Qlib $factor for planned buy {sym} on {execution_date}")
+
+        # Validate all current holdings and potentially executable new buys
+        # BEFORE mutating the account.  No inferred halts or stale quotes.
+        if strict_valuation:
+            for sym in self.positions:
+                op = open_prices.get(sym)
+                if (op is None or not math.isfinite(float(op)) or float(op) <= 0) and sym not in confirmed_halts:
+                    raise ValueError(f"unverified missing open for held {sym}")
+            candidates = {sym: dict(pos) for sym, pos in self.positions.items()}
+            for sym in decision["buy"]:
+                px = open_prices.get(sym)
+                if buy_tradable.get(sym, True) is not False and px is not None and math.isfinite(float(px)) and float(px) > 0:
+                    candidates.setdefault(sym, {"shares": 1.0, "last_price": float(px)})
+            close_valuation(self.cash, candidates, close_prices, confirmed_halts=confirmed_halts)
+        opening_cash = self.cash
+        opening_positions = {s: {"shares": float(p["shares"])} for s, p in self.positions.items()}
 
         # Public forward performance is normalized to the account value at the
         # execution-day open *before* trades.  Missing opens conservatively fall
@@ -330,18 +350,29 @@ class PaperPortfolio:
             for pos in self.positions.values()
         )
 
-        # Mark the post-trade holdings to the same execution day's close when
-        # those prices are available.  This is the public end-of-day NAV; the
-        # existing portfolio_value field remains the post-trade open valuation
-        # for backward compatibility.
-        for sym, pos in self.positions.items():
-            px = close_prices.get(sym)
-            if px is not None and px > 0:
-                pos["last_price"] = float(px)
-        portfolio_value_close = self.cash + sum(
-            float(pos["shares"]) * float(pos.get("last_price", pos["entry_price"]))
-            for pos in self.positions.values()
-        )
+        # Both historical replay and forward publication call the same
+        # valuation rule.  Legacy test/diagnostic callers may opt out, but
+        # unverified marks can never appear in the public return series.
+        if strict_valuation:
+            portfolio_value_close, position_marks = close_valuation(
+                self.cash, self.positions, close_prices, confirmed_halts=confirmed_halts
+            )
+            for sym, mark in position_marks.items():
+                self.positions[sym]["last_price"] = mark["price"]
+        else:
+            for sym, pos in self.positions.items():
+                px = close_prices.get(sym)
+                if px is not None and math.isfinite(float(px)) and px > 0:
+                    pos["last_price"] = float(px)
+            portfolio_value_close = self.cash + sum(
+                float(pos["shares"]) * float(pos.get("last_price", pos["entry_price"]))
+                for pos in self.positions.values()
+            )
+            position_marks = {
+                sym: {"shares": float(pos["shares"]), "price": float(pos["last_price"]),
+                      "reason": "UNVERIFIED_LEGACY"}
+                for sym, pos in self.positions.items()
+            }
         report = {
             "date": str(execution_date),
             "signal_date": pending["signal_date"],
@@ -352,6 +383,10 @@ class PaperPortfolio:
             "executed_buy": executed_buy,
             "blocked_buy": blocked_buy,
             "cash": round(self.cash, 2),
+            "opening_cash": round(opening_cash, 2),
+            "opening_positions": opening_positions,
+            "position_marks": position_marks,
+            "valuation_verified": bool(strict_valuation),
             "portfolio_value_pre_trade_open": round(portfolio_value_pre_trade_open, 2),
             "portfolio_value": round(portfolio_value, 2),
             "portfolio_value_close": round(portfolio_value_close, 2),
@@ -360,6 +395,8 @@ class PaperPortfolio:
             "cost": round(sell_cost_total + buy_cost_total, 2),
             "metadata": pending.get("metadata", {}),
         }
+        if strict_valuation:
+            verify_ledger(report)
         self.history.append(report)
         self.last_execution_date = str(execution_date)
         self.pending_signal = None

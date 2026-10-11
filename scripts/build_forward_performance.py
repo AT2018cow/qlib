@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from forward_performance import build_forward_performance
+from forward_performance import FORWARD_PERFORMANCE_START, build_forward_performance
 
 
 def main() -> None:
@@ -23,10 +23,15 @@ def main() -> None:
     for path in sorted(args.signals.glob("*_paper_portfolio.json")):
         try:
             raw = json.loads(path.read_text())
-        except (OSError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError) as exc:
+            if path.name[:10] >= FORWARD_PERFORMANCE_START:
+                raise ValueError(f"invalid post-start paper artifact: {path}") from exc
             continue
-        if isinstance(raw, dict):
-            artifacts.append(raw)
+        if not isinstance(raw, dict):
+            if path.name[:10] >= FORWARD_PERFORMANCE_START:
+                raise ValueError(f"unexpected post-start paper artifact: {path}")
+            continue
+        artifacts.append(raw)
 
     result = build_forward_performance(artifacts)
     args.output.parent.mkdir(parents=True, exist_ok=True)

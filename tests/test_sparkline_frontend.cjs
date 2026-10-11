@@ -74,7 +74,7 @@ const firstPoint = {
   daily_return: 0.03, cumulative_return: 0.03,
 };
 const validForward = {
-  start_date: '2026-10-12', status: 'active',
+  start_date: '2026-10-12', inception_date: '2026-10-12', status: 'active',
   latest_date: '2026-10-12', cumulative_return: 0.03,
   points: [firstPoint],
 };
@@ -97,6 +97,11 @@ test('forward panel rejects pre-inception, malformed and contradictory data', ()
     ...validForward, points: [{ ...firstPoint, daily_return: 0.99 }],
   }).status, 'invalid', 'daily return must reconcile to NAV');
   assert.equal(validate({ ...validForward, latest_date: '2026-10-13' }).status, 'invalid');
+  assert.equal(validate({
+    ...validForward,
+    inception_date: '2026-10-13', latest_date: '2026-10-13',
+    points: [{ ...firstPoint, date: '2026-10-13' }],
+  }).status, 'active', 'the first verified date may follow planned inception');
   assert.equal(validate({
     ...validForward, points: [firstPoint, firstPoint],
   }).status, 'invalid', 'duplicate dates cannot be plotted');
@@ -121,7 +126,7 @@ test('forward awaiting state is not confused with a zero return', () => {
 
 test('validated forward curve labels dates and flags possibly stale valuations', () => {
   const chart = makePerformanceChart(validForward.points);
-  assert.match(chart, /2026\.10\.12 · 起点/);
+  assert.match(chart, /2026\.10\.12 · 首次已核验估值/);
   assert.match(chart, /2026\.10\.12 · 最近估值/);
   assert.ok(isPossiblyStale('2026-10-12', new Date('2026-10-24T00:00:00Z')));
   assert.equal(isPossiblyStale('2026-10-12', new Date('2026-10-13T00:00:00Z')), false);
