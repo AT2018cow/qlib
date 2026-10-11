@@ -109,13 +109,18 @@ modal billing report --for "this month" --show-resources
 # 独立存放纠错结果，绝不覆盖原始训练/论文结果
 modal volume create qlib-csi1000-research-audit
 
+# OpenCode 必须保留前台会话、预先延长工具超时；确保 pipefail 保留 Modal 真实退出码
+set -o pipefail
 # 先 smoke，核查 Baseline/Winner 各 4 折，成本和日志
 modal run audit/stage_a_corrected_replay_modal.py \
-  --scope controls --max-workers 2
+  --scope controls --max-workers 2 2>&1 | tee /tmp/csi1000-stage-a-controls-modal.log
 
-# smoke 通过后，在同一快照上跑 320 格。长任务脱离本地终端：
+# 8 格和 16 格通过、报价/PIT 门禁批准且预算复核后，前台运行 320 格：
+# 下面是工程实现后的计划用法；不要在未验收、工具超时不足时运行。
 modal run audit/stage_a_corrected_replay_modal.py \
-  --scope all --max-workers 16
+  --scope all --max-workers 8 \
+  --estimated-total-usd <ACTUAL_TOTAL_ESTIMATE_LE_20> \
+  2>&1 | tee /tmp/csi1000-stage-a-320-modal.log
 
 # 如需查看进度/日志，先用 modal app list 找到独立研究 App 名称
 modal app list
