@@ -116,7 +116,7 @@ image = (
     .run_commands(
         "cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/qlib/board_rules.py /root/qlib/board_execution.py /root/qlib/paper_portfolio.py /root/qlib/portfolio_performance.py /root/qlib/github_commit.py "
             "/root/qlib/csi1000_tuner_core.py /root/qlib/csi1000_production_config.py /root/qlib/csi1000_mvp_contract.py "
-            "/root/qlib/chart_series.py /root/qlib/signal_publication_gate.py /root/qlib/paper_accounting.py /root/"
+            "/root/qlib/chart_series.py /root/qlib/signal_publication_gate.py /root/qlib/paper_accounting.py /root/qlib/execution_limits.py /root/"
     )
 )
 
