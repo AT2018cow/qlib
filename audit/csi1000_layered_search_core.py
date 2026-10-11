@@ -1020,7 +1020,35 @@ def main(argv: List[str] | None = None) -> int:
             note=f"operator billing report sha256={sha256_file(args.billing_report)}",
         )
         ledger.save(args.ledger)
-        print(json.dumps({"status": status, "ledger": str(Path(args.ledger).expanduser()),
+        ledger_dir = Path(args.ledger).expanduser().parent
+        pending_file = ledger_dir / "trial_events_pending.jsonl"
+        final_file = ledger_dir / "trial_ledger.jsonl"
+        booked = 0
+        if pending_file.exists():
+            event_rows = [json.loads(line) for line in pending_file.read_text(encoding="utf-8").splitlines()
+                          if line.strip()]
+            existing_keys = set()
+            if final_file.exists():
+                existing_keys = {json.loads(line)["cell_key"] for line in final_file.read_text(encoding="utf-8").splitlines()
+                                 if line.strip()}
+            new_rows = []
+            for event in event_rows:
+                if event.get("run_id") != args.run_id or event.get("cell_key") in existing_keys:
+                    continue
+                new_rows.append({
+                    "cell_key": event["cell_key"], "run_id": args.run_id,
+                    "stage": event.get("stage"), "status": event["status"],
+                    "app_id": args.app_id, "spend_usd": 0.0,
+                    "per_cell_spend_unallocated": True,
+                    "billed_app_total_usd": args.spent_usd,
+                    "billing_report_sha256": sha256_file(args.billing_report),
+                })
+                existing_keys.add(event["cell_key"])
+            if new_rows:
+                append_trial_ledger(final_file, new_rows)
+                booked = len(new_rows)
+        print(json.dumps({"booked_final_trial_rows": booked, "status": status,
+                          "ledger": str(Path(args.ledger).expanduser()),
                           "remaining_global_usd": ledger.remaining_global()}, indent=2))
         return 0 if status == "OK_CONTINUE" else 3
     if args.inventory:
