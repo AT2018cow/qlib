@@ -80,3 +80,20 @@
 **`KEEP_CANONICAL_PENDING_FORWARD` / `INSUFFICIENT_FORWARD_EVIDENCE`**：当前无 2026-10-12 起真实、同时、不可回填双候选前向证据。现役 winner identity 保持，baseline 仅作为未来预冻结 shadow；本轮**没有观察到新的 A line 当前 P0 证据**，这不构成 A line 当期线上健康认证。无权限核验的原始 provider/独立指数价格/真实盘口明确标记未认证，不伪造数值或“完成影响量化”。
 
 B line 仅在具有**具体可复现当期** PIT、label/as-of、报价、身份、日历导致错误发布的 P0 时，把 `date, artifact SHA256, provider snapshot, model id/hash, expected vs observed, fail-closed proof` 交 A line；历史 P1/P2 不阻挡 Top20。下一步固定判据见 [47](47-csi1000-forward-shadow-strategy-decision-protocol-20261011.md)。旧审计 JSON/55 回放、config 和历史信号均未编辑。
+
+## 7. 新增可重复核验与官方 index-price 来源（不改变 DEFERRED）
+
+**基准合约已逐字验证**：`csi1000_stage_b_core.py`（main Git blob `91f89641f075e1a5d1130ec0053d5953db8aeb8e`）指定 `BENCHMARK="SH000852"`，不是从项目标题臆测；CSIndex 官网页面标识 `000852` 为中证1000。独立价源的定向采集路径为中证指数公司 `https://www.csindex.com.cn/csindex-home/perf/index-perf?indexCode=000852&startDate=20241230&endDate=20260930`，这是 AKShare 的 `stock_zh_index_hist_csindex` 所封装的官方 `index-perf` 历史日行情接口。**本会话直接取数未成功**，无完整的 425 行外部可读价格供 424 日比对，故没有外部 benchmark PASS，更不能从第三方网站只见到末日行情而称全期认证。授权网络环境执行：
+
+```bash
+python -m audit.export_csi1000_official_index_closes --out-dir /tmp/csi1000-index-20261011
+python -m audit.csi1000_residual_evidence \
+  --frozen-report /readonly/baseline-phase0/fixed_diagnostic_report.parquet \
+  --external-index /tmp/csi1000-index-20261011/000852_prices.csv \
+  --output /tmp/csi1000-benchmark-residual.json
+python -m unittest -v tests.test_csi1000_residual_evidence tests.test_export_csi1000_official_index_closes
+```
+
+默认的四文件身份+ST+ranking 静态检查不需要私有 provider：`python -m audit.csi1000_residual_evidence --output /tmp/csi1000-residual.json`；导出器将官方响应 SHA256、CSV SHA256、来源 URL 和查询 UTC 时钟记录在单独 receipt，**不提交下载价表到公开仓库**。独立 benchmark 即使内部数值满足误差阈值，也保留 `PENDING_HUMAN_SOURCE_CERTIFICATION`，须核对来源授权、价格指数/全收益口径、精度与末日/初日前 close 的日历无误。
+
+**已实做的非模拟静态核对**：通过连接的 GitHub 文件原文字节独立计算 SHA256，四份冻结 JSON（corrected batch、ledger、baseline phase0 decisions、winner phase0 decisions）均与固定 SHA256 **逐一相等（4/4）**；四笔 SELL、负控 wrong-ticker、winner-absence、唯一日期/代码 key、55 个已保存 benchmark 总回报相同和 snapshot/provider 双身份均一致。该结论不证明真实行情或委托成交。仓库新增 Python 合成负控测试供 CI/授权环境执行；**截至本次登记，未观察到这些新增 unittest 的运行结果，状态 `NOT_EXECUTED_IN_VERIFIED_RUNTIME`**，不得写作 `PASS_TESTS`。
