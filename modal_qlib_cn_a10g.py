@@ -1369,6 +1369,32 @@ def _paper_execution_context(
         if _np.isfinite(factor) and factor > 0:
             factor_by_symbol[inst] = factor
 
+    # Only a dated full-session, independent suspension record can justify
+    # carrying a previously held mark. An isolated missing OHLC quote is not
+    # enough; never infer a halt from a provider NaN.
+    held_missing = {sym for sym in raw.get("positions", {})
+                    if sym not in open_prices or sym not in close_prices}
+    halt_evidence = {}
+    if held_missing:
+        inconsistent = [sym for sym in held_missing
+                        if (sym in open_prices) != (sym in close_prices)]
+        if inconsistent:
+            raise RuntimeError(f"partial held quote is not a certified halt: {inconsistent}")
+        import datetime as _datetime
+        import akshare as _ak
+        from paper_halt_evidence import certify_full_session_halts
+
+        try:
+            suspension_rows = _ak.stock_tfp_em(date=execution_date.replace("-", "")).to_dict("records")
+            halt_evidence = certify_full_session_halts(
+                execution_date, held_missing, suspension_rows,
+                fetched_utc=_datetime.datetime.now(_datetime.timezone.utc).isoformat(),
+            )
+        except Exception as exc:
+            raise RuntimeError(
+                f"cannot certify missing held quotes for {execution_date}: {sorted(held_missing)}"
+            ) from exc
+
     listing = _board_listing_dates(data_dir, insts)
     limit_buy, limit_sell = compute_limit_masks(
         insts,
@@ -1388,6 +1414,8 @@ def _paper_execution_context(
         "open_prices": open_prices,
         "close_prices": close_prices,
         "factors": factor_by_symbol,
+        "confirmed_halts": sorted(halt_evidence),
+        "halt_evidence": halt_evidence,
         "buy_tradable": {inst: not bool(v) for inst, v in zip(insts, limit_buy)},
         "sell_tradable": {inst: not bool(v) for inst, v in zip(insts, limit_sell)},
     }
@@ -1400,6 +1428,7 @@ def _apply_paper_portfolio(
     nd: int,
     *,
     lineage: str = "canonical",
+    verified_calendar=None,
 ) -> dict:
     """Propose the next persistent paper state without committing it.
 
@@ -1455,6 +1484,8 @@ def _apply_paper_portfolio(
                 close_prices=ctx.get("close_prices", {}),
                 factors=ctx.get("factors", {}),
                 strict_valuation=pending_date >= "2026-10-12",
+                confirmed_halts=set(ctx.get("confirmed_halts", [])),
+                halt_evidence=ctx.get("halt_evidence", {}),
             )
 
     planned = None
@@ -1513,8 +1544,17 @@ def _apply_paper_portfolio(
             "buy": p.get("planned_buy", []),
         }
 
+    if usage_date >= "2026-10-12" and not verified_calendar:
+        raise RuntimeError("independent exchange trading calendar must be captured for public paper")
+    calendar_dates = sorted(str(d) for d in (verified_calendar or ())
+                            if "2026-10-12" <= str(d) <= usage_date)
     artifact = {
         "state_version": 2,
+        "trading_calendar": {
+            "source": "akshare.tool_trade_date_hist_sina",
+            "through": usage_date,
+            "dates": calendar_dates,
+        } if verified_calendar else None,
         "market": market,
         "paper_lineage": lineage,
         "production_lineage": res.get("production_lineage"),
@@ -4120,6 +4160,7 @@ def daily_cron():
             topk=20,
             nd=2,
             lineage=CANONICAL_PAPER_LINEAGE,
+            verified_calendar=cal,
         )
         files[f"results/signals/{signal_date}_paper_portfolio.json"] = (
             paper_proposals["csi1000"]["artifact_json"]

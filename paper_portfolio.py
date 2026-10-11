@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
 from csi1000_tuner_core import deterministic_score_order
-from paper_accounting import close_valuation, verify_ledger
+from paper_accounting import close_valuation, opening_valuation, verify_ledger
 
 STATE_VERSION = 2
 
@@ -193,6 +193,7 @@ class PaperPortfolio:
         factors: Dict[str, float],
         strict_valuation: bool = False,
         confirmed_halts: Optional[set[str]] = None,
+        halt_evidence: Optional[dict] = None,
     ) -> dict:
         """Settle adjusted Qlib share units; factor is mandatory for lot-aligned buys.
 
@@ -214,6 +215,7 @@ class PaperPortfolio:
         sell_tradable = sell_tradable or {}
         close_prices = close_prices or {}
         confirmed_halts = set(confirmed_halts or ())
+        halt_evidence = halt_evidence or {}
         if not isinstance(factors, dict):
             raise ValueError("execution-day Qlib $factor mapping is required")
         decision = self.decision_from_ranking(pending["ranking"])
@@ -230,6 +232,13 @@ class PaperPortfolio:
         # Validate all current holdings and potentially executable new buys
         # BEFORE mutating the account.  No inferred halts or stale quotes.
         if strict_valuation:
+            for sym in confirmed_halts:
+                evidence = halt_evidence.get(sym)
+                if (not isinstance(evidence, dict) or evidence.get("date") != execution_date
+                        or evidence.get("scope") != "FULL_SESSION" or not evidence.get("source")
+                        or not (str(evidence.get("start_date", "")) <= execution_date
+                                <= str(evidence.get("end_date", "")))):
+                    raise ValueError(f"missing/invalid dated halt evidence for {sym}")
             for sym in self.positions:
                 op = open_prices.get(sym)
                 if (op is None or not math.isfinite(float(op)) or float(op) <= 0) and sym not in confirmed_halts:
@@ -246,11 +255,17 @@ class PaperPortfolio:
         # Public forward performance is normalized to the account value at the
         # execution-day open *before* trades.  Missing opens conservatively fall
         # back to the position's last marked price.
-        portfolio_value_pre_trade_open = self.cash + sum(
-            float(pos["shares"])
-            * float(open_prices.get(sym, pos.get("last_price", pos["entry_price"])))
-            for sym, pos in self.positions.items()
-        )
+        if strict_valuation:
+            portfolio_value_pre_trade_open, opening_marks = opening_valuation(
+                self.cash, self.positions, open_prices, confirmed_halts=confirmed_halts
+            )
+        else:
+            portfolio_value_pre_trade_open = self.cash + sum(
+                float(pos["shares"])
+                * float(open_prices.get(sym, pos.get("last_price", pos["entry_price"])))
+                for sym, pos in self.positions.items()
+            )
+            opening_marks = {}
 
         # A position bought yesterday has one completed bar of holding time today,
         # matching Qlib's default hold_thresh=1 eligibility on the next step.
@@ -385,6 +400,8 @@ class PaperPortfolio:
             "cash": round(self.cash, 2),
             "opening_cash": round(opening_cash, 2),
             "opening_positions": opening_positions,
+            "opening_marks": opening_marks,
+            "halt_evidence": {s: halt_evidence[s] for s in sorted(confirmed_halts)},
             "position_marks": position_marks,
             "valuation_verified": bool(strict_valuation),
             "portfolio_value_pre_trade_open": round(portfolio_value_pre_trade_open, 2),

@@ -22,11 +22,36 @@ def build_forward_performance(
     date.fromisoformat(start_date)
     reports = {}
     scheduled = set()
+    calendar_snapshots = {}
+    calendar_dates = set()
     for artifact in artifacts:
         if artifact.get("market") != "csi1000":
             continue
         if artifact.get("paper_lineage") != CANONICAL_LINEAGE:
             continue
+        usage_day = artifact.get("usage_date")
+        if isinstance(usage_day, str) and usage_day >= start_date:
+            date.fromisoformat(usage_day)
+            snapshot = artifact.get("trading_calendar")
+            if (not isinstance(snapshot, Mapping) or
+                snapshot.get("source") != "akshare.tool_trade_date_hist_sina" or
+                snapshot.get("through") != usage_day or
+                not isinstance(snapshot.get("dates"), list)):
+                raise ValueError(f"unverified publication calendar for {usage_day}")
+            dates = snapshot["dates"]
+            if (dates != sorted(set(dates)) or
+                any(not isinstance(d, str) or d < start_date or d > usage_day
+                    for d in dates)):
+                raise ValueError(f"invalid trading calendar dates for {usage_day}")
+            for d in dates:
+                date.fromisoformat(d)
+            if usage_day not in dates:
+                raise ValueError(f"publication date not in trading calendar: {usage_day}")
+            frozen = tuple(dates)
+            if usage_day in calendar_snapshots and calendar_snapshots[usage_day] != frozen:
+                raise ValueError(f"conflicting trading calendar for {usage_day}")
+            calendar_snapshots[usage_day] = frozen
+            calendar_dates.update(frozen)
         pending = artifact.get("pending_orders")
         if isinstance(pending, Mapping):
             due = pending.get("execution_date")
@@ -71,6 +96,15 @@ def build_forward_performance(
             raise ValueError(f"conflicting performance reports for {day}")
         reports[day] = item
 
+    # A later snapshot must extend, never rewrite, the calendar already
+    # published for earlier usage dates.
+    prev_calendar = ()
+    for usage in sorted(calendar_snapshots):
+        snapshot = calendar_snapshots[usage]
+        if snapshot[:len(prev_calendar)] != prev_calendar:
+            raise ValueError(f"calendar history drift at {usage}")
+        prev_calendar = snapshot
+
     ordered = [reports[d] for d in sorted(reports)]
     if not ordered:
         return {
@@ -83,9 +117,21 @@ def build_forward_performance(
 
     first = ordered[0]["date"]
     latest = ordered[-1]["date"]
-    missing = sorted(day for day in scheduled if day <= latest and day not in reports)
+    if not calendar_snapshots:
+        raise ValueError("cannot publish forward NAV without dated trading calendar evidence")
+    reported_outside = sorted(set(reports).difference(calendar_dates))
+    if reported_outside:
+        raise ValueError(f"report dates outside observed trading calendar: {reported_outside}")
+    missing = sorted(
+        (day for day in scheduled if day <= latest and day not in reports)
+    )
+    # A completely absent daily artifact leaves no pending-order record.
+    # Checking all known exchange sessions closes that silent-gap loophole.
+    missing += sorted(day for day in calendar_dates
+                      if first <= day <= latest and day not in reports
+                      and day not in missing)
     if missing:
-        raise ValueError(f"missing scheduled execution settlement(s): {missing}")
+        raise ValueError(f"missing scheduled/trading-calendar settlement(s): {missing}")
     baseline = ordered[0]["portfolio_value_pre_trade_open"]
     prev = None
     points = []

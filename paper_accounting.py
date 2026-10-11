@@ -44,6 +44,34 @@ def close_valuation(cash, positions, close_prices, *, confirmed_halts=()):
     return amount, marks
 
 
+def opening_valuation(cash, positions, open_prices, *, confirmed_halts=()):
+    """Independently mark all PRE-TRADE holdings at the execution-day open."""
+    total, marks = close_valuation(
+        cash, positions, open_prices, confirmed_halts=confirmed_halts
+    )
+    for mark in marks.values():
+        if mark["reason"] == "EXCHANGE_CLOSE":
+            mark["reason"] = "EXCHANGE_OPEN"
+    return total, marks
+
+
+def _validate_mark_evidence(symbol, mark, day, halt_evidence, phase):
+    reason = mark.get("reason")
+    expected = "EXCHANGE_OPEN" if phase == "open" else "EXCHANGE_CLOSE"
+    if reason == expected:
+        return
+    if reason != "CERTIFIED_HALT_CARRY":
+        raise ValueError(f"unverified {phase} valuation reason for {symbol}")
+    evidence = halt_evidence.get(symbol)
+    if not isinstance(evidence, dict):
+        raise ValueError(f"missing halt evidence for {symbol}")
+    if (evidence.get("date") != day or
+        not evidence.get("source") or
+        evidence.get("scope") != "FULL_SESSION" or
+        not (str(evidence.get("start_date", "")) <= day <= str(evidence.get("end_date", "")))):
+        raise ValueError(f"invalid dated halt evidence for {symbol}")
+
+
 def verify_ledger(report, *, tolerance=0.011):
     """Independently recompute cash, share inventory and close NAV from fills.
 
@@ -53,6 +81,23 @@ def verify_ledger(report, *, tolerance=0.011):
     end_cash = float(report["cash"])
     opening = report["opening_positions"]
     closing = report["position_marks"]
+    opening_marks = report["opening_marks"]
+    day = str(report["date"])
+    halt_evidence = report.get("halt_evidence", {})
+    if not isinstance(halt_evidence, dict):
+        raise ValueError("invalid halt evidence")
+    expected_open_nav = opening_cash
+    if set(opening_marks) != set(opening):
+        raise ValueError("opening holdings are not fully marked")
+    for symbol, position in opening.items():
+        mark = opening_marks[symbol]
+        shares = _positive(position["shares"], f"{symbol} opening shares")
+        if not math.isclose(shares, _positive(mark["shares"], f"{symbol} open mark shares"), rel_tol=1e-9, abs_tol=1e-7):
+            raise ValueError(f"opening share mark mismatch: {symbol}")
+        _validate_mark_evidence(symbol, mark, day, halt_evidence, "open")
+        expected_open_nav += shares * _positive(mark["price"], f"{symbol} opening price")
+    if abs(expected_open_nav - float(report["portfolio_value_pre_trade_open"])) > tolerance:
+        raise ValueError("opening NAV does not match cash plus marked pre-trade holdings")
     expected_cash = opening_cash
     quantities = {symbol: float(p["shares"]) for symbol, p in opening.items()}
     cost_sum = 0.0
@@ -79,6 +124,7 @@ def verify_ledger(report, *, tolerance=0.011):
         raise ValueError("unexplained added holding")
     expected_nav = end_cash
     for symbol, mark in closing.items():
+        _validate_mark_evidence(symbol, mark, day, halt_evidence, "close")
         expected_nav += _positive(mark["shares"], f"{symbol} shares") * _positive(mark["price"], f"{symbol} price")
     if abs(expected_nav - float(report["portfolio_value_close"])) > tolerance:
         raise ValueError("close NAV does not match cash plus marked holdings")

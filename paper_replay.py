@@ -63,6 +63,7 @@ def replay_paper_sessions(rows, *, config=None, calendar=None, listing_dates=Non
             factors=factors,
             strict_valuation=True,
             confirmed_halts=suspended,
+            halt_evidence=row.get("halt_evidence", {}),
         )
         reports.append(report)
     return reports
