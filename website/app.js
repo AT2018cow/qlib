@@ -174,7 +174,8 @@ function normalizeForwardPerformance(raw) {
       ? raw : invalid;
   }
   if (raw.status !== 'active' || raw.points.length === 0 ||
-      raw.points[0]?.date !== FORWARD_START) return invalid;
+      raw.points[0]?.date < FORWARD_START ||
+      raw.inception_date !== raw.points[0]?.date) return invalid;
   let previousDate = '';
   let previousNav = 1;
   for (const point of raw.points) {
@@ -254,7 +255,7 @@ function makePerformanceChart(points, w = 760, h = 180) {
       <path d="${path}" class="performance-line ${positive ? 'gain' : 'loss'}"/>
       <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="4" class="performance-dot ${positive ? 'gain' : 'loss'}"/>
     </svg>
-    <div class="performance-axis"><span>2026.10.12 · 起点</span><span>${formatDate(rows[rows.length - 1].date)} · 最近估值</span></div>
+    <div class="performance-axis"><span>${formatDate(rows[0].date)} · 首次已核验估值</span><span>${formatDate(rows[rows.length - 1].date)} · 最近估值</span></div>
   `;
 }
 
