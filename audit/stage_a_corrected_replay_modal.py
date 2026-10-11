@@ -26,6 +26,7 @@ research = modal.Volume.from_name("qlib-csi1000-research-audit", create_if_missi
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .apt_install("build-essential")
+    .env({"PYTHONPATH": "/root/qlib:/root", "MLFLOW_ALLOW_FILE_STORE": "true"})
     .pip_install("numpy==1.26.4", "pandas==2.2.3", "pyarrow", "lightgbm==4.7.0",
                  "cython", "pyyaml", "ruamel.yaml", "fire", "mlflow", "dill",
                  "filelock", "tqdm", "loguru", "joblib", "pydantic-settings",
@@ -36,7 +37,7 @@ image = (
         any(part in str(p) for part in (".venv", "mlruns", "__pycache__", ".git"))
     ))
     .run_commands("cd /root/qlib && pip install . --no-build-isolation --no-deps",
-                  "cp /root/qlib/deterministic_strategy.py /root/qlib/board_execution.py /root/qlib/board_rules.py /root/")
+                  "cp /root/qlib/deterministic_strategy.py /root/qlib/board_execution.py /root/qlib/board_rules.py /root/qlib/portfolio_performance.py /root/qlib/execution_quote_universe.py /root/qlib/csi1000_tuner_core.py /root/")
 )
 app = modal.App("qlib-csi1000-stage-a-quote-replay", image=image)
 
