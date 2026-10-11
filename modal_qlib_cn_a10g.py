@@ -1506,7 +1506,15 @@ def _apply_paper_portfolio(
             sorted(set(pp.positions).union(s for s, _ in res["ranking_full"]))
         )
         if usage_date >= "2026-10-12" and st_risk["status"] != "SOURCE_SNAPSHOT_AVAILABLE":
-            raise RuntimeError("cannot freeze pre-open ST evidence: refusing new verified paper plan")
+            # Preserve the actual provider failure in the on-call traceback.
+            # Never label a failed/empty ST snapshot as verified or generate a
+            # paper plan that could later be mistaken for executable orders.
+            raise RuntimeError(
+                "cannot freeze pre-open ST evidence: refusing new verified paper plan; "
+                f"source={st_risk.get('source', 'UNKNOWN')}; "
+                f"status={st_risk['status']}; "
+                f"cause={st_risk.get('detail', 'NO_SOURCE_DIAGNOSTIC')}"
+            )
         planned = pp.plan_signal(
             signal_date=res["date"],
             execution_date=usage_date,
@@ -4019,6 +4027,10 @@ def _current_st_risk_snapshot(instruments: list[str]) -> dict:
             }
         except Exception as exc:  # pylint: disable=W0703
             last_err = exc
+            print(
+                f"[risk] ST source akshare.stock_zh_a_st_em attempt={attempt}/2 "
+                f"FAILED: {type(exc).__name__}: {str(exc)[:180]}"
+            )
             if attempt == 1:
                 time.sleep(5)
     return {
