@@ -981,6 +981,15 @@ def build_cli() -> argparse.ArgumentParser:
         "--check-frozen", action="store_true", help="Re-read frozen profiles from csi1000_production_config.py."
     )
     p.add_argument("--repo-root", default=".", help="Repository root for --check-frozen.")
+    p.add_argument("--book-actual", action="store_true", help="Book billed USD after an attached Modal batch.")
+    p.add_argument("--ledger", default="~/.local/state/qlib-csi1000-layered/cost_ledger.json")
+    p.add_argument("--layer", choices=tuple(LAYER_CAPS_USD), default="p0")
+    p.add_argument("--run-id", default="")
+    p.add_argument("--app-id", default="")
+    p.add_argument("--spent-usd", type=float, default=float("nan"))
+    p.add_argument("--elapsed-hours", type=float, default=float("nan"))
+    p.add_argument("--fits", type=int, default=0)
+    p.add_argument("--billing-report", default="", help="Saved operator billing report evidence (never credentials).")
     return p
 
 
@@ -998,6 +1007,22 @@ def main(argv: List[str] | None = None) -> int:
         Process exit code.
     """
     args = build_cli().parse_args(argv)
+    if args.book_actual:
+        require(args.billing_report and Path(args.billing_report).is_file(),
+                "booking requires an actual saved Modal billing report")
+        require(args.run_id and args.app_id, "booking requires run-id and real App ID")
+        require(args.elapsed_hours is not None and math.isfinite(args.elapsed_hours)
+                and args.elapsed_hours >= 0, "elapsed hours unknown")
+        ledger = BudgetLedger.load(args.ledger)
+        status = ledger.record_actual(
+            args.layer, args.spent_usd, app_id=args.app_id, run_id=args.run_id,
+            fits=args.fits, hours=args.elapsed_hours,
+            note=f"operator billing report sha256={sha256_file(args.billing_report)}",
+        )
+        ledger.save(args.ledger)
+        print(json.dumps({"status": status, "ledger": str(Path(args.ledger).expanduser()),
+                          "remaining_global_usd": ledger.remaining_global()}, indent=2))
+        return 0 if status == "OK_CONTINUE" else 3
     if args.inventory:
         check_layer_totals()
         print(
