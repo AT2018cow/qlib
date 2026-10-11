@@ -55,7 +55,10 @@ Use actual worker-seconds and real workspace pricing to estimate full compute: m
 After controls PASS **and after the 16-cell sample plus quote/PIT evidence gate is accepted**, run with an attached, foreground OpenCode command. **Do not use the Modal `--detach` flag.** In the operator's OpenCode environment a detached invocation may be interrupted when the calling tool times out. Preconfigure the OpenCode tool/session timeout to exceed the estimated total run time (image startup, queueing, all 320 cells and finalization); keep the session attached and wait for its actual exit status. If an adequate tool timeout or durable attached session cannot be provided, **do not launch**; arrange a separately approved long-duration foreground execution or bounded-batch design instead. Do not use `nohup`, shell `&`, or other untracked background workarounds.
 
     set -o pipefail
-    modal run audit/stage_a_corrected_replay_modal.py --scope all --max-workers 8 --estimated-total-usd <ACTUAL_ESTIMATE_NOT_OVER_20> 2>&1 | tee /tmp/csi1000-stage-a-320-modal.log
+    # Before running, export ESTIMATED_TOTAL_USD as an operator-verified number <= $20;
+    # include all prior pilot/retry spending and use real workspace pricing.
+    : "${ESTIMATED_TOTAL_USD:?Export the verified USD budget estimate before running}"
+    modal run audit/stage_a_corrected_replay_modal.py --scope all --max-workers 8 --estimated-total-usd "$ESTIMATED_TOTAL_USD" 2>&1 | tee /tmp/csi1000-stage-a-320-modal.log
     # Wait for the foreground command to finish; preserve its actual exit code.
     modal app list
     modal app logs <actual-app-id>
