@@ -188,3 +188,70 @@ def test_paper_date_drift_fails_closed(tmp_path):
     kwargs["paper"]["pending_orders"]["signal_date"] = "2026-01-01"
     with pytest.raises(ValueError, match="pending order dates"):
         build_mvp_metadata(**kwargs)
+
+
+def _frozen_holiday_calendar(n=900):
+    """Synthetic sessions around the real 2016-01-01 market holiday."""
+    d = date(2015, 12, 28)
+    days = []
+    while len(days) < n:
+        if d.weekday() < 5 and d.isoformat() != "2016-01-01":
+            days.append(d.isoformat())
+        d += timedelta(days=1)
+    return days
+
+
+def _frozen_holiday_training(cal):
+    return {
+        "fit_asof": cal[-1],
+        "horizon": 20,
+        "train_start": "2016-01-01",
+        "train_end": cal[500],
+        "valid_start": cal[540],
+        "valid_end": cal[-24],
+    }
+
+
+def test_frozen_holiday_train_start_snaps_only_to_known_first_session():
+    cal = _frozen_holiday_calendar()
+    training = _frozen_holiday_training(cal)
+    result = validate_label_maturity(cal, training, cal[-1])
+    assert result["status"] == "PASS"
+    assert result["train_start"] == "2016-01-01"  # unchanged frozen config
+    assert result["train_start_effective"] == "2016-01-04"
+    assert result["train_start_resolution"] == "FROZEN_HOLIDAY_TO_NEXT_SESSION"
+    assert result["horizon_sessions"] == 20
+
+
+def test_frozen_holiday_start_rejects_truncated_or_corrupted_calendar():
+    cal = _frozen_holiday_calendar()
+    training = _frozen_holiday_training(cal)
+    with pytest.raises(ValueError, match="first trading session 2016-01-04"):
+        validate_label_maturity(
+            [d for d in cal if d != "2016-01-04"], training, cal[-1]
+        )
+    with pytest.raises(ValueError, match="incorrectly includes"):
+        validate_label_maturity(
+            sorted(cal + ["2016-01-01"]), training, cal[-1]
+        )
+
+
+def test_no_generic_non_session_snapping_of_split_boundaries():
+    cal = _frozen_holiday_calendar()
+    training = _frozen_holiday_training(cal)
+    training["train_start"] = "2016-01-02"
+    with pytest.raises(ValueError, match="training dates missing"):
+        validate_label_maturity(cal, training, cal[-1])
+
+    training = _frozen_holiday_training(cal)
+    training["train_end"] = "2016-01-02"
+    with pytest.raises(ValueError, match="training dates missing"):
+        validate_label_maturity(cal, training, cal[-1])
+
+
+def test_holiday_resolution_does_not_bypass_20_session_maturity():
+    cal = _frozen_holiday_calendar()
+    training = _frozen_holiday_training(cal)
+    training["valid_end"] = cal[-11]
+    with pytest.raises(ValueError, match="validation label tail"):
+        validate_label_maturity(cal, training, cal[-1])
