@@ -79,7 +79,7 @@ Synthetic GitHub CI passing is not sufficient for full PR-A acceptance. Executio
 
 Use `results/csi1000_strategy_selection_evidence/pr64/<REPLAY_CODE_SHA>/<scope>/` where `REPLAY_CODE_SHA` is the **exact clean checkout SHA printed by Modal**, not the current branch HEAD after evidence-only commits. Keep `controls/`, `sample/`, and `all/` separate and append-only. Never amend an already reviewed evidence commit or overwrite an older run. For reruns with a different replay code SHA, use a new directory. Retain the original research Volume prefix (snapshot, protocol version, code SHA and provider fingerprint) in `operator_run.json`.
 
-For **each executed scope** (including partial/BLOCKED attempts), commit these *three original unmodified* JSON files from `summaries/<scope>/`:
+For **each finalized scope** (including finalized BLOCKED attempts), commit these *three original unmodified* JSON files from `summaries/<scope>/`. If a source/permission/finalizer failure stops execution before any summary exists, submit `operator_run.json` with `BLOCKED_SOURCE_NOT_AVAILABLE` (or the exact failure), real logs and an explicit `summary_files_not_generated` explanation; **do not fabricate missing summary JSON**:
 - `stage_a_320_corrected_batch.json` — full attempted-cell table, explicit PASS/BLOCKED reasons, original/fixed metrics and order/NAV changes; for controls expected=8, sample=16, all=320. The filename is fixed even for smaller scopes; the `scope` and `expected` fields determine actual coverage.
 - `stage_a_80_corrected_ranking.json` — controls/sample must remain pilot-only, all must contain 80 ranks *only if* 320/320 passed; blocked runs must preserve `BLOCKED_INCOMPLETE_CELLS`.
 - `source_manifest.json` — source file SHA256 per cell, provider manifest SHA, provider fingerprint and replay code SHA, including any BLOCKED cells. **Do not upload the original signals/provider** just to prove their hashes.
@@ -121,3 +121,13 @@ git push
 **Important SHA/resume trap:** the Modal wrapper keys `controls → sample → all` and hash-checked resume to the *same exact git HEAD*. An evidence commit pushed to the replay code branch **between** controls and all changes HEAD, so the subsequent run cannot find previously passed controls under the new prefix. Either (a) finish scopes at the unchanged clean code SHA and only then commit evidence to the PR #64 branch; or (b) publish preliminary controls evidence through a **separate GitHub evidence branch/PR or immutable evidence commit** without moving the running replay checkout/branch, and post its link in PR #64. If requesting an 8-cell review before the full run, use (b). After final commit, any resume must explicitly check out the original replay SHA on a clean worktree. Never relabel run outputs using the later evidence commit SHA.
 
 Publishing GitHub evidence does not imply that reviewers have authenticated independent market/broker execution; missing raw-source access or a blocked cell remains a separately visible limit. Original Volume and full raw predictions remain immutable, and no previous Stage-A/Stage-B history is rewritten.
+
+### Minimal checksum verification for a copied GitHub review scope
+
+```bash
+# Execute AFTER assembling the permitted subset, NOT inside the original source Volume.
+EVIDENCE_SCOPE="results/csi1000_strategy_selection_evidence/pr64/$REPLAY_CODE_SHA/controls"
+( cd "$EVIDENCE_SCOPE" && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt )
+( cd "$EVIDENCE_SCOPE" && sha256sum -c SHA256SUMS.txt )
+# Repeat for sample and all, with their real scope paths, BEFORE git add/commit.
+```
