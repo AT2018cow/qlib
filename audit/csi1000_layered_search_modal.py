@@ -182,7 +182,14 @@ if _HAS_MODAL:
                     raise RuntimeError(f"STOP_P0: unexpected existing cell identity {root.name}")
                 record = json.loads((root / "cell.json").read_text(encoding="utf-8"))
                 check_cell_record(record)
-                if sha256_file(root / "daily_nav.csv") != record["output_sha256"]:
+                required = ("daily_nav.csv", "fixed_report.parquet", "fixed_decisions.json", "metrics.json")
+                hashes = record.get("artifact_sha256")
+                if not isinstance(hashes, dict) or set(hashes) != set(required):
+                    raise RuntimeError("STOP_P0: full persisted artifact manifest absent")
+                for filename in required:
+                    if not (root / filename).is_file() or sha256_file(root / filename) != hashes[filename]:
+                        raise RuntimeError("STOP_P0: persisted artifact SHA drift")
+                if hashes["daily_nav.csv"] != record["output_sha256"]:
                     raise RuntimeError("STOP_P0: persisted NAV SHA drift")
                 completed.append(root.name)
         return sorted(completed)
@@ -235,9 +242,13 @@ if _HAS_MODAL:
                 nav_file = data_dir / "daily_nav.csv"
                 if sha256_file(nav_file) != o["output_sha256"]:
                     raise ValueError("daily NAV bytes hash drift")
-                for name in ("fixed_report.parquet", "fixed_decisions.json", "metrics.json"):
-                    if not (data_dir / name).is_file():
-                        raise ValueError(f"missing actual output {name}")
+                artifacts = o.get("artifact_sha256")
+                expected_files = ("daily_nav.csv", "fixed_report.parquet", "fixed_decisions.json", "metrics.json")
+                if not isinstance(artifacts, dict) or set(artifacts) != set(expected_files):
+                    raise ValueError("full artifact SHA manifest absent")
+                for name in expected_files:
+                    if not (data_dir / name).is_file() or sha256_file(data_dir / name) != artifacts[name]:
+                        raise ValueError(f"output artifact hash mismatch: {name}")
                 frame = pd.read_parquet(data_dir / "fixed_report.parquet")
                 recalculated, checks = report_metrics(frame)
                 if abs(frame["account"].iloc[-1] - o["final_nav_cny"]) > 0.01:
