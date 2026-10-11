@@ -13,8 +13,9 @@ from audit import replay_stage_a_corrected as a
 def frozen():
     candidates = [{"candidate_id": f"{i:064x}", "candidate": {"candidate_id": f"{i:064x}"},
                    "rank": i + 1} for i in range(78)]
-    candidates += [{"candidate_id": a.BASELINE, "candidate": {"candidate_id": a.BASELINE}, "rank": 79},
-                   {"candidate_id": a.WINNER, "candidate": {"candidate_id": a.WINNER}, "rank": 80}]
+    candidates[-1]["rank"] = 80
+    candidates += [{"candidate_id": a.BASELINE, "candidate": {"candidate_id": a.BASELINE}, "rank": 48},
+                   {"candidate_id": a.WINNER, "candidate": {"candidate_id": a.WINNER}, "rank": 5}]
     folds = [{"fold_id": f"fold{f}", "signal": ["2021-01-01", "2021-01-31"],
               "execution": ["2021-01-04", "2021-02-01"]} for f in range(1, 5)]
     summary = {"protocol": "csi1000_lgb_stage_a_v3", "manifest":
@@ -44,6 +45,7 @@ def fixture_files(tmp_path):
 def test_controls_eight_and_all_320():
     s = frozen()
     assert len(a.roster(s, "controls")) == 8
+    assert len(a.roster(s, "sample")) == 16
     assert len(a.roster(s, "all")) == 320
     s["ranked_candidates"].pop()
     with pytest.raises(ValueError, match="80 candidate"):
@@ -136,6 +138,7 @@ def test_resume_checks_output_byte_hash_and_result_path(tmp_path):
         (output / name).write_text("test")
     record = {"status": "PASS", "run_version": a.VERSION, "candidate_id": c["candidate_id"],
               "fold_id": f["fold_id"], "source_sha256": a.checked_sources(tmp_path / "source", c, f)[2],
+              "source_stat": {k: {"bytes": p.stat().st_size, "mtime_ns": p.stat().st_mtime_ns} for k, p in a.checked_sources(tmp_path / "source", c, f)[1].items()},
               "provider_manifest_sha256": a.sha256(snapshot),
               "output_sha256": {x: a.sha256(output / x) for x in needed}}
     a.save_json(output / "comparison.json", record)
