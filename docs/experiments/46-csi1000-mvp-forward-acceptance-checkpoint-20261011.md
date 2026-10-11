@@ -115,6 +115,54 @@ curl -fsS 'https://at2018cow.github.io/qlib/signals/2026-10-12_mvp_metadata.json
 sha256sum site-metadata.json
 ```
 
+
+**Internet-capable actual public browser E2E** (not the repository's synthetic `tests/website_visual_check.py` fixture). Run on an authorized machine with unrestricted outbound HTTPS; retain the screenshot and the captured JSON/log:
+
+```bash
+python3 -m pip install playwright
+python3 -m playwright install chromium
+python3 - <<'PY'
+import json, urllib.request
+from playwright.sync_api import sync_playwright
+base = "https://at2018cow.github.io/qlib"
+def get_json(path):
+    with urllib.request.urlopen(base + path, timeout=30) as resp:
+        assert resp.status == 200, (path, resp.status)
+        return json.load(resp)
+index = get_json("/signals/available_dates.json")
+latest = index["dates"][0]
+forward = get_json("/signals/csi1000_forward_performance.json")
+assert forward["start_date"] == "2026-10-12"
+assert all(x["date"] >= "2026-10-12" for x in forward["points"])
+with sync_playwright() as pw:
+    browser = pw.chromium.launch()
+    for width in (1440, 390):
+        page = browser.new_page(viewport={"width": width, "height": 900})
+        pageerrors = []
+        page.on("pageerror", lambda error: pageerrors.append(str(error)))
+        response = page.goto(base + "/", wait_until="networkidle", timeout=60000)
+        assert response and response.status == 200
+        page.locator("#signal-rows tr").first.wait_for(state="attached", timeout=30000)
+        assert page.locator("#signal-rows tr").count() == 20
+        assert latest.replace("-", ".") in page.locator("#stat-date").inner_text()
+        status = page.locator("#artifact-status").inner_text()
+        if latest >= "2026-10-12":
+            meta = get_json(f"/signals/{latest}_mvp_metadata.json")
+            assert meta["publication"]["status"] == "PASS"
+            assert meta["pit_universe"]["member_count"] == 1000
+            assert meta["label_maturity"]["horizon_sessions"] == 20
+            assert "MVP publication contract" in status and "PASS" in status
+        else:
+            assert "历史记录" in status  # no synthetic old sidecar
+        assert not pageerrors, pageerrors
+        page.screenshot(path=f"public-site-{latest}-{width}.png", full_page=True)
+        print(json.dumps({"width": width, "date": latest, "status": status,
+                          "forward_status": forward["status"], "js_errors": pageerrors},
+                         ensure_ascii=False))
+    browser.close()
+PY
+```
+
 On **next real provider refresh once 2026-10-12 execution-day open/close prices exist**, run the scheduled next usage-day cron **once**, inspect previous 2026-10-12 pending execution report in that new day's paper artifact, reconcile bought/sold/blocked/cash/holdings/valuation and `csi1000_forward_performance.json` from Pages. A same-date retry must be byte-identical; drift must **fail closed**, not overwrite. Do not synthesize missing bar, fill, ST, suspension, quote, return, or 2026-10-12 NAV.
 
 **Escalation rule:** current incorrect provider/PIT/Label20/model hash/paper dates/quote-union is a live-MVP P0: stop publication and repair that gate. Historical Stage-B audit and 4 historical ST sells remain closed/deferred by [42](42-csi1000-mvp-handoff-after-ledger-pass-20261011.md); no retuning, strategy switching, forward backfill, or live trades.
