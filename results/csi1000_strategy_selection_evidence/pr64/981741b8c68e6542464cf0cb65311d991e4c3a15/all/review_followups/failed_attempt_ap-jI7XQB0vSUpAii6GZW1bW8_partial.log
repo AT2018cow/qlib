@@ -1,0 +1,132 @@
+[2:MainThread](2026-10-11 12:28:44,779) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+{"candidate_id": "8ecdf3979b37564c41febaf2249afdfa66286f8c8d311d26caa6feeb04d6433c", "fold_id": "fold4", "status": "BLOCKED", "reason": "AttributeError: partially initialized module 'mlflow' has no attribute 'version' (most likely due to a circular import)", "started_utc": "2026-10-11T12:28:44.778415+00:00", "finished_utc": "2026-10-11T12:28:44.784216+00:00"}
+[2:MainThread](2026-10-11 12:28:44,790) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+{"candidate_id": "fe361b266cd4e28d1aa7c7c4380dac9d8ebe175566b0d100aae35d628609d31b", "fold_id": "fold1", "status": "BLOCKED", "reason": "AttributeError: partially initialized module 'mlflow' has no attribute 'version' (most likely due to a circular import)", "started_utc": "2026-10-11T12:28:44.789789+00:00", "finished_utc": "2026-10-11T12:28:44.795129+00:00"}
+[2:MainThread](2026-10-11 12:28:44,801) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+{"candidate_id": "fe361b266cd4e28d1aa7c7c4380dac9d8ebe175566b0d100aae35d628609d31b", "fold_id": "fold2", "status": "BLOCKED", "reason": "AttributeError: partially initialized module 'mlflow' has no attribute 'version' (most likely due to a circular import)", "started_utc": "2026-10-11T12:28:44.800376+00:00", "finished_utc": "2026-10-11T12:28:44.805969+00:00"}
+[modal-client] 2026-10-11T12:28:44+0000 Received a cancellation signal while processing input ('in-01M4NEHD8EWDJ60Z4FD5252SMQ:1791721256207-0',)
+[2:MainThread](2026-10-11 12:28:44,811) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+{"candidate_id": "fe361b266cd4e28d1aa7c7c4380dac9d8ebe175566b0d100aae35d628609d31b", "fold_id": "fold3", "status": "BLOCKED", "reason": "AttributeError: partially initialized module 'mlflow' has no attribute 'version' (most likely due to a circular import)", "started_utc": "2026-10-11T12:28:44.810909+00:00", "finished_utc": "2026-10-11T12:28:44.816253+00:00"}
+[2:MainThread](2026-10-11 12:28:44,823) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+{"candidate_id": "fe361b266cd4e28d1aa7c7c4380dac9d8ebe175566b0d100aae35d628609d31b", "fold_id": "fold4", "status": "BLOCKED", "reason": "AttributeError: partially initialized module 'mlflow' has no attribute 'version' (most likely due to a circular import)", "started_utc": "2026-10-11T12:28:44.822366+00:00", "finished_utc": "2026-10-11T12:28:44.829196+00:00"}
+[2:MainThread](2026-10-11 12:28:44,836) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+{"candidate_id": "3a58ae9e9ef1d022211f11672369a61ce6bf487b8510b206ea27e211e04b4f3a", "fold_id": "fold1", "status": "BLOCKED", "reason": "AttributeError: partially initialized module 'mlflow' has no attribute 'version' (most likely due to a circular import)", "started_utc": "2026-10-11T12:28:44.834975+00:00", "finished_utc": "2026-10-11T12:28:44.840382+00:00"}
+[2:MainThread](2026-10-11 12:28:44,846) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+{"candidate_id": "3a58ae9e9ef1d022211f11672369a61ce6bf487b8510b206ea27e211e04b4f3a", "fold_id": "fold2", "status": "BLOCKED", "reason": "AttributeError: partially initialized module 'mlflow' has no attribute 'version' (most likely due to a circular import)", "started_utc": "2026-10-11T12:28:44.844846+00:00", "finished_utc": "2026-10-11T12:28:44.850613+00:00"}
+[modal-client] 2026-10-11T12:28:44+0000 Successfully canceled input ('in-01M4NEHD8EWDJ60Z4FD5252SMQ:1791721256207-0',)
+[2:MainThread](2026-10-11 12:28:44,856) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+{"candidate_id": "3a58ae9e9ef1d022211f11672369a61ce6bf487b8510b206ea27e211e04b4f3a", "fold_id": "fold3", "status": "BLOCKED", "reason": "AttributeError: partially initialized module 'mlflow' has no attribute 'version' (most likely due to a circular import)", "started_utc": "2026-10-11T12:28:44.855692+00:00", "finished_utc": "2026-10-11T12:28:44.860849+00:00"}
+[2:MainThread](2026-10-11 12:28:44,866) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+{"candidate_id": "3a58ae9e9ef1d022211f11672369a61ce6bf487b8510b206ea27e211e04b4f3a", "fold_id": "fold4", "status": "BLOCKED", "reason": "AttributeError: partially initialized module 'mlflow' has no attribute 'version' (most likely due to a circular import)", "started_utc": "2026-10-11T12:28:44.865516+00:00", "finished_utc": "2026-10-11T12:28:44.870051+00:00"}
+[2:MainThread](2026-10-11 12:28:44,875) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+{"candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b", "fold_id": "fold1", "status": "BLOCKED", "reason": "AttributeError: partially initialized module 'mlflow' has no attribute 'version' (most likely due to a circular import)", "started_utc": "2026-10-11T12:28:44.874965+00:00", "finished_utc": "2026-10-11T12:28:44.880847+00:00"}
+[2:MainThread](2026-10-11 12:28:44,887) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+{"candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b", "fold_id": "fold2", "status": "BLOCKED", "reason": "AttributeError: partially initialized module 'mlflow' has no attribute 'version' (most likely due to a circular import)", "started_utc": "2026-10-11T12:28:44.885977+00:00", "finished_utc": "2026-10-11T12:28:44.891546+00:00"}
+[2:MainThread](2026-10-11 12:28:44,897) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+{"candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b", "fold_id": "fold3", "status": "BLOCKED", "reason": "AttributeError: partially initialized module 'mlflow' has no attribute 'version' (most likely due to a circular import)", "started_utc": "2026-10-11T12:28:44.896807+00:00", "finished_utc": "2026-10-11T12:28:44.901897+00:00"}
+[2:MainThread](2026-10-11 12:28:44,907) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+{"candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b", "fold_id": "fold4", "status": "BLOCKED", "reason": "AttributeError: partially initialized module 'mlflow' has no attribute 'version' (most likely due to a circular import)", "started_utc": "2026-10-11T12:28:44.906825+00:00", "finished_utc": "2026-10-11T12:28:44.914816+00:00"}
+[2:MainThread](2026-10-11 12:28:44,922) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+{"candidate_id": "ddf5b20ea0231eabcb24b00fa5db9766285d0ce862f3a479fb4ee216cc4887e3", "fold_id": "fold1", "status": "BLOCKED", "reason": "AttributeError: partially initialized module 'mlflow' has no attribute 'version' (most likely due to a circular import)", "started_utc": "2026-10-11T12:28:44.921213+00:00", "finished_utc": "2026-10-11T12:28:44.927428+00:00"}
+[2:MainThread](2026-10-11 12:28:44,933) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+{"candidate_id": "ddf5b20ea0231eabcb24b00fa5db9766285d0ce862f3a479fb4ee216cc4887e3", "fold_id": "fold2", "status": "BLOCKED", "reason": "AttributeError: partially initialized module 'mlflow' has no attribute 'version' (most likely due to a circular import)", "started_utc": "2026-10-11T12:28:44.932707+00:00", "finished_utc": "2026-10-11T12:28:44.938504+00:00"}
+[2:MainThread](2026-10-11 12:28:44,945) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+{"candidate_id": "ddf5b20ea0231eabcb24b00fa5db9766285d0ce862f3a479fb4ee216cc4887e3", "fold_id": "fold3", "status": "BLOCKED", "reason": "AttributeError: partially initialized module 'mlflow' has no attribute 'version' (most likely due to a circular import)", "started_utc": "2026-10-11T12:28:44.944086+00:00", "finished_utc": "2026-10-11T12:28:44.950309+00:00"}
+[2:MainThread](2026-10-11 12:28:44,956) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+{"candidate_id": "ddf5b20ea0231eabcb24b00fa5db9766285d0ce862f3a479fb4ee216cc4887e3", "fold_id": "fold4", "status": "BLOCKED", "reason": "AttributeError: partially initialized module 'mlflow' has no attribute 'version' (most likely due to a circular import)", "started_utc": "2026-10-11T12:28:44.955079+00:00", "finished_utc": "2026-10-11T12:28:44.960773+00:00"}
+{"candidate_id": "cc3c3f0774520c09d632d87a3f858752e08194654dc25f6198bbf0da56aae720", "fold_id": "fold2", "status": "PASS", "reason": null, "started_utc": "2026-10-11T12:28:44.880516+00:00", "finished_utc": "2026-10-11T12:28:45.053374+00:00"}
+[modal-client] 2026-10-11T12:28:45+0000 Received a cancellation signal while processing input ('in-01M4NEHD8HTD8GP7CZC4VNM8BE:1791721256209-0',)
+[modal-client] 2026-10-11T12:28:45+0000 Successfully canceled input ('in-01M4NEHD8HTD8GP7CZC4VNM8BE:1791721256209-0',)
+{"candidate_id": "cc3c3f0774520c09d632d87a3f858752e08194654dc25f6198bbf0da56aae720", "fold_id": "fold1", "status": "PASS", "reason": null, "started_utc": "2026-10-11T12:28:44.746516+00:00", "finished_utc": "2026-10-11T12:28:45.699049+00:00"}
+{"candidate_id": "cc3c3f0774520c09d632d87a3f858752e08194654dc25f6198bbf0da56aae720", "fold_id": "fold3", "status": "PASS", "reason": null, "started_utc": "2026-10-11T12:28:45.055607+00:00", "finished_utc": "2026-10-11T12:28:45.986921+00:00"}
+[modal-client] 2026-10-11T12:28:46+0000 Received a cancellation signal while processing input ('in-01M4NEHDPKF9RVQMGS94XYBV18:1791721256660-0',)
+[modal-client] 2026-10-11T12:28:46+0000 Successfully canceled input ('in-01M4NEHDPKF9RVQMGS94XYBV18:1791721256660-0',)
+[modal-client] 2026-10-11T12:28:46+0000 Received a cancellation signal while processing input ('in-01M4NEHD8PA0X9VZNNYX6KQDY7:1791721256215-0',)
+[modal-client] 2026-10-11T12:28:46+0000 Successfully canceled input ('in-01M4NEHD8PA0X9VZNNYX6KQDY7:1791721256215-0',)
+[modal-client] 2026-10-11T12:28:46+0000 Received a cancellation signal while processing input ('in-01M4NEHD8SD817W3B7YBX2HSX5:1791721256218-0',)
+[modal-client] 2026-10-11T12:28:46+0000 Successfully canceled input ('in-01M4NEHD8SD817W3B7YBX2HSX5:1791721256218-0',)
+[modal-client] 2026-10-11T12:28:47+0000 Received a cancellation signal while processing input ('in-01M4NEHD91VGSYG2WMWW7DJB7C:1791721256229-0',)
+[modal-client] 2026-10-11T12:28:47+0000 Successfully canceled input ('in-01M4NEHD91VGSYG2WMWW7DJB7C:1791721256229-0',)
+Exception ignored in: <function acquire_locks at 0x2aba297c34c0>
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/loguru/_locks_machinery.py", line 27, in acquire_locks
+Process ForkPoolWorker-398:
+    lock.acquire()
+Process ForkPoolWorker-399:
+Process ForkPoolWorker-397:
+KeyboardInterrupt: 
+Traceback (most recent call last):
+  File "/root/qlib/qlib/data/data.py", line 1186, in features
+    return DatasetD.dataset(
+           ^^^^^^^^^^^^^^^^^
+TypeError: LocalDatasetProvider.dataset() got multiple values for argument 'inst_processors'
+Traceback (most recent call last):
+  File "/root/qlib/qlib/data/data.py", line 1186, in features
+    return DatasetD.dataset(
+           ^^^^^^^^^^^^^^^^^
+TypeError: LocalDatasetProvider.dataset() got multiple values for argument 'inst_processors'
+Traceback (most recent call last):
+  File "/root/qlib/qlib/data/data.py", line 1186, in features
+    return DatasetD.dataset(
+           ^^^^^^^^^^^^^^^^^
+TypeError: LocalDatasetProvider.dataset() got multiple values for argument 'inst_processors'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/local/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.11/multiprocessing/pool.py", line 114, in worker
+    task = get()
+           ^^^^^
+  File "/usr/local/lib/python3.11/site-packages/joblib/pool.py", line 142, in get
+    racquire()
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/local/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.11/multiprocessing/pool.py", line 114, in worker
+    task = get()
+           ^^^^^
+  File "/usr/local/lib/python3.11/site-packages/joblib/pool.py", line 142, in get
+    racquire()
+KeyboardInterrupt
+  File "/usr/local/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/local/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/usr/local/lib/python3.11/multiprocessing/pool.py", line 114, in worker
+    task = get()
+           ^^^^^
+  File "/usr/local/lib/python3.11/site-packages/joblib/pool.py", line 144, in get
+    return recv()
+           ^^^^^^
+  File "/usr/local/lib/python3.11/multiprocessing/connection.py", line 250, in recv
+    buf = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/multiprocessing/connection.py", line 430, in _recv_bytes
+    buf = self._recv(4)
+          ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/multiprocessing/connection.py", line 395, in _recv
+    chunk = read(handle, remaining)
+            ^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+[2:MainThread](2026-10-11 12:29:16,169) WARNING - qlib.online operator - [exchange.py:219] - $open field data contains nan.
+[2:MainThread](2026-10-11 12:29:16,170) WARNING - qlib.online operator - [exchange.py:219] - $open field data contains nan.
+[2:MainThread](2026-10-11 12:29:17,204) WARNING - qlib.BaseExecutor - [executor.py:121] - `common_infra` is not set for <qlib.backtest.executor.SimulatorExecutor object at 0x2aba291c8150>
+
+[1Abacktest loop:   0%|          | 0/20 [00:00<?, ?it/s]
+[1Abacktest loop:  70%|███████   | 14/20 [00:00<00:00, 137.41it/s]
+[1Abacktest loop: 100%|██████████| 20/20 [00:00<00:00, 136.70it/s]
+Input in-01M4NEHCVSCEEMZCPEBNPFP8G6:1791721255802-0 failed to respond to cancellation for too long: 30 seconds - killing task
