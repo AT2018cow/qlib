@@ -115,7 +115,7 @@ image = (
     # /root/ 运行（sys.path 首位是 /root）——必须复制到 /root/ 否则 ModuleNotFoundError。
     .run_commands(
         "cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/qlib/board_rules.py /root/qlib/board_execution.py /root/qlib/paper_portfolio.py /root/qlib/portfolio_performance.py /root/qlib/github_commit.py "
-            "/root/qlib/csi1000_tuner_core.py /root/qlib/csi1000_production_config.py "
+            "/root/qlib/csi1000_tuner_core.py /root/qlib/csi1000_production_config.py /root/qlib/csi1000_mvp_contract.py "
             "/root/qlib/chart_series.py /root/qlib/signal_publication_gate.py /root/"
     )
 )
