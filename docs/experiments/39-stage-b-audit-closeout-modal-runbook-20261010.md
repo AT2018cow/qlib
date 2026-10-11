@@ -21,6 +21,9 @@ python -m py_compile audit/verify_stage_b_fixed_ledger.py audit/modal_stage_b_le
 
 ## C. 唯一真 provider 实验：baseline phase 0
 
+**OpenCode 启动限制：** 本 runbook 的 `modal run` 必须在前台执行并等待实际退出；不可添加 `--detach`。OpenCode 工具调用超时可能中断 detached Modal 作业，启动前应核实并延长调用超时，覆盖镜像构建、任务计算和结果回传；当前工具超时若不足，停止启动并申请受控前台长任务方法，而非用后台或 `nohup` 绕开。已有 `set -o pipefail` + `tee` 保留原始 CLI 输出和退出码。超时不构成成功证据。
+
+
 由拥有 `qlib-cn-data` Modal Volume 权限的实验人员在**仓库根目录**执行。仅在本 PR 合并完成后更新 `main`，或清楚标记所用 PR HEAD 执行；实验的 Git SHA 必须附在结果里。
 
 ```bash

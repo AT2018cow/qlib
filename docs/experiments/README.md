@@ -49,6 +49,10 @@
 
 这些结论均已被 2026-10-07/08 的 corrected audit、Stage-A/B 和 canonical promotion supersede。
 
+## OpenCode 实验执行通用约束
+
+任何新编写或维护的 Modal 研究执行指南，均须遵守仓库 [AGENTS.md](../../AGENTS.md) 的 **OpenCode 前台 Modal 运行规定**：`modal run` 不使用 `--detach`，事先配置足够长的工具超时，在附着的终端中等待真实退出并记录日志/退出状态。如不能提供足够的前台会话时长，**先停止启动**，不得以 detached 或 shell 后台运行代替。Git 的 `checkout --detach` 不受此限制。
+
 ## Public-repository hygiene
 
 本仓库是公开代码仓库。文档不记录真实访问凭据、私有 workspace/profile 名称、账户余额、个人目录或其他非必要身份信息。
