@@ -1,0 +1,29 @@
+{
+ "sample_modal_app_id": "ap-lEMfGsuTQ0ZNnrNppVzxI6 (log recovered via modal app logs; sanitized copy: sample-modal-app.log)",
+ "first_cython_failure_app_id": "ap-Xyn4wUx8fnqYrP281Zy5pZ (log: first-cython-failure.log; all 8 cells BLOCKED ModuleNotFoundError qlib.data._libs.rolling)",
+ "cli_transcript_status": "sample CLI stdout not separately persisted; server-side app log recovered in full (89 lines incl. 16/16 PASS records + 18 nan warnings); first-failure CLI log retained in full",
+ "environment_versions": {
+  "container_python": "3.11 (modal Image.debian_slim)",
+  "numpy": "1.26.4 (pinned in image)",
+  "pandas": "2.2.3 (pinned in image)",
+  "pyarrow": "17.0.0 (pinned in image)",
+  "lightgbm": "4.7.0 (pinned in image)",
+  "pyqlib": "built from repo source @981741b8c68e6542464cf0cb65311d991e4c3a15; setuptools_scm-derived build string not separately captured (local build of identical source reports 0.9.8.dev32)",
+  "modal_client": "1.6.1"
+ },
+ "cost_breakdown_usd_today": {
+  "stage_a_replay_apps": {
+   "controls_fail": 0.00507,
+   "controls_retry": 0.0006,
+   "controls_pass": 0.02295,
+   "sample_pass": 0.02028,
+   "subtotal": 0.0489
+  },
+  "other_apps_today": {
+   "ai_value_post_pr23_baseline": 0.02303,
+   "market_data_exports": 0.0026,
+   "note": "NOT part of this experiment"
+  },
+  "budget_320_estimate": "at ~$0.003/cell (sample rate), 320 cells ~= $1 plus retry margin; well under the $20 ceiling, but quoted as estimate not guarantee"
+ }
+}

@@ -1,0 +1,38 @@
+{
+ "scope": "Qlib $open NaN warnings across the 16-cell sample replay",
+ "warning_count_in_modal_log": 18,
+ "warning_context": "all 18 occur during exchange quote initialization (universe-wide $open scan), never inside order-fill code paths",
+ "order_execution_impact": {
+  "orders_checked": 1533,
+  "orders_with_nan_execution_open": 0,
+  "verdict": "NO fills used a NaN price; every recorded deal_amount has a finite execution open"
+ },
+ "position_valuation_impact": {
+  "held_position_days_checked": 6384,
+  "held_close_nan": 4,
+  "cases": [
+   {
+    "date": "2021-01-25",
+    "stock": "SZ300038",
+    "cells": [
+     "23b92de0/fold1",
+     "4e908173/fold1",
+     "59b93929/fold1",
+     "cc3c3f07/fold1"
+    ],
+    "pattern": "single-session halt (all-NaN day bracketed by normal trading 01-22 and gap-down resume 01-26 on 9.4M volume)",
+    "orders_on_halt_day": 0,
+    "treatment_in_replay": "carry-forward last close (frozen Qlib convention); one-day mark effect only"
+   }
+  ],
+  "verdict": "4/6384 (0.06%); isolated single halt, no fills involved"
+ },
+ "provider_nan_clusters_not_intersecting_sample": {
+  "SZ000796": "15 NaN closes Jun 2021",
+  "SZ300209": "3 scattered NaN closes (2023/2024)",
+  "SH603032": "13 NaN closes Mar-Apr 2020",
+  "impact_on_this_audit": "none (no sample holding overlapped these dates)"
+ },
+ "factor_computation_impact": "none observed; all 1533 order factors match provider $factor exactly (verified in main audit)",
+ "overall": "$open NaN warnings are universe-scan noise from names with missing sessions (pre-listing/suspended constituents); they do not touch fills, valuations, or factor math in the 16 sample cells."
+}

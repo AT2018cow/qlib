@@ -1,0 +1,79 @@
+{
+ "scope": "fold4 quote/PIT/execution check for 59b93929 (rank 1) sample cell",
+ "asof": {
+  "pit_date": "2024-12-30",
+  "execution_date": "2024-12-31"
+ },
+ "stocks": {
+  "SH600811": {
+   "pit_member_2024_12_30": true,
+   "membership_spans": [
+    [
+     "2024-08-30",
+     "2024-12-30"
+    ]
+   ],
+   "name_contemporaneous_dec2024": "Dongfang Group; *ST only from March 2025, NOT applied retroactively",
+   "board": "main (SH600 prefix; 10% limit regime in Dec 2024)",
+   "2024_12_31": {
+    "open": 1.66289,
+    "close": 1.594238,
+    "factor": 0.762793,
+    "volume": 3102606,
+    "suspended": false,
+    "limit_up": false,
+    "limit_down": false
+   },
+   "orders_2024_12_31": [
+    {
+     "cell": "59b93929/fold4",
+     "direction": "buy",
+     "amount": 2975510.7153,
+     "deal_amount": 2975510.7153
+    },
+    {
+     "cell": "4e908173/fold4",
+     "direction": "buy",
+     "amount": 2925956.0,
+     "deal_amount": 2925956.0
+    },
+    {
+     "cell": "cc3c3f07/fold4",
+     "direction": "buy",
+     "amount": 2793023.6,
+     "deal_amount": 2793023.6
+    }
+   ],
+   "nav_effect": "new position at open; valued at 2024-12-31 close thereafter"
+  },
+  "SH600391": {
+   "pit_member_2024_12_30": true,
+   "board": "main (SH600 prefix; 10% limit regime)",
+   "2024_12_30": {
+    "open": 2.781712,
+    "close": 2.642627,
+    "factor": 0.126441,
+    "volume": 4947318
+   },
+   "2024_12_31": {
+    "open": 2.655085,
+    "close": 2.509688,
+    "factor": 0.126433,
+    "volume": 3023573
+   },
+   "orders": [
+    {
+     "cell": "59b93929/fold4",
+     "2024-12-30": "buy 1879130.4 (new)",
+     "2024-12-31": "sell 1879130.4 (full close)"
+    }
+   ],
+   "note": "One-day hold then full sale in fixed path; legacy path never bought it on 12-30 so had nothing to sell on 12-31. The extra sell freed cash, changing subsequent buy sizes (buy amounts match floor-lot formula from post-sell cash)."
+  }
+ },
+ "st_status_method": "contemporaneous board classification only; SH600811 *ST (Mar 2025) explicitly NOT applied to Dec 2024",
+ "sources": {
+  "membership": "volume cn_data/instruments/csi1000.txt (in-repo evidence raw/csi1000_instruments.txt)",
+  "prices": "volume cn_data bins via read-only D.features export (565+232 instrument export, SHA-recorded in operator logs)"
+ }
+}

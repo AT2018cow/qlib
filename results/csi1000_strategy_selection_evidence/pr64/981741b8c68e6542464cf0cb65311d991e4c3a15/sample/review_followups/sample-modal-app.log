@@ -1,0 +1,89 @@
+
+{"candidate_id": "59b93929bff1e736228d31403a167781aff433d27da1870bcf9fe34e04b6bbb9", "fold_id": "fold3", "status": "PASS", "reason": null, "started_utc": "2026-10-11T11:11:58.626562+00:00", "finished_utc": "2026-10-11T11:12:26.117275+00:00"}
+{"candidate_id": "4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2", "fold_id": "fold1", "status": "PASS", "reason": null, "started_utc": "2026-10-11T11:12:26.218997+00:00", "finished_utc": "2026-10-11T11:12:26.809218+00:00"}
+[2:MainThread](2026-10-11 11:12:26,830) WARNING - qlib.online operator - [exchange.py:219] - $open field data contains nan.
+[2:MainThread](2026-10-11 11:12:26,831) WARNING - qlib.online operator - [exchange.py:219] - $open field data contains nan.
+{"candidate_id": "4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2", "fold_id": "fold2", "status": "PASS", "reason": null, "started_utc": "2026-10-11T11:12:26.906548+00:00", "finished_utc": "2026-10-11T11:12:27.194481+00:00"}
+{"candidate_id": "4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2", "fold_id": "fold3", "status": "PASS", "reason": null, "started_utc": "2026-10-11T11:12:27.288720+00:00", "finished_utc": "2026-10-11T11:12:27.575087+00:00"}
+[2:MainThread](2026-10-11 11:12:27,801) WARNING - qlib.BaseExecutor - [executor.py:121] - `common_infra` is not set for <qlib.backtest.executor.SimulatorExecutor object at 0x2b24a96d8ad0>
+
+[1Abacktest loop:   0%|          | 0/20 [00:00<?, ?it/s]
+[1Abacktest loop:  65%|██████▌   | 13/20 [00:00<00:00, 124.55it/s]
+[1Abacktest loop: 100%|██████████| 20/20 [00:00<00:00, 125.85it/s]
+{"candidate_id": "4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2", "fold_id": "fold4", "status": "PASS", "reason": null, "started_utc": "2026-10-11T11:12:27.669868+00:00", "finished_utc": "2026-10-11T11:12:28.466869+00:00"}
+{"candidate_id": "23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785", "fold_id": "fold1", "status": "PASS", "reason": null, "started_utc": "2026-10-11T11:12:28.563722+00:00", "finished_utc": "2026-10-11T11:12:28.837764+00:00"}
+{"candidate_id": "23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785", "fold_id": "fold2", "status": "PASS", "reason": null, "started_utc": "2026-10-11T11:12:28.934023+00:00", "finished_utc": "2026-10-11T11:12:29.663105+00:00"}
+{"candidate_id": "23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785", "fold_id": "fold3", "status": "PASS", "reason": null, "started_utc": "2026-10-11T11:12:29.757099+00:00", "finished_utc": "2026-10-11T11:12:30.049502+00:00"}
+{"candidate_id": "59b93929bff1e736228d31403a167781aff433d27da1870bcf9fe34e04b6bbb9", "fold_id": "fold4", "status": "PASS", "reason": null, "started_utc": "2026-10-11T11:11:59.697516+00:00", "finished_utc": "2026-10-11T11:12:30.863463+00:00"}
+{"candidate_id": "23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785", "fold_id": "fold4", "status": "PASS", "reason": null, "started_utc": "2026-10-11T11:12:30.143669+00:00", "finished_utc": "2026-10-11T11:12:30.962098+00:00"}
+[2:MainThread](2026-10-11 11:12:31,042) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+[2:MainThread](2026-10-11 11:12:31,044) INFO - qlib.Initialization - [__init__.py:82] - qlib successfully initialized based on client settings.
+[2:MainThread](2026-10-11 11:12:31,044) INFO - qlib.Initialization - [__init__.py:84] - data_path={'__DEFAULT_FREQ': PosixPath('/__modal/volumes/vo-WAoZpTYOZ961v879DcK584/cn_data')}
+[2:MainThread](2026-10-11 11:12:31,070) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+[2:MainThread](2026-10-11 11:12:31,073) INFO - qlib.Initialization - [__init__.py:82] - qlib successfully initialized based on client settings.
+[2:MainThread](2026-10-11 11:12:31,074) INFO - qlib.Initialization - [__init__.py:84] - data_path={'__DEFAULT_FREQ': PosixPath('/__modal/volumes/vo-WAoZpTYOZ961v879DcK584/cn_data')}
+[2:MainThread](2026-10-11 11:12:48,896) WARNING - qlib.online operator - [exchange.py:219] - $open field data contains nan.
+[2:MainThread](2026-10-11 11:12:48,897) WARNING - qlib.online operator - [exchange.py:219] - $open field data contains nan.
+[2:MainThread](2026-10-11 11:12:49,390) WARNING - qlib.online operator - [exchange.py:219] - $open field data contains nan.
+[2:MainThread](2026-10-11 11:12:49,390) WARNING - qlib.online operator - [exchange.py:219] - $open field data contains nan.
+[2:MainThread](2026-10-11 11:12:49,839) WARNING - qlib.BaseExecutor - [executor.py:121] - `common_infra` is not set for <qlib.backtest.executor.SimulatorExecutor object at 0x2ab63d2c8a10>
+
+[1Abacktest loop:   0%|          | 0/20 [00:00<?, ?it/s]
+[1Abacktest loop:  75%|███████▌  | 15/20 [00:00<00:00, 144.17it/s]
+[1Abacktest loop: 100%|██████████| 20/20 [00:00<00:00, 146.98it/s]
+[2:MainThread](2026-10-11 11:12:50,456) WARNING - qlib.BaseExecutor - [executor.py:121] - `common_infra` is not set for <qlib.backtest.executor.SimulatorExecutor object at 0x2b24a9f9fbd0>
+
+[1Abacktest loop:   0%|          | 0/20 [00:00<?, ?it/s]
+[1Abacktest loop:  70%|███████   | 14/20 [00:00<00:00, 131.66it/s]backtest loop: 100%|██████████| 20/20 [00:00<00:00, 135.51it/s]
+[2:MainThread](2026-10-11 11:12:56,688) WARNING - qlib.online operator - [exchange.py:219] - $open field data contains nan.
+[2:MainThread](2026-10-11 11:12:56,689) WARNING - qlib.online operator - [exchange.py:219] - $open field data contains nan.
+[2:MainThread](2026-10-11 11:12:56,985) WARNING - qlib.online operator - [exchange.py:219] - $open field data contains nan.
+[2:MainThread](2026-10-11 11:12:56,986) WARNING - qlib.online operator - [exchange.py:219] - $open field data contains nan.
+[2:MainThread](2026-10-11 11:12:57,329) WARNING - qlib.BaseExecutor - [executor.py:121] - `common_infra` is not set for <qlib.backtest.executor.SimulatorExecutor object at 0x2ab63d840c10>
+
+[1Abacktest loop:   0%|          | 0/20 [00:00<?, ?it/s]
+[1Abacktest loop:  75%|███████▌  | 15/20 [00:00<00:00, 141.32it/s]
+[1Abacktest loop: 100%|██████████| 20/20 [00:00<00:00, 145.48it/s]
+[2:MainThread](2026-10-11 11:12:57,797) WARNING - qlib.BaseExecutor - [executor.py:121] - `common_infra` is not set for <qlib.backtest.executor.SimulatorExecutor object at 0x2b24a95c5350>
+
+[1Abacktest loop:   0%|          | 0/20 [00:00<?, ?it/s]
+[1Abacktest loop:  70%|███████   | 14/20 [00:00<00:00, 130.61it/s]
+[1Abacktest loop: 100%|██████████| 20/20 [00:00<00:00, 134.38it/s]
+{"candidate_id": "cc3c3f0774520c09d632d87a3f858752e08194654dc25f6198bbf0da56aae720", "fold_id": "fold2", "status": "PASS", "reason": null, "started_utc": "2026-10-11T11:12:31.059218+00:00", "finished_utc": "2026-10-11T11:12:58.927440+00:00"}
+[2:MainThread](2026-10-11 11:12:59,035) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+[2:MainThread](2026-10-11 11:12:59,038) INFO - qlib.Initialization - [__init__.py:82] - qlib successfully initialized based on client settings.
+[2:MainThread](2026-10-11 11:12:59,038) INFO - qlib.Initialization - [__init__.py:84] - data_path={'__DEFAULT_FREQ': PosixPath('/__modal/volumes/vo-WAoZpTYOZ961v879DcK584/cn_data')}
+{"candidate_id": "cc3c3f0774520c09d632d87a3f858752e08194654dc25f6198bbf0da56aae720", "fold_id": "fold1", "status": "PASS", "reason": null, "started_utc": "2026-10-11T11:12:31.029679+00:00", "finished_utc": "2026-10-11T11:13:00.606809+00:00"}
+[2:MainThread](2026-10-11 11:13:00,784) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+[2:MainThread](2026-10-11 11:13:00,786) INFO - qlib.Initialization - [__init__.py:82] - qlib successfully initialized based on client settings.
+[2:MainThread](2026-10-11 11:13:00,786) INFO - qlib.Initialization - [__init__.py:84] - data_path={'__DEFAULT_FREQ': PosixPath('/__modal/volumes/vo-WAoZpTYOZ961v879DcK584/cn_data')}
+[2:MainThread](2026-10-11 11:13:17,213) WARNING - qlib.online operator - [exchange.py:219] - $open field data contains nan.
+[2:MainThread](2026-10-11 11:13:17,214) WARNING - qlib.online operator - [exchange.py:219] - $open field data contains nan.
+[2:MainThread](2026-10-11 11:13:18,185) WARNING - qlib.BaseExecutor - [executor.py:121] - `common_infra` is not set for <qlib.backtest.executor.SimulatorExecutor object at 0x2ab65a6563d0>
+
+[1Abacktest loop:   0%|          | 0/20 [00:00<?, ?it/s]
+[1Abacktest loop:  75%|███████▌  | 15/20 [00:00<00:00, 149.49it/s]
+[1Abacktest loop: 100%|██████████| 20/20 [00:00<00:00, 149.80it/s]
+[2:MainThread](2026-10-11 11:13:19,086) WARNING - qlib.online operator - [exchange.py:219] - $open field data contains nan.
+[2:MainThread](2026-10-11 11:13:19,086) WARNING - qlib.online operator - [exchange.py:219] - $open field data contains nan.
+[2:MainThread](2026-10-11 11:13:20,249) WARNING - qlib.BaseExecutor - [executor.py:121] - `common_infra` is not set for <qlib.backtest.executor.SimulatorExecutor object at 0x2b24a968d7d0>
+
+[1Abacktest loop:   0%|          | 0/20 [00:00<?, ?it/s]
+[1Abacktest loop:  60%|██████    | 12/20 [00:00<00:00, 118.80it/s]
+[1Abacktest loop: 100%|██████████| 20/20 [00:00<00:00, 116.62it/s]
+[2:MainThread](2026-10-11 11:13:25,127) WARNING - qlib.online operator - [exchange.py:219] - $open field data contains nan.
+[2:MainThread](2026-10-11 11:13:25,128) WARNING - qlib.online operator - [exchange.py:219] - $open field data contains nan.
+[2:MainThread](2026-10-11 11:13:25,772) WARNING - qlib.BaseExecutor - [executor.py:121] - `common_infra` is not set for <qlib.backtest.executor.SimulatorExecutor object at 0x2ab65ab72f90>
+
+[1Abacktest loop:   0%|          | 0/20 [00:00<?, ?it/s]
+[1Abacktest loop:  75%|███████▌  | 15/20 [00:00<00:00, 143.93it/s]
+[1Abacktest loop: 100%|██████████| 20/20 [00:00<00:00, 145.90it/s]
+[2:MainThread](2026-10-11 11:13:27,241) WARNING - qlib.online operator - [exchange.py:219] - $open field data contains nan.
+[2:MainThread](2026-10-11 11:13:27,241) WARNING - qlib.online operator - [exchange.py:219] - $open field data contains nan.
+{"candidate_id": "cc3c3f0774520c09d632d87a3f858752e08194654dc25f6198bbf0da56aae720", "fold_id": "fold3", "status": "PASS", "reason": null, "started_utc": "2026-10-11T11:12:59.023585+00:00", "finished_utc": "2026-10-11T11:13:27.671681+00:00"}
+[2:MainThread](2026-10-11 11:13:28,135) WARNING - qlib.BaseExecutor - [executor.py:121] - `common_infra` is not set for <qlib.backtest.executor.SimulatorExecutor object at 0x2b24a986c450>
+
+[1Abacktest loop:   0%|          | 0/20 [00:00<?, ?it/s]
+[1Abacktest loop:  65%|██████▌   | 13/20 [00:00<00:00, 129.74it/s]backtest loop: 100%|██████████| 20/20 [00:00<00:00, 132.41it/s]
+{"candidate_id": "cc3c3f0774520c09d632d87a3f858752e08194654dc25f6198bbf0da56aae720", "fold_id": "fold4", "status": "PASS", "reason": null, "started_utc": "2026-10-11T11:13:00.771002+00:00", "finished_utc": "2026-10-11T11:13:30.894352+00:00"}
+Stopping app - local entrypoint completed.
