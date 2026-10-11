@@ -436,10 +436,9 @@ if _HAS_MODAL:
             note="reserve before any billable remote inventory or replay",
         )
         ledger_obj.save(ledger)
-        if stage == "p0":
-            verified_roster = inventory_frozen_sources_remote.remote(prefix)
-            if verified_roster.get("count") != 55:
-                raise RuntimeError("STOP_P0: missing 11x5 source inventory")
+        verified_roster = inventory_frozen_sources_remote.remote(prefix)
+        if verified_roster.get("count") != 55:
+            raise RuntimeError("STOP_P0: missing 11x5 source inventory")
         completed = set(inventory_completed_remote.remote(prefix, stage))
         planned = sorted(enumerate_cells(stage), key=lambda c: c["cell_key"])
         pending = [c for c in planned if c["cell_key"] not in completed]
