@@ -166,6 +166,27 @@ if _HAS_MODAL:
                 "training_performed": False,
             }
 
+    @app.function(volumes={str(RESULTS): research}, cpu=1, memory=1024, timeout=120)
+    def inventory_completed_remote(prefix: str, stage: str) -> List[str]:
+        """Read existing research artifacts and accept only verified output hashes."""
+        from audit.csi1000_layered_search_core import sha256_file
+        research.reload()
+        output = RESULTS / prefix / "cells"
+        expected = {c["cell_key"] for c in enumerate_cells(stage)}
+        completed = []
+        if output.exists():
+            for root in output.iterdir():
+                if not root.is_dir() or root.name.endswith(".tmp"):
+                    continue
+                if root.name not in expected:
+                    raise RuntimeError(f"STOP_P0: unexpected existing cell identity {root.name}")
+                record = json.loads((root / "cell.json").read_text(encoding="utf-8"))
+                check_cell_record(record)
+                if sha256_file(root / "daily_nav.csv") != record["output_sha256"]:
+                    raise RuntimeError("STOP_P0: persisted NAV SHA drift")
+                completed.append(root.name)
+        return sorted(completed)
+
     @app.function(
         volumes={str(SOURCE): original.with_mount_options(read_only=True), str(RESULTS): research},
         cpu=2,
@@ -179,8 +200,27 @@ if _HAS_MODAL:
         from audit.csi1000_layered_search_core import sha256_file, write_sha256sums
         from audit.csi1000_layered_search_replay import report_metrics
         import pandas as pd
+        research.reload()
+        previous: List[Dict[str, Any]] = []
+        expected_keys = {c["cell_key"] for c in enumerate_cells(stage)}
+        previously = RESULTS / prefix / "cells"
+        if previously.exists():
+            for folder in previously.iterdir():
+                if not folder.is_dir() or folder.name.endswith(".tmp"):
+                    continue
+                previous.append(json.loads((folder / "cell.json").read_text(encoding="utf-8")))
         verified, blocked = [], []
-        for o in outcomes:
+        seen = set()
+        for o in previous + outcomes:
+            if o.get("cell_key") in seen:
+                # A re-returned cell from the same batch must match exactly.
+                if o.get("cell_key") in expected_keys:
+                    continue
+                raise RuntimeError("STOP_P0: conflicting duplicate cell result")
+            seen.add(o.get("cell_key"))
+            if o.get("cell_key") not in expected_keys:
+                blocked.append({"cell_key": o.get("cell_key"), "reason": "unexpected cell identity"})
+                continue
             try:
                 check_cell_record(o)
                 data_dir = RESULTS / prefix / "cells" / o["cell_key"]
@@ -211,9 +251,12 @@ if _HAS_MODAL:
             "stage": stage,
             "run_id": run_id,
             "code_sha": code_sha,
-            "expected": len(outcomes),
+            "expected": len(expected_keys),
             "completed": len(verified),
-            "blocked": len(outcomes) - len(verified),
+            "blocked": len(blocked),
+            "remaining": len(expected_keys) - len(verified) - len(blocked),
+            "status": "PASS" if len(verified) == len(expected_keys) and not blocked
+                      else ("BLOCKED" if blocked else "INCOMPLETE_BATCH"),
             "blocked_cells": blocked,
             "verified_cells": verified,
             "training_performed": False,
@@ -222,10 +265,14 @@ if _HAS_MODAL:
         }
         root = RESULTS / prefix / "summaries" / stage
         root.mkdir(parents=True, exist_ok=True)
-        target = root / f"stage_{stage}_summary.json"
-        if target.exists():
-            raise RuntimeError("summary already exists; refusing to overwrite")
-        target.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        from uuid import uuid4
+        batch_path = root / f"batch_{uuid4().hex}.json"
+        batch_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        if summary["status"] == "PASS":
+            target = root / f"stage_{stage}_summary.json"
+            if target.exists():
+                raise RuntimeError("summary already finalized: refusing to overwrite")
+            target.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         (root / "protocol.json").write_text(
             json.dumps(build_protocol(run_id), indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
@@ -273,13 +320,21 @@ if _HAS_MODAL:
         needs ``--p0-summary <downloaded stage_p0_summary.json>`` proving 4/4
         verified P0 cells.
         """
-        cells = validate_for_dispatch(
+        validate_for_dispatch(
             stage, run_id, max_workers, batch_limit, estimated_total_usd, resume_from_manifest, ledger, p0_summary
         )
+        if stage == "p0" and max_workers > 2:
+            raise ValueError("STOP_BUDGET: P0 must start with no more than two workers")
         sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
         if subprocess.check_output(["git", "status", "--porcelain"], text=True).strip():
             raise ValueError("STOP: worktree must be clean to bind code SHA to the Modal image")
         prefix = result_prefix(run_id, stage, sha)
+        completed = set(inventory_completed_remote.remote(prefix, stage))
+        planned = sorted(enumerate_cells(stage), key=lambda c: c["cell_key"])
+        pending = [c for c in planned if c["cell_key"] not in completed]
+        cells = pending[:batch_limit] if batch_limit else pending
+        if not cells:
+            raise ValueError("STOP: no unexecuted cells in this batch; request the existing verified summary")
         ledger_obj = BudgetLedger.load(ledger)
         gate = ledger_obj.preflight("p0" if stage == "p0" else "l1", float(estimated_total_usd))
         if gate != "OK_CONTINUE":
@@ -318,8 +373,10 @@ if _HAS_MODAL:
             note="in-flight: App ID + billed spend must be filled from the Modal run header/billing report before audit",
         )
         print(json.dumps(summary, indent=2), flush=True)
-        if summary["blocked"] or (stage == "p0" and summary["completed"] != 4 and batch_limit == 0):
+        if summary["blocked"]:
             raise RuntimeError("STOP_P0: one or more P0/L1 controls failed; not eligible for continuation")
+        if summary["status"] == "INCOMPLETE_BATCH":
+            print("INCOMPLETE_BATCH: book the real bill before launching the next bounded batch.", flush=True)
         print("NEXT: fill the real App ID/billed spend, then book it with BudgetLedger.record_actual.", flush=True)
 
 
