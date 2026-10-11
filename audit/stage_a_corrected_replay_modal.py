@@ -37,6 +37,12 @@ image = (
         any(part in str(p) for part in (".venv", "mlruns", "__pycache__", ".git"))
     ))
     .run_commands("cd /root/qlib && pip install . --no-build-isolation --no-deps",
+                  # Compile Cython extensions in-place as well: PYTHONPATH puts
+                  # /root/qlib first, so `import qlib` resolves to the source
+                  # tree, which needs its own .so files (same command as
+                  # `make prerequisite`, minus the pip bootstrap which the
+                  # image already provides).
+                  "cd /root/qlib && python -c \"from setuptools import setup, Extension; from Cython.Build import cythonize; import numpy; extensions = [Extension('qlib.data._libs.rolling', ['qlib/data/_libs/rolling.pyx'], language='c++', include_dirs=[numpy.get_include()]), Extension('qlib.data._libs.expanding', ['qlib/data/_libs/expanding.pyx'], language='c++', include_dirs=[numpy.get_include()])]; setup(ext_modules=cythonize(extensions, language_level='3'), script_args=['build_ext', '--inplace'])\"",
                   "cp /root/qlib/deterministic_strategy.py /root/qlib/board_execution.py /root/qlib/board_rules.py /root/qlib/portfolio_performance.py /root/qlib/execution_quote_universe.py /root/qlib/csi1000_tuner_core.py /root/")
 )
 app = modal.App("qlib-csi1000-stage-a-quote-replay", image=image)
