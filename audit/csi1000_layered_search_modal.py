@@ -56,7 +56,7 @@ RESULTS = Path("/results")
 REPO = Path("/root/qlib")
 
 LEDGER_NAME = "cost_ledger.json"
-TRIAL_LEDGER_NAME = "trial_ledger.jsonl"
+TRIAL_LEDGER_NAME = "trial_events_pending.jsonl"
 
 
 def check_operator_cost_quote(path: str, estimated_usd: float, covered_cells: int) -> Dict[str, Any]:
@@ -529,9 +529,11 @@ if _HAS_MODAL:
 
 
 def _write_inflight_ledger(path: Path, stage: str, run_id: str, outcomes: List[Dict[str, Any]], note: str) -> Path:
-    """Append in-flight trial rows. App ID/spend stay empty until the operator
-    copies them from the attached Modal run header and the billing report; the
-    reconcile gate refuses to accept rows without real values."""
+    """Append pending trial events without presenting unknown billing as final.
+
+    Operator booking uses these events to create separately audited, immutable
+    final trial_ledger.jsonl records. Never call pending events PASS billing.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as f:
         for o in outcomes:
