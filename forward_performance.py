@@ -57,6 +57,11 @@ def build_forward_performance(
             "portfolio_value_pre_trade_open": opening,
             "portfolio_value_close": closing,
             "cash": float(report["cash"]),
+            "opening_cash": float(report["opening_cash"]),
+            "opening_shares": {
+                sym: float(pos["shares"])
+                for sym, pos in report["opening_positions"].items()
+            },
             "position_shares": {
                 sym: float(mark["shares"])
                 for sym, mark in report["position_marks"].items()
@@ -86,9 +91,9 @@ def build_forward_performance(
     points = []
     for row in ordered:
         if prev is not None:
-            if abs(row["cash"] - prev["cash"]) > 0.011:
+            if abs(row["opening_cash"] - prev["cash"]) > 0.011:
                 raise ValueError(f"cash discontinuity before {row['date']}")
-            if row["position_shares"] != prev["position_shares"]:
+            if row["opening_shares"] != prev["position_shares"]:
                 raise ValueError(f"position discontinuity before {row['date']}")
         close = row["portfolio_value_close"]
         base = baseline if prev is None else prev["portfolio_value_close"]
