@@ -112,10 +112,12 @@ def finalize(prefix: str, scope: str, outcomes: list[dict], code_sha: str):
 
 @app.local_entrypoint()
 def main(scope: str = "controls", max_workers: int = 2, estimated_total_usd: float = -1):
-    if scope not in ("controls", "all") or not 1 <= max_workers <= 24:
-        raise ValueError("scope controls/all, max_workers 1..24")
+    if scope not in ("controls", "sample", "all") or not 1 <= max_workers <= 24:
+        raise ValueError("scope controls/sample/all, max_workers 1..24")
     if scope == "controls" and max_workers > 2:
         raise ValueError("controls must start at <=2 workers")
+    if scope == "sample" and max_workers > 8:
+        raise ValueError("sample capped at 8 workers")
     if scope == "all" and not (0 <= estimated_total_usd <= 20):
         raise ValueError("full replay requires operator-estimated compute <=$20 based on smoke; request approval otherwise")
     sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
