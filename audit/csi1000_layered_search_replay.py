@@ -406,9 +406,15 @@ def publish_cell(
         existing = json.loads((dest / "cell.json").read_text(encoding="utf-8"))
         if existing.get("cache_key") != cache_key or existing.get("source_sha256") != record["source_sha256"]:
             raise ValueError(f"LAYERED_REPLAY_BLOCKED: FAIL_CONFLICT for {key}: refusing to overwrite")
-        current_out = sha_bytes(dest / "daily_nav.csv")
-        if existing.get("output_sha256") != current_out:
-            raise ValueError(f"LAYERED_REPLAY_BLOCKED: FAIL_CONFLICT for {key}: output bytes drifted")
+        artifact_hashes = existing.get("artifact_sha256")
+        required = ("daily_nav.csv", "fixed_report.parquet", "fixed_decisions.json", "metrics.json")
+        if not isinstance(artifact_hashes, dict) or set(artifact_hashes) != set(required):
+            raise ValueError(f"LAYERED_REPLAY_BLOCKED: FAIL_CONFLICT for {key}: artifact manifest incomplete")
+        for name in required:
+            if not (dest / name).is_file() or sha_bytes(dest / name) != artifact_hashes[name]:
+                raise ValueError(f"LAYERED_REPLAY_BLOCKED: FAIL_CONFLICT for {key}: {name} bytes drifted")
+        if existing.get("output_sha256") != artifact_hashes["daily_nav.csv"]:
+            raise ValueError(f"LAYERED_REPLAY_BLOCKED: FAIL_CONFLICT for {key}: NAV SHA drifted")
         return {**existing, "resumed": "RESUME_VERIFIED"}
     tmp = dest.parent / (key + ".tmp")
     if tmp.exists():
@@ -424,8 +430,10 @@ def publish_cell(
     (tmp / "metrics.json").write_text(
         json.dumps(record["metrics"], indent=2, allow_nan=False, sort_keys=True) + "\n", encoding="utf-8"
     )
-    out_sha = sha_bytes(tmp / "daily_nav.csv")
-    final = {**record, "output_sha256": out_sha}
+    artifact_sha256 = {name: sha_bytes(tmp / name) for name in
+                       ("daily_nav.csv", "fixed_report.parquet", "fixed_decisions.json", "metrics.json")}
+    out_sha = artifact_sha256["daily_nav.csv"]
+    final = {**record, "output_sha256": out_sha, "artifact_sha256": artifact_sha256}
     (tmp / "cell.json").write_text(
         json.dumps(final, indent=2, allow_nan=False, sort_keys=True) + "\n", encoding="utf-8"
     )
