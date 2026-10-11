@@ -1,0 +1,18 @@
+# 52 Forward Shadow PR-B preflight handoff (2026-10-11)
+
+Parent binding decision protocol: docs/experiments/47-csi1000-forward-shadow-strategy-decision-protocol-20261011.md. This PR is ONLY structural preparation; NOT A-line integration, NOT an active Shadow experiment, and cannot be approved as a deployed dual-paper experiment.
+
+Exactly two frozen legs:
+- stage_b_winner, stage_b_winner_canonical (production remains unchanged), candidate 4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2.
+- baseline_control, future independent stage_b_baseline_shadow_v1, candidate 23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785.
+
+audit/forward_shadow_pair_preflight.py checks pre-registered identity/config hash, earliest eligible date (2026-10-12), both legs, same signal_data_date/feature-as-of/calendar/provider/PIT hash, two distinct CNY 100m paper account IDs, nonfuture model fit, externally provided outcome time, previous pair hash chain, and no realized return fields in prediction. Returns STRUCTURAL_PREFLIGHT_ONLY_NEEDS_IMMUTABLE_RECEIPT_AND_SETTLEMENT intentionally. It cannot authenticate the outcome time passed by the operator, actual label-maturity 20-session calendar, raw predictor bytes, immutable external receipt, individual PaperPortfolio ledger state or Modal deployment. Those MUST be added and independently audited BEFORE A-line publication; a local JSON hash is not proof of pre-outcome existence.
+
+Required next integration engineering (separate reviewed patch):
+1. A-line approved production extension creates and verifies both fresh model predictions from the SAME as-of timestamp; do NOT replay old Stage-B history. If first pre-outcome paired prediction cannot precede 2026-10-12 observed results, start later. Training checkpoints and seeds/label maturity/PIT universe must be fully recorded. No automatic changes to CANONICAL_PROFILE, existing publisher, legacy paper state, or website.
+2. Bind to authenticated append-only timestamped storage with external verifiable receipt before outcome. Bind complete ranked signal, hash, PIT membership snapshot, T-close/T+1-open pending order SHA, external prior chain hash. Reject incomplete pair, duplicate date, post-outcome/backfilled pair, wrong SHA/as-of/calendar.
+3. Create separate baseline PaperPortfolio initial_cash=100_000_000 and separate state directory + lineage; never copy winner cash, holdings or pending state. Winner still uses only its pre-existing canonical publication. Use frozen Top20/Drop2, same 5bp/15bp/5 CNY fees, ST/IPO/limits/halts/quotes/factors and PR62/63 validated ledger; independently settle each at actual next eligible open and verified close; missing bars must not be fabricated.
+4. Daily P0-only monitoring of pair count, source integrity, paper accounting and rejected/late pairs; no interim strategy selection/scores before prespecified 120/240 valid paired sessions. 95% all-calendar coverage required, 5-session moving block bootstrap 10k seed 20261011; alpha 0.01/0.04, point estimate >=+3.0 annual arithmetic pp, baseline LCB>0, +10bp stress still positive, MDD and turnover risk veto per #47.
+5. Human reviewed PR-B deployment evidence must contain Modal app/environment, pre-outcome immutable receipts, two account snapshots, exact model config/checkpoint hashes, real trading-session smoke, PR62/63 accounting negative controls, and rollback. GitHub merge alone is not deployment or sample-out-of-time validity.
+
+Run CI syntax tests: python -m pytest -q tests/test_forward_shadow_pair_preflight.py. Do not activate until A-line signoff. Default strategy remains KEEP_CANONICAL_PENDING_FORWARD.
