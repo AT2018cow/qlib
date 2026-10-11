@@ -116,7 +116,7 @@ image = (
     .run_commands(
         "cp /root/qlib/qlib_audit_fixes.py /root/qlib/qlib_live_retrain.py /root/qlib/board_rules.py /root/qlib/board_execution.py /root/qlib/paper_portfolio.py /root/qlib/portfolio_performance.py /root/qlib/github_commit.py "
             "/root/qlib/csi1000_tuner_core.py /root/qlib/csi1000_production_config.py /root/qlib/csi1000_mvp_contract.py "
-            "/root/qlib/chart_series.py /root/qlib/signal_publication_gate.py /root/"
+            "/root/qlib/chart_series.py /root/qlib/signal_publication_gate.py /root/qlib/paper_accounting.py /root/"
     )
 )
 
@@ -1340,6 +1340,14 @@ def _paper_execution_context(
         rows[inst] = row
 
     insts = sorted(symbols)
+    snapshot = (pending.get("metadata") or {}).get("execution_st_snapshot") or {}
+    if execution_date >= "2026-10-12" and (
+        snapshot.get("date") != execution_date or
+        snapshot.get("status") != "SOURCE_SNAPSHOT_AVAILABLE" or
+        not isinstance(snapshot.get("st_symbols"), list)
+    ):
+        return {"status": "unverified_preopen_st", "execution_date": execution_date}
+    st_symbols = snapshot.get("st_symbols", [])
     opens, prevs, close_na, factors = [], [], [], []
     open_prices = {}
     close_prices = {}
@@ -1372,6 +1380,7 @@ def _paper_execution_context(
         listing_dates=listing,
         calendar=calendar,
         factors=factors,
+        st_symbols=set(st_symbols),
     )
     return {
         "status": "ready",
@@ -1445,6 +1454,7 @@ def _apply_paper_portfolio(
                 sell_tradable=ctx.get("sell_tradable", {}),
                 close_prices=ctx.get("close_prices", {}),
                 factors=ctx.get("factors", {}),
+                strict_valuation=pending_date >= "2026-10-12",
             )
 
     planned = None
@@ -1458,6 +1468,12 @@ def _apply_paper_portfolio(
             "status": "awaiting_execution_data",
         }
     elif pp.pending_signal is None:
+        # Freeze the execution-date PRE-OPEN ST observation together with
+        # pending orders. It will be replayed at the next provider refresh;
+        # never query today's ST list retroactively for yesterday's trade.
+        st_risk = _current_st_risk_snapshot(
+            sorted(set(pp.positions).union(s for s, _ in res["ranking_full"]))
+        )
         planned = pp.plan_signal(
             signal_date=res["date"],
             execution_date=usage_date,
@@ -1471,6 +1487,12 @@ def _apply_paper_portfolio(
                 "nd": nd,
                 "paper_lineage": lineage,
                 "production_lineage": res.get("production_lineage"),
+                "execution_st_snapshot": {
+                    "date": usage_date,
+                    "status": st_risk["status"],
+                    "source": st_risk["source"],
+                    "st_symbols": st_risk.get("top20_st", []),
+                },
             },
         )
     else:
