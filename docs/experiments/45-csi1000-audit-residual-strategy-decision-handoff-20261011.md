@@ -54,3 +54,12 @@ A 线继续每日 MVP 和 forward 记录。B 线可以要求冻结并行观察�
 ## 新会话第一条消息（可直接复制）
 
 请以 GitHub 仓库 `AT2018cow/qlib` 的 `docs/experiments/45-csi1000-audit-residual-strategy-decision-handoff-20261011.md` 作为本会话工作线 B 交接入口，并严格遵守 42 号文档的 Audit Closure Register。先重新核对 main、冻结的 Stage-B 证据、canonical 模型和审计状态；直接建立 Audit Residual Register，优先对四笔历史 ST/复牌 SELL、benchmark 独立价格、旧 winner 与 corrected baseline 排名差异做**定向**复核和影响评估，记录 SHA、负控、风险分级及重启条件。随后拟定可执行且预注册的 forward shadow comparison 与 Strategy Decision Protocol，明确 KEEP / SHADOW / NEW_RESEARCH / PROPOSE_SWITCH 的触发证据。不要重启全面历史逐日审计、扩 55 格、使用已消费的 Stage-B 区间再调参选优、修改当前 canonical 或回填 forward；当前证据不足时明确保持 canonical、等待 2026-10-12 起的新前向数据。与 A 线只通过明确的 P0 缺陷和冻结证据交接。
+
+## 工作线 B 已提交的首批可复核成果（2026-10-11）
+
+以下为本交接入口的**后续实施记录**，不修改 [42](42-csi1000-mvp-handoff-after-ledger-pass-20261011.md) 的 Audit Closure、不覆盖原先任务定义：
+
+- [46 — Audit Residual Register](46-csi1000-audit-residual-register-20261011.md)：截至本轮 GitHub 核对，已冻结 4 个原始 JSON 的 SHA256（独立重新计算 4/4 一致），明确 4 笔 baseline phase0 ST/复牌 SELL 的复权数量、winner 对照负控、F1 已证实机制、baseline 与 winner 诊断性排名变化、benchmark saved-vs-independent 区分、P0/P1/P2、12 项状态与重启条件。真正 4 笔实盘成交未认证，独立 benchmark 全日价格未比对，量化未成交后的路径相关 NAV 影响仍被阻断，不伪造结果。
+- [47 — Forward Shadow & Strategy Decision Protocol](47-csi1000-forward-shadow-strategy-decision-protocol-20261011.md)：**前向开始前**固定两候选 ID、配置 SHA、2 个预设 120/240 paired-session 统计关口、成本、门槛、覆盖率、多次检验/回滚；影子部署须 A-line 稳定后经独立 review PR，**尚未部署**。
+- 核对入口 `audit/csi1000_residual_evidence.py`（read-only pinned SHA + ST/benchmark/rank 负控）、`audit/export_csi1000_official_index_closes.py`（仅在有权限的联网环境从官方中证指数公司获取外部价格并生成 receipt）、对应 `tests/test_csi1000_residual_evidence.py` 和 `tests/test_export_csi1000_official_index_closes.py`。新增 Python tests 尚无已观察到的 CI/授权运行 PASS，状态 `NOT_EXECUTED_IN_VERIFIED_RUNTIME`。
+- **当前唯一策略结论** `KEEP_CANONICAL_PENDING_FORWARD` / `INSUFFICIENT_FORWARD_EVIDENCE`；禁止在本 PR 切换 canonical、回填前向、写旧报告或让 B line P1/P2 阻断 A-line 研究榜单。P0 只在新近当前链路实证失败时交 A-line fail-closed。
