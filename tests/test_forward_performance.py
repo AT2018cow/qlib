@@ -12,12 +12,20 @@ def _artifact(date, open_value, close_value, lineage="stage_b_winner_canonical",
         "opening_cash": 0.0,
         "cash": 0.0,
         "opening_positions": {"A": {"shares": 10.0}},
+        "opening_marks": {"A": {"shares": 10.0, "price": open_value / 10.0, "reason": "EXCHANGE_OPEN"}},
         "position_marks": {"A": {"shares": 10.0, "price": close_value / 10.0, "reason": "EXCHANGE_CLOSE"}},
         "executed_buy": [], "executed_sell": [], "cost": 0.0,
     }
     return {
         "market": "csi1000",
         "paper_lineage": lineage,
+        "usage_date": date,
+        "trading_calendar": {
+            "source": "akshare.tool_trade_date_hist_sina",
+            "through": date,
+            "dates": [d for d in ("2026-10-12", "2026-10-13", "2026-10-14")
+                      if "2026-10-12" <= d <= date],
+        } if date >= "2026-10-12" else None,
         "execution_report": report,
         **({"pending_orders": {"execution_date": pending}} if pending else {}),
     }
@@ -85,7 +93,7 @@ def test_conflicting_same_date_reports_fail_closed():
 
 
 def test_scheduled_gap_must_not_be_silently_skipped():
-    with pytest.raises(ValueError, match="missing scheduled execution"):
+    with pytest.raises(ValueError, match="missing scheduled/trading-calendar settlement"):
         build_forward_performance([
             _artifact("2026-10-12", 100, 101, pending="2026-10-13"),
             _artifact("2026-10-14", 100, 102),
@@ -96,3 +104,33 @@ def test_later_verified_first_valuation_preserves_real_inception():
     result = build_forward_performance([_artifact("2026-10-13", 100, 101)])
     assert result["start_date"] == FORWARD_PERFORMANCE_START
     assert result["inception_date"] == "2026-10-13"
+
+
+def test_full_calendar_catches_completely_missing_publication_and_report():
+    with pytest.raises(ValueError, match="missing scheduled/trading-calendar settlement"):
+        build_forward_performance([
+            _artifact("2026-10-12", 100, 101),
+            _artifact("2026-10-14", 101, 103),
+        ])
+
+
+def test_calendar_cannot_rewrite_prior_trading_days():
+    first = _artifact("2026-10-12", 100, 101)
+    later = _artifact("2026-10-13", 101, 102)
+    later["trading_calendar"]["dates"] = ["2026-10-13"]
+    with pytest.raises(ValueError, match="calendar history drift"):
+        build_forward_performance([first, later])
+
+
+def test_opening_nav_must_reconcile_to_opening_marks():
+    broken = _artifact("2026-10-12", 100, 101)
+    broken["execution_report"]["portfolio_value_pre_trade_open"] = 99
+    with pytest.raises(ValueError, match="opening NAV"):
+        build_forward_performance([broken])
+
+
+def test_new_forward_artifacts_need_calendar_source():
+    broken = _artifact("2026-10-12", 100, 101)
+    del broken["trading_calendar"]
+    with pytest.raises(ValueError, match="unverified publication calendar"):
+        build_forward_performance([broken])
