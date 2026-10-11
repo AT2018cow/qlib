@@ -58,15 +58,17 @@ def safe_output(source_root, provider, output):
 
 
 def roster(summary, scope):
-    require(scope in ("controls", "all"), "unsupported scope")
+    require(scope in ("controls", "sample", "all"), "unsupported scope")
     require(summary.get("manifest", {}).get("snapshot_token") == SNAPSHOT, "Stage-A token drift")
     require(summary.get("protocol") == "csi1000_lgb_stage_a_v3", "protocol drift")
     candidates = summary.get("ranked_candidates", [])
     require(len(candidates) == 80 and len({c["candidate_id"] for c in candidates}) == 80, "80 candidate roster missing")
     folds = summary.get("folds", [])
     require([f["fold_id"] for f in folds] == ["fold1", "fold2", "fold3", "fold4"], "fold geometry changed")
-    chosen = candidates if scope == "all" else [c for c in candidates if c["candidate_id"] in (BASELINE, WINNER)]
-    require(len(chosen) == (80 if scope == "all" else 2), "two controls unavailable")
+    chosen = (candidates if scope == "all" else
+              [c for c in candidates if c["candidate_id"] in (BASELINE, WINNER) or
+               (scope == "sample" and c["rank"] in (1, 80))])
+    require(len(chosen) == {"controls": 2, "sample": 4, "all": 80}[scope], "frozen scope candidate set unavailable")
     return [(c, f) for c in chosen for f in folds]
 
 
@@ -244,7 +246,6 @@ def run_cell(root, provider_uri, snapshot_file, summary, candidate, fold, output
             order_delta.append({"date": str(date.date()), "legacy": a["orders"], "fixed": b["orders"]})
     change = fixed["account"].to_numpy(dtype=float) - old["account"].to_numpy(dtype=float)
     changed_nav = [str(old.index[i].date()) for i, n in enumerate(change) if abs(n) > 0.01]
-    name = candidate["candidate_id"] + "/" + fold["fold_id"]
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     fixed.to_parquet(output / "fixed_report.parquet")
@@ -257,7 +258,9 @@ def run_cell(root, provider_uri, snapshot_file, summary, candidate, fold, output
     save_json(output / "fixed_metrics.json", fixed_m)
     artifacts = {p.name: sha256(p) for p in sorted(output.iterdir()) if p.is_file()}
     record = {"status": "PASS", "run_version": VERSION, "candidate_id": candidate["candidate_id"],
-              "fold_id": fold["fold_id"], "source_sha256": hashes, "provider_manifest_sha256": snapshot_sha,
+              "fold_id": fold["fold_id"], "source_sha256": hashes,
+              "source_stat": {k: {"bytes": p.stat().st_size, "mtime_ns": p.stat().st_mtime_ns} for k, p in paths.items()},
+              "provider_manifest_sha256": snapshot_sha,
               "quote_codes_count": len(static), "quote_codes_sha256": hashlib.sha256(("\n".join(static) + "\n").encode()).hexdigest(),
               "original_metrics": original_metrics, "fixed_metrics": fixed_m,
               "changed_order_days": len(order_delta), "changed_nav_days": len(changed_nav),
@@ -276,8 +279,9 @@ def checked_resume(root, snapshot_file, summary, candidate, fold, output):
     require(record.get("status") == "PASS" and record.get("run_version") == VERSION and
             (record.get("candidate_id"), record.get("fold_id")) == (candidate["candidate_id"], fold["fold_id"]), "resume identity/version mismatch")
     check_provider(snapshot_file, summary["manifest"])
-    _, _, sources = checked_sources(root, candidate, fold)
+    _, paths, sources = checked_sources(root, candidate, fold)
     require(record["source_sha256"] == sources and record["provider_manifest_sha256"] == sha256(snapshot_file), "resume source hashes drift")
+    require(record.get("source_stat") == {k: {"bytes": p.stat().st_size, "mtime_ns": p.stat().st_mtime_ns} for k, p in paths.items()}, "resume source size/mtime drift")
     for name, digest in record["output_sha256"].items():
         require((path / name).is_file() and sha256(path / name) == digest, "resume output SHA drift: " + name)
     require(set(record["output_sha256"]) == {"fixed_report.parquet", "fixed_decisions.json", "daily_nav_delta.csv", "order_delta.json", "legacy_reproduction.json", "fixed_metrics.json"}, "resume files drift")
@@ -295,6 +299,7 @@ def aggregate(summary, records, scope):
         seen.add(key)
         if row["status"] == "PASS":
             good[key] = row
+    chosen_ids = {cid for cid, _ in expected}
     missing = expected - seen
     require(not missing, "missing cell status records: " + repr(sorted(missing)[:8]))
     batch = {"audit": "HISTORICAL_DIAGNOSTIC_ONLY", "snapshot_token": SNAPSHOT, "scope": scope,
@@ -308,7 +313,7 @@ def aggregate(summary, records, scope):
         ranked = []
         for orig in summary["ranked_candidates"]:
             cid = orig["candidate_id"]
-            if scope == "controls" and cid not in (BASELINE, WINNER):
+            if cid not in chosen_ids:
                 continue
             rows = [{"fold_id": fid, **good[(cid, fid)]["fixed_metrics"]} for fid in ("fold1", "fold2", "fold3", "fold4")]
             source_rows = [{"fold_id": fid, **good[(cid, fid)]["original_metrics"]} for fid in ("fold1", "fold2", "fold3", "fold4")]
@@ -335,7 +340,7 @@ def aggregate(summary, records, scope):
                 scores.sort(key=lambda x: x[0])
                 scores.sort(key=lambda x: x[1], reverse=True)
                 lofo[omitted] = {cid: i + 1 for i, (cid, _) in enumerate(scores)}
-        ranking = {"status": "DIAGNOSTIC_80_RERANK" if scope == "all" else "CONTROLS_ONLY_NO_FULL_RANK",
+        ranking = {"status": "DIAGNOSTIC_80_RERANK" if scope == "all" else "PILOT_ONLY_NO_FULL_RANK",
                    "lofo_omitted_fold_ranks": lofo,
                    "promotion_authorized": False, "rows": [{"candidate_id": c["candidate_id"], "original_rank": old_rank[c["candidate_id"]],
                    "corrected_rank": c["rank"] if scope == "all" else None, "fixed_four_fold": c["fold_summary"],
@@ -350,7 +355,7 @@ def main():
     p.add_argument("--provider-uri", type=Path, required=True, help="original Qlib cn_data")
     p.add_argument("--provider-snapshot-file", type=Path, required=True)
     p.add_argument("--out-dir", type=Path, required=True)
-    p.add_argument("--scope", choices=("controls", "all"), default="controls")
+    p.add_argument("--scope", choices=("controls", "sample", "all"), default="controls")
     a = p.parse_args()
     summary = load_summary(a.repo_root / SUMMARY)
     safe_output(a.source_root, a.provider_uri, a.out_dir)
