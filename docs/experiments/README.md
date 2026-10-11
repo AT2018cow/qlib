@@ -1,5 +1,7 @@
 # 实验文档导览
 
+> **2026-10-12 独立历史策略择优研究提案（待评审、待费用授权）：** [53 — CSI1000 有预算上限的分层搜索合同](53-csi1000-budgeted-layered-strategy-search-contract-20261012.md) 规定了四层搜索、Modal 的训练/信号缓存、预算与止损、最终产品选择及新会话启动指令。该提案是**单独研究工作线**，不改动现有 canonical、不宣称已运行、不把消费过的 Stage-B 历史样本称为 OOS；只有审核批准后才启动费用和计算。
+
 > **2026-10-11：CSI1000 当前唯一最新交接入口是 [42 — MVP handoff after ledger pass](42-csi1000-mvp-handoff-after-ledger-pass-20261011.md)。**
 >
 > 历史审计已按 Audit Closure Register 正式收口。后续 CSI1000 工作不继续扩展历史审计、不对已消费 confirmation tail 重新排序调参；当前只推进每日数据新鲜度、PIT 股票池与标签成熟、Top20 lineage、paper 状态、ST/停牌风险、网站展示和端到端 smoke。
