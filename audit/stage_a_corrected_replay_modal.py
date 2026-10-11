@@ -111,6 +111,28 @@ def finalize(prefix: str, scope: str, outcomes: list[dict], code_sha: str):
             "ranking_status": ranking["status"], "result_prefix": str(prefix)}
 
 
+@app.function(volumes={str(SOURCE): original.with_mount_options(read_only=True), str(RESULTS): research},
+              cpu=2, memory=4096, timeout=1800)
+def require_controls_pass(prefix: str) -> dict:
+    """Force successful and re-verifiable 8-cell controls BEFORE any expansion."""
+    from audit.replay_stage_a_corrected import check_provider, require
+    summary = load_summary(REPO / SUMMARY)
+    control = RESULTS / prefix / "summaries" / "controls" / "stage_a_320_corrected_batch.json"
+    require(control.is_file(), "controls summary absent: run --scope controls first")
+    batch = read_json(control)
+    require(batch.get("scope") == "controls" and batch.get("expected") == 8
+            and batch.get("completed") == 8 and batch.get("blocked") == 0,
+            "8/8 control replay not passed")
+    snapshot = SOURCE / "csi1000_tuner/stage_a/provider_snapshot.json"
+    check_provider(snapshot, summary["manifest"])
+    passed = 0
+    for c, f in roster(summary, "controls"):
+        checked_resume(SOURCE, snapshot, summary, c, f,
+                       RESULTS / prefix / c["candidate_id"] / f["fold_id"])
+        passed += 1
+    return {"status": "CONTROLS_8_OF_8_SHA_VERIFIED", "cells": passed}
+
+
 @app.local_entrypoint()
 def main(scope: str = "controls", max_workers: int = 2, estimated_total_usd: float = -1):
     if scope not in ("controls", "sample", "all") or not 1 <= max_workers <= 24:
@@ -131,5 +153,7 @@ def main(scope: str = "controls", max_workers: int = 2, estimated_total_usd: flo
     print(json.dumps({"scope": scope, "cells": len(tasks), "max_workers": max_workers,
                       "estimated_total_usd": estimated_total_usd, "code_sha": sha,
                       "source_volume_read_only": True, "output_prefix": str(prefix)}))
+    if scope != "controls":
+        print(json.dumps(require_controls_pass.remote(str(prefix))), flush=True)
     outcomes = list(replay_cell.with_options(max_containers=max_workers).map(tasks))
     print(json.dumps(finalize.remote(str(prefix), scope, outcomes, sha), indent=2))
