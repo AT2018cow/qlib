@@ -215,6 +215,10 @@ if _HAS_MODAL:
             if o.get("cell_key") in seen:
                 # A re-returned cell from the same batch must match exactly.
                 if o.get("cell_key") in expected_keys:
+                    persisted = next(p for p in previous if p["cell_key"] == o["cell_key"])
+                    for k in ("source_sha256", "output_sha256", "cache_key"):
+                        if o.get(k) != persisted.get(k):
+                            raise RuntimeError("STOP_P0: duplicated cell returned conflicting evidence")
                     continue
                 raise RuntimeError("STOP_P0: conflicting duplicate cell result")
             seen.add(o.get("cell_key"))
@@ -273,9 +277,12 @@ if _HAS_MODAL:
             if target.exists():
                 raise RuntimeError("summary already finalized: refusing to overwrite")
             target.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        (root / "protocol.json").write_text(
-            json.dumps(build_protocol(run_id), indent=2, sort_keys=True) + "\n", encoding="utf-8"
-        )
+        protocol_path = root / "protocol.json"
+        protocol_bytes = json.dumps(build_protocol(run_id), indent=2, sort_keys=True) + "\n"
+        if protocol_path.exists() and protocol_path.read_text(encoding="utf-8") != protocol_bytes:
+            raise RuntimeError("STOP_P0: frozen protocol already exists with different content")
+        if not protocol_path.exists():
+            protocol_path.write_text(protocol_bytes, encoding="utf-8")
         manifest = {
             "protocol": PROTOCOL_VERSION,
             "run_id": run_id,
@@ -294,7 +301,12 @@ if _HAS_MODAL:
                 "cache_key": item["cache_key"],
             } for item in verified],
         }
-        (RESULTS / prefix / "source_manifest.json").write_text(
+        manifest_path = RESULTS / prefix / "source_manifest.json"
+        if manifest_path.exists():
+            # Each partial batch has a distinct source-manifest snapshot; never
+            # rewrite an earlier immutable manifest in place.
+            manifest_path = RESULTS / prefix / f"source_manifest_{__import__('uuid').uuid4().hex}.json"
+        manifest_path.write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
         write_sha256sums(RESULTS / prefix)
@@ -309,7 +321,7 @@ if _HAS_MODAL:
         batch_limit: int = 0,
         estimated_total_usd: float = -1.0,
         resume_from_manifest: str = "",
-        ledger: str = "cost_ledger.json",
+        ledger: str = "~/.local/state/qlib-csi1000-layered/cost_ledger.json",
         p0_summary: str = "",
     ) -> None:
         """Foreground Modal entrypoint: P0 controls, then gated L1-A screen.
@@ -329,23 +341,22 @@ if _HAS_MODAL:
         if subprocess.check_output(["git", "status", "--porcelain"], text=True).strip():
             raise ValueError("STOP: worktree must be clean to bind code SHA to the Modal image")
         prefix = result_prefix(run_id, stage, sha)
-        completed = set(inventory_completed_remote.remote(prefix, stage))
-        planned = sorted(enumerate_cells(stage), key=lambda c: c["cell_key"])
-        pending = [c for c in planned if c["cell_key"] not in completed]
-        cells = pending[:batch_limit] if batch_limit else pending
-        if not cells:
-            raise ValueError("STOP: no unexecuted cells in this batch; request the existing verified summary")
         ledger_obj = BudgetLedger.load(ledger)
         gate = ledger_obj.preflight("p0" if stage == "p0" else "l1", float(estimated_total_usd))
         if gate != "OK_CONTINUE":
             raise ValueError(f"STOP: ledger preflight gate {gate}")
         ledger_obj.record_estimate(
             "p0" if stage == "p0" else "l1",
-            float(estimated_total_usd),
-            run_id=run_id,
-            note="foreground batch ceiling; not billed spend",
+            float(estimated_total_usd), run_id=run_id,
+            note="reserve before any billable remote inventory or replay",
         )
         ledger_obj.save(ledger)
+        completed = set(inventory_completed_remote.remote(prefix, stage))
+        planned = sorted(enumerate_cells(stage), key=lambda c: c["cell_key"])
+        pending = [c for c in planned if c["cell_key"] not in completed]
+        cells = pending[:batch_limit] if batch_limit else pending
+        if not cells:
+            raise ValueError("STOP: no unexecuted cells in this batch; request the existing verified summary")
         print(
             json.dumps(
                 {
@@ -366,7 +377,7 @@ if _HAS_MODAL:
         outcomes = list(replay_cell_remote.with_options(max_containers=max_workers).map(build_jobs(cells, prefix)))
         summary = finalize_remote.remote(prefix, stage, outcomes, sha, run_id)
         _write_inflight_ledger(
-            Path(ledger).parent / TRIAL_LEDGER_NAME,
+            Path(ledger).expanduser().parent / TRIAL_LEDGER_NAME,
             stage,
             run_id,
             outcomes,
@@ -419,7 +430,7 @@ def build_cli() -> argparse.ArgumentParser:
     p.add_argument("--batch-limit", type=int, default=0, help="Max cells this batch; 0 means all cells of the stage.")
     p.add_argument("--estimated-total-usd", type=float, default=-1.0, help="REQUIRED provisional P90 ceiling in USD.")
     p.add_argument("--resume-from-manifest", default="", help="Existing source_manifest.json for hash-checked resume.")
-    p.add_argument("--ledger", default="cost_ledger.json", help="Persisted cross-batch ledger file.")
+    p.add_argument("--ledger", default="~/.local/state/qlib-csi1000-layered/cost_ledger.json", help="Persisted cross-batch ledger outside the checkout.")
     p.add_argument("--p0-summary", default="", help="Downloaded stage_p0_summary.json; required for --stage l1-a.")
     p.add_argument("--dry-run", action="store_true", help="Local validation only; no Modal dispatch.")
     p.add_argument("--inventory", action="store_true", help="Print frozen enumeration and exit without dispatch.")
