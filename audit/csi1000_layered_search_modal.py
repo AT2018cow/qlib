@@ -504,8 +504,31 @@ def validate_for_dispatch(
             raise ValueError(f"STOP_P0: cannot read P0 summary: {exc}") from exc
         try:
             require_p0_pass(summary, summary.get("verified_cells"))
-        except ValueError as exc:
-            raise ValueError(f"STOP_P0: {exc}") from exc
+            # A JSON-only PASS is not evidence. Require the complete exported
+            # research prefix with its original relative paths and checksum index.
+            from audit.csi1000_layered_search_core import sha256_file
+            from audit.csi1000_layered_search_reconcile import verify_sha256sums
+            evidence = Path(p0_summary).resolve().parents[2]
+            verify_sha256sums(evidence)
+            manifest = json.loads((evidence / "source_manifest.json").read_text(encoding="utf-8"))
+            expected_cells = {c["cell_key"] for c in enumerate_cells("p0")}
+            if {x.get("cell_key") for x in manifest.get("cells", [])} != expected_cells:
+                raise ValueError("source manifest P0 roster differs from expected four")
+            for o in summary["verified_cells"]:
+                directory = evidence / "cells" / o["cell_key"]
+                persisted = json.loads((directory / "cell.json").read_text(encoding="utf-8"))
+                for key in ("cache_key", "source_sha256", "output_sha256", "provider_snapshot_sha256"):
+                    if persisted.get(key) != o.get(key):
+                        raise ValueError(f"P0 exported cell differs from summary: {key}")
+                names = ("daily_nav.csv", "fixed_report.parquet", "fixed_decisions.json", "metrics.json")
+                recorded_hashes = persisted.get("artifact_sha256")
+                if not isinstance(recorded_hashes, dict) or set(recorded_hashes) != set(names):
+                    raise ValueError("P0 exported artifact manifest incomplete")
+                for name in names:
+                    if sha256_file(directory / name) != recorded_hashes[name]:
+                        raise ValueError(f"P0 exported {name} hash differs")
+        except (ValueError, FileNotFoundError, KeyError, OSError) as exc:
+            raise ValueError(f"STOP_P0: complete signed P0 research export required: {exc}") from exc
     if resume_from_manifest:
         _check_manifest(resume_from_manifest)
     cells = enumerate_cells(stage)
