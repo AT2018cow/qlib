@@ -392,7 +392,10 @@ def check_cell_record(record: Dict[str, Any]) -> Dict[str, Any]:
         require(record.get(flag) is True, f"cell {record.get('cell_key')} flag {flag} is not true")
     require(record.get("training_performed") is False, "training flag must be false for P0/L1 replay cells")
     require(record.get("promotion_authorized") is False, "promotion must never be pre-authorized")
-    require(isinstance(record.get("n_days"), int) and record["n_days"] > 0, "cell day count missing")
+    require(isinstance(record.get("n_days"), int) and record["n_days"] == 424, "cell must cover all 424 days")
+    if record.get("topk") == 20 and record.get("dropn") == 2:
+        require(record.get("legacy_reproduction") == "PASS", "Top20/Drop2 legacy control not reproduced")
+        require(record.get("corrected_reference") == "PASS", "Top20/Drop2 corrected F1 control not reproduced")
     return {
         "cell_key": record["cell_key"],
         "final_nav_cny": float(nav),
@@ -413,6 +416,15 @@ def require_p0_pass(summary: Dict[str, Any], outcomes: List[Dict[str, Any]] | No
     require(int(summary.get("completed", -1)) == 4 and int(summary.get("blocked", -1)) == 0, "P0 is not 4/4 PASS")
     rows = outcomes if outcomes is not None else summary.get("outcomes", [])
     require(len(rows) == 4, "P0 outcomes missing")
+    expected_cells = {c["cell_key"] for c in enumerate_cells("p0")}
+    actual_cells = [r.get("cell_key") for r in rows]
+    require(len(set(actual_cells)) == 4 and set(actual_cells) == expected_cells, "P0 has wrong or duplicate cell identities")
+    for r in rows:
+        require(r.get("candidate_id") in (BASELINE_CANDIDATE, WINNER_CANDIDATE), "P0 candidate identity invalid")
+        require(r.get("phase") in (0, 10), "P0 phase invalid")
+        require((r.get("topk"), r.get("dropn")) == (20, 2), "P0 portfolio identity invalid")
+        require(r.get("legacy_reproduction") == "PASS", "P0 legacy reproducibility missing")
+        require(r.get("corrected_reference") == "PASS", "P0 F1 reproducibility missing")
     checked = [check_cell_record(r) for r in rows]
     return {"status": "P0_VERIFIED", "cells": [c["cell_key"] for c in checked]}
 
@@ -713,8 +725,17 @@ def _paired_deltas(
                 return "NOT_ELIGIBLE", {**detail, "reason": f"{leg_name} missing fields {missing}"}, []
     base_by_phase = {r["phase"]: r for r in baseline}
     chall_by_phase = {r["phase"]: r for r in challenger}
+    expected_phases = ({0, 10} if n_expected == 2 else [
+        {0, 4, 6, 10, 15}, {0, 2, 3, 5, 7}, {0, 8, 12, 20, 30}
+    ])
+    if len(base_by_phase) != n_expected or len(chall_by_phase) != n_expected:
+        return "NOT_ELIGIBLE", {**detail, "reason": "duplicate phase in candidate or baseline"}, []
     if set(base_by_phase) != set(chall_by_phase):
         return "NOT_ELIGIBLE", {**detail, "reason": "phase sets differ between legs"}, []
+    if n_expected == 2 and set(base_by_phase) != expected_phases:
+        return "NOT_ELIGIBLE", {**detail, "reason": "wrong pre-registered screen phases"}, []
+    if n_expected == 5 and set(base_by_phase) not in expected_phases:
+        return "NOT_ELIGIBLE", {**detail, "reason": "wrong pre-registered final phases"}, []
     for leg in (challenger, baseline):
         for row in leg:
             for flag in ("coverage_ok", "ledger_ok", "data_ok"):
@@ -754,7 +775,7 @@ def coarse_pass(challenger: List[Dict[str, Any]], baseline: List[Dict[str, Any]]
     chall_by_phase = {r["phase"]: r for r in challenger}
     worst = min(deltas)
     median = sorted(deltas)[1]
-    mdd_deg = max(r["mdd_pp"] for r in challenger) - min(r["mdd_pp"] for r in baseline)
+    mdd_deg = max(r["mdd_pp"] for r in challenger) - max(r["mdd_pp"] for r in baseline)
     turnovers = []
     for p in sorted(base_by_phase):
         base_t = base_by_phase[p].get("turnover")
