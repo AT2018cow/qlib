@@ -60,3 +60,24 @@ Even if all metrics pass, the current canonical is unchanged until a **separate,
 ### Push / reviewer notification
 
 Commit the above paths to a separate append-only evidence branch/PR or to the relevant PR branch **after freezing the actual code SHA and timestamps**. Include the immutable GitHub commit URL plus external receipt registry/Modal App link in a **comment on PR #65** for independent review. Do not update past-day receipts, overwrite files, mix Stage-A retrospective files into these directories, or change the live Winner publisher. Do not submit real forward records at all until the missing integration/deployment and pre-outcome external recorder have been reviewed and verified.
+
+#### Minimal real preflight capture example
+
+```bash
+set -o pipefail
+PREFLIGHT_CODE_SHA=$(git rev-parse HEAD)
+DEST="results/csi1000_strategy_selection_evidence/pr65/$PREFLIGHT_CODE_SHA/preflight"
+mkdir -p "$DEST"
+python -m pytest -q tests/test_forward_shadow_pair_preflight.py 2>&1 | tee "$DEST/preflight_tests.log"
+# Write preflight_operator.json with the REAL code SHA/UTC/environment/CI run and counters;
+# write BLOCKERS.md for missing A-line integration/receipt/independent ledger.
+( cd "$DEST" && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt )
+( cd "$DEST" && sha256sum -c SHA256SUMS.txt )
+git add "$DEST"
+git diff --cached --stat
+git commit -m "evidence(csi1000): real forward-shadow preflight"
+git push
+# Post the resulting immutable commit URL to PR #65 for review.
+```
+
+For every later forward daily/index packet, regenerate `SHA256SUMS.txt` from the **actual committed bytes** and verify with `sha256sum -c` before pushing. Never use `git commit --amend` to replace already submitted prospective evidence.
