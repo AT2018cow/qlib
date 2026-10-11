@@ -2,6 +2,8 @@
 
 > **工作线 A / MVP 交接入口。** 本文仅负责真实每日 CSI1000 研究选股、paper、网站及运维验收。原始决策与 Audit Closure 以 [42](42-csi1000-mvp-handoff-after-ledger-pass-20261011.md) 为准；实现运行手册见 [43](43-csi1000-mvp-daily-publication-contract-20261011.md)。不要把 B 线的历史审计变成 A 线阻塞项。
 
+> **本会话实际验收快照（2026-10-11）**：[46 — Forward acceptance checkpoint](46-csi1000-mvp-forward-acceptance-checkpoint-20261011.md) 记录 GitHub / Pages / provider release 的已验证 SHA、缺失的 Modal 授权证据、PR #60 运行时修复、CI 日志与真实发布操作命令。44 仍是 A 线入口；不得将 46 的静态证据视为线上 Modal PASS。
+
 ## 已知基线（启动新会话必须重新核对）
 
 - PR #58 `feat: start CSI1000 forward MVP publication contract` 已合并到 `main`，merge SHA `9316751309e35e4906d1d544118cbed4d190001f`；以新会话查到的实时 `main` 为准。
