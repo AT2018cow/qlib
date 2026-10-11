@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'paper_accounting.py'
+      - 'paper_halt_evidence.py'
       - 'execution_limits.py'
       - 'board_execution.py'
       - 'paper_portfolio.py'
@@ -13,8 +14,10 @@ on:
       - 'modal_qlib_cn_a10g.py'
       - 'csi1000_stage_b.py'
       - 'scripts/build_forward_performance.py'
+      - 'scripts/accept_forward_nav.py'
       - 'website/app.js'
       - 'tests/test_paper_accounting_replay.py'
+      - 'tests/test_forward_nav_acceptance.py'
       - 'tests/test_paper_portfolio.py'
       - 'tests/test_forward_performance.py'
       - '.github/workflows/unified-paper-nav.yml'
@@ -36,14 +39,18 @@ jobs:
         run: python -m pip install --disable-pip-version-check --no-input pytest numpy
       - name: Compile all changed Python paths
         run: |
-          python -m py_compile paper_accounting.py execution_limits.py board_execution.py paper_portfolio.py paper_replay.py forward_performance.py modal_qlib_cn_a10g.py csi1000_stage_b.py scripts/build_forward_performance.py
+          python -m py_compile paper_accounting.py paper_halt_evidence.py execution_limits.py board_execution.py paper_portfolio.py paper_replay.py forward_performance.py modal_qlib_cn_a10g.py csi1000_stage_b.py scripts/build_forward_performance.py scripts/accept_forward_nav.py
           node --check website/app.js
       - name: Historical and forward share execution/valuation contracts
-        run: python -m pytest -q tests/test_paper_accounting_replay.py tests/test_paper_portfolio.py tests/test_forward_performance.py
+        run: python -m pytest -q tests/test_paper_accounting_replay.py tests/test_paper_portfolio.py tests/test_forward_performance.py tests/test_forward_nav_acceptance.py
       - name: Build public forward series without future data
         run: |
           python scripts/build_forward_performance.py --signals results/signals --output /tmp/forward.json
           python -c 'import json; x=json.load(open("/tmp/forward.json")); assert x["start_date"]=="2026-10-12"; assert x["status"] in ("awaiting_first_valuation","active")'
+      - name: Read-only acceptance before first real post-start settlement
+        run: |
+          python scripts/accept_forward_nav.py --signals results/signals --forward /tmp/forward.json --output /tmp/nav-acceptance.json
+          python -c 'import json; v=json.load(open("/tmp/nav-acceptance.json")); assert v["status"] == "NOT_STARTED", v'
       - name: CI evidence scope
         run: |
           echo 'Code/fixture gate only. No private provider access, no exchange fill certification, no frozen Stage-B rewrite.' >> "$GITHUB_STEP_SUMMARY"
