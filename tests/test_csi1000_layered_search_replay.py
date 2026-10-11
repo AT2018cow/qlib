@@ -149,6 +149,7 @@ def test_execute_baseline_combo_reproduces_and_records(tmp_path):
         quote_sha="f" * 64,
         market_codes="csi1000",
         runner=_runner_factory(frozen, "match", calls),
+        reference_validator=lambda *a: {"status": "PASS"},
     )
     assert record["status"] == "PASS" and record["legacy_reproduction"] == "PASS"
     assert calls[0] == {"topk": 20, "dropn": 2, "codes": "csi1000"}
@@ -172,6 +173,7 @@ def test_execute_legacy_drift_is_stop_p0(tmp_path):
             quote_sha="f" * 64,
             market_codes="csi1000",
             runner=_runner_factory(frozen, "drift"),
+            reference_validator=lambda *a: {"status": "PASS"},
         )
 
 
@@ -190,6 +192,7 @@ def test_execute_window_change_is_stop_p0(tmp_path):
             quote_sha="f" * 64,
             market_codes="csi1000",
             runner=_runner_factory(frozen, "window"),
+            reference_validator=lambda *a: {"status": "PASS"},
         )
 
 
@@ -343,6 +346,10 @@ def test_reconcile_summary_ledger_and_demo(tmp_path):
             "training_performed": False,
             "promotion_authorized": False,
             "n_days": 424,
+            "topk": 20,
+            "dropn": 2,
+            "legacy_reproduction": "PASS",
+            "corrected_reference": "PASS",
         }
         records.append(r)
     summary = {
