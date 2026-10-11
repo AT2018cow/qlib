@@ -312,11 +312,11 @@ if _HAS_MODAL:
                 "cache_key": item["cache_key"],
             } for item in verified],
         }
-        manifest_path = RESULTS / prefix / "source_manifest.json"
+        manifest_path = (RESULTS / prefix / "source_manifest_final.json"
+                         if summary["status"] == "PASS"
+                         else RESULTS / prefix / f"source_manifest_partial_{__import__('uuid').uuid4().hex}.json")
         if manifest_path.exists():
-            # Each partial batch has a distinct source-manifest snapshot; never
-            # rewrite an earlier immutable manifest in place.
-            manifest_path = RESULTS / prefix / f"source_manifest_{__import__('uuid').uuid4().hex}.json"
+            raise RuntimeError("STOP_P0: signed source manifest already exists; refusing overwrite")
         manifest_path.write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
@@ -510,7 +510,7 @@ def validate_for_dispatch(
             from audit.csi1000_layered_search_reconcile import verify_sha256sums
             evidence = Path(p0_summary).resolve().parents[2]
             verify_sha256sums(evidence)
-            manifest = json.loads((evidence / "source_manifest.json").read_text(encoding="utf-8"))
+            manifest = json.loads((evidence / "source_manifest_final.json").read_text(encoding="utf-8"))
             expected_cells = {c["cell_key"] for c in enumerate_cells("p0")}
             if {x.get("cell_key") for x in manifest.get("cells", [])} != expected_cells:
                 raise ValueError("source manifest P0 roster differs from expected four")
