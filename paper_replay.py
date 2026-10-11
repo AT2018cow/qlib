@@ -19,7 +19,7 @@ def replay_paper_sessions(rows, *, config=None, calendar=None, listing_dates=Non
 
     No fill-volume/queue model: deliberate small-notional research assumption.
     """
-    from board_execution import compute_limit_masks
+    from execution_limits import compute_limit_masks
 
     pp = PaperPortfolio(**(config or {}))
     reports = []
