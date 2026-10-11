@@ -78,7 +78,7 @@ if _HAS_MODAL:
         modal.Image.debian_slim(python_version="3.11")
         .apt_install("build-essential")
         .env({"PYTHONPATH": "/root/qlib:/root", "MLFLOW_ALLOW_FILE_STORE": "true"})
-        .pip_install("numpy==1.26.4", "pandas==2.2.3", "pyarrow", "lightgbm==4.7.0", "cython", "pyyaml", "fire")
+        .pip_install("numpy==1.26.4", "pandas==2.2.3", "pyarrow==17.0.0", "lightgbm==4.7.0", "cython", "setuptools-scm", "pyyaml", "fire")
         .add_local_dir(
             ".",
             remote_path=str(REPO),
@@ -88,6 +88,8 @@ if _HAS_MODAL:
                 or any(part in str(p) for part in (".venv", "mlruns", "__pycache__", ".git"))
             ),
         )
+        .run_commands("cd /root/qlib && make prerequisite && pip install -e . --no-build-isolation")
+        .run_commands("cd /tmp && python -c 'import qlib; from qlib.data._libs import rolling, expanding'")
     )
     app = modal.App("qlib-csi1000-layered-search-pr-s0", image=image)
 
@@ -119,6 +121,13 @@ if _HAS_MODAL:
 
             qlib.init(provider_uri=str(SOURCE / "cn_data"), region="cn")
             result = load_frozen_result(REPO)
+            provider_snapshot = SOURCE / "csi1000_stage_b" / "provider_snapshot.json"
+            if not provider_snapshot.is_file():
+                raise ValueError("STOP_SOURCE_UNAVAILABLE: Stage-B provider snapshot missing")
+            provider_meta = json.loads(provider_snapshot.read_text(encoding="utf-8"))
+            frozen_manifest = result.get("manifest", {})
+            if provider_meta.get("snapshot_token") != frozen_manifest.get("snapshot_token") or provider_meta.get("provider_fingerprint") != frozen_manifest.get("provider_fingerprint"):
+                raise ValueError("STOP_P0: source provider identity differs from frozen Stage-B")
             phase_row = lookup_phase(result, cell["candidate_id"], int(cell["phase"]))
             snapshot_root = SOURCE / "csi1000_stage_b" / result["manifest"]["snapshot_token"]
             sources = resolve_phase_sources(snapshot_root, phase_row, cell["candidate_id"], int(cell["phase"]))
@@ -142,6 +151,8 @@ if _HAS_MODAL:
             cache_key = replay_cache_key(
                 record["signal_sha256"], record["topk"], record["dropn"], record["quote_sha256"]
             )
+            record["provider_fingerprint"] = frozen_manifest["provider_fingerprint"]
+            record["provider_snapshot_sha256"] = __import__("audit.csi1000_layered_search_core", fromlist=["sha256_file"]).sha256_file(provider_snapshot)
             final = publish_cell(RESULTS / job["prefix"] / "cells", record, artifacts, cache_key)
             # Only the independent research volume is ever committed; the source
             # volume object has no commit call anywhere in this file.
@@ -165,13 +176,36 @@ if _HAS_MODAL:
         prefix: str, stage: str, outcomes: List[Dict[str, Any]], code_sha: str, run_id: str
     ) -> Dict[str, Any]:
         """Re-validate every outcome (never trust incoming PASS), then sign the summary."""
+        from audit.csi1000_layered_search_core import sha256_file, write_sha256sums
+        from audit.csi1000_layered_search_replay import report_metrics
+        import pandas as pd
         verified, blocked = [], []
         for o in outcomes:
             try:
                 check_cell_record(o)
+                data_dir = RESULTS / prefix / "cells" / o["cell_key"]
+                recorded = json.loads((data_dir / "cell.json").read_text(encoding="utf-8"))
+                for field in ("cache_key", "source_sha256", "output_sha256"):
+                    if recorded.get(field) != o.get(field):
+                        raise ValueError(f"remote return differs from persisted {field}")
+                nav_file = data_dir / "daily_nav.csv"
+                if sha256_file(nav_file) != o["output_sha256"]:
+                    raise ValueError("daily NAV bytes hash drift")
+                for name in ("fixed_report.parquet", "fixed_decisions.json", "metrics.json"):
+                    if not (data_dir / name).is_file():
+                        raise ValueError(f"missing actual output {name}")
+                frame = pd.read_parquet(data_dir / "fixed_report.parquet")
+                recalculated, checks = report_metrics(frame)
+                if abs(frame["account"].iloc[-1] - o["final_nav_cny"]) > 0.01:
+                    raise ValueError("final NAV differs from persisted source")
+                if abs(frame["total_cost"].iloc[-1] - o["total_cost_cny"]) > 0.01:
+                    raise ValueError("total CNY cost differs from persisted source")
+                for metric in ("strategy_total_return", "relative_excess_cagr", "mean_turnover"):
+                    if abs(float(recalculated[metric]) - float(o["metrics"][metric])) > 1e-10:
+                        raise ValueError(f"independently recomputed {metric} drift")
                 verified.append(o)
-            except ValueError as exc:
-                blocked.append({"cell_key": o.get("cell_key"), "reason": str(exc)})
+            except Exception as exc:
+                blocked.append({"cell_key": o.get("cell_key"), "reason": f"{type(exc).__name__}: {exc}"})
         summary = {
             "protocol": PROTOCOL_VERSION,
             "stage": stage,
@@ -195,6 +229,28 @@ if _HAS_MODAL:
         (root / "protocol.json").write_text(
             json.dumps(build_protocol(run_id), indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
+        manifest = {
+            "protocol": PROTOCOL_VERSION,
+            "run_id": run_id,
+            "stage": stage,
+            "code_sha": code_sha,
+            "cells": [{
+                "cell_key": item["cell_key"],
+                "candidate_id": item["candidate_id"],
+                "phase": item["phase"],
+                "signal_sha256": item["signal_sha256"],
+                "quote_sha256": item["quote_sha256"],
+                "provider_fingerprint": item["provider_fingerprint"],
+                "provider_snapshot_sha256": item["provider_snapshot_sha256"],
+                "source_sha256": item["source_sha256"],
+                "output_sha256": item["output_sha256"],
+                "cache_key": item["cache_key"],
+            } for item in verified],
+        }
+        (RESULTS / prefix / "source_manifest.json").write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        write_sha256sums(RESULTS / prefix)
         research.commit()
         return summary
 
@@ -262,6 +318,8 @@ if _HAS_MODAL:
             note="in-flight: App ID + billed spend must be filled from the Modal run header/billing report before audit",
         )
         print(json.dumps(summary, indent=2), flush=True)
+        if summary["blocked"] or (stage == "p0" and summary["completed"] != 4 and batch_limit == 0):
+            raise RuntimeError("STOP_P0: one or more P0/L1 controls failed; not eligible for continuation")
         print("NEXT: fill the real App ID/billed spend, then book it with BudgetLedger.record_actual.", flush=True)
 
 
