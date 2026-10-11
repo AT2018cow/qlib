@@ -1474,6 +1474,8 @@ def _apply_paper_portfolio(
         st_risk = _current_st_risk_snapshot(
             sorted(set(pp.positions).union(s for s, _ in res["ranking_full"]))
         )
+        if usage_date >= "2026-10-12" and st_risk["status"] != "SOURCE_SNAPSHOT_AVAILABLE":
+            raise RuntimeError("cannot freeze pre-open ST evidence: refusing new verified paper plan")
         planned = pp.plan_signal(
             signal_date=res["date"],
             execution_date=usage_date,
