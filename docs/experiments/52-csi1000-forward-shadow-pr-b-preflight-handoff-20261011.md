@@ -18,6 +18,17 @@ Required next integration engineering (separate reviewed patch):
 Run CI syntax tests: python -m pytest -q tests/test_forward_shadow_pair_preflight.py. Do not activate until A-line signoff. Default strategy remains KEEP_CANONICAL_PENDING_FORWARD.
 
 
+## OpenCode-launched Modal runs: mandatory foreground execution
+
+The PR-B preflight itself uses local Python tests, not a deployed Modal shadow job. **For any future Modal-based integration smoke, historical audit, or approved long-lived shadow research launched through OpenCode, do not pass the `--detach` option to `modal run`.** The operator has observed interruption/cancellation of detached invocations when the OpenCode tool times out. Keep the launcher foreground-attached, arrange an OpenCode tool timeout long enough for the *entire* task (including image startup/queue and output retrieval), and preserve a real CLI transcript, app ID, exit status, UTC timestamps, and scoped billing records. Example pattern only after separate A-line authorization:
+
+```bash
+set -o pipefail
+modal run <approved-shadow-integration-script.py> <reviewed-arguments> 2>&1 | tee /tmp/csi1000-pr-b-modal.log
+```
+
+If the environment cannot guarantee an adequate foreground tool timeout, **do not launch**: request an approved long-lived attached execution method or a separately reviewed bounded-batch plan first. Do not substitute `--detach`, `nohup`, shell `&`, or an untracked background job. A tool timeout means `RUN_STATUS_UNKNOWN` pending direct Modal app/result reconciliation, not an implicit PASS. This restriction does **not** apply to Git's `checkout --detach` used to pin clean replay code. See the repository's `AGENTS.md` for the permanent experiment-authoring rule.
+
 ## GitHub submission and external time proof (operator → reviewer; REQUIRED, 2026-10-11)
 
 **At the current PR #65 stage there is NO deployed two-leg Shadow, NO authentic forward paired prediction, and NO settlement to upload.** A synthetic test fixture must never be renamed `forward_result`. Evidence submission is split into *preflight now*, *prospective receipt after real integration*, and *prespecified 120/240-session independent decision review*. Only the preflight can be produced by this PR alone.
