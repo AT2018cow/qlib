@@ -117,9 +117,11 @@ modal run audit/stage_a_corrected_replay_modal.py \
 
 # 8 格和 16 格通过、报价/PIT 门禁批准且预算复核后，前台运行 320 格：
 # 下面是工程实现后的计划用法；不要在未验收、工具超时不足时运行。
+# 先设置 ESTIMATED_TOTAL_USD 为 operator 用真实计费核对过的总预算估值（<= $20）。
+: "${ESTIMATED_TOTAL_USD:?Export the verified USD budget estimate before running}"
 modal run audit/stage_a_corrected_replay_modal.py \
   --scope all --max-workers 8 \
-  --estimated-total-usd <ACTUAL_TOTAL_ESTIMATE_LE_20> \
+  --estimated-total-usd "$ESTIMATED_TOTAL_USD" \
   2>&1 | tee /tmp/csi1000-stage-a-320-modal.log
 
 # 如需查看进度/日志，先用 modal app list 找到独立研究 App 名称
