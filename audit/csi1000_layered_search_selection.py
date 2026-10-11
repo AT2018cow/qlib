@@ -12,8 +12,11 @@ import hashlib
 import json
 import math
 import random
+import sys
 from pathlib import Path
 from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from audit.csi1000_layered_search_core import (
     BASELINE_CANDIDATE, L1B_6_MODELS, L1_PORTFOLIO_GRID,
@@ -47,6 +50,7 @@ def stage_a_proposals(root: str | Path = ".", seed: int = RESEARCH_SEED_L2) -> d
     root = Path(root)
     stage_a = load_json(root / FROZEN_STAGE_A)
     stage_b = load_json(root / FROZEN_STAGE_B)
+    require(stage_a.get("candidate_count") == 80, "Stage-A full roster metadata drift")
     require(len(stage_a.get("ranked_candidates", [])) == 80,
             "Stage-A roster is not the frozen 80")
     old_ids = {c["candidate_id"] for c in stage_b.get("ranked_candidates", [])}
@@ -216,8 +220,6 @@ def screen_l1(stage: str, research_cells: str | Path,
         return lambda rec: pd.read_parquet(directory / rec["cell_key"] / "fixed_report.parquet")
 
     loader = loader_for(root)
-    def baseline_loader(rec):
-        return pd.read_parquet(baseline_root / rec["cell_key"] / "fixed_report.parquet")
     ranking = []
     configs = sorted({(row["candidate_id"], row["topk"], row["dropn"])
                       for row in records.values()})
