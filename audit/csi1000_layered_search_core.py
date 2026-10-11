@@ -1,12 +1,17 @@
 """CSI1000 budgeted layered strategy search core (PR-S0).
 
-Pure-Python search configuration, budget ledger, SHA cache keys and
-product-decision rules for contract 53. No Modal, no Qlib, no training.
+Pure-Python search configuration, persistent budget ledger, SHA cache keys,
+paired product-decision rules and auditable bundle writers for contract 53.
+No Modal, no Qlib, no training.
 
 Status: NOT EXECUTED. This module only defines the frozen protocol and
 fail-closed gates. Any real Modal spend requires a separate explicit USD30
 approval and a foreground operator run. Merging this code does not approve
 spend, does not run a search, and does not change production.
+
+MDD convention: drawdowns are positive magnitudes in percentage points
+(e.g. 8.0 means an 8% peak-to-trough fall). Degradation is always
+challenger minus baseline on those magnitudes.
 """
 
 from __future__ import annotations
@@ -14,9 +19,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import re
-from copy import deepcopy
+import statistics
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
@@ -34,6 +41,7 @@ STAGE_B_SNAPSHOT_TOKEN = "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8
 STAGE_A_SNAPSHOT_TOKEN = "a2ecd8d1cadf404670762a81b1fd33a377f2ef2aaf27a0d9ac6787366defd65b"
 SOURCE_VOLUME = "qlib-cn-data"
 RESEARCH_VOLUME = "qlib-csi1000-layered-search"
+FROZEN_STAGE_B_RESULT = "results/csi1000_stage_b/stage_b_full_51756897fc752304.json"
 
 # Execution / accounting (frozen product contract).
 INITIAL_CASH_CNY = 100_000_000
@@ -117,6 +125,20 @@ FINAL_MDD_MAX_DEGRADE_PP = 3.0
 FINAL_TURNOVER_MAX_RATIO = 1.25
 COARSE_MIN_PP = 0.5
 COARSE_MDD_MAX_DEGRADE_PP = 5.0
+COARSE_TURNOVER_MAX_RATIO = 1.5
+
+# Paired phase rows must carry these fields; anything missing is NOT_ELIGIBLE, never assumed.
+REQUIRED_PHASE_FIELDS = (
+    "phase",
+    "net_relative_cagr_pp",
+    "net_total_return",
+    "mdd_pp",
+    "n_days",
+    "coverage_ok",
+    "ledger_ok",
+    "data_ok",
+    "plus10bp_advantage_pp",
+)
 
 STOP_CODES = (
     "OK_CONTINUE",
@@ -154,6 +176,11 @@ def sha256_file(path: str | Path) -> str:
         for chunk in iter(lambda: f.read(1024 * 1024), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def utcnow() -> str:
+    """UTC timestamp for ledger/run-card entries."""
+    return datetime.now(timezone.utc).isoformat()
 
 
 def load_frozen_profiles(repo_root: str | Path = ".") -> Dict[str, Dict[str, str]]:
@@ -268,13 +295,27 @@ def signal_cache_key(
 
 
 def replay_cache_key(
-    signal_key: str, topk: int, dropn: int, quote_sha: str, engine_version: str = PROTOCOL_VERSION
+    signal_sha: str, topk: int, dropn: int, quote_sha: str, engine_version: str = PROTOCOL_VERSION
 ) -> str:
-    """Replay-level cache key: same frozen signal, different portfolio combo."""
+    """Replay-level cache key from the real frozen signal SHA (never a placeholder).
+
+    Parameters
+    ----------
+    signal_sha : str
+        SHA256 of the frozen ``signal.parquet`` bytes for this candidate/phase.
+    topk, dropn : int
+        Portfolio combo under test.
+    quote_sha : str
+        SHA256 of the static F1 quote-union code list bytes.
+    engine_version : str
+        Replay engine version; any change invalidates the cache.
+    """
+    require(re.fullmatch(r"[0-9a-f]{64}", signal_sha or "") is not None, "signal_sha must be a real SHA256")
+    require(re.fullmatch(r"[0-9a-f]{64}", quote_sha or "") is not None, "quote_sha must be a real SHA256")
     require(dropn <= topk, "DropN must be <= TopK")
     return stable_sha(
         {
-            "signal_key": signal_key,
+            "signal_sha": signal_sha,
             "topk": topk,
             "dropn": dropn,
             "quote_sha": quote_sha,
@@ -286,27 +327,94 @@ def replay_cache_key(
 
 
 def check_cache_hit(cached_record: Dict[str, Any], current_sources: Dict[str, Any]) -> str:
-    """Strict SHA+version resume: mtime or filename alone never counts as a hit."""
+    """Strict SHA+version resume against real file bytes.
+
+    Both sides must carry the source-file SHA256, the replay cache key and the
+    output-artifact SHA256. mtime or filename equality alone never counts as a
+    hit. Any mismatch is FAIL_CONFLICT: the caller must refuse to overwrite.
+    """
     for k in ("source_sha256", "output_sha256", "cache_key"):
         require(k in cached_record, f"cached record missing {k}")
-    for k in ("source_sha256", "cache_key"):
+    for k in ("source_sha256", "cache_key", "output_sha256"):
         require(k in current_sources, f"current sources missing {k}")
+    for label, val in (
+        ("cached source_sha256", cached_record.get("source_sha256")),
+        ("cached output_sha256", cached_record.get("output_sha256")),
+        ("cached cache_key", cached_record.get("cache_key")),
+    ):
+        require(re.fullmatch(r"[0-9a-f]{64}", str(val or "")) is not None, f"{label} is not a real SHA")
     if current_sources["cache_key"] != cached_record["cache_key"]:
         return "FAIL_CONFLICT"
     if current_sources["source_sha256"] != cached_record["source_sha256"]:
         return "FAIL_CONFLICT"
-    if cached_record.get("output_sha256") in (None, ""):
+    if not cached_record.get("output_sha256") or cached_record["output_sha256"] != current_sources["output_sha256"]:
         return "FAIL_CONFLICT"
     return "RESUME_VERIFIED"
 
 
-def check_output_not_in_source(source_root: str | Path, output: str | Path) -> Path:
-    """Fail closed if a research output path lands inside immutable inputs."""
-    src = Path(source_root).resolve()
+def check_output_not_in_source(source_roots: List[str | Path] | str | Path, output: str | Path) -> Path:
+    """Fail closed if a research output path lands inside immutable inputs or /vol.
+
+    Parameters
+    ----------
+    source_roots : list
+        Immutable input roots (snapshot root, provider dir, repo root).
+    output : path
+        Proposed research output directory.
+    """
+    roots = [Path(r).resolve() for r in ([source_roots] if isinstance(source_roots, (str, Path)) else source_roots)]
     out = Path(output).resolve()
-    require(out != src and not out.is_relative_to(src), "output inside immutable source root")
+    for src in roots:
+        require(out != src and not out.is_relative_to(src), f"output inside immutable input: {src}")
     require(out != Path("/vol") and not str(out).startswith("/vol/"), "output inside original /vol source mount")
     return out
+
+
+def check_cell_record(record: Dict[str, Any]) -> Dict[str, Any]:
+    """Strictly validate one executed cell record; never trust an incoming PASS claim.
+
+    Requires status exactly ``PASS``, real 64-hex source/output SHAs, finite NAV
+    and fee totals, confirmed ledger/coverage flags, zero training and zero
+    promotion authorization. Anything else raises.
+    """
+    require(record.get("status") == "PASS", f"cell {record.get('cell_key')} is not a verified PASS")
+    for k in ("source_sha256", "output_sha256", "quote_sha256", "signal_sha256"):
+        require(
+            re.fullmatch(r"[0-9a-f]{64}", str(record.get(k) or "")) is not None,
+            f"cell {record.get('cell_key')} has no real {k}",
+        )
+    require(record.get("cache_key"), f"cell {record.get('cell_key')} missing cache_key")
+    nav = record.get("final_nav_cny")
+    require(isinstance(nav, (int, float)) and math.isfinite(nav) and nav > 0, "cell NAV missing or non-finite")
+    cost = record.get("total_cost_cny")
+    require(isinstance(cost, (int, float)) and math.isfinite(cost) and cost >= 0, "cell fee total missing or invalid")
+    for flag in ("ledger_ok", "coverage_ok", "data_ok"):
+        require(record.get(flag) is True, f"cell {record.get('cell_key')} flag {flag} is not true")
+    require(record.get("training_performed") is False, "training flag must be false for P0/L1 replay cells")
+    require(record.get("promotion_authorized") is False, "promotion must never be pre-authorized")
+    require(isinstance(record.get("n_days"), int) and record["n_days"] > 0, "cell day count missing")
+    return {
+        "cell_key": record["cell_key"],
+        "final_nav_cny": float(nav),
+        "total_cost_cny": float(cost),
+        "n_days": record["n_days"],
+        "output_sha256": record["output_sha256"],
+    }
+
+
+def require_p0_pass(summary: Dict[str, Any], outcomes: List[Dict[str, Any]] | None = None) -> Dict[str, Any]:
+    """Gate L1-A on a fully verified P0 summary: exactly 4/4 real PASS cells.
+
+    Every outcome is re-validated with :func:`check_cell_record`; a skeleton,
+    placeholder or unvalidated entry blocks L1 with STOP_P0.
+    """
+    require(summary.get("stage") == "p0", "P0 summary missing: run --stage p0 first")
+    require(int(summary.get("expected", -1)) == 4, "P0 must cover exactly 4 cells")
+    require(int(summary.get("completed", -1)) == 4 and int(summary.get("blocked", -1)) == 0, "P0 is not 4/4 PASS")
+    rows = outcomes if outcomes is not None else summary.get("outcomes", [])
+    require(len(rows) == 4, "P0 outcomes missing")
+    checked = [check_cell_record(r) for r in rows]
+    return {"status": "P0_VERIFIED", "cells": [c["cell_key"] for c in checked]}
 
 
 # Negative controls (§P0): each raises on violation, never warns-and-continues.
@@ -336,11 +444,16 @@ def neg_halt_fake_sell(is_halted: bool, sold: bool) -> None:
 
 
 def neg_zero_fee(bp: float) -> None:
-    require(bp > 0, "fee schedule must be positive")
+    require(
+        isinstance(bp, (int, float)) and math.isfinite(bp) and bp > 0, "fee schedule must be a positive finite number"
+    )
 
 
 def neg_cross_account(account_a: str, account_b: str) -> None:
-    require(account_a != account_b, "challenger and baseline must use independent paper accounts")
+    require(
+        bool(account_a) and bool(account_b) and account_a != account_b,
+        "challenger and baseline need independent paper accounts",
+    )
 
 
 def neg_duplicate_key(keys: List[str]) -> None:
@@ -352,31 +465,97 @@ def neg_missing_baseline(baseline_present: bool) -> None:
 
 
 def neg_over_budget(estimated_usd: float, remaining_usd: float) -> None:
+    for v, name in ((estimated_usd, "estimate"), (remaining_usd, "remaining")):
+        require(isinstance(v, (int, float)) and math.isfinite(v), f"{name} cost is unknown or non-finite")
     require(estimated_usd <= remaining_usd, f"P90 estimate {estimated_usd} exceeds remaining {remaining_usd}")
+
+
+def neg_nonfinite_spend(spend_usd: float) -> None:
+    require(
+        isinstance(spend_usd, (int, float)) and math.isfinite(spend_usd) and spend_usd >= 0, "spend must be finite >= 0"
+    )
+
+
+def neg_missing_nav(nav: Any) -> None:
+    require(isinstance(nav, (int, float)) and math.isfinite(nav) and nav > 0, "NAV missing or non-finite")
 
 
 @dataclass
 class BudgetLedger:
-    """Append-only real-cost ledger with fail-closed layered/global gates."""
+    """Append-only real-cost ledger with fail-closed layered/global gates.
+
+    The ledger persists to JSON so spend, fits and wall time accumulate across
+    batches. CLI estimates are provisional ceiling gates only: real spend is
+    recorded exclusively from operator billing reports via
+    :meth:`record_actual`. A batch without recorded actuals stays
+    ESTIMATED_PENDING and blocks the next batch's preflight.
+    """
 
     spent_by_layer: Dict[str, float] = field(default_factory=lambda: {k: 0.0 for k in LAYER_CAPS_USD})
     fits_used: int = 0
     elapsed_hours: float = 0.0
+    pending_estimate_usd: float = 0.0
     events: List[Dict[str, Any]] = field(default_factory=list)
 
     def remaining_layer(self, layer: str) -> float:
         require(layer in LAYER_CAPS_USD, f"unknown layer {layer}")
-        return round(LAYER_CAPS_USD[layer] - self.spent_by_layer.get(layer, 0.0), 6)
+        return round(LAYER_CAPS_USD[layer] - self.spent_by_layer.get(layer, 0.0) - self._pending_for(layer), 6)
 
     def remaining_global(self) -> float:
-        return round(GLOBAL_CAP_USD - sum(self.spent_by_layer.values()), 6)
+        return round(GLOBAL_CAP_USD - sum(self.spent_by_layer.values()) - self.pending_estimate_usd, 6)
 
     def remaining_fits(self) -> int:
         return GLOBAL_FIT_CAP - self.fits_used
 
+    def _pending_for(self, layer: str) -> float:
+        for ev in reversed(self.events):
+            if ev.get("kind") == "estimate_pending" and ev.get("layer") == layer:
+                return float(ev.get("spend_usd", 0.0))
+        return 0.0
+
+    @staticmethod
+    def estimate_p90(
+        samples: List[float],
+        cpu_rate: float,
+        mem_rate: float,
+        cpu_seconds_p90: float,
+        mem_gb_seconds_p90: float,
+        overhead_usd: float = 0.0,
+    ) -> float:
+        """P90 batch-cost estimate from measured worker-seconds and real Modal rates.
+
+        Unknown, NaN or infinite rates/samples raise STOP_COST_UNKNOWN immediately.
+        """
+        for v, name in (
+            (cpu_rate, "cpu_rate"),
+            (mem_rate, "mem_rate"),
+            (cpu_seconds_p90, "cpu_seconds_p90"),
+            (mem_gb_seconds_p90, "mem_gb_seconds_p90"),
+            (overhead_usd, "overhead_usd"),
+        ):
+            if not isinstance(v, (int, float)) or not math.isfinite(v) or v < 0:
+                raise ValueError(f"STOP_COST_UNKNOWN: {name} is unknown or non-finite")
+        if not samples:
+            raise ValueError("STOP_COST_UNKNOWN: no measured worker-second samples for P90")
+        if any(not isinstance(s, (int, float)) or not math.isfinite(s) or s < 0 for s in samples):
+            raise ValueError("STOP_COST_UNKNOWN: worker-second samples contain unknown values")
+        _ = statistics.quantiles(sorted(samples), n=10)[-1] if len(samples) >= 10 else max(samples)
+        return round(
+            float(cpu_seconds_p90) * float(cpu_rate)
+            + float(mem_gb_seconds_p90) * float(mem_rate)
+            + float(overhead_usd),
+            6,
+        )
+
     def preflight(self, layer: str, p90_estimate_usd: float, fits_needed: int = 0) -> str:
-        """Batch-start gate. Unknown cost or <20% reserve for in-flight work stops."""
-        if p90_estimate_usd is None or not isinstance(p90_estimate_usd, (int, float)) or p90_estimate_usd < 0:
+        """Batch-start gate. Unknown/non-finite cost, pending actuals or <20% reserve stops."""
+        if (
+            not isinstance(p90_estimate_usd, (int, float))
+            or not math.isfinite(p90_estimate_usd)
+            or p90_estimate_usd < 0
+        ):
+            return "STOP_COST_UNKNOWN"
+        if self.pending_estimate_usd > 0:
             return "STOP_COST_UNKNOWN"
         reserve = RESERVE_FRACTION * GLOBAL_CAP_USD
         if self.remaining_global() < reserve and (p90_estimate_usd > 0 or fits_needed > 0):
@@ -389,13 +568,76 @@ class BudgetLedger:
             return "STOP_BUDGET"
         return "OK_CONTINUE"
 
-    def record(self, layer: str, spend_usd: float, fits: int = 0, hours: float = 0.0, note: str = "") -> str:
+    def record_estimate(self, layer: str, p90_estimate_usd: float, *, run_id: str, note: str = "") -> str:
+        """Hold a provisional ceiling for a dispatched batch; never booked as spend."""
+        neg_nonfinite_spend(p90_estimate_usd)
         require(layer in LAYER_CAPS_USD, f"unknown layer {layer}")
-        require(spend_usd >= 0 and fits >= 0 and hours >= 0, "negative ledger entry")
+        self.pending_estimate_usd = round(self.pending_estimate_usd + p90_estimate_usd, 6)
+        self.events.append(
+            {
+                "kind": "estimate_pending",
+                "layer": layer,
+                "spend_usd": p90_estimate_usd,
+                "run_id": run_id,
+                "utc": utcnow(),
+                "note": note,
+            }
+        )
+        return "OK_CONTINUE"
+
+    def record_actual(
+        self,
+        layer: str,
+        spend_usd: float,
+        *,
+        app_id: str,
+        run_id: str,
+        fits: int = 0,
+        hours: float = 0.0,
+        outcome: str = "success",
+        note: str = "",
+    ) -> str:
+        """Book real billed spend (including failed/retry App spend). Clears one pending hold."""
+        require(layer in LAYER_CAPS_USD, f"unknown layer {layer}")
+        neg_nonfinite_spend(spend_usd)
+        require(bool(app_id) and app_id not in ("pending", "null", "unknown"), "real App ID required for actuals")
+        require(
+            isinstance(fits, int)
+            and fits >= 0
+            and isinstance(hours, (int, float))
+            and math.isfinite(hours)
+            and hours >= 0,
+            "fits/hours must be finite >= 0",
+        )
+        require(outcome in ("success", "failed", "retried", "blocked"), f"unknown outcome {outcome}")
         self.spent_by_layer[layer] = round(self.spent_by_layer.get(layer, 0.0) + spend_usd, 6)
         self.fits_used += fits
         self.elapsed_hours += hours
-        self.events.append({"layer": layer, "spend_usd": spend_usd, "fits": fits, "hours": hours, "note": note})
+        cleared = 0.0
+        for ev in self.events:
+            if (
+                ev.get("kind") == "estimate_pending"
+                and ev.get("layer") == layer
+                and ev.get("run_id") == run_id
+                and cleared == 0.0
+            ):
+                ev["kind"] = "estimate_cleared"
+                cleared = float(ev.get("spend_usd", 0.0))
+        self.pending_estimate_usd = round(max(0.0, self.pending_estimate_usd - cleared), 6)
+        self.events.append(
+            {
+                "kind": "actual",
+                "layer": layer,
+                "spend_usd": spend_usd,
+                "fits": fits,
+                "hours": hours,
+                "app_id": app_id,
+                "run_id": run_id,
+                "outcome": outcome,
+                "utc": utcnow(),
+                "note": note,
+            }
+        )
         if (
             self.spent_by_layer[layer] > LAYER_CAPS_USD[layer] + 1e-9
             or sum(self.spent_by_layer.values()) > GLOBAL_CAP_USD + 1e-9
@@ -405,49 +647,187 @@ class BudgetLedger:
             return "STOP_BUDGET"
         return "OK_CONTINUE"
 
+    # Compatibility shim: provisional hold, never booked as real spend.
+    def record(self, layer: str, spend_usd: float, fits: int = 0, hours: float = 0.0, note: str = "") -> str:
+        return self.record_estimate(
+            layer, spend_usd, run_id=note or "legacy", note="legacy record() proxied to estimate hold"
+        )
 
-def coarse_pass(two_phase: List[Dict[str, float]]) -> bool:
-    """L1 two-phase coarse screen: both phases need +0.5pp worst+median, sane risk."""
-    require(len(two_phase) == 2, "coarse screen needs exactly two phases")
-    for row in two_phase:
-        if row.get("coverage_ok") is False or row.get("ledger_ok") is False:
-            return False
-        if row.get("worst_delta_pp", -1e9) < COARSE_MIN_PP or row.get("median_delta_pp", -1e9) < COARSE_MIN_PP:
-            return False
-        if row.get("mdd_degrade_pp", 1e9) > COARSE_MDD_MAX_DEGRADE_PP:
-            return False
-    return True
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "protocol": PROTOCOL_VERSION,
+            "spent_by_layer": dict(self.spent_by_layer),
+            "fits_used": self.fits_used,
+            "elapsed_hours": self.elapsed_hours,
+            "pending_estimate_usd": self.pending_estimate_usd,
+            "events": list(self.events),
+        }
+
+    def save(self, path: str | Path) -> Path:
+        """Atomically persist the ledger (temp file + rename, never partial)."""
+        out = Path(path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        tmp = out.with_suffix(out.suffix + ".tmp")
+        tmp.write_text(json.dumps(self.to_dict(), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        tmp.replace(out)
+        return out
+
+    @classmethod
+    def load(cls, path: str | Path) -> "BudgetLedger":
+        """Load a persisted ledger; a missing file starts empty, a corrupt one blocks."""
+        p = Path(path)
+        if not p.exists():
+            return cls()
+        try:
+            raw = json.loads(p.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise ValueError(f"STOP_COST_UNKNOWN: corrupt ledger file: {exc}") from exc
+        ledger = cls()
+        spent = raw.get("spent_by_layer", {})
+        for layer in LAYER_CAPS_USD:
+            v = spent.get(layer, 0.0)
+            neg_nonfinite_spend(v)
+            ledger.spent_by_layer[layer] = float(v)
+        ledger.fits_used = int(raw.get("fits_used", 0))
+        ledger.elapsed_hours = float(raw.get("elapsed_hours", 0.0))
+        ledger.pending_estimate_usd = float(raw.get("pending_estimate_usd", 0.0))
+        ledger.events = list(raw.get("events", []))
+        require(
+            ledger.fits_used >= 0 and math.isfinite(ledger.elapsed_hours) and ledger.elapsed_hours >= 0,
+            "ledger fits/hours invalid",
+        )
+        return ledger
 
 
-def final_verdict(phases: List[Dict[str, Any]], turnover_ratio: float) -> Tuple[str, Dict[str, Any]]:
-    """Apply the seven §1.2 product gates over five paired phases."""
-    detail: Dict[str, Any] = {"n_phases": len(phases)}
-    if len(phases) != 5:
-        return "INCOMPLETE", {**detail, "reason": "need exactly five phases"}
-    for row in phases:
-        if row.get("coverage_ok") is False or row.get("ledger_ok") is False or row.get("data_ok") is False:
-            return "NOT_ELIGIBLE", {**detail, "reason": "data/ledger/coverage gate failed"}
-    worst = min(r["net_relative_cagr_pp"] for r in phases)
-    median = sorted(r["net_relative_cagr_pp"] for r in phases)[2]
-    n_beat = sum(1 for r in phases if r["net_total_return"] > r["baseline_net_total_return"])
-    mdd_deg = max(r["mdd_pp"] for r in phases) - min(r["baseline_mdd_pp"] for r in phases)
-    stress = all(r.get("plus10bp_advantage_pp", -1e9) > 0 for r in phases)
-    detail.update(
-        {"worst_pp": worst, "median_pp": median, "n_beat": n_beat, "mdd_degrade_pp": mdd_deg, "stress10_ok": stress}
+def _paired_deltas(
+    challenger: List[Dict[str, Any]], baseline: List[Dict[str, Any]], n_expected: int
+) -> Tuple[str, Dict[str, Any], List[float]]:
+    """Pair challenger vs baseline rows phase-by-phase; all deltas are chall minus base."""
+    detail: Dict[str, Any] = {}
+    if len(challenger) != n_expected or len(baseline) != n_expected:
+        return "INCOMPLETE", {**detail, "reason": f"need exactly {n_expected} paired phases per leg"}, []
+    for leg_name, leg in (("challenger", challenger), ("baseline", baseline)):
+        for row in leg:
+            missing = [k for k in REQUIRED_PHASE_FIELDS if k not in row]
+            if missing:
+                return "NOT_ELIGIBLE", {**detail, "reason": f"{leg_name} missing fields {missing}"}, []
+    base_by_phase = {r["phase"]: r for r in baseline}
+    chall_by_phase = {r["phase"]: r for r in challenger}
+    if set(base_by_phase) != set(chall_by_phase):
+        return "NOT_ELIGIBLE", {**detail, "reason": "phase sets differ between legs"}, []
+    for leg in (challenger, baseline):
+        for row in leg:
+            for flag in ("coverage_ok", "ledger_ok", "data_ok"):
+                if row.get(flag) is not True:
+                    return (
+                        "BASELINE_INELIGIBLE" if leg is baseline else "NOT_ELIGIBLE",
+                        {**detail, "reason": f"{'baseline' if leg is baseline else 'challenger'} {flag} not true"},
+                        [],
+                    )
+            for num in ("net_relative_cagr_pp", "net_total_return", "mdd_pp", "plus10bp_advantage_pp"):
+                if not isinstance(row.get(num), (int, float)) or not math.isfinite(row[num]):
+                    return "NOT_ELIGIBLE", {**detail, "reason": f"non-finite {num}"}, []
+            if not isinstance(row.get("n_days"), int) or row["n_days"] <= 0:
+                return "NOT_ELIGIBLE", {**detail, "reason": "invalid n_days"}, []
+            if row["mdd_pp"] < 0:
+                return "NOT_ELIGIBLE", {**detail, "reason": "mdd_pp must be a positive magnitude"}, []
+    for phase in base_by_phase:
+        if chall_by_phase[phase]["n_days"] != base_by_phase[phase]["n_days"]:
+            return "NOT_ELIGIBLE", {**detail, "reason": f"phase {phase} day-count mismatch between legs"}, []
+    deltas = [
+        chall_by_phase[p]["net_relative_cagr_pp"] - base_by_phase[p]["net_relative_cagr_pp"]
+        for p in sorted(base_by_phase)
+    ]
+    return "OK", {}, deltas
+
+
+def coarse_pass(challenger: List[Dict[str, Any]], baseline: List[Dict[str, Any]]) -> Tuple[bool, Dict[str, Any]]:
+    """L1 two-phase coarse screen on paired improvements (never absolute levels).
+
+    Both phases need worst and median paired improvement >= +0.5pp, MDD
+    degradation <= 5pp and sane turnover. Returns (passed, detail).
+    """
+    code, detail, deltas = _paired_deltas(challenger, baseline, 2)
+    if code != "OK":
+        return False, {"screen": "coarse", "gate": code, **detail}
+    base_by_phase = {r["phase"]: r for r in baseline}
+    chall_by_phase = {r["phase"]: r for r in challenger}
+    worst = min(deltas)
+    median = sorted(deltas)[1]
+    mdd_deg = max(r["mdd_pp"] for r in challenger) - min(r["mdd_pp"] for r in baseline)
+    turnovers = []
+    for p in sorted(base_by_phase):
+        base_t = base_by_phase[p].get("turnover")
+        chall_t = chall_by_phase[p].get("turnover")
+        if base_t is None or chall_t is None:
+            return False, {"screen": "coarse", "gate": "NOT_ELIGIBLE", "reason": "turnover missing"}
+        if not (isinstance(base_t, (int, float)) and math.isfinite(base_t) and base_t > 0):
+            return False, {"screen": "coarse", "gate": "NOT_ELIGIBLE", "reason": "baseline turnover invalid"}
+        turnovers.append(chall_t / base_t)
+    turnover_ratio = max(turnovers)
+    info = {
+        "worst_delta_pp": worst,
+        "median_delta_pp": median,
+        "mdd_degrade_pp": mdd_deg,
+        "turnover_ratio": turnover_ratio,
+    }
+    if worst < COARSE_MIN_PP or median < COARSE_MIN_PP:
+        return False, {**info, "failed": "improvement"}
+    if mdd_deg > COARSE_MDD_MAX_DEGRADE_PP:
+        return False, {**info, "failed": "mdd"}
+    if not math.isfinite(turnover_ratio) or turnover_ratio > COARSE_TURNOVER_MAX_RATIO:
+        return False, {**info, "failed": "turnover"}
+    return True, info
+
+
+def final_verdict(
+    challenger: List[Dict[str, Any]], baseline: List[Dict[str, Any]], turnover_ratio: float
+) -> Tuple[str, Dict[str, Any]]:
+    """Apply the seven §1.2 product gates over five paired phases.
+
+    All return comparisons are challenger-minus-baseline improvements. A
+    baseline leg that fails data/ledger/coverage yields BASELINE_INELIGIBLE so
+    the caller can escalate to STOP_PRODUCT_BLOCKED instead of crowning a
+    challenger against a broken reference.
+    """
+    code, detail, deltas = _paired_deltas(challenger, baseline, 5)
+    if code != "OK":
+        return code, {**detail, "n_phases": len(challenger)}
+    base_by_phase = {r["phase"]: r for r in baseline}
+    chall_by_phase = {r["phase"]: r for r in challenger}
+    worst = min(deltas)
+    median = sorted(deltas)[2]
+    n_beat = sum(
+        1 for p in base_by_phase if chall_by_phase[p]["net_total_return"] > base_by_phase[p]["net_total_return"]
     )
+    mdd_deg = max(r["mdd_pp"] for r in challenger) - min(r["mdd_pp"] for r in baseline)
+    stress = all(chall_by_phase[p]["plus10bp_advantage_pp"] > 0 for p in base_by_phase)
+    info = {
+        "n_phases": 5,
+        "worst_delta_pp": worst,
+        "median_delta_pp": median,
+        "n_beat": n_beat,
+        "mdd_degrade_pp": mdd_deg,
+        "stress10_ok": stress,
+        "turnover_ratio": turnover_ratio,
+    }
     if worst < FINAL_WORST_MIN_PP:
-        return "NOT_ELIGIBLE", {**detail, "failed": "worst_phase"}
+        return "NOT_ELIGIBLE", {**info, "failed": "worst_phase"}
     if median < FINAL_MEDIAN_MIN_PP:
-        return "NOT_ELIGIBLE", {**detail, "failed": "median"}
+        return "NOT_ELIGIBLE", {**info, "failed": "median"}
     if n_beat < FINAL_MIN_PHASES_BEAT:
-        return "NOT_ELIGIBLE", {**detail, "failed": "breadth"}
+        return "NOT_ELIGIBLE", {**info, "failed": "breadth"}
     if mdd_deg > FINAL_MDD_MAX_DEGRADE_PP:
-        return "NOT_ELIGIBLE", {**detail, "failed": "mdd"}
-    if turnover_ratio > FINAL_TURNOVER_MAX_RATIO:
-        return "NOT_ELIGIBLE", {**detail, "failed": "turnover"}
+        return "NOT_ELIGIBLE", {**info, "failed": "mdd"}
+    if (
+        not isinstance(turnover_ratio, (int, float))
+        or not math.isfinite(turnover_ratio)
+        or turnover_ratio > FINAL_TURNOVER_MAX_RATIO
+    ):
+        return "NOT_ELIGIBLE", {**info, "failed": "turnover"}
     if not stress:
-        return "NOT_ELIGIBLE", {**detail, "failed": "cost_stress_10bp"}
-    return "PASS", detail
+        return "NOT_ELIGIBLE", {**info, "failed": "cost_stress_10bp"}
+    return "PASS", info
 
 
 def rank_challengers(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -455,18 +835,34 @@ def rank_challengers(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     require(len(rows) > 0, "nothing to rank")
 
     def key(r: Dict[str, Any]) -> tuple:
-        return (-r["worst_pp"], -r["median_pp"], r["mdd_degrade_pp"], r["turnover_ratio"], r["config_sha"])
+        return (-r["worst_delta_pp"], -r["median_delta_pp"], r["mdd_degrade_pp"], r["turnover_ratio"], r["config_sha"])
 
     return sorted(rows, key=key)
 
 
-def decide_product(finalists: List[Dict[str, Any]]) -> Tuple[str, Dict[str, Any]]:
-    """Global decision: unique PASS winner or KEEP_BASELINE_FOR_PRODUCT_SELECTION."""
-    passes = [f for f in finalists if f.get("verdict") == "PASS"]
-    if not passes:
+def decide_product(finalists: List[Dict[str, Any]], baseline_eligible: bool = True) -> Tuple[str, Dict[str, Any]]:
+    """Global decision with recomputed verdicts; embedded PASS claims are ignored.
+
+    Each finalist must carry ``challenger_phases``, ``baseline_phases`` and
+    ``turnover_ratio`` so every verdict is recomputed here. With zero passing
+    challengers the decision is KEEP_BASELINE_FOR_PRODUCT_SELECTION, or
+    STOP_PRODUCT_BLOCKED when the baseline reference itself is ineligible.
+    """
+    scored = []
+    for f in finalists:
+        verdict, info = final_verdict(
+            f.get("challenger_phases", []), f.get("baseline_phases", []), f.get("turnover_ratio")
+        )
+        if verdict == "PASS":
+            scored.append({"config_sha": f.get("config_sha", ""), **info})
+        elif verdict == "BASELINE_INELIGIBLE":
+            return "STOP_PRODUCT_BLOCKED", {"reason": "baseline reference ineligible"}
+    if not scored:
+        if not baseline_eligible:
+            return "STOP_PRODUCT_BLOCKED", {"n_finalists": len(finalists), "n_pass": 0}
         return "KEEP_BASELINE_FOR_PRODUCT_SELECTION", {"n_finalists": len(finalists), "n_pass": 0}
-    ordered = rank_challengers(passes)
-    return "PROPOSE_PRODUCT_PROFILE_VERSION", {"winner": ordered[0], "n_pass": len(passes)}
+    ordered = rank_challengers(scored)
+    return "PROPOSE_PRODUCT_PROFILE_VERSION", {"winner": ordered[0], "n_pass": len(scored)}
 
 
 def build_protocol(run_id: str, approved_by: str = "PENDING_BUDGET_APPROVAL") -> Dict[str, Any]:
@@ -502,6 +898,37 @@ def build_protocol(run_id: str, approved_by: str = "PENDING_BUDGET_APPROVAL") ->
         },
         "approval": {"approved_by": approved_by, "training_performed": False, "promotion_authorized": False},
     }
+
+
+def append_trial_ledger(path: str | Path, rows: List[Dict[str, Any]]) -> Path:
+    """Append trial rows; duplicate cell keys across the whole file are refused."""
+    out = Path(path)
+    existing: List[Dict[str, Any]] = []
+    if out.exists():
+        existing = [json.loads(line) for line in out.read_text(encoding="utf-8").splitlines() if line.strip()]
+    keys = [r.get("cell_key") for r in existing] + [r.get("cell_key") for r in rows]
+    require(len(set(keys)) == len(keys), "duplicate cell keys in trial ledger")
+    for r in rows:
+        require(r.get("cell_key"), "trial row missing cell_key")
+        require(r.get("app_id") and r["app_id"] not in ("pending", "null", "unknown"), "trial row needs a real App ID")
+        require(r.get("status") in ("PASS", "BLOCKED", "RESUME_VERIFIED"), "unknown trial status")
+        neg_nonfinite_spend(float(r.get("spend_usd", 0.0)))
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("a", encoding="utf-8") as f:
+        for r in rows:
+            f.write(json.dumps({**r, "utc": r.get("utc", utcnow())}, sort_keys=True) + "\n")
+    return out
+
+
+def write_sha256sums(root: str | Path) -> Path:
+    """Write SHA256SUMS.txt over every file under root except itself."""
+    root = Path(root)
+    lines = []
+    for p in sorted(root.rglob("*")):
+        if p.is_file() and p.name != "SHA256SUMS.txt":
+            lines.append(f"{sha256_file(p)}  {p.relative_to(root).as_posix()}\n")
+    (root / "SHA256SUMS.txt").write_text("".join(lines), encoding="utf-8")
+    return root / "SHA256SUMS.txt"
 
 
 def build_cli() -> argparse.ArgumentParser:
@@ -554,6 +981,7 @@ def main(argv: List[str] | None = None) -> int:
         ledger = BudgetLedger()
         assert ledger.preflight("p0", 1.0) == "OK_CONTINUE"
         assert ledger.preflight("p0", 99.0) == "STOP_BUDGET"
+        assert ledger.preflight("p0", float("nan")) == "STOP_COST_UNKNOWN"
         assert len(enumerate_cells("p0")) == 4
         print("DRY_RUN_OK")
         return 0

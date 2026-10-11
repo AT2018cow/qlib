@@ -1,16 +1,20 @@
 """Modal P0/L1 runner for the CSI1000 budgeted layered search (PR-S0).
 
-Read-only source, separate research volume, per-cell SHA resume, real-cost
-ledger and fail-closed STOP gates. Zero training for p0/l1-a: frozen Stage-B
-signals are replayed under different (TopK, DropN) combos only.
+Real frozen-signal replay via :mod:`audit.csi1000_layered_search_replay`:
+read-only source volume, separate research volume, per-cell SHA resume with
+atomic publish, persistent cross-batch cost ledger and fail-closed STOP gates.
+Zero training for p0/l1-a: frozen Stage-B signals are replayed under different
+(TopK, DropN) combos only; L1-A additionally requires a verified P0 summary.
 
 Foreground rule: when launched through OpenCode, NEVER pass ``--detach`` to
 ``modal run``. Keep the launcher attached with a tool timeout longer than the
 worst-case queue + build + run + collect time. If the timeout cannot cover the
 batch, shrink ``--batch-limit`` first or STOP. ``git checkout --detach`` is
-unrelated and remains allowed.
+unrelated and remains allowed. No ``nohup``, shell ``&`` or untracked
+background mechanism is used anywhere in this file.
 
-Status: code only, NOT EXECUTED. Real spend needs explicit USD30 approval.
+Status: code only, NOT EXECUTED. Real spend needs explicit USD30 approval,
+and no billed run is claimed by merging or reviewing this file.
 """
 
 from __future__ import annotations
@@ -27,17 +31,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from audit.csi1000_layered_search_core import (
     LAYER_CAPS_USD,
-    PHASES_SCREEN_TWO,
     PROTOCOL_VERSION,
     RESEARCH_VOLUME,
     SOURCE_VOLUME,
     BudgetLedger,
     build_protocol,
-    check_cache_hit,
-    check_output_not_in_source,
+    check_cell_record,
     enumerate_cells,
     load_frozen_profiles,
     replay_cache_key,
+    require_p0_pass,
 )
 
 try:
@@ -51,6 +54,22 @@ except Exception:  # local CI without modal must still support --help
 SOURCE = Path("/source")
 RESULTS = Path("/results")
 REPO = Path("/root/qlib")
+
+LEDGER_NAME = "cost_ledger.json"
+TRIAL_LEDGER_NAME = "trial_ledger.jsonl"
+
+
+def result_prefix(run_id: str, stage: str, code_sha: str) -> str:
+    """Versioned, non-overwriting research prefix for one run."""
+    if not re.fullmatch(r"[0-9a-f]{40}", code_sha or ""):
+        raise ValueError("STOP: code_sha must be a full git SHA")
+    return f"csi1000_layered_search/{PROTOCOL_VERSION}/{run_id}/{stage}/{code_sha[:12]}"
+
+
+def build_jobs(cells: List[Dict[str, Any]], prefix: str) -> List[Dict[str, Any]]:
+    """Local job descriptors (no placeholder SHAs; resolved remotely per cell)."""
+    return [{"cell": c, "prefix": prefix} for c in cells]
+
 
 if _HAS_MODAL:
     original = modal.Volume.from_name(SOURCE_VOLUME, create_if_missing=False)
@@ -76,56 +95,63 @@ if _HAS_MODAL:
         volumes={str(SOURCE): original.with_mount_options(read_only=True), str(RESULTS): research},
         cpu=2,
         memory=4096,
-        timeout=1800,
+        timeout=3600,
         retries=0,
     )
-    def replay_cell(job: Dict[str, Any]) -> Dict[str, Any]:
-        """Replay one frozen-signal cell. Never trains, never writes the source volume."""
-        from datetime import datetime, timezone
+    def replay_cell_remote(job: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute one frozen-signal cell. Never trains, never writes the source volume."""
+        import pandas as pd
 
-        started = datetime.now(timezone.utc).isoformat()
+        from audit.csi1000_layered_search_replay import (
+            execute_cell,
+            load_frozen_result,
+            lookup_phase,
+            publish_cell,
+            resolve_phase_sources,
+            static_quote_union,
+        )
+        from csi1000_stage_b_core import MARKET, RESERVED_EXECUTION_END, RESERVED_EXECUTION_START
+        from qlib.data import D
+
+        cell = job["cell"]
         try:
-            root = RESULTS / job["prefix"] / job["cell"]["cell_key"]
-            if (root / "cell.json").exists():
-                cached = json.loads((root / "cell.json").read_text(encoding="utf-8"))
-                verdict = check_cache_hit(
-                    cached, {"cache_key": job["cache_key"], "source_sha256": job["source_sha256"]}
-                )
-                if verdict == "RESUME_VERIFIED":
-                    return {**cached, "resumed_hash_verified": True, "training_performed": False}
-                return {
-                    "status": "BLOCKED",
-                    "reason": "FAIL_CONFLICT",
-                    "cell_key": job["cell"]["cell_key"],
-                    "training_performed": False,
-                }
-            # NOTE: full Qlib replay body lands in PR-S1; PR-S0 records the verified
-            # cell skeleton (identity + cache key + ledger) so P0 wiring is reviewable
-            # without claiming any real backtest has run.
-            out = {
-                "status": "PASS_SKELETON",
-                "cell_key": job["cell"]["cell_key"],
-                "cell": job["cell"],
-                "cache_key": job["cache_key"],
-                "source_sha256": job["source_sha256"],
-                "output_sha256": job["cache_key"],
-                "training_performed": False,
-                "promotion_authorized": False,
-                "started_utc": started,
-                "finished_utc": datetime.now(timezone.utc).isoformat(),
-            }
-            root.mkdir(parents=True, exist_ok=True)
-            (root / "cell.json").write_text(json.dumps(out, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            import qlib
+
+            qlib.init(provider_uri=str(SOURCE / "cn_data"), region="cn")
+            result = load_frozen_result(REPO)
+            phase_row = lookup_phase(result, cell["candidate_id"], int(cell["phase"]))
+            snapshot_root = SOURCE / "csi1000_stage_b" / result["manifest"]["snapshot_token"]
+            sources = resolve_phase_sources(snapshot_root, phase_row, cell["candidate_id"], int(cell["phase"]))
+            frame = pd.read_parquet(sources["signal"])
+            if list(frame.columns) != ["score"]:
+                raise ValueError("STOP_SOURCE_UNAVAILABLE: frozen signal schema drift")
+            signal = frame["score"]
+            frozen_report = pd.read_parquet(sources["report"])
+            frozen_decisions = json.loads(sources["decision"].read_text(encoding="utf-8"))
+            quote_codes, quote_sha = static_quote_union(MARKET, RESERVED_EXECUTION_START, RESERVED_EXECUTION_END, D)
+            record, artifacts = execute_cell(
+                cell=cell,
+                sources=sources,
+                signal=signal,
+                frozen_report=frozen_report,
+                frozen_decisions=frozen_decisions,
+                quote_codes=quote_codes,
+                quote_sha=quote_sha,
+                market_codes=MARKET,
+            )
+            cache_key = replay_cache_key(
+                record["signal_sha256"], record["topk"], record["dropn"], record["quote_sha256"]
+            )
+            final = publish_cell(RESULTS / job["prefix"] / "cells", record, artifacts, cache_key)
             # Only the independent research volume is ever committed; the source
             # volume object has no commit call anywhere in this file.
             research.commit()
-            return out
+            return {**final, "resumed": final.get("resumed", False)}
         except Exception as exc:  # fail closed per cell, never partial-write as PASS
             return {
                 "status": "BLOCKED",
-                "cell_key": job["cell"]["cell_key"],
+                "cell_key": cell["cell_key"],
                 "reason": f"{type(exc).__name__}: {exc}",
-                "started_utc": started,
                 "training_performed": False,
             }
 
@@ -135,33 +161,139 @@ if _HAS_MODAL:
         memory=4096,
         timeout=900,
     )
-    def finalize(prefix: str, stage: str, outcomes: List[Dict[str, Any]], code_sha: str, run_id: str) -> Dict[str, Any]:
-        ledger = BudgetLedger()
+    def finalize_remote(
+        prefix: str, stage: str, outcomes: List[Dict[str, Any]], code_sha: str, run_id: str
+    ) -> Dict[str, Any]:
+        """Re-validate every outcome (never trust incoming PASS), then sign the summary."""
+        verified, blocked = [], []
+        for o in outcomes:
+            try:
+                check_cell_record(o)
+                verified.append(o)
+            except ValueError as exc:
+                blocked.append({"cell_key": o.get("cell_key"), "reason": str(exc)})
         summary = {
             "protocol": PROTOCOL_VERSION,
             "stage": stage,
             "run_id": run_id,
             "code_sha": code_sha,
             "expected": len(outcomes),
-            "completed": sum(1 for o in outcomes if o.get("status", "").startswith("PASS")),
-            "blocked": sum(1 for o in outcomes if o.get("status") == "BLOCKED"),
+            "completed": len(verified),
+            "blocked": len(outcomes) - len(verified),
+            "blocked_cells": blocked,
+            "verified_cells": verified,
             "training_performed": False,
             "promotion_authorized": False,
             "source_volume_read_only": True,
-            "outcomes": outcomes,
         }
         root = RESULTS / prefix / "summaries" / stage
         root.mkdir(parents=True, exist_ok=True)
-        if (root / f"stage_{stage}_summary.json").exists():
+        target = root / f"stage_{stage}_summary.json"
+        if target.exists():
             raise RuntimeError("summary already exists; refusing to overwrite")
-        (root / f"stage_{stage}_summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
-        (root / "protocol.json").write_text(json.dumps(build_protocol(run_id), indent=2, sort_keys=True) + "\n")
+        target.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        (root / "protocol.json").write_text(
+            json.dumps(build_protocol(run_id), indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
         research.commit()
         return summary
 
+    @app.local_entrypoint()
+    def run_search(
+        stage: str = "p0",
+        run_id: str = "",
+        max_workers: int = 2,
+        batch_limit: int = 0,
+        estimated_total_usd: float = -1.0,
+        resume_from_manifest: str = "",
+        ledger: str = "cost_ledger.json",
+        p0_summary: str = "",
+    ) -> None:
+        """Foreground Modal entrypoint: P0 controls, then gated L1-A screen.
+
+        Execute attached, e.g. ``modal run audit/csi1000_layered_search_modal.py
+        --stage p0 --run-id <id> --max-workers 2 --estimated-total-usd 2.0``.
+        Never append ``--detach`` when launched through OpenCode. L1-A also
+        needs ``--p0-summary <downloaded stage_p0_summary.json>`` proving 4/4
+        verified P0 cells.
+        """
+        cells = validate_for_dispatch(
+            stage, run_id, max_workers, batch_limit, estimated_total_usd, resume_from_manifest, ledger, p0_summary
+        )
+        sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+        if subprocess.check_output(["git", "status", "--porcelain"], text=True).strip():
+            raise ValueError("STOP: worktree must be clean to bind code SHA to the Modal image")
+        prefix = result_prefix(run_id, stage, sha)
+        ledger_obj = BudgetLedger.load(ledger)
+        gate = ledger_obj.preflight("p0" if stage == "p0" else "l1", float(estimated_total_usd))
+        if gate != "OK_CONTINUE":
+            raise ValueError(f"STOP: ledger preflight gate {gate}")
+        ledger_obj.record_estimate(
+            "p0" if stage == "p0" else "l1",
+            float(estimated_total_usd),
+            run_id=run_id,
+            note="foreground batch ceiling; not billed spend",
+        )
+        ledger_obj.save(ledger)
+        print(
+            json.dumps(
+                {
+                    "stage": stage,
+                    "cells": len(cells),
+                    "max_workers": max_workers,
+                    "estimated_total_usd": estimated_total_usd,
+                    "code_sha": sha,
+                    "source_volume_read_only": True,
+                    "output_prefix": prefix,
+                    "opencode_foreground_modal": True,
+                    "modal_detach_used": False,
+                },
+                indent=2,
+            ),
+            flush=True,
+        )
+        outcomes = list(replay_cell_remote.with_options(max_containers=max_workers).map(build_jobs(cells, prefix)))
+        summary = finalize_remote.remote(prefix, stage, outcomes, sha, run_id)
+        _write_inflight_ledger(
+            Path(ledger).parent / TRIAL_LEDGER_NAME,
+            stage,
+            run_id,
+            outcomes,
+            note="in-flight: App ID + billed spend must be filled from the Modal run header/billing report before audit",
+        )
+        print(json.dumps(summary, indent=2), flush=True)
+        print("NEXT: fill the real App ID/billed spend, then book it with BudgetLedger.record_actual.", flush=True)
+
+
+def _write_inflight_ledger(path: Path, stage: str, run_id: str, outcomes: List[Dict[str, Any]], note: str) -> Path:
+    """Append in-flight trial rows. App ID/spend stay empty until the operator
+    copies them from the attached Modal run header and the billing report; the
+    reconcile gate refuses to accept rows without real values."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as f:
+        for o in outcomes:
+            f.write(
+                json.dumps(
+                    {
+                        "cell_key": o.get("cell_key", "?"),
+                        "stage": stage,
+                        "run_id": run_id,
+                        "app_id": "",
+                        "app_id_source": "operator_modal_run_header_and_billing_report",
+                        "status": o.get("status", "BLOCKED"),
+                        "spend_usd": None,
+                        "reason": o.get("reason", ""),
+                        "note": note,
+                    },
+                    sort_keys=True,
+                )
+                + "\n"
+            )
+    return path
+
 
 def build_cli() -> argparse.ArgumentParser:
-    """CLI contract (real --help; actual flags govern, not the contract prose)."""
+    """CLI contract (real --help; mirrors the Modal entrypoint parameters)."""
     p = argparse.ArgumentParser(
         description="PR-S0 Modal runner: P0 4-cell controls + L1-A small portfolio screen (zero-fit, read-only source).",
         epilog="OpenCode foreground rule: run attached without --detach; set the tool timeout beyond worst-case wall time.",
@@ -170,46 +302,102 @@ def build_cli() -> argparse.ArgumentParser:
     p.add_argument("--run-id", default="", help="Pre-registered run id [A-Za-z0-9][A-Za-z0-9_-]{3,63}.")
     p.add_argument("--max-workers", type=int, default=2, help="Parallel workers, 1..8 (PR-S0 cap).")
     p.add_argument("--batch-limit", type=int, default=0, help="Max cells this batch; 0 means all cells of the stage.")
-    p.add_argument("--estimated-total-usd", type=float, default=-1.0, help="REQUIRED P90 batch estimate in USD.")
-    p.add_argument(
-        "--resume-from-manifest", default="", help="Optional existing source_manifest.json for hash-checked resume."
-    )
+    p.add_argument("--estimated-total-usd", type=float, default=-1.0, help="REQUIRED provisional P90 ceiling in USD.")
+    p.add_argument("--resume-from-manifest", default="", help="Existing source_manifest.json for hash-checked resume.")
+    p.add_argument("--ledger", default="cost_ledger.json", help="Persisted cross-batch ledger file.")
+    p.add_argument("--p0-summary", default="", help="Downloaded stage_p0_summary.json; required for --stage l1-a.")
     p.add_argument("--dry-run", action="store_true", help="Local validation only; no Modal dispatch.")
     p.add_argument("--inventory", action="store_true", help="Print frozen enumeration and exit without dispatch.")
     return p
 
 
+def _check_manifest(manifest_path: str) -> Dict[str, Any]:
+    """Load a resume manifest; corrupt or placeholder content blocks the batch."""
+    manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+    require_manifest_ok = isinstance(manifest, dict) and isinstance(manifest.get("cells"), list)
+    if not require_manifest_ok:
+        raise ValueError("STOP: resume manifest is not a cell manifest")
+    for row in manifest["cells"]:
+        for k in ("cell_key", "source_sha256", "output_sha256", "cache_key"):
+            if not row.get(k) or "pending" in str(row.get(k, "")):
+                raise ValueError(f"STOP: resume manifest has placeholder {k} for {row.get('cell_key')}")
+    return manifest
+
+
+def validate_for_dispatch(
+    stage: str,
+    run_id: str,
+    max_workers: int,
+    batch_limit: int,
+    estimated_total_usd: float,
+    resume_from_manifest: str,
+    ledger: str,
+    p0_summary: str = "",
+) -> List[Dict[str, Any]]:
+    """Fail-closed validation shared by the local CLI and the Modal entrypoint."""
+    if stage not in ("p0", "l1-a"):
+        raise ValueError(f"STOP: stage {stage} needs a later reviewed PR (PR-S0 covers p0/l1-a only)")
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{3,63}", run_id or ""):
+        raise ValueError("STOP: --run-id must match [A-Za-z0-9][A-Za-z0-9_-]{3,63}")
+    if not isinstance(max_workers, int) or not 1 <= max_workers <= 8:
+        raise ValueError("STOP: --max-workers must be 1..8 in PR-S0")
+    import math as _math
+
+    if (
+        not isinstance(estimated_total_usd, (int, float))
+        or not _math.isfinite(estimated_total_usd)
+        or estimated_total_usd <= 0
+    ):
+        raise ValueError("STOP_COST_UNKNOWN: --estimated-total-usd is required and must be finite > 0")
+    layer = "p0" if stage == "p0" else "l1"
+    if estimated_total_usd > LAYER_CAPS_USD[layer]:
+        raise ValueError(
+            f"STOP_BUDGET: estimate {estimated_total_usd} exceeds layer {layer} cap {LAYER_CAPS_USD[layer]}"
+        )
+    ledger_obj = BudgetLedger.load(ledger)
+    gate = ledger_obj.preflight(layer, float(estimated_total_usd))
+    if gate != "OK_CONTINUE":
+        raise ValueError(f"STOP: ledger preflight gate {gate} (spend unknown until record_actual)")
+    if stage == "l1-a":
+        if not p0_summary:
+            raise ValueError("STOP_P0: l1-a requires --p0-summary with a verified 4/4 P0 summary")
+        try:
+            summary = json.loads(Path(p0_summary).read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ValueError(f"STOP_P0: cannot read P0 summary: {exc}") from exc
+        try:
+            require_p0_pass(summary, summary.get("verified_cells"))
+        except ValueError as exc:
+            raise ValueError(f"STOP_P0: {exc}") from exc
+    if resume_from_manifest:
+        _check_manifest(resume_from_manifest)
+    cells = enumerate_cells(stage)
+    if batch_limit and (not isinstance(batch_limit, int) or not 1 <= batch_limit <= len(cells)):
+        raise ValueError("STOP: --batch-limit out of range")
+    ordered = sorted(cells, key=lambda c: c["cell_key"])
+    return ordered[:batch_limit] if batch_limit else ordered
+
+
 def validate_args(args: argparse.Namespace) -> List[Dict[str, Any]]:
-    """Fail-closed CLI validation shared by local and Modal paths."""
+    """Argparse wrapper around :func:`validate_for_dispatch`."""
     if args.inventory or args.stage == "inventory":
         return []
-    if args.stage not in ("p0", "l1-a", "dry-run"):
-        raise ValueError(f"STOP: stage {args.stage} needs a later reviewed PR (PR-S0 covers p0/l1-a only)")
-    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{3,63}", args.run_id):
-        raise ValueError("STOP: --run-id must match [A-Za-z0-9][A-Za-z0-9_-]{3,63}")
-    if not 1 <= args.max_workers <= 8:
-        raise ValueError("STOP: --max-workers must be 1..8 in PR-S0")
-    if args.estimated_total_usd is None or args.estimated_total_usd <= 0:
-        raise ValueError("STOP_COST_UNKNOWN: --estimated-total-usd is required and must be > 0")
-    layer = "p0" if args.stage == "p0" else "l1"
-    if args.estimated_total_usd > LAYER_CAPS_USD[layer]:
-        raise ValueError(
-            f"STOP_BUDGET: estimate {args.estimated_total_usd} exceeds layer {layer} cap {LAYER_CAPS_USD[layer]}"
-        )
-    ledger = BudgetLedger()
-    gate = ledger.preflight(layer, args.estimated_total_usd)
-    if gate != "OK_CONTINUE":
-        raise ValueError(f"STOP: preflight gate {gate}")
     if args.stage == "dry-run":
         return []
-    cells = enumerate_cells(args.stage)
-    if args.batch_limit and not 1 <= args.batch_limit <= len(cells):
-        raise ValueError("STOP: --batch-limit out of range")
-    return cells[: args.batch_limit] if args.batch_limit else cells
+    return validate_for_dispatch(
+        args.stage,
+        args.run_id,
+        args.max_workers,
+        args.batch_limit,
+        args.estimated_total_usd,
+        args.resume_from_manifest,
+        args.ledger,
+        args.p0_summary,
+    )
 
 
 def main(argv: List[str] | None = None) -> int:
-    """CLI entry point.
+    """Local CLI entry point (validation/inventory/dry-run; never dispatches Modal).
 
     Parameters
     ----------
@@ -237,47 +425,36 @@ def main(argv: List[str] | None = None) -> int:
         return 0
     if args.dry_run or args.stage == "dry-run":
         load_frozen_profiles(".")
-        validate_args(
-            build_cli().parse_args(
-                ["--stage", "p0", "--run-id", args.run_id or "dry-run-0000", "--estimated-total-usd", "1.0"]
-            )
-        )
+        validate_for_dispatch("p0", args.run_id or "dry-run-0000", 2, 0, 1.0, "", args.ledger)
         print("DRY_RUN_OK: frozen profiles + P0 gate valid; no Modal dispatch, no spend")
         return 0
     cells = validate_args(args)
     if not _HAS_MODAL:
-        raise ValueError("STOP: modal package unavailable; refusing to claim a remote run (use --dry-run/--inventory)")
-    sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
-    if subprocess.check_output(["git", "status", "--porcelain"], text=True).strip():
-        raise ValueError("STOP: worktree must be clean to bind code SHA to the Modal image")
-    prefix = f"csi1000_layered_search/{PROTOCOL_VERSION}/{args.run_id}/{args.stage}/{sha[:12]}"
-    check_output_not_in_source("/tmp", f"/tmp/{args.run_id}")
-    jobs = [
-        {
-            "cell": c,
-            "prefix": prefix,
-            "cache_key": replay_cache_key("stage_b_frozen_signal", c["topk"], c["dropn"], "pending_quote_sha"),
-            "source_sha256": "pending_source_sha",
-        }
-        for c in cells
-    ]
+        print(
+            json.dumps(
+                {
+                    "stage": args.stage,
+                    "cells": [c["cell_key"] for c in cells],
+                    "validated": True,
+                    "dispatched": False,
+                    "reason": "local environment has no modal package; dispatch needs the authorized workspace",
+                },
+                indent=2,
+            )
+        )
+        return 0
     print(
         json.dumps(
             {
                 "stage": args.stage,
-                "cells": len(jobs),
-                "max_workers": args.max_workers,
-                "estimated_total_usd": args.estimated_total_usd,
-                "code_sha": sha,
-                "source_volume_read_only": True,
-                "output_prefix": prefix,
+                "cells": len(cells),
+                "note": "dispatch via attached `modal run audit/csi1000_layered_search_modal.py --stage ...`",
                 "opencode_foreground_modal": True,
                 "modal_detach_used": False,
             },
             indent=2,
         )
     )
-    print("READY_FOR_FOREGROUND_MODAL_RUN: execute attached `modal run audit/csi1000_layered_search_modal.py ...`")
     return 0
 
 
