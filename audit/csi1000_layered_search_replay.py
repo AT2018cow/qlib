@@ -226,6 +226,54 @@ def stress_advantage_pp(chall_report: Any, base_rel_cagr: float, extra_bps: floa
     return (numbers["relative_excess_cagr"] - base_rel_cagr) * 100.0, "OK"
 
 
+
+def verify_corrected_f1_reference(
+    repo_root: str | Path,
+    candidate_id: str,
+    phase: int,
+    computed_metrics: Dict[str, Any],
+    computed_orders: int,
+    quote_sha256: str,
+    signal_sha256: str,
+) -> Dict[str, Any]:
+    """Compare corrected Top20/Drop2 controls with the frozen 55-cell F1 audit.
+
+    This is an independent historical result reference, not a replacement for
+    the original private signal and a daily NAV/accounting reconstruction.
+    """
+    ref_path = Path(repo_root) / "audit/evidence/stage_b_corrected_rerank/batch_result.json"
+    if not ref_path.is_file():
+        raise _fail(SOURCE_MISSING, "Stage-B corrected F1 audit result unavailable")
+    result = json.loads(ref_path.read_text(encoding="utf-8"))
+    expected_fp = result.get("original_provider_fingerprint")
+    frozen = load_frozen_result(repo_root).get("manifest", {})
+    if not expected_fp or expected_fp != frozen.get("provider_fingerprint"):
+        raise _fail(REPRO_FAIL, "provider fingerprint differs from F1 corrected audit")
+    if result.get("static_quote_union_sha256") != quote_sha256:
+        raise _fail(REPRO_FAIL, "F1 static quote union differs from frozen corrected audit")
+    matches = [r for r in result.get("phase_comparisons", [])
+               if r.get("candidate_id") == candidate_id and int(r.get("phase", -1)) == int(phase)]
+    if len(matches) != 1:
+        raise _fail(REPRO_FAIL, "not exactly one corrected reference for candidate/phase")
+    ref = matches[0]
+    if ref.get("frozen_signal_sha256") != signal_sha256:
+        raise _fail(REPRO_FAIL, "corrected reference signal bytes differ")
+    if int(ref["fixed_orders"]) != computed_orders:
+        raise _fail(REPRO_FAIL, f"corrected orders mismatch: {computed_orders} != {ref['fixed_orders']}")
+    expected = ref.get("fixed_metrics")
+    if not isinstance(expected, dict):
+        raise _fail(REPRO_FAIL, "corrected reference metrics absent")
+    for metric in ("n_days", "strategy_total_return", "strategy_cagr",
+                   "relative_excess_cagr", "strategy_max_drawdown",
+                   "mean_turnover", "total_cost_sum"):
+        if metric not in expected or metric not in computed_metrics:
+            raise _fail(REPRO_FAIL, f"corrected metric {metric} missing")
+        got, want = float(computed_metrics[metric]), float(expected[metric])
+        if not math.isfinite(got) or not math.isfinite(want) or not math.isclose(got, want, rel_tol=1e-10, abs_tol=1e-10):
+            raise _fail(REPRO_FAIL, f"corrected metric {metric} mismatch: {got} != {want}")
+    return {"status": "PASS", "reference_sha256": sha_bytes(ref_path), "reference_orders": computed_orders}
+
+
 def execute_cell(
     *,
     cell: Dict[str, Any],
@@ -266,8 +314,18 @@ def execute_cell(
     fixed_report, fixed_orders = run(signal, topk, dropn, quote_codes, start, end)
     if not frozen_report.index.equals(fixed_report.index):
         raise ValueError(f"{REPRO_FAIL}: fixed replay changed the frozen date window")
-    numbers, _ = report_metrics(fixed_report)
+    if len(fixed_orders) != DAYS:
+        raise _fail(REPRO_FAIL, "fixed replay decision coverage incomplete")
+    numbers, diagnostics = report_metrics(fixed_report)
     order_count = sum(len(d.get("orders", [])) for d in fixed_orders)
+    reference = (
+        verify_corrected_f1_reference(
+            Path(__file__).resolve().parents[1], cell["candidate_id"], int(cell["phase"]),
+            numbers, order_count, quote_sha, sources["signal_sha256"]
+        ) if is_baseline_combo else {"status": "NOT_APPLICABLE"}
+    )
+    if diagnostics["max_account_return_delta"] > 1e-10 or diagnostics["max_cost_rate_delta"] > 1e-10:
+        raise _fail(REPRO_FAIL, "daily return or fee reconciliation exceeds tolerance")
     record = {
         "status": "PASS",
         "cell_key": cell["cell_key"],
@@ -289,14 +347,19 @@ def execute_cell(
         "output_sha256": "",
         "legacy_reproduction": legacy_status,
         "final_nav_cny": float(fixed_report["account"].iloc[-1]),
-        "total_cost_cny": float(numbers["total_cost_sum"]),
+        "total_cost_cny": float(fixed_report["total_cost"].iloc[-1]),
+        "total_cost_rate_sum": float(numbers["total_cost_sum"]),
+        "corrected_reference": reference["status"],
+        "corrected_reference_sha256": reference.get("reference_sha256"),
         "total_turnover_cny": float(fixed_report["total_turnover"].iloc[-1]),
         "mean_turnover": float(numbers["mean_turnover"]),
         "n_days": int(numbers["n_days"]),
         "order_count": int(order_count),
-        "ledger_ok": True,
-        "coverage_ok": True,
-        "data_ok": True,
+        "ledger_ok": diagnostics["max_value_plus_cash_discrepancy"] <= 0.01
+                     and diagnostics["max_account_return_delta"] <= 1e-10
+                     and diagnostics["max_cost_rate_delta"] <= 1e-10,
+        "coverage_ok": len(fixed_report) == DAYS and fixed_report.index.is_unique,
+        "data_ok": bool(quote_codes) and len(fixed_orders) == DAYS,
         "training_performed": False,
         "promotion_authorized": False,
         "metrics": {k: (float(v) if isinstance(v, float) else v) for k, v in numbers.items()},
