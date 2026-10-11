@@ -165,11 +165,30 @@ def validate_label_maturity(
         raise ValueError("training split order is invalid")
 
     index = {d: i for i, d in enumerate(normalized)}
-    absent = [d for d in days.values() if d not in index]
+    resolved_days = dict(days)
+    # Stage-B's frozen 2016-01-01 training boundary is a New Year's Day
+    # holiday, not a sampled bar. Qlib's date slice starts at the first actual
+    # session >= that boundary. Reproduce exactly that one documented rule,
+    # while never snapping missing train/valid ends, validation starts, fit-asof,
+    # or arbitrary training starts (which could conceal a damaged calendar).
+    if days["train_start"] == "2016-01-01":
+        if "2016-01-01" in index:
+            raise ValueError("provider calendar incorrectly includes the 2016-01-01 market holiday")
+        start_i = bisect_left(normalized, days["train_start"])
+        if start_i >= len(normalized) or normalized[start_i] != "2016-01-04":
+            raise ValueError(
+                "frozen train_start=2016-01-01 must resolve to verified "
+                "first trading session 2016-01-04"
+            )
+        resolved_days["train_start"] = normalized[start_i]
+
+    absent = [d for d in resolved_days.values() if d not in index]
     if signal_data_date not in index:
         absent.append(signal_data_date)
     if absent:
         raise ValueError(f"training dates missing from provider calendar: {sorted(set(absent))}")
+    if index[resolved_days["train_start"]] > index[days["train_end"]]:
+        raise ValueError("effective training window is empty after calendar boundary resolution")
 
     train_obs_i = index[days["train_end"]] + horizon
     valid_obs_i = index[days["valid_end"]] + horizon
@@ -185,6 +204,12 @@ def validate_label_maturity(
         "horizon_sessions": horizon,
         "fit_asof": days["fit_asof"],
         "train_start": days["train_start"],
+        "train_start_effective": resolved_days["train_start"],
+        "train_start_resolution": (
+            "FROZEN_HOLIDAY_TO_NEXT_SESSION"
+            if resolved_days["train_start"] != days["train_start"]
+            else "EXACT_SESSION"
+        ),
         "train_end": days["train_end"],
         "train_label_last_observation": normalized[train_obs_i],
         "valid_start": days["valid_start"],
