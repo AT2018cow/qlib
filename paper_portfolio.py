@@ -230,6 +230,10 @@ class PaperPortfolio:
         # Validate all current holdings and potentially executable new buys
         # BEFORE mutating the account.  No inferred halts or stale quotes.
         if strict_valuation:
+            for sym in self.positions:
+                op = open_prices.get(sym)
+                if (op is None or not math.isfinite(float(op)) or float(op) <= 0) and sym not in confirmed_halts:
+                    raise ValueError(f"unverified missing open for held {sym}")
             candidates = {sym: dict(pos) for sym, pos in self.positions.items()}
             for sym in decision["buy"]:
                 px = open_prices.get(sym)
