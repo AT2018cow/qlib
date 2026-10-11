@@ -126,7 +126,7 @@ test('forward awaiting state is not confused with a zero return', () => {
 
 test('validated forward curve labels dates and flags possibly stale valuations', () => {
   const chart = makePerformanceChart(validForward.points);
-  assert.match(chart, /2026\.10\.12 · 起点/);
+  assert.match(chart, /2026\.10\.12 · 首次已核验估值/);
   assert.match(chart, /2026\.10\.12 · 最近估值/);
   assert.ok(isPossiblyStale('2026-10-12', new Date('2026-10-24T00:00:00Z')));
   assert.equal(isPossiblyStale('2026-10-12', new Date('2026-10-13T00:00:00Z')), false);
