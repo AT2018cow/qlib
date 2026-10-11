@@ -1,0 +1,20 @@
+{
+ "git_sha": "981741b8c68e6542464cf0cb65311d991e4c3a15 (detached, clean tree; pytest 10 passed)",
+ "modal_app_note": "ephemeral all-scope app completed normally; see billing_report.json for costed app",
+ "modal_environment": "infi/main",
+ "scope": "all (320 cells: 80 candidates x 4 folds; 16 sample cells resumed by hash)",
+ "cells_attempted": 320,
+ "cells_passed": 320,
+ "cells_blocked": 0,
+ "worker_cpu": 2,
+ "worker_memory_mib": 4096,
+ "max_workers": 8,
+ "estimated_total_usd_flag": 2.0,
+ "actual_cost_usd": "~0.47 (see billing_report.json)",
+ "training_performed": false,
+ "promotion_authorized": false,
+ "source_volume_read_only": true,
+ "submitted_utc": "2026-10-11T13:23:59.896446+00:00",
+ "notes": "Second attempt after a CLI-timeout-killed --detach run caused mass input cancellation; reran synchronously with adequate timeout. No code or data changed between attempts.",
+ "strategy_decision": "KEEP_CANONICAL_PENDING_FORWARD (unchanged)"
+}

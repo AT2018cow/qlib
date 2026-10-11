@@ -1,0 +1,98 @@
+{
+  "candidate_id": "af92e7e6dcec9f86e4a323dd7bafcb21c89ad2fe37183252d379ee5e57c73162",
+  "changed_nav_days": 1,
+  "changed_order_days": 1,
+  "external_execution_certified": false,
+  "first_changed_nav_day": "2024-12-31",
+  "fixed_metrics": {
+    "account_return_max_error": 0.0,
+    "annual_volatility": 0.150713,
+    "benchmark_cagr": -0.5336,
+    "benchmark_max_drawdown": -0.082037,
+    "benchmark_total_return": -0.054822,
+    "end": "2024-12-31",
+    "information_ratio": 4.747045,
+    "mean_daily_active_return": 0.00365599,
+    "mean_daily_net_return": 0.00094317,
+    "mean_turnover": 0.240479,
+    "metric_version": "portfolio_compound_v1",
+    "n_days": 20,
+    "relative_excess_cagr": 1.73329,
+    "relative_max_drawdown": -0.021658,
+    "relative_total_return": 0.077163,
+    "sharpe": 1.489417,
+    "start": "2024-12-04",
+    "strategy_cagr": 0.274807,
+    "strategy_max_drawdown": -0.027361,
+    "strategy_total_return": 0.01811,
+    "total_cost_sum": 0.004314,
+    "years": 0.073923
+  },
+  "fixed_orders": 96,
+  "fold_id": "fold4",
+  "historical_tail_consumed": true,
+  "original_metrics": {
+    "account_return_max_error": 0.0,
+    "annual_volatility": 0.149977,
+    "benchmark_cagr": -0.5336,
+    "benchmark_max_drawdown": -0.082037,
+    "benchmark_total_return": -0.054822,
+    "end": "2024-12-31",
+    "information_ratio": 4.795037,
+    "mean_daily_active_return": 0.00376044,
+    "mean_daily_net_return": 0.00104762,
+    "mean_turnover": 0.237979,
+    "metric_version": "portfolio_compound_v1",
+    "n_days": 20,
+    "relative_excess_cagr": 1.811889,
+    "relative_max_drawdown": -0.021658,
+    "relative_total_return": 0.079423,
+    "sharpe": 1.662483,
+    "start": "2024-12-04",
+    "strategy_cagr": 0.311466,
+    "strategy_max_drawdown": -0.027361,
+    "strategy_total_return": 0.020246,
+    "total_cost_sum": 0.004289,
+    "years": 0.073923
+  },
+  "original_orders": 95,
+  "output_sha256": {
+    "daily_nav_delta.csv": "b7dc2b6b225455253773e129cd5926549117c01992ea27206feafcc8742621c0",
+    "fixed_decisions.json": "ced4a71e16bf2ed9788be75bbc4c7b286da622de63f4c922991d9ceb2157921d",
+    "fixed_metrics.json": "cd724f447f70412266b0769e0efdf3418e7437230705e3961b1954f546f9c726",
+    "fixed_report.parquet": "c587df72ff0b6f29c80b017f7a295cec747c43df83eb7607a118d20f44a46e0b",
+    "legacy_reproduction.json": "acd20be201c97a1f00a7ea6711d9aab9aae9cd685ec60e8290dcb7c713e0c511",
+    "order_delta.json": "0f3dca3c571936e86baa1e93dad90ae35296c0bd19dca0e1a404069fa5b91b3d"
+  },
+  "promotion_authorized": false,
+  "provider_manifest_sha256": "4505bfe465cb6b07a173a0873af71e9b6f3029a82637c9f844c921844b44f07b",
+  "quote_codes_count": 1101,
+  "quote_codes_sha256": "03f3a6422e44ebe2b806c21cd6ead308780c4e8bb000244facdc3218f1870e06",
+  "run_version": "stage_a_corrected_quote_v1",
+  "source_sha256": {
+    "decision": "1c2fd10be927efab581f81239bebffd71d7bd8a3899304f0182cb60d93cbbef6",
+    "report": "0b98a64f9f33b5503c285cbd03c1ab6a22144a481370ff6ed8f1bb594cb2d96c",
+    "result": "3c7e3c522cbdb53775a8253f45352df103ee849d58fb364f94b492d2c709eb17",
+    "signal": "6901c0f4d1858ec05a1ea3817d2ad107adf739544f580878f6751562272e7154"
+  },
+  "source_stat": {
+    "decision": {
+      "bytes": 21953,
+      "mtime_ns": 1791372934564428326
+    },
+    "report": {
+      "bytes": 8231,
+      "mtime_ns": 1791372934555311100
+    },
+    "result": {
+      "bytes": 4042,
+      "mtime_ns": 1791372934571478674
+    },
+    "signal": {
+      "bytes": 197012,
+      "mtime_ns": 1791372908451301461
+    }
+  },
+  "status": "PASS",
+  "training_performed": false
+}

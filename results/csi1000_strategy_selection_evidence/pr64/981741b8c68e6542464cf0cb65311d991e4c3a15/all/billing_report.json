@@ -1,0 +1,226 @@
+[
+  {
+    "object_id": "ap-2P3JZiBNzYSpjdRXOv0GbY",
+    "description": "ai-value-post-pr23-baseline",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "Network Egress",
+    "cost": "0.00005694"
+  },
+  {
+    "object_id": "ap-2P3JZiBNzYSpjdRXOv0GbY",
+    "description": "ai-value-post-pr23-baseline",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "Memory",
+    "cost": "0.01295440"
+  },
+  {
+    "object_id": "ap-2P3JZiBNzYSpjdRXOv0GbY",
+    "description": "ai-value-post-pr23-baseline",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "CPU",
+    "cost": "0.01002037"
+  },
+  {
+    "object_id": "ap-5i2ahocqirn9uzfB1SnP1u",
+    "description": "audit-two-export",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "Memory",
+    "cost": "0.00007111"
+  },
+  {
+    "object_id": "ap-5i2ahocqirn9uzfB1SnP1u",
+    "description": "audit-two-export",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "CPU",
+    "cost": "0.00021022"
+  },
+  {
+    "object_id": "ap-5ntcsifU5n26bzoE6tuXaW",
+    "description": "qlib-csi1000-stage-a-quote-replay",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "Memory",
+    "cost": "0.07948880"
+  },
+  {
+    "object_id": "ap-5ntcsifU5n26bzoE6tuXaW",
+    "description": "qlib-csi1000-stage-a-quote-replay",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "CPU",
+    "cost": "0.38824890"
+  },
+  {
+    "object_id": "ap-E8mpghaPIhOMgMyZHESQZ6",
+    "description": "qlib-csi1000-stage-a-quote-replay",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "Memory",
+    "cost": "0.00028488"
+  },
+  {
+    "object_id": "ap-E8mpghaPIhOMgMyZHESQZ6",
+    "description": "qlib-csi1000-stage-a-quote-replay",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "CPU",
+    "cost": "0.00084219"
+  },
+  {
+    "object_id": "ap-Umfksxg8Kfh4aCJYWblOGG",
+    "description": "audit-sample-missing",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "Network Egress",
+    "cost": "0.00022698"
+  },
+  {
+    "object_id": "ap-Umfksxg8Kfh4aCJYWblOGG",
+    "description": "audit-sample-missing",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "Memory",
+    "cost": "0.00028444"
+  },
+  {
+    "object_id": "ap-Umfksxg8Kfh4aCJYWblOGG",
+    "description": "audit-sample-missing",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "CPU",
+    "cost": "0.00049469"
+  },
+  {
+    "object_id": "ap-Vovnhh1P5nSoR4SBFxZQvL",
+    "description": "audit-sample-full",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "Network Egress",
+    "cost": "0.00032976"
+  },
+  {
+    "object_id": "ap-Vovnhh1P5nSoR4SBFxZQvL",
+    "description": "audit-sample-full",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "Memory",
+    "cost": "0.00036147"
+  },
+  {
+    "object_id": "ap-Vovnhh1P5nSoR4SBFxZQvL",
+    "description": "audit-sample-full",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "CPU",
+    "cost": "0.00062192"
+  },
+  {
+    "object_id": "ap-Xyn4wUx8fnqYrP281Zy5pZ",
+    "description": "qlib-csi1000-stage-a-quote-replay",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "Network Egress",
+    "cost": "0.00016319"
+  },
+  {
+    "object_id": "ap-Xyn4wUx8fnqYrP281Zy5pZ",
+    "description": "qlib-csi1000-stage-a-quote-replay",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "Memory",
+    "cost": "0.00044291"
+  },
+  {
+    "object_id": "ap-Xyn4wUx8fnqYrP281Zy5pZ",
+    "description": "qlib-csi1000-stage-a-quote-replay",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "CPU",
+    "cost": "0.00446003"
+  },
+  {
+    "object_id": "ap-el7n0xsOjX8hzOcjtSt8oM",
+    "description": "check-all",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "Memory",
+    "cost": "6.2E-7"
+  },
+  {
+    "object_id": "ap-el7n0xsOjX8hzOcjtSt8oM",
+    "description": "check-all",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "CPU",
+    "cost": "0.00000364"
+  },
+  {
+    "object_id": "ap-guz0MWLFlDD26CibDc61EO",
+    "description": "qlib-csi1000-stage-a-quote-replay",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "Memory",
+    "cost": "0.00002972"
+  },
+  {
+    "object_id": "ap-guz0MWLFlDD26CibDc61EO",
+    "description": "qlib-csi1000-stage-a-quote-replay",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "CPU",
+    "cost": "0.00056752"
+  },
+  {
+    "object_id": "ap-jI7XQB0vSUpAii6GZW1bW8",
+    "description": "qlib-csi1000-stage-a-quote-replay",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "Memory",
+    "cost": "0.03694869"
+  },
+  {
+    "object_id": "ap-jI7XQB0vSUpAii6GZW1bW8",
+    "description": "qlib-csi1000-stage-a-quote-replay",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "CPU",
+    "cost": "0.15703708"
+  },
+  {
+    "object_id": "ap-lEMfGsuTQ0ZNnrNppVzxI6",
+    "description": "qlib-csi1000-stage-a-quote-replay",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "Memory",
+    "cost": "0.00419553"
+  },
+  {
+    "object_id": "ap-lEMfGsuTQ0ZNnrNppVzxI6",
+    "description": "qlib-csi1000-stage-a-quote-replay",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "CPU",
+    "cost": "0.01608299"
+  },
+  {
+    "object_id": "ap-qoYLWn3PyUFKnJRUrO0ojE",
+    "description": "qlib-csi1000-stage-a-quote-replay",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "Memory",
+    "cost": "0.00506667"
+  },
+  {
+    "object_id": "ap-qoYLWn3PyUFKnJRUrO0ojE",
+    "description": "qlib-csi1000-stage-a-quote-replay",
+    "environment": "main",
+    "interval_start": "2026-10-11T00:00:00",
+    "resource": "CPU",
+    "cost": "0.01788222"
+  }
+]

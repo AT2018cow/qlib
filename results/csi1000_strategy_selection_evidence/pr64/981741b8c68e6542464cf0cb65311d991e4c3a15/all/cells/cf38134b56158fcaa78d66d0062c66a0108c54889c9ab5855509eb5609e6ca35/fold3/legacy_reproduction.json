@@ -1,0 +1,34 @@
+{
+  "original_metrics": {
+    "account_return_max_error": 0.0,
+    "annual_volatility": 0.155914,
+    "benchmark_cagr": -0.37881,
+    "benchmark_max_drawdown": -0.069687,
+    "benchmark_total_return": -0.032064,
+    "end": "2023-09-08",
+    "information_ratio": 7.803469,
+    "mean_daily_active_return": 0.00266828,
+    "mean_daily_net_return": 0.00112337,
+    "mean_turnover": 0.241568,
+    "metric_version": "portfolio_compound_v1",
+    "n_days": 20,
+    "relative_excess_cagr": 1.203529,
+    "relative_max_drawdown": -0.009526,
+    "relative_total_return": 0.055567,
+    "sharpe": 1.714809,
+    "start": "2023-08-14",
+    "strategy_cagr": 0.368809,
+    "strategy_max_drawdown": -0.037578,
+    "strategy_total_return": 0.021721,
+    "total_cost_sum": 0.004336,
+    "years": 0.068448
+  },
+  "provider_manifest_sha256": "4505bfe465cb6b07a173a0873af71e9b6f3029a82637c9f844c921844b44f07b",
+  "source_sha256": {
+    "decision": "ef9ab2e516bcebbf2f3ea7ed2bc42bc8361d6ac227f6b8a3a25ade50a9e33ace",
+    "report": "ac80cca089834cf95d6983561867eb4b9cd90068ff6cda0622d81b647d255faa",
+    "result": "38c8515f394018e2967eee5130e88ec4b951ea002e6248408f18fb80d512519c",
+    "signal": "7cbddd727ff026f479e4278d4c0a1d1b9a0c2f5ecaedd72f32e65f49abf3dd5f"
+  },
+  "status": "PASS"
+}

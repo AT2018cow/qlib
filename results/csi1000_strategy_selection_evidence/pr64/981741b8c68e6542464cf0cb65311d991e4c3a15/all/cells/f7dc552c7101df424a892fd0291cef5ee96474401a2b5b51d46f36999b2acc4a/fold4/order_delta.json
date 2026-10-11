@@ -1,0 +1,89 @@
+[
+  {
+    "date": "2024-12-31",
+    "fixed": [
+      {
+        "amount": 1917883.522210004,
+        "deal_amount": 1917883.522210004,
+        "direction": 0,
+        "end_time": "2025-01-01 23:59:59",
+        "factor": 0.1264326423406601,
+        "order_index": 0,
+        "start_time": "2024-12-31 00:00:00",
+        "stock_id": "SH600391"
+      },
+      {
+        "amount": 8071045.356709896,
+        "deal_amount": 8071045.356709896,
+        "direction": 0,
+        "end_time": "2025-01-01 23:59:59",
+        "factor": 0.035268384963274,
+        "order_index": 1,
+        "start_time": "2024-12-31 00:00:00",
+        "stock_id": "SH688658"
+      },
+      {
+        "amount": 2908257.906739962,
+        "deal_amount": 2908257.906739962,
+        "direction": 1,
+        "end_time": "2025-01-01 23:59:59",
+        "factor": 0.7627934217453003,
+        "order_index": 2,
+        "start_time": "2024-12-31 00:00:00",
+        "stock_id": "SH600811"
+      },
+      {
+        "amount": 915770.6314485641,
+        "deal_amount": 915770.6314485641,
+        "direction": 1,
+        "end_time": "2025-01-01 23:59:59",
+        "factor": 0.2768160402774811,
+        "order_index": 3,
+        "start_time": "2024-12-31 00:00:00",
+        "stock_id": "SZ002126"
+      },
+      {
+        "amount": 3540544.365747752,
+        "deal_amount": 3540544.365747752,
+        "direction": 1,
+        "end_time": "2025-01-01 23:59:59",
+        "factor": 0.13808611035346985,
+        "order_index": 4,
+        "start_time": "2024-12-31 00:00:00",
+        "stock_id": "SZ002461"
+      }
+    ],
+    "legacy": [
+      {
+        "amount": 8071045.356709896,
+        "deal_amount": 8071045.356709896,
+        "direction": 0,
+        "end_time": "2025-01-01 23:59:59",
+        "factor": 0.035268384963274,
+        "order_index": 0,
+        "start_time": "2024-12-31 00:00:00",
+        "stock_id": "SH688658"
+      },
+      {
+        "amount": 610875.0050412315,
+        "deal_amount": 610875.0050412315,
+        "direction": 1,
+        "end_time": "2025-01-01 23:59:59",
+        "factor": 0.2768160402774811,
+        "order_index": 1,
+        "start_time": "2024-12-31 00:00:00",
+        "stock_id": "SZ002126"
+      },
+      {
+        "amount": 2361569.8868282717,
+        "deal_amount": 2361569.8868282717,
+        "direction": 1,
+        "end_time": "2025-01-01 23:59:59",
+        "factor": 0.13808611035346985,
+        "order_index": 2,
+        "start_time": "2024-12-31 00:00:00",
+        "stock_id": "SZ002461"
+      }
+    ]
+  }
+]
