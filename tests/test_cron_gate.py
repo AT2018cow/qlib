@@ -159,3 +159,32 @@ def test_csi1000_canonical_unknown_data_date_rejected():
         cal, "2026-10-07", "2026-10-09"
     )
     assert action == "raise"
+
+
+def test_modal_image_bundles_mvp_contract_runtime_module():
+    """Regression: Modal executes from /root, not the source repository root.
+
+    The new daily_standalone and daily_cron gates import this root-level helper;
+    the pyqlib wheel installs only the qlib package, not this project module.
+    """
+    import ast
+    from pathlib import Path
+
+    source = (Path(__file__).resolve().parents[1] / "modal_qlib_cn_a10g.py").read_text()
+    tree = ast.parse(source)
+    copies = [
+        arg.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "run_commands"
+        for arg in node.args
+        if isinstance(arg, ast.Constant)
+        and isinstance(arg.value, str)
+        and arg.value.startswith("cp /root/qlib/")
+    ]
+    assert any(
+        "/root/qlib/csi1000_mvp_contract.py" in command.split()
+        and command.rstrip().endswith("/root/")
+        for command in copies
+    ), "Modal runtime missing csi1000_mvp_contract.py: daily_standalone cannot import gate"
