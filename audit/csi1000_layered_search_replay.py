@@ -285,6 +285,7 @@ def execute_cell(
     quote_sha: str,
     market_codes: Any,
     runner: Callable[..., Tuple[Any, List[Dict[str, Any]]]] | None = None,
+    reference_validator: Callable[..., Dict[str, Any]] | None = None,
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """Execute one cell: legacy reproduction (baseline combos) + fixed replay.
 
@@ -319,7 +320,7 @@ def execute_cell(
     numbers, diagnostics = report_metrics(fixed_report)
     order_count = sum(len(d.get("orders", [])) for d in fixed_orders)
     reference = (
-        verify_corrected_f1_reference(
+        (reference_validator or verify_corrected_f1_reference)(
             Path(__file__).resolve().parents[1], cell["candidate_id"], int(cell["phase"]),
             numbers, order_count, quote_sha, sources["signal_sha256"]
         ) if is_baseline_combo else {"status": "NOT_APPLICABLE"}
