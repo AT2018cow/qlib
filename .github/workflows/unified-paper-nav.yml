@@ -20,6 +20,7 @@ on:
       - 'tests/test_forward_nav_acceptance.py'
       - 'tests/test_paper_portfolio.py'
       - 'tests/test_forward_performance.py'
+      - 'docs/experiments/49-csi1000-forward-nav-acceptance-20261011.md'
       - '.github/workflows/unified-paper-nav.yml'
   workflow_dispatch:
 
