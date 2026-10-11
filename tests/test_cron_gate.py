@@ -188,3 +188,83 @@ def test_modal_image_bundles_mvp_contract_runtime_module():
         and command.rstrip().endswith("/root/")
         for command in copies
     ), "Modal runtime missing csi1000_mvp_contract.py: daily_standalone cannot import gate"
+
+
+def _isolated_modal_function(name):
+    """Load a pure runtime helper without importing Modal or any cloud credentials."""
+    import ast
+    from pathlib import Path
+
+    source_path = Path(__file__).resolve().parents[1] / "modal_qlib_cn_a10g.py"
+    tree = ast.parse(source_path.read_text(encoding="utf-8"))
+    node = next(
+        n for n in tree.body
+        if isinstance(n, ast.FunctionDef) and n.name == name
+    )
+    namespace = {}
+    exec(compile(ast.Module(body=[node], type_ignores=[]), str(source_path), "exec"), namespace)
+    return namespace[name], namespace
+
+
+def test_unavailable_st_source_reports_original_error_without_fake_pass(monkeypatch, capsys):
+    import sys
+    import time
+    import types
+
+    fn, _ = _isolated_modal_function("_current_st_risk_snapshot")
+    ak = types.ModuleType("akshare")
+    calls = []
+
+    def failing_st_source():
+        calls.append(1)
+        raise ConnectionError("pre-open Eastmoney endpoint disconnected")
+
+    ak.stock_zh_a_st_em = failing_st_source
+    monkeypatch.setitem(sys.modules, "akshare", ak)
+    monkeypatch.setattr(time, "sleep", lambda _: None)
+    evidence = fn(["SH600000"])
+    assert len(calls) == 2
+    assert evidence["status"] == "UNAVAILABLE"
+    assert evidence["top20_st_count"] is None  # NOT zero verified ST names
+    assert "ConnectionError: pre-open Eastmoney endpoint disconnected" in evidence["detail"]
+    output = capsys.readouterr().out
+    assert "attempt=1/2 FAILED" in output
+    assert "attempt=2/2 FAILED" in output
+
+
+def test_cron_rejects_unavailable_st_with_diagnostic_before_pending_plan(tmp_path, monkeypatch):
+    import sys
+    import types
+    from pathlib import Path
+    import pytest
+
+    fn, namespace = _isolated_modal_function("_apply_paper_portfolio")
+    module = types.ModuleType("paper_portfolio")
+    class StubPaperPortfolio:
+        def __init__(self, **kwargs):
+            self.topk = kwargs["topk"]
+            self.nd = kwargs["nd"]
+            self.positions = {}
+            self.history = []
+            self.pending_signal = None
+        def plan_signal(self, **kwargs):
+            raise AssertionError("must never freeze paper plan with UNKNOWN ST")
+    module.PaperPortfolio = StubPaperPortfolio
+    monkeypatch.setitem(sys.modules, "paper_portfolio", module)
+    namespace.update({
+        "Path": Path,
+        "_paper_state_path": lambda market, lineage: tmp_path / "not-created.json",
+        "_current_st_risk_snapshot": lambda instruments: {
+            "status": "UNAVAILABLE",
+            "source": "akshare.stock_zh_a_st_em",
+            "detail": "ConnectionError: pre-open Eastmoney endpoint disconnected",
+        },
+        "vol": types.SimpleNamespace(reload=lambda: None),
+    })
+    with pytest.raises(RuntimeError, match="cause=ConnectionError: pre-open Eastmoney endpoint disconnected"):
+        fn(
+            {"market": "csi1000", "date": "2026-10-09", "ranking_full": [["SH600000", 1.0]]},
+            "2026-10-12", topk=20, nd=2,
+            lineage="stage_b_winner_canonical", verified_calendar={"2026-10-12"},
+        )
+    assert not (tmp_path / "not-created.json").exists()
