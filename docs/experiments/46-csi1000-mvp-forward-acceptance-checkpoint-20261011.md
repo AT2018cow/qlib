@@ -26,7 +26,7 @@
 
 - As queried via GitHub API, latest upstream [chenditc/investment_data release `2026-10-11`](https://github.com/chenditc/investment_data/releases/tag/2026-10-11) published 2026-10-11 00:35:59 CST; archive `qlib_bin.tar.gz` bytes `567432997`, **GitHub release asset** SHA256 `0c4091fe82b2c9a36eb093248223a59fbe5346001a21b4a594c6b2cff77f7c49`; manifest SHA256 `4b52ec0ae6b24a211986ddfdd23c01ac563a87574d5a77ed93bb47b1f318ba0d`.
 - This proves an upstream *release was advertised*, not its actual `calendars/day.txt` end day nor PIT span count nor 20-session label maturity or live cached model. The complete provider archive was **not** independently downloaded/extracted; the production Modal environment was not accessible. Status **NOT_VERIFIED**, not PASS.
-- The expected `2026-10-12` prior full data session is `2026-10-09`, conditional on an independently verified authoritative A-share trading calendar and complete provider bar. Do not use the release *tag* as a data-freshness proof.
+- **PASS_EXCHANGE_CALENDAR_ONLY:** independently checked official [SSE 2026-09-17 holiday announcement](https://www.sse.com.cn/disclosure/announcement/general/c/c_20260915_10832273.shtml) and [SZSE 2026-09-17 notice](https://www.szse.cn/www/disclosure/notice/general/t20260917_622911.html): 2026-10-01 through 10-07 closed, 10-08 reopened, 10-10 weekend closed. In the published exchange schedule, 2026-10-09 is the prior trading session for Monday 2026-10-12. Actual **provider** calendar end and completeness of the 2026-10-09 bar are still **NOT_VERIFIED**. Do not use the release *tag* as a data-freshness proof.
 
 ## Runtime-blocker identified and minimal corrective PR
 
@@ -43,6 +43,7 @@
 | Post-merge Pages build/deploy | Successful workflow; verified artifact ZIP | PASS_BUILD_ONLY |
 | Latest 2 historical signal file dates, SHA256, Top20 and paper fields | Observed in `main` and Pages bundle | PASS_STATIC_ONLY |
 | Current upstream release available / advertised archive identity | Release API tag and SHA256 | PASS_RELEASE_METADATA_ONLY |
+| 2026-10-12 prior A-share exchange trading session | SSE + SZSE official notices: 2026-10-09 | PASS_EXCHANGE_CALENDAR_ONLY |
 | Actual production provider archive calendar, exact previous session freshness | Modal/provider content not accessible | NOT_VERIFIED |
 | 2026-10-12 CSI1000 PIT count 1000 | No actual provider `instruments/csi1000.txt` read | NOT_VERIFIED |
 | Actual Label20 train/valid maturation and fit clock | No live cached split/preflight proof | NOT_VERIFIED |
