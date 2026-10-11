@@ -23,7 +23,7 @@ import math
 import re
 import statistics
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
@@ -507,6 +507,7 @@ class BudgetLedger:
     fits_used: int = 0
     elapsed_hours: float = 0.0
     pending_estimate_usd: float = 0.0
+    started_utc: str | None = None
     events: List[Dict[str, Any]] = field(default_factory=list)
 
     def remaining_layer(self, layer: str) -> float:
@@ -520,10 +521,8 @@ class BudgetLedger:
         return GLOBAL_FIT_CAP - self.fits_used
 
     def _pending_for(self, layer: str) -> float:
-        for ev in reversed(self.events):
-            if ev.get("kind") == "estimate_pending" and ev.get("layer") == layer:
-                return float(ev.get("spend_usd", 0.0))
-        return 0.0
+        return sum(float(ev.get("spend_usd", 0.0)) for ev in self.events
+                   if ev.get("kind") == "estimate_pending" and ev.get("layer") == layer)
 
     @staticmethod
     def estimate_p90(
@@ -569,9 +568,15 @@ class BudgetLedger:
             return "STOP_COST_UNKNOWN"
         if self.pending_estimate_usd > 0:
             return "STOP_COST_UNKNOWN"
-        reserve = RESERVE_FRACTION * GLOBAL_CAP_USD
-        if self.remaining_global() < reserve and (p90_estimate_usd > 0 or fits_needed > 0):
-            return "STOP_COST_UNKNOWN"
+        if self.started_utc is not None:
+            try:
+                started = datetime.fromisoformat(self.started_utc.replace("Z", "+00:00"))
+                if started.tzinfo is None or datetime.now(timezone.utc) - started > timedelta(days=WINDOW_DAYS):
+                    return "STOP_BUDGET"
+            except (ValueError, TypeError):
+                return "STOP_COST_UNKNOWN"
+        if p90_estimate_usd > self.remaining_global() * (1 - RESERVE_FRACTION):
+            return "STOP_BUDGET"
         if p90_estimate_usd > self.remaining_layer(layer) or p90_estimate_usd > self.remaining_global():
             return "STOP_BUDGET"
         if self.fits_used + fits_needed > GLOBAL_FIT_CAP:
@@ -584,6 +589,8 @@ class BudgetLedger:
         """Hold a provisional ceiling for a dispatched batch; never booked as spend."""
         neg_nonfinite_spend(p90_estimate_usd)
         require(layer in LAYER_CAPS_USD, f"unknown layer {layer}")
+        if self.started_utc is None:
+            self.started_utc = utcnow()
         self.pending_estimate_usd = round(self.pending_estimate_usd + p90_estimate_usd, 6)
         self.events.append(
             {
@@ -672,12 +679,13 @@ class BudgetLedger:
             "fits_used": self.fits_used,
             "elapsed_hours": self.elapsed_hours,
             "pending_estimate_usd": self.pending_estimate_usd,
+            "started_utc": self.started_utc,
             "events": list(self.events),
         }
 
     def save(self, path: str | Path) -> Path:
         """Atomically persist the ledger (temp file + rename, never partial)."""
-        out = Path(path)
+        out = Path(path).expanduser()
         out.parent.mkdir(parents=True, exist_ok=True)
         tmp = out.with_suffix(out.suffix + ".tmp")
         tmp.write_text(json.dumps(self.to_dict(), indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -687,7 +695,7 @@ class BudgetLedger:
     @classmethod
     def load(cls, path: str | Path) -> "BudgetLedger":
         """Load a persisted ledger; a missing file starts empty, a corrupt one blocks."""
-        p = Path(path)
+        p = Path(path).expanduser()
         if not p.exists():
             return cls()
         try:
@@ -704,10 +712,16 @@ class BudgetLedger:
         ledger.elapsed_hours = float(raw.get("elapsed_hours", 0.0))
         ledger.pending_estimate_usd = float(raw.get("pending_estimate_usd", 0.0))
         ledger.events = list(raw.get("events", []))
+        ledger.started_utc = raw.get("started_utc")
         require(
-            ledger.fits_used >= 0 and math.isfinite(ledger.elapsed_hours) and ledger.elapsed_hours >= 0,
-            "ledger fits/hours invalid",
+            ledger.fits_used >= 0 and math.isfinite(ledger.elapsed_hours) and ledger.elapsed_hours >= 0
+            and math.isfinite(ledger.pending_estimate_usd) and ledger.pending_estimate_usd >= 0,
+            "ledger fits/hours/pending invalid",
         )
+        actual_pending = sum(float(ev.get("spend_usd", 0.0)) for ev in ledger.events
+                             if ev.get("kind") == "estimate_pending")
+        require(math.isclose(actual_pending, ledger.pending_estimate_usd, abs_tol=1e-6),
+                "ledger pending reserve differs from immutable events")
         return ledger
 
 
