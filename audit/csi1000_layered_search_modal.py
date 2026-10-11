@@ -59,6 +59,52 @@ LEDGER_NAME = "cost_ledger.json"
 TRIAL_LEDGER_NAME = "trial_ledger.jsonl"
 
 
+def check_operator_cost_quote(path: str, estimated_usd: float, covered_cells: int) -> Dict[str, Any]:
+    """Validate a current billing-rate quote and conservative P90 batch ceiling.
+
+    Billing data must be collected by the authorized operator, not guessed from
+    historical illustrative USD rates or Starter credits.
+    """
+    import math
+    from datetime import datetime, timezone, timedelta
+    if not path or not Path(path).is_file():
+        raise ValueError("STOP_COST_UNKNOWN: operator billing-rate quote JSON missing")
+    quote = json.loads(Path(path).read_text(encoding="utf-8"))
+    if quote.get("schema") != "modal_cost_p90_quote_v1":
+        raise ValueError("STOP_COST_UNKNOWN: unsupported billing quote schema")
+    try:
+        captured = datetime.fromisoformat(quote["captured_utc"].replace("Z", "+00:00"))
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("STOP_COST_UNKNOWN: cost quote timestamp missing") from exc
+    now = datetime.now(timezone.utc)
+    if captured.tzinfo is None or captured > now + timedelta(minutes=5) or now - captured > timedelta(hours=24):
+        raise ValueError("STOP_COST_UNKNOWN: billing-rate snapshot is stale or in the future")
+    keys = ("cpu_rate_per_second", "memory_rate_per_gib_second",
+            "p90_cpu_seconds_per_cell", "p90_gib_seconds_per_cell", "overhead_usd")
+    for key in keys:
+        value = quote.get(key)
+        if not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
+            raise ValueError(f"STOP_COST_UNKNOWN: missing/nonfinite billing field {key}")
+    if not quote["cpu_rate_per_second"] or not quote["memory_rate_per_gib_second"]:
+        raise ValueError("STOP_COST_UNKNOWN: current Modal billing rates must be positive")
+    if not isinstance(quote.get("covered_cells"), int) or quote["covered_cells"] < covered_cells:
+        raise ValueError("STOP_COST_UNKNOWN: quote covers fewer cells than dispatched batch")
+    if not isinstance(quote.get("rate_report_sha256"), str) or not re.fullmatch(r"[0-9a-f]{64}", quote["rate_report_sha256"]):
+        raise ValueError("STOP_COST_UNKNOWN: signed rate evidence SHA missing")
+    estimated = (
+        quote["covered_cells"] *
+        (quote["cpu_rate_per_second"] * quote["p90_cpu_seconds_per_cell"]
+         + quote["memory_rate_per_gib_second"] * quote["p90_gib_seconds_per_cell"])
+        + quote["overhead_usd"]
+    )
+    if not math.isfinite(estimated) or estimated <= 0:
+        raise ValueError("STOP_COST_UNKNOWN: estimated batch price is not positive")
+    if estimated > estimated_usd + 1e-9:
+        raise ValueError(f"STOP_BUDGET: current-rate P90 USD {estimated:.6f} > authorized batch ceiling {estimated_usd:.6f}")
+    return {"source": path, "predicted_p90_usd": round(estimated, 6),
+            "covered_cells": quote["covered_cells"], "captured_utc": quote["captured_utc"]}
+
+
 def result_prefix(run_id: str, stage: str, code_sha: str) -> str:
     """Versioned, non-overwriting research prefix for one run."""
     if not re.fullmatch(r"[0-9a-f]{40}", code_sha or ""):
@@ -408,6 +454,7 @@ if _HAS_MODAL:
         resume_from_manifest: str = "",
         ledger: str = "~/.local/state/qlib-csi1000-layered/cost_ledger.json",
         p0_summary: str = "",
+        cost_quote: str = "",
     ) -> None:
         """Foreground Modal entrypoint: P0 controls, then gated L1-A screen.
 
@@ -426,6 +473,8 @@ if _HAS_MODAL:
         if subprocess.check_output(["git", "status", "--porcelain"], text=True).strip():
             raise ValueError("STOP: worktree must be clean to bind code SHA to the Modal image")
         prefix = result_prefix(run_id, stage, sha)
+        estimate_n = batch_limit if batch_limit else len(enumerate_cells(stage))
+        check_operator_cost_quote(cost_quote, float(estimated_total_usd), estimate_n)
         ledger_obj = BudgetLedger.load(ledger)
         gate = ledger_obj.preflight("p0" if stage == "p0" else "l1", float(estimated_total_usd))
         if gate != "OK_CONTINUE":
@@ -520,6 +569,7 @@ def build_cli() -> argparse.ArgumentParser:
     p.add_argument("--resume-from-manifest", default="", help="Existing source_manifest.json for hash-checked resume.")
     p.add_argument("--ledger", default="~/.local/state/qlib-csi1000-layered/cost_ledger.json", help="Persisted cross-batch ledger outside the checkout.")
     p.add_argument("--p0-summary", default="", help="Downloaded stage_p0_summary.json; required for --stage l1-a.")
+    p.add_argument("--cost-quote", default="", help="Required current-rate P90 operator quote JSON for remote execution.")
     p.add_argument("--dry-run", action="store_true", help="Local validation only; no Modal dispatch.")
     p.add_argument("--inventory", action="store_true", help="Print frozen enumeration and exit without dispatch.")
     return p
