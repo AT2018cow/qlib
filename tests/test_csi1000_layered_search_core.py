@@ -63,6 +63,10 @@ def _record(**kw):
         "training_performed": False,
         "promotion_authorized": False,
         "n_days": 424,
+        "topk": 20,
+        "dropn": 2,
+        "legacy_reproduction": "PASS",
+        "corrected_reference": "PASS",
     }
     rec.update(kw)
     return rec
@@ -132,9 +136,11 @@ def test_check_cell_record_rejects_fake_pass():
 
 
 def test_require_p0_pass():
-    rows = [_record(cell_key=f"c{i}") for i in range(4)]
+    rows = [_record(**{k: v for k, v in cell.items() if k in ("cell_key", "candidate_id", "phase", "topk", "dropn")}) for cell in core.enumerate_cells("p0")]
     summary = {"stage": "p0", "expected": 4, "completed": 4, "blocked": 0}
     assert core.require_p0_pass(summary, rows)["status"] == "P0_VERIFIED"
+    with pytest.raises(ValueError, match="identit"):
+        core.require_p0_pass(summary, rows[:3] + [rows[0]])
     with pytest.raises(ValueError):
         core.require_p0_pass({**summary, "completed": 3, "blocked": 1}, rows[:3])
     with pytest.raises(ValueError):  # skeleton is not a verified PASS
@@ -217,6 +223,12 @@ def test_final_verdict_paired_gates():
     neg_stress = [dict(r, plus10bp_advantage_pp=-0.2) for r in chall]
     assert core.final_verdict(neg_stress, base, 1.1)[1]["failed"] == "cost_stress_10bp"
     assert core.final_verdict(chall[:4], base[:4], 1.1)[0] == "INCOMPLETE"
+    duplicate = [dict(r) for r in chall]
+    duplicate[1]["phase"] = duplicate[0]["phase"]
+    assert core.final_verdict(duplicate, base, 1.1)[0] == "NOT_ELIGIBLE"
+    strong, safe_base = _rows([0,4,6,10,15], base_mdd=12.0, chall_mdd=14.0)
+    safe_base[0]["mdd_pp"] = 8.0
+    assert core.final_verdict(strong, safe_base, 1.1)[0] == "PASS"
     bad_base = [dict(r) for r in base]
     bad_base[0]["data_ok"] = False
     assert core.final_verdict(chall, bad_base, 1.1)[0] == "BASELINE_INELIGIBLE"
