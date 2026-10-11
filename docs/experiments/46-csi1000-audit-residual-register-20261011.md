@@ -91,7 +91,8 @@ python -m audit.csi1000_residual_evidence \
   --frozen-report /readonly/baseline-phase0/fixed_diagnostic_report.parquet \
   --external-index /tmp/csi1000-index-20261011/000852_prices.csv \
   --output /tmp/csi1000-benchmark-residual.json
-python -m unittest -v tests.test_csi1000_residual_evidence tests.test_export_csi1000_official_index_closes
+python -m unittest discover -s tests -p 'test_csi1000_residual_evidence.py' -v
+python -m unittest discover -s tests -p 'test_export_csi1000_official_index_closes.py' -v
 ```
 
 默认的四文件身份+ST+ranking 静态检查不需要私有 provider：`python -m audit.csi1000_residual_evidence --output /tmp/csi1000-residual.json`；导出器将官方响应 SHA256、CSV SHA256、来源 URL 和查询 UTC 时钟记录在单独 receipt，**不提交下载价表到公开仓库**。独立 benchmark 即使内部数值满足误差阈值，也保留 `PENDING_HUMAN_SOURCE_CERTIFICATION`，须核对来源授权、价格指数/全收益口径、精度与末日/初日前 close 的日历无误。
