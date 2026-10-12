@@ -4005,11 +4005,19 @@ def _current_st_risk_snapshot(instruments: list[str]) -> dict:
     claiming the names are clean.
     """
     import time
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
 
     import akshare as ak
+    from requests.exceptions import (
+        ConnectionError as RequestsConnectionError,
+        Timeout as RequestsTimeout,
+        HTTPError as RequestsHTTPError,
+    )
 
     wanted = [str(x).upper() for x in instruments]
     last_err = None
+    failure_kind = "INVALID_RESPONSE"
     for attempt in (1, 2):
         try:
             frame = ak.stock_zh_a_st_em()
@@ -4019,15 +4027,24 @@ def _current_st_risk_snapshot(instruments: list[str]) -> dict:
             )
             if code_col is None:
                 raise RuntimeError(f"ST source has no code column: {list(frame.columns)}")
-            st_codes = {
-                str(value).strip().split(".")[0].zfill(6)[-6:]
-                for value in frame[code_col].dropna().tolist()
-            }
+            # A successful HTTP response is not automatically a trustworthy
+            # snapshot: reject empty/partial/error payloads rather than
+            # classifying unknown securities as ST-free.
+            if frame.empty or frame[code_col].isna().any():
+                raise RuntimeError("ST source returned empty or missing-code rows")
+            import re
+            codes = [str(value).strip().split(".")[0]
+                     for value in frame[code_col].tolist()]
+            if any(not re.fullmatch(r"\d{6}", code) for code in codes):
+                raise RuntimeError("ST source returned invalid security codes")
+            st_codes = set(codes)
             matches = sorted(inst for inst in wanted if inst[2:] in st_codes)
             return {
                 "status": "SOURCE_SNAPSHOT_AVAILABLE",
                 "source": "akshare.stock_zh_a_st_em",
                 "scope": "current risk-warning board snapshot",
+                "fetched_at_cst": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
+                "source_row_count": len(codes),
                 "top20_st": matches,
                 "top20_st_count": len(matches),
                 "selection_filter_applied": False,
@@ -4035,10 +4052,27 @@ def _current_st_risk_snapshot(instruments: list[str]) -> dict:
             }
         except Exception as exc:  # pylint: disable=W0703
             last_err = exc
+            # Fail-open applies exclusively to transport failure. A malformed
+            # response, missing codes or unknown HTTP status is NOT a legitimate
+            # reason to ignore exchange risk on a public paper series.
+            failure_kind = (
+                "TRANSPORT" if isinstance(exc, (RequestsConnectionError, RequestsTimeout))
+                or (isinstance(exc, RequestsHTTPError)
+                    and getattr(getattr(exc, "response", None), "status_code", None)
+                    in (502, 503, 504))
+                else "INVALID_RESPONSE"
+            )
+            print(
+                f"[risk] ST snapshot attempt={attempt}/2 {failure_kind}: "
+                f"{type(exc).__name__}: {str(exc)[:180]}"
+            )
+            if failure_kind != "TRANSPORT":
+                break
             if attempt == 1:
                 time.sleep(5)
     return {
         "status": "UNAVAILABLE",
+        "failure_kind": failure_kind,
         "source": "akshare.stock_zh_a_st_em",
         "scope": "current risk-warning board snapshot",
         "top20_st": [],
