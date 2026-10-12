@@ -125,35 +125,43 @@ As of 2026-10-11, the second leg cannot be truthfully completed for the
 pending rather than fabricating a fill.
 
 
-## Forward reference-only ST policy (change proposed 2026-10-12; not a historical rewrite)
+## Conditional ST transport-outage fallback (proposed 2026-10-13; forward only)
 
-The approved research website return series is now **reference-only** and
-**does not model ST designation or ST-specific price limits**. This is a
-forward execution-model assumption, NOT a change to the frozen Stage-B winner
-or its score/ranking, PIT=1000, Label20, model lineage, provider fingerprint,
-calendar freshness, non-ST price limits, real adjusted OHLC/factors, dated
-whole-session suspension evidence, or the cash/NAV accounting engine.
+ST is **enabled by default**. Before planning an execution-day pending
+order, `daily_cron` attempts `akshare.stock_zh_a_st_em` twice and verifies
+non-empty rows, six-digit security codes, date of capture and capture time
+strictly earlier than 09:30 Asia/Shanghai. A valid pre-open snapshot is frozen
+with the pending under `execution_st_policy=ST_VERIFIED_PREOPEN`, including
+source, matched ST securities, source-row count and timestamp. The next real
+provider refresh uses the saved snapshot to apply ST-specific statutory
+limits, never a current-day retroactive ST list.
 
-The canonical `daily_cron` does not fetch `akshare.stock_zh_a_st_em`.
-Instead every new forward paper order is marked
-`execution_st_policy=ST_IGNORED_REFERENCE_ONLY`, with
-`execution_st_snapshot=null`, `reference_plan_created_at_cst` and
-`risk.st.status=NOT_CHECKED_REFERENCE_ONLY`. The risk count is null, never
-fabricated as zero ST securities. The website must say "reference P&L, ST not
-modeled, not tradeable-fill certified." A successful data/model publication
-contract does not imply ST/risk certification.
+**Only genuine transport failure** (connection aborted/disconnected, timeout,
+or 502/503/504 upstream gateway HTTP error) permits a forward
+`ST_IGNORED_REFERENCE_ONLY` pending to be created. The ST snapshot remains
+`null`; public metadata records `NOT_CHECKED_REFERENCE_ONLY`,
+`failure_kind=TRANSPORT`, unknown (null) ST count and the source exception.
+It does NOT assert that zero holdings are ST, nor certify trading.
+Empty data, missing/invalid columns/codes, unknown HTTP failures, stale or
+post-open observations still fail closed.
 
-**Temporal gate:** A new paper pending must be planned on its execution day,
-strictly before 09:30 Asia/Shanghai. If that window was missed, do not run
-a later cron to backdate its paper decision. The 2026-10-12 07:00 and 07:49
-failed attempts never published a valid pending; because 09:30 passed, do not
-manufacture the 2026-10-12 forward anchor. The first future accepted
-reference point may occur later than the planned 2026-10-12 baseline, with
-the true later inception date surfaced publicly. There is no retroactive
-paper settlement, NAV or forward backfill.
+The reference-mode pending ignores ST-special price limits **only for that
+specific execution date**. All other provider freshness, CSI1000 PIT=1000,
+Label20, frozen winner lineage, actual adjusted OHLC/factors,
+non-ST statutory limits, independently dated whole-session halt/quote
+evidence, fees and cash/position ledger verification remain unchanged.
 
-Only a pending that explicitly records the reference-only policy may bypass
-the ST snapshot requirement at its later real-data settlement. Historical
-untagged ST-dependent pending cannot be silently converted. A return series
-must not merge different ST assumptions or unknown legacy assumptions.
-Original fail-closed source/PIT/label/lineage/quotes/halt gates remain binding.
+Each settled forward NAV point binds its `execution_st_policy`.
+The cumulative research paper curve may combine verified and transport-fallback
+days **only with each day's mode and fallback dates disclosed**; it must never
+silently blend an unknown/unversioned legacy policy. This is not actual
+exchange fill certification. When the ST source recovers, the next day's
+pre-open snapshot is used automatically with the original ST rules.
+
+**Temporal gate:** A new paper pending must be created on its actual execution
+date, before 09:30 China time. The failed 2026-10-12 run cannot be backfilled
+or represented as a pre-open order now. The earliest forward NAV point is the
+first genuine future execution session after a passing deployment, and its
+true inception date is displayed. Do not rerun old failed dates to manufacture
+paper settlements or forward performance. No historical audits or tuning are
+reopened.
