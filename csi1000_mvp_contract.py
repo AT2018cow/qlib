@@ -21,6 +21,7 @@ import re
 MVP_CONTRACT_VERSION = "csi1000_mvp_daily_v1"
 # Explicit execution assumption, separate from the frozen model/candidate identity.
 REFERENCE_ST_POLICY = "ST_IGNORED_REFERENCE_ONLY"
+VERIFIED_ST_POLICY = "ST_VERIFIED_PREOPEN"
 _SYMBOL = re.compile(r"^(SH|SZ|BJ)\d{6}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _REQUIRED_LINEAGE = (
@@ -425,6 +426,15 @@ def build_mvp_metadata(
             raise ValueError("unverified reference ST risk must stay explicitly unknown")
     elif paper.get("execution_st_policy") == REFERENCE_ST_POLICY:
         raise ValueError("reference-only paper must disclose skipped ST risk")
+    elif paper.get("execution_st_policy") == VERIFIED_ST_POLICY:
+        if (
+            risk.get("execution_st_policy") != VERIFIED_ST_POLICY
+            or risk["st"].get("status") != "SOURCE_SNAPSHOT_AVAILABLE"
+            or not isinstance(risk["st"].get("top20_st"), list)
+            or not isinstance(risk["st"].get("top20_st_count"), int)
+            or risk["st"]["top20_st_count"] != len(risk["st"]["top20_st"])
+        ):
+            raise ValueError("verified ST paper requires a genuine frozen source snapshot")
 
     public_pit = {k: v for k, v in pit_universe.items() if k != "active_members"}
     return {
