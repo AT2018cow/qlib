@@ -190,20 +190,86 @@ def test_modal_image_bundles_mvp_contract_runtime_module():
     ), "Modal runtime missing csi1000_mvp_contract.py: daily_standalone cannot import gate"
 
 
-def test_reference_paper_planner_skips_st_fetch_and_marks_uncertainty(tmp_path, monkeypatch):
-    """Exercise the actual Modal plan function without loading cloud dependencies."""
+def _modal_helper_from_source(name, namespace=None):
     import ast
-    import json
-    import sys
-    import types
     from pathlib import Path
 
-    import csi1000_mvp_contract as contract
-
-    source_file = Path(__file__).resolve().parents[1] / "modal_qlib_cn_a10g.py"
-    tree = ast.parse(source_file.read_text())
+    src = Path(__file__).resolve().parents[1] / "modal_qlib_cn_a10g.py"
+    tree = ast.parse(src.read_text())
     node = next(n for n in tree.body
-                if isinstance(n, ast.FunctionDef) and n.name == "_apply_paper_portfolio")
+                if isinstance(n, ast.FunctionDef) and n.name == name)
+    ns = dict(namespace or {})
+    exec(compile(ast.Module(body=[node], type_ignores=[]), str(src), "exec"), ns)
+    return ns[name]
+
+
+def test_st_source_prefers_real_valid_snapshot_and_classifies_outage(monkeypatch):
+    import sys
+    import types
+    import time
+
+    exceptions = types.ModuleType("requests.exceptions")
+    class ConnectionError(Exception): pass
+    class Timeout(Exception): pass
+    class HTTPError(Exception): pass
+    exceptions.ConnectionError = ConnectionError
+    exceptions.Timeout = Timeout
+    exceptions.HTTPError = HTTPError
+    requests = types.ModuleType("requests")
+    requests.exceptions = exceptions
+    monkeypatch.setitem(sys.modules, "requests", requests)
+    monkeypatch.setitem(sys.modules, "requests.exceptions", exceptions)
+
+    ak = types.ModuleType("akshare")
+    monkeypatch.setitem(sys.modules, "akshare", ak)
+    monkeypatch.setattr(time, "sleep", lambda _: None)
+    fn = _modal_helper_from_source("_current_st_risk_snapshot")
+
+    class Codes:
+        def __init__(self, values): self.values = values
+        def isna(self): return self
+        def any(self): return False
+        def tolist(self): return self.values
+
+    class Frame:
+        columns = ["代码"]
+        empty = False
+        def __init__(self, values): self.values = values
+        def __getitem__(self, key): return Codes(self.values)
+        def __len__(self): return len(self.values)
+
+    ak.stock_zh_a_st_em = lambda: Frame(["600000", "000001"])
+    result = fn(["SH600000", "SZ000001", "SH601000"])
+    assert result["status"] == "SOURCE_SNAPSHOT_AVAILABLE"
+    assert result["top20_st"] == ["SH600000", "SZ000001"]
+    assert result["source_row_count"] == 2
+    assert result["fetched_at_cst"].startswith("20")
+
+    calls = []
+    def transport_outage():
+        calls.append(1)
+        raise ConnectionError("RemoteDisconnected")
+    ak.stock_zh_a_st_em = transport_outage
+    result = fn(["SH600000"])
+    assert len(calls) == 2
+    assert result["status"] == "UNAVAILABLE"
+    assert result["failure_kind"] == "TRANSPORT"
+    assert result["top20_st_count"] is None
+
+    ak.stock_zh_a_st_em = lambda: Frame(["BAD"])
+    bad = fn(["SH600000"])
+    assert bad["status"] == "UNAVAILABLE"
+    assert bad["failure_kind"] == "INVALID_RESPONSE"
+
+
+def test_paper_planner_prefers_st_and_only_transport_fallback(tmp_path, monkeypatch):
+    """Test the real planner against each source outcome without calling Modal."""
+    import sys
+    import types
+    import json
+    from pathlib import Path
+    import pytest
+    import csi1000_mvp_contract as contract
 
     class StubPaperPortfolio:
         def __init__(self, *, topk, nd, initial_cash):
@@ -215,60 +281,72 @@ def test_reference_paper_planner_skips_st_fetch_and_marks_uncertainty(tmp_path, 
 
         def plan_signal(self, *, signal_date, execution_date, ranking, metadata):
             self.pending_signal = {
-                "signal_date": signal_date,
-                "execution_date": execution_date,
-                "planned_buy": ["SH600000"],
-                "planned_sell": [],
-                "metadata": metadata,
+                "signal_date": signal_date, "execution_date": execution_date,
+                "planned_buy": ["SH600000"], "planned_sell": [], "metadata": metadata,
             }
-            return {
-                "signal_date": signal_date,
-                "execution_date": execution_date,
-                "buy": ["SH600000"],
-                "sell": [],
-            }
+            return {"signal_date": signal_date, "execution_date": execution_date,
+                    "buy": ["SH600000"], "sell": []}
 
         def to_dict(self):
             return {"pending_signal": self.pending_signal}
 
-    stub_module = types.ModuleType("paper_portfolio")
-    stub_module.PaperPortfolio = StubPaperPortfolio
-    monkeypatch.setitem(sys.modules, "paper_portfolio", stub_module)
+    mod = types.ModuleType("paper_portfolio")
+    mod.PaperPortfolio = StubPaperPortfolio
+    monkeypatch.setitem(sys.modules, "paper_portfolio", mod)
     monkeypatch.setattr(contract, "require_reference_preopen",
-                        lambda date: date + "T07:01:00+08:00")
-    ns = {
+                        lambda day: day + "T07:01:00+08:00")
+
+    outcome = {}
+    namespace = {
         "Path": Path,
         "vol": types.SimpleNamespace(reload=lambda: None),
         "_paper_state_path": lambda market, lineage: tmp_path / "state.json",
-        "_current_st_risk_snapshot": lambda *args: (
-            (_ for _ in ()).throw(AssertionError("ST feed must never be called"))
-        ),
+        "_current_st_risk_snapshot": lambda instruments: outcome["data"],
     }
-    exec(compile(ast.Module(body=[node], type_ignores=[]),
-                 str(source_file), "exec"), ns)
-    proposal = ns["_apply_paper_portfolio"](
-        {
-            "market": "csi1000",
-            "date": "2026-10-12",
-            "ranking_full": [["SH600000", 0.5]],
-            "model_fit_asof": "2026-10-12",
-            "train_end": "2026-09-01",
-            "valid_end": "2026-09-11",
-            "production_lineage": {"profile": "stage_b_winner"},
-        },
-        "2026-10-13", topk=20, nd=2,
-        lineage="stage_b_winner_canonical",
-        verified_calendar={"2026-10-12", "2026-10-13"},
-    )
-    artifact = json.loads(proposal["artifact_json"])
-    assert artifact["execution_st_policy"] == contract.REFERENCE_ST_POLICY
-    assert artifact["pending_orders"]["execution_date"] == "2026-10-13"
-    state = json.loads(proposal["state_json"])
-    meta = state["pending_signal"]["metadata"]
-    assert meta["execution_st_policy"] == contract.REFERENCE_ST_POLICY
-    assert meta["execution_st_snapshot"] is None
-    assert meta["reference_plan_created_at_cst"] == "2026-10-13T07:01:00+08:00"
-    assert not (tmp_path / "state.json").exists(), "must not persist pre-push"
+    fn = _modal_helper_from_source("_apply_paper_portfolio", namespace)
+    res = {
+        "market": "csi1000", "date": "2026-10-12",
+        "ranking_full": [["SH600000", 0.5]], "model_fit_asof": "2026-10-12",
+        "train_end": "2026-09-01", "valid_end": "2026-09-11",
+        "production_lineage": {"profile": "stage_b_winner"},
+    }
+    def propose():
+        return fn(res, "2026-10-13", topk=20, nd=2,
+                  lineage="stage_b_winner_canonical",
+                  verified_calendar={"2026-10-12", "2026-10-13"})
+
+    outcome["data"] = {
+        "status": "SOURCE_SNAPSHOT_AVAILABLE",
+        "source": "akshare.stock_zh_a_st_em",
+        "fetched_at_cst": "2026-10-13T07:01:00+08:00",
+        "source_row_count": 230,
+        "top20_st": ["SH600000"],
+        "top20_st_count": 1,
+    }
+    verified = propose()
+    frozen = json.loads(verified["state_json"])["pending_signal"]["metadata"]
+    assert verified["artifact"]["execution_st_policy"] == contract.VERIFIED_ST_POLICY
+    assert frozen["execution_st_snapshot"]["st_symbols"] == ["SH600000"]
+    assert verified["risk_st"]["status"] == "SOURCE_SNAPSHOT_AVAILABLE"
+
+    outcome["data"] = {
+        "status": "UNAVAILABLE", "failure_kind": "TRANSPORT",
+        "source": "akshare.stock_zh_a_st_em", "detail": "ConnectionError: disconnected",
+    }
+    fallback = propose()
+    frozen = json.loads(fallback["state_json"])["pending_signal"]["metadata"]
+    assert fallback["artifact"]["execution_st_policy"] == contract.REFERENCE_ST_POLICY
+    assert frozen["execution_st_snapshot"] is None
+    assert fallback["risk_st"]["status"] == "NOT_CHECKED_REFERENCE_ONLY"
+    assert fallback["risk_st"]["top20_st_count"] is None
+
+    outcome["data"] = {
+        "status": "UNAVAILABLE", "failure_kind": "INVALID_RESPONSE",
+        "source": "akshare.stock_zh_a_st_em", "detail": "missing columns",
+    }
+    with pytest.raises(RuntimeError, match="ST response invalid"):
+        propose()
+    assert not (tmp_path / "state.json").exists(), "paper state must await Git push"
 
 
 def test_reference_execution_context_requires_explicit_mode_and_keeps_price_gates():
@@ -283,10 +361,9 @@ def test_reference_execution_context_requires_explicit_mode_and_keeps_price_gate
     )[0]
     assert 'execution_st_policy == REFERENCE_ST_POLICY' in context
     assert 'st_symbols = set()' in context
-    assert 'snapshot.get("status") != "SOURCE_SNAPSHOT_AVAILABLE"' in context
+    assert 'validate_verified_st_snapshot(snapshot, execution_date)' in context
     assert 'compute_limit_masks(' in context
     assert 'certify_full_session_halts(' in context
     assert '"$open", "Ref($close,1)", "$close", "$factor"' in context
     assert '_current_st_risk_snapshot(res["display_top20"])' not in cron
-    assert '"status": "NOT_CHECKED_REFERENCE_ONLY"' in cron
-    assert '"top20_st_count": None' in cron
+    assert 'paper_proposals["csi1000"]["risk_st"]' in cron
