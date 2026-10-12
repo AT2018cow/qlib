@@ -231,7 +231,7 @@ def test_st_free_reference_return_is_explicit_not_certified():
     method = (ROOT / "website" / "methodology.html").read_text()
     for phrase in ("模型累计收益 · Paper 参考", "ST未纳入模拟",
                    "参考模拟收益 · 不考虑 ST",
-                   "仅研究模拟参考", "ST_IGNORED_REFERENCE_ONLY"):
+                   "ST 接口正常则纳入 ST 快照", "ST_IGNORED_REFERENCE_ONLY"):
         assert phrase in app, f"site missing reference-only disclosure: {phrase}"
     assert "接口故障时" in method
     assert "研究型参考收益" in method
