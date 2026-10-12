@@ -455,6 +455,7 @@ def build_mvp_metadata(
             or paper.get("execution_st_policy") != REFERENCE_ST_POLICY
             or risk["st"].get("top20_st_count") is not None
             or risk["st"].get("top20_st") is not None
+            or risk["st"].get("failure_kind") != "TRANSPORT"
         ):
             raise ValueError("unverified reference ST risk must stay explicitly unknown")
     elif paper.get("execution_st_policy") == REFERENCE_ST_POLICY:
@@ -468,6 +469,17 @@ def build_mvp_metadata(
             or risk["st"]["top20_st_count"] != len(risk["st"]["top20_st"])
         ):
             raise ValueError("verified ST paper requires a genuine frozen source snapshot")
+        validate_verified_st_snapshot(
+            {
+                "date": risk["st"].get("date"),
+                "status": risk["st"]["status"],
+                "source": risk["st"].get("source"),
+                "fetched_at_cst": risk["st"].get("fetched_at_cst"),
+                "source_row_count": risk["st"].get("source_row_count"),
+                "st_symbols": risk["st"]["top20_st"],
+            },
+            usage_date,
+        )
 
     public_pit = {k: v for k, v in pit_universe.items() if k != "active_members"}
     return {
