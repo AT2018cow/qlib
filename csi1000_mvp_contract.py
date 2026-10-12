@@ -19,6 +19,8 @@ from pathlib import Path
 import re
 
 MVP_CONTRACT_VERSION = "csi1000_mvp_daily_v1"
+# Explicit execution assumption, separate from the frozen model/candidate identity.
+REFERENCE_ST_POLICY = "ST_IGNORED_REFERENCE_ONLY"
 _SYMBOL = re.compile(r"^(SH|SZ|BJ)\d{6}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _REQUIRED_LINEAGE = (
@@ -28,6 +30,31 @@ _REQUIRED_LINEAGE = (
     "stage_b_snapshot_token",
     "contract_version",
 )
+
+
+def require_reference_preopen(usage_date: str, *, observed_at=None) -> str:
+    """Allow a new reference-only pending order only before its own market open.
+
+    This does not certify execution-day ST/tradability. It prevents a failed
+    07:00 cron from being rewritten later as if the order was planned pre-open.
+    The timestamp is frozen with the pending order for reproducibility.
+    """
+    from datetime import datetime, time
+    from zoneinfo import ZoneInfo
+
+    usage_date = _iso_day(usage_date, "usage_date")
+    if usage_date < "2026-10-12":
+        raise ValueError("reference-only paper may not backfill pre-forward dates")
+    now = observed_at if observed_at is not None else datetime.now(ZoneInfo("Asia/Shanghai"))
+    if now.tzinfo is None or now.utcoffset() is None:
+        raise ValueError("preopen observation must have a timezone")
+    cst = now.astimezone(ZoneInfo("Asia/Shanghai"))
+    if cst.date().isoformat() != usage_date or cst.time() >= time(9, 30):
+        raise RuntimeError(
+            f"reference-only paper requires a same-day pre-open plan before 09:30 "
+            f"Asia/Shanghai; usage_date={usage_date} observed={cst.isoformat()}"
+        )
+    return cst.isoformat()
 
 
 def _iso_day(value, label: str) -> str:
@@ -382,6 +409,16 @@ def build_mvp_metadata(
         raise ValueError("current ST/suspension risk boundary missing")
     if risk.get("tradeability_certified") is not False:
         raise ValueError("research MVP must not claim tradeability certification")
+    if risk["st"].get("status") == "NOT_CHECKED_REFERENCE_ONLY":
+        if (
+            risk.get("execution_st_policy") != REFERENCE_ST_POLICY
+            or paper.get("execution_st_policy") != REFERENCE_ST_POLICY
+            or risk["st"].get("top20_st_count") is not None
+            or risk["st"].get("top20_st") is not None
+        ):
+            raise ValueError("unverified reference ST risk must stay explicitly unknown")
+    elif paper.get("execution_st_policy") == REFERENCE_ST_POLICY:
+        raise ValueError("reference-only paper must disclose skipped ST risk")
 
     public_pit = {k: v for k, v in pit_universe.items() if k != "active_members"}
     return {
