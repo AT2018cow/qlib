@@ -205,15 +205,14 @@ def stress_advantage_pp(chall_report: Any, base_rel_cagr: float, extra_bps: floa
     notionals = [t * p for t, p in zip(turnover_rate, prior)]
     adjustment = 0.0
     stressed_nav, stressed_cash, stressed_cost, stressed_total = [], [], [], []
-    total = 0.0
     for i in range(len(nav)):
         adjustment += notionals[i] * extra_bps / 10000.0
         stressed_nav.append(nav[i] - adjustment)
         stressed_cash.append(float(chall_report["cash"].iloc[i]) - adjustment)
         rate_add = notionals[i] * extra_bps / 10000.0 / prior[i] if prior[i] else 0.0
         stressed_cost.append(float(chall_report["cost"].iloc[i]) + rate_add)
-        total += float(chall_report["cost"].iloc[i]) + rate_add
-        stressed_total.append(total)
+        # Cumulative fees are CNY, NOT the sum of unitless daily fee rates.
+        stressed_total.append(float(chall_report["total_cost"].iloc[i]) + adjustment)
     if min(stressed_nav) <= 0:
         return None, "BLOCKED_NEGATIVE_STRESSED_NAV"
     dates = list(pd.DatetimeIndex(chall_report.index).date)
@@ -457,7 +456,6 @@ def paired_rows(
     """
     base_by_phase = {c["phase"]: c for c in base_cells}
     chall_rows, base_rows = [], []
-    turnover_ratio = 0.0
     for c in chall_cells:
         b = base_by_phase.get(c["phase"])
         if b is None:
@@ -497,5 +495,13 @@ def paired_rows(
                 "plus10bp_advantage_pp": 0.0,
             }
         )
-        turnover_ratio = max(turnover_ratio, c["mean_turnover"] / b["mean_turnover"])
-    return chall_rows, base_rows, turnover_ratio
+    # Both legs must have all required phases. Compute independent medians
+    # rather than a max of per-phase ratios; §1.2 explicitly uses medians.
+    from statistics import median
+    if not chall_rows or not base_rows:
+        raise ValueError("LAYERED_REPLAY_BLOCKED: empty paired turnover evidence")
+    med_base = median(row["turnover"] for row in base_rows)
+    med_chall = median(row["turnover"] for row in chall_rows)
+    if not math.isfinite(med_base) or med_base <= 0 or not math.isfinite(med_chall) or med_chall < 0:
+        raise ValueError("LAYERED_REPLAY_BLOCKED: median turnover invalid")
+    return chall_rows, base_rows, med_chall / med_base
