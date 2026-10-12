@@ -11,6 +11,7 @@ from datetime import date
 from typing import Any, Iterable, Mapping
 
 from paper_accounting import verify_ledger
+from csi1000_mvp_contract import REFERENCE_ST_POLICY
 
 FORWARD_PERFORMANCE_START = "2026-10-12"
 CANONICAL_LINEAGE = "stage_b_winner_canonical"
@@ -24,6 +25,7 @@ def build_forward_performance(
     scheduled = set()
     calendar_snapshots = {}
     calendar_dates = set()
+    reported_st_policies = set()
     for artifact in artifacts:
         if artifact.get("market") != "csi1000":
             continue
@@ -70,6 +72,9 @@ def build_forward_performance(
         # Cash flow, inventory and close NAV are recomputed from the primitive
         # filled orders and marked positions, independently of paper state.
         verify_ledger(report)
+        policy = (report.get("metadata") or {}).get("execution_st_policy")
+        if policy:
+            reported_st_policies.add(policy)
         try:
             opening = float(report["portfolio_value_pre_trade_open"])
             closing = float(report["portfolio_value_close"])
@@ -106,10 +111,14 @@ def build_forward_performance(
         prev_calendar = snapshot
 
     ordered = [reports[d] for d in sorted(reports)]
+    if len(reported_st_policies) > 1:
+        raise ValueError("mixed ST execution policies in a single forward reference NAV")
+    execution_st_policy = next(iter(reported_st_policies), None)
     if not ordered:
         return {
             "start_date": start_date,
             "status": "awaiting_first_valuation",
+            "execution_st_policy": execution_st_policy,
             "latest_date": None,
             "cumulative_return": None,
             "points": [],
@@ -154,6 +163,12 @@ def build_forward_performance(
         "start_date": start_date,
         "inception_date": first,
         "status": "active",
+        "execution_st_policy": execution_st_policy,
+        "return_interpretation": (
+            "REFERENCE_ONLY_ST_NOT_MODELED"
+            if execution_st_policy == REFERENCE_ST_POLICY
+            else "PAPER_ONLY"
+        ),
         "latest_date": latest,
         "cumulative_return": points[-1]["cumulative_return"],
         "points": points,
