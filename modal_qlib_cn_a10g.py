@@ -1340,7 +1340,9 @@ def _paper_execution_context(
         rows[inst] = row
 
     insts = sorted(symbols)
-    from csi1000_mvp_contract import REFERENCE_ST_POLICY
+    from csi1000_mvp_contract import (
+        REFERENCE_ST_POLICY, VERIFIED_ST_POLICY, validate_verified_st_snapshot,
+    )
 
     pending_metadata = pending.get("metadata") or {}
     execution_st_policy = pending_metadata.get("execution_st_policy")
@@ -1353,13 +1355,12 @@ def _paper_execution_context(
             raise RuntimeError("reference ST policy cannot apply before forward inception")
         st_symbols = set()
     else:
-        if execution_date >= "2026-10-12" and (
-            snapshot.get("date") != execution_date or
-            snapshot.get("status") != "SOURCE_SNAPSHOT_AVAILABLE" or
-            not isinstance(snapshot.get("st_symbols"), list)
-        ):
-            return {"status": "unverified_preopen_st", "execution_date": execution_date}
-        st_symbols = set(snapshot.get("st_symbols", []))
+        if execution_date >= "2026-10-12":
+            if execution_st_policy != VERIFIED_ST_POLICY:
+                return {"status": "unverified_preopen_st", "execution_date": execution_date}
+            st_symbols = validate_verified_st_snapshot(snapshot, execution_date)
+        else:
+            st_symbols = set(snapshot.get("st_symbols", []))
     opens, prevs, close_na, factors = [], [], [], []
     open_prices = {}
     close_prices = {}
