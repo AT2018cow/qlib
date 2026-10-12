@@ -1340,14 +1340,26 @@ def _paper_execution_context(
         rows[inst] = row
 
     insts = sorted(symbols)
-    snapshot = (pending.get("metadata") or {}).get("execution_st_snapshot") or {}
-    if execution_date >= "2026-10-12" and (
-        snapshot.get("date") != execution_date or
-        snapshot.get("status") != "SOURCE_SNAPSHOT_AVAILABLE" or
-        not isinstance(snapshot.get("st_symbols"), list)
-    ):
-        return {"status": "unverified_preopen_st", "execution_date": execution_date}
-    st_symbols = snapshot.get("st_symbols", [])
+    from csi1000_mvp_contract import REFERENCE_ST_POLICY
+
+    pending_metadata = pending.get("metadata") or {}
+    execution_st_policy = pending_metadata.get("execution_st_policy")
+    snapshot = pending_metadata.get("execution_st_snapshot") or {}
+    if execution_st_policy == REFERENCE_ST_POLICY:
+        # Reference P&L deliberately ignores ST risk: NEVER convert a missing
+        # feed to an empty *verified* ST list. Continue enforcing price limits,
+        # factors, real quotes and independent full-session halt evidence.
+        if execution_date < "2026-10-12":
+            raise RuntimeError("reference ST policy cannot apply before forward inception")
+        st_symbols = set()
+    else:
+        if execution_date >= "2026-10-12" and (
+            snapshot.get("date") != execution_date or
+            snapshot.get("status") != "SOURCE_SNAPSHOT_AVAILABLE" or
+            not isinstance(snapshot.get("st_symbols"), list)
+        ):
+            return {"status": "unverified_preopen_st", "execution_date": execution_date}
+        st_symbols = set(snapshot.get("st_symbols", []))
     opens, prevs, close_na, factors = [], [], [], []
     open_prices = {}
     close_prices = {}
@@ -1406,11 +1418,12 @@ def _paper_execution_context(
         listing_dates=listing,
         calendar=calendar,
         factors=factors,
-        st_symbols=set(st_symbols),
+        st_symbols=st_symbols,
     )
     return {
         "status": "ready",
         "execution_date": execution_date,
+        "execution_st_policy": execution_st_policy,
         "open_prices": open_prices,
         "close_prices": close_prices,
         "factors": factor_by_symbol,
@@ -1438,6 +1451,7 @@ def _apply_paper_portfolio(
     """
     import json as _json
     from paper_portfolio import PaperPortfolio
+    from csi1000_mvp_contract import REFERENCE_ST_POLICY, require_reference_preopen
 
     market = res["market"]
     state_path = _paper_state_path(market, lineage)
@@ -1476,6 +1490,10 @@ def _apply_paper_portfolio(
                 raise RuntimeError(
                     f"paper execution context unavailable for {market} {pending_date}: {ctx.get('status')}"
                 )
+            if ctx.get("execution_st_policy") != (
+                pp.pending_signal.get("metadata") or {}
+            ).get("execution_st_policy"):
+                raise RuntimeError("paper execution ST policy drift across provider refresh")
             execution_report = pp.execute_pending(
                 pending_date,
                 ctx.get("open_prices", {}),
@@ -1499,14 +1517,10 @@ def _apply_paper_portfolio(
             "status": "awaiting_execution_data",
         }
     elif pp.pending_signal is None:
-        # Freeze the execution-date PRE-OPEN ST observation together with
-        # pending orders. It will be replayed at the next provider refresh;
-        # never query today's ST list retroactively for yesterday's trade.
-        st_risk = _current_st_risk_snapshot(
-            sorted(set(pp.positions).union(s for s, _ in res["ranking_full"]))
-        )
-        if usage_date >= "2026-10-12" and st_risk["status"] != "SOURCE_SNAPSHOT_AVAILABLE":
-            raise RuntimeError("cannot freeze pre-open ST evidence: refusing new verified paper plan")
+        # Forward reference plan deliberately does not query the unstable ST
+        # source. Require a genuinely pre-open decision timestamp instead;
+        # this never retroactively creates a pending order after the open.
+        plan_created_at = require_reference_preopen(usage_date)
         planned = pp.plan_signal(
             signal_date=res["date"],
             execution_date=usage_date,
@@ -1520,12 +1534,9 @@ def _apply_paper_portfolio(
                 "nd": nd,
                 "paper_lineage": lineage,
                 "production_lineage": res.get("production_lineage"),
-                "execution_st_snapshot": {
-                    "date": usage_date,
-                    "status": st_risk["status"],
-                    "source": st_risk["source"],
-                    "st_symbols": st_risk.get("top20_st", []),
-                },
+                "execution_st_policy": REFERENCE_ST_POLICY,
+                "reference_plan_created_at_cst": plan_created_at,
+                "execution_st_snapshot": None,  # no fake pre-open evidence
             },
         )
     else:
@@ -1558,6 +1569,9 @@ def _apply_paper_portfolio(
         "market": market,
         "paper_lineage": lineage,
         "production_lineage": res.get("production_lineage"),
+        "execution_st_policy": (
+            (pp.pending_signal or {}).get("metadata") or {}
+        ).get("execution_st_policy", REFERENCE_ST_POLICY),
         "signal_data_date": res["date"],
         "usage_date": usage_date,
         "execution_report": execution_report,
@@ -4168,8 +4182,20 @@ def daily_cron():
 
         from csi1000_mvp_contract import build_mvp_metadata, dumps_metadata
 
+        # Research reference P&L deliberately does not fetch the ST endpoint.
+        # UNKNOWN is not an empty/clean ST list, and it is not a tradeability
+        # certification. Other execution-day and quote gates stay unchanged.
         risk = {
-            "st": _current_st_risk_snapshot(res["display_top20"]),
+            "st": {
+                "status": "NOT_CHECKED_REFERENCE_ONLY",
+                "source": "NOT_QUERIED",
+                "scope": "research reference NAV (ST restrictions not modeled)",
+                "top20_st": None,
+                "top20_st_count": None,
+                "selection_filter_applied": False,
+                "tradeability_certified": False,
+            },
+            "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
             "usage_day_suspension": {
                 "status": "NOT_INDEPENDENTLY_VERIFIED_PREOPEN",
                 "scope": signal_date,
