@@ -334,6 +334,12 @@ def summarize_paper_state(
         "prior_execution_blocked_order_count": blocked,
         "n_positions": int(paper.get("n_positions", 0)),
         "real_fill_execution": "NOT_CERTIFIED_PAPER_ONLY",
+        "execution_st_policy": paper.get("execution_st_policy"),
+        "return_interpretation": (
+            "REFERENCE_ONLY_ST_NOT_MODELED"
+            if paper.get("execution_st_policy") == REFERENCE_ST_POLICY
+            else "PAPER_ONLY"
+        ),
     }
 
 
