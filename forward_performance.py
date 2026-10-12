@@ -73,8 +73,7 @@ def build_forward_performance(
         # filled orders and marked positions, independently of paper state.
         verify_ledger(report)
         policy = (report.get("metadata") or {}).get("execution_st_policy")
-        if policy:
-            reported_st_policies.add(policy)
+        reported_st_policies.add(policy or "UNSPECIFIED")
         try:
             opening = float(report["portfolio_value_pre_trade_open"])
             closing = float(report["portfolio_value_close"])
@@ -114,6 +113,8 @@ def build_forward_performance(
     if len(reported_st_policies) > 1:
         raise ValueError("mixed ST execution policies in a single forward reference NAV")
     execution_st_policy = next(iter(reported_st_policies), None)
+    if execution_st_policy == "UNSPECIFIED":
+        execution_st_policy = None
     if not ordered:
         return {
             "start_date": start_date,
