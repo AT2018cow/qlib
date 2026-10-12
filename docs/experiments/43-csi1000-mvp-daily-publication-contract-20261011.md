@@ -123,3 +123,37 @@ The real-data smoke is intentionally forward-only:
 As of 2026-10-11, the second leg cannot be truthfully completed for the
 2026-10-12 forward start before the relevant market data exists.  Keep it
 pending rather than fabricating a fill.
+
+
+## Forward reference-only ST policy (change proposed 2026-10-12; not a historical rewrite)
+
+The approved research website return series is now **reference-only** and
+**does not model ST designation or ST-specific price limits**. This is a
+forward execution-model assumption, NOT a change to the frozen Stage-B winner
+or its score/ranking, PIT=1000, Label20, model lineage, provider fingerprint,
+calendar freshness, non-ST price limits, real adjusted OHLC/factors, dated
+whole-session suspension evidence, or the cash/NAV accounting engine.
+
+The canonical `daily_cron` does not fetch `akshare.stock_zh_a_st_em`.
+Instead every new forward paper order is marked
+`execution_st_policy=ST_IGNORED_REFERENCE_ONLY`, with
+`execution_st_snapshot=null`, `reference_plan_created_at_cst` and
+`risk.st.status=NOT_CHECKED_REFERENCE_ONLY`. The risk count is null, never
+fabricated as zero ST securities. The website must say "reference P&L, ST not
+modeled, not tradeable-fill certified." A successful data/model publication
+contract does not imply ST/risk certification.
+
+**Temporal gate:** A new paper pending must be planned on its execution day,
+strictly before 09:30 Asia/Shanghai. If that window was missed, do not run
+a later cron to backdate its paper decision. The 2026-10-12 07:00 and 07:49
+failed attempts never published a valid pending; because 09:30 passed, do not
+manufacture the 2026-10-12 forward anchor. The first future accepted
+reference point may occur later than the planned 2026-10-12 baseline, with
+the true later inception date surfaced publicly. There is no retroactive
+paper settlement, NAV or forward backfill.
+
+Only a pending that explicitly records the reference-only policy may bypass
+the ST snapshot requirement at its later real-data settlement. Historical
+untagged ST-dependent pending cannot be silently converted. A return series
+must not merge different ST assumptions or unknown legacy assumptions.
+Original fail-closed source/PIT/label/lineage/quotes/halt gates remain binding.
