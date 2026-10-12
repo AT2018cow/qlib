@@ -90,7 +90,7 @@ def test_dashboard_dark_theme_and_responsive_layout():
     assert ".table-wrap { display: none; }" in styles
     assert ".mobile-cards { display: grid;" in styles
     assert ".doc-grid { grid-template-columns: 1fr;" in styles
-    assert 'src="app.js?v=27"' in index
+    assert 'src="app.js?v=28"' in index
 
 
 def test_forward_performance_panel_is_forward_only_from_20261012():
@@ -224,3 +224,14 @@ def test_favicon_is_valid_svg_and_published_on_both_pages():
     workflow = (ROOT / ".github" / "workflows" / "website-deploy.yml").read_text()
     assert "website/*.svg _site/" in workflow
     assert "test -s _site/favicon.svg" in workflow
+
+\n
+def test_st_free_reference_return_is_explicit_not_certified():
+    app = (ROOT / "website" / "app.js").read_text()
+    method = (ROOT / "website" / "methodology.html").read_text()
+    for phrase in ("参考（不考虑 ST）", "ST未纳入模拟",
+                   "参考模拟收益 · 不考虑 ST",
+                   "仅研究模拟参考", "ST_IGNORED_REFERENCE_ONLY"):
+        assert phrase in app, f"site missing reference-only disclosure: {phrase}"
+    assert "不校验 ST 名单" in method
+    assert "研究型参考收益" in method
