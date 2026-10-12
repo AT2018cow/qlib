@@ -38,9 +38,12 @@ def _frame(drift=0.0006, wiggle=0.0004, turnover=0.02, cost=0.00005):
     total_cost, total_turn = 0.0, 0.0
     for i in range(N):
         daily = drift + math.sin(i / 9.0) * wiggle
+        prior_account = account
         account *= 1 + daily
-        total_cost += account * cost
-        total_turn += account * turnover
+        # Independent ledger uses *opening* equity for fee and turnover notional.
+        # Qlib's 'return' is gross before cost; account NAV compounds net daily.
+        total_cost += prior_account * cost
+        total_turn += prior_account * turnover
         rows["account"].append(account)
         rows["cash"].append(cash)
         rows["value"].append(account - cash)
@@ -156,6 +159,8 @@ def test_execute_baseline_combo_reproduces_and_records(tmp_path):
     assert calls[1]["codes"] == ["SH600000"]
     core.check_cell_record({**record, "output_sha256": "b" * 64})
     assert record["n_days"] == 424 and record["final_nav_cny"] > 0
+    assert record["total_cost_cny"] == pytest.approx(frozen["total_cost"].iloc[-1])
+    assert record["ledger_ok"] is True
 
 
 def test_execute_legacy_drift_is_stop_p0(tmp_path):
@@ -215,6 +220,30 @@ def test_execute_portfolio_combo_skips_legacy_but_verifies(tmp_path):
     assert record["legacy_reproduction"] == "NOT_APPLICABLE"
     assert all(c["topk"] == 10 and c["dropn"] == 1 for c in calls)
     core.check_cell_record({**record, "output_sha256": "b" * 64})
+
+
+def test_execute_rejects_synthetic_fee_accounting_tamper(tmp_path):
+    root, row = _snapshot_tree(tmp_path)
+    sources = _sources_dict(root, row)
+    frozen = pd.read_parquet(sources["report"])
+
+    def wrong_cumulative_fee(signal, topk, dropn, codes, start, end):
+        out = frozen.copy()
+        out["total_cost"] += 100.0  # Fee increments no longer equal prior NAV * daily rate.
+        return out, _decisions()
+
+    with pytest.raises(ValueError, match="daily return or fee reconciliation"):
+        execute_cell(
+            cell=_cell(topk=10, dropn=1),
+            sources=sources,
+            signal=pd.Series([0.1] * 50),
+            frozen_report=frozen,
+            frozen_decisions=_decisions(),
+            quote_codes=["SH600000"],
+            quote_sha="f" * 64,
+            market_codes="csi1000",
+            runner=wrong_cumulative_fee,
+        )
 
 
 def test_report_metrics_rejects_missing_nav_and_nonfinite():
