@@ -159,9 +159,10 @@ def _synthetic_frame(
     for i in range(n):
         wave = math.sin(i / 9.0) * wiggle + math.sin(i / 41.0) * wiggle * 0.5
         daily = drift + wave
+        opening_account = account
         account *= 1 + daily
-        total_cost += account * cost_rate
-        total_turn += account * turnover_rate
+        total_cost += opening_account * cost_rate
+        total_turn += opening_account * turnover_rate
         accounts.append(account)
         cashes.append(cash)
         values.append(account - cash)
@@ -200,6 +201,12 @@ def _demo_metrics(frame: Dict[str, List[float]]) -> Dict[str, Any]:
 
 def _demo_record(cell_key: str, candidate: str, phase: int, frame: Dict[str, List[float]]) -> Dict[str, Any]:
     numbers = _demo_metrics(frame)
+    from audit.csi1000_layered_search_replay import report_metrics
+    _, checks = report_metrics(frame)
+    if (checks["max_account_return_delta"] > 1e-10
+            or checks["max_cost_rate_delta"] > 1e-10
+            or checks["max_turnover_rate_delta"] > 1e-10):
+        raise ValueError("synthetic demonstration violates the real daily accounting contract")
     tag = hashlib.sha256(cell_key.encode()).hexdigest()
     return {
         "status": "PASS",
@@ -220,7 +227,7 @@ def _demo_record(cell_key: str, candidate: str, phase: int, frame: Dict[str, Lis
         "output_sha256": hashlib.sha256(frame.to_csv().encode()).hexdigest(),
         "legacy_reproduction": "PASS",
         "final_nav_cny": float(frame["account"].iloc[-1]),
-        "total_cost_cny": float(numbers["total_cost_sum"]),
+        "total_cost_cny": float(frame["total_cost"].iloc[-1]),
         "total_turnover_cny": float(frame["total_turnover"].iloc[-1]),
         "mean_turnover": float(numbers["mean_turnover"]),
         "n_days": 424,
