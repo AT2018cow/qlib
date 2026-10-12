@@ -133,6 +133,7 @@ REQUIRED_PHASE_FIELDS = (
     "net_relative_cagr_pp",
     "net_total_return",
     "mdd_pp",
+    "turnover",
     "n_days",
     "coverage_ok",
     "ledger_ok",
@@ -762,10 +763,16 @@ def _paired_deltas(
             for num in ("net_relative_cagr_pp", "net_total_return", "mdd_pp", "plus10bp_advantage_pp"):
                 if not isinstance(row.get(num), (int, float)) or not math.isfinite(row[num]):
                     return "NOT_ELIGIBLE", {**detail, "reason": f"non-finite {num}"}, []
-            if not isinstance(row.get("n_days"), int) or row["n_days"] <= 0:
-                return "NOT_ELIGIBLE", {**detail, "reason": "invalid n_days"}, []
+            if not isinstance(row.get("n_days"), int) or row["n_days"] != 424:
+                return "NOT_ELIGIBLE", {**detail, "reason": "phase must have exactly 424 sessions"}, []
             if row["mdd_pp"] < 0:
                 return "NOT_ELIGIBLE", {**detail, "reason": "mdd_pp must be a positive magnitude"}, []
+            turnover = row["turnover"]
+            if not isinstance(turnover, (int, float)) or not math.isfinite(turnover) or turnover < 0:
+                return ("BASELINE_INELIGIBLE" if leg is baseline else "NOT_ELIGIBLE"), {
+                    **detail, "reason": "phase turnover nonfinite or negative"}, []
+            if leg is baseline and turnover <= 0:
+                return "BASELINE_INELIGIBLE", {**detail, "reason": "baseline turnover must be positive"}, []
     for phase in base_by_phase:
         if chall_by_phase[phase]["n_days"] != base_by_phase[phase]["n_days"]:
             return "NOT_ELIGIBLE", {**detail, "reason": f"phase {phase} day-count mismatch between legs"}, []
@@ -788,7 +795,7 @@ def coarse_pass(challenger: List[Dict[str, Any]], baseline: List[Dict[str, Any]]
     base_by_phase = {r["phase"]: r for r in baseline}
     chall_by_phase = {r["phase"]: r for r in challenger}
     worst = min(deltas)
-    median = sorted(deltas)[1]
+    median = statistics.median(deltas)
     mdd_deg = max(r["mdd_pp"] for r in challenger) - max(r["mdd_pp"] for r in baseline)
     turnovers = []
     for p in sorted(base_by_phase):
@@ -835,7 +842,12 @@ def final_verdict(
     n_beat = sum(
         1 for p in base_by_phase if chall_by_phase[p]["net_total_return"] > base_by_phase[p]["net_total_return"]
     )
-    mdd_deg = max(r["mdd_pp"] for r in challenger) - min(r["mdd_pp"] for r in baseline)
+    mdd_deg = max(r["mdd_pp"] for r in challenger) - max(r["mdd_pp"] for r in baseline)
+    # Contract 53 §1.2: median of five phase turnovers for each leg,
+    # rather than the maximum of five phase-by-phase ratios.
+    baseline_median_turnover = statistics.median(r["turnover"] for r in baseline)
+    challenger_median_turnover = statistics.median(r["turnover"] for r in challenger)
+    actual_turnover_ratio = challenger_median_turnover / baseline_median_turnover
     stress = all(chall_by_phase[p]["plus10bp_advantage_pp"] > 0 for p in base_by_phase)
     info = {
         "n_phases": 5,
@@ -844,8 +856,15 @@ def final_verdict(
         "n_beat": n_beat,
         "mdd_degrade_pp": mdd_deg,
         "stress10_ok": stress,
-        "turnover_ratio": turnover_ratio,
+        "turnover_ratio": actual_turnover_ratio,
+        "baseline_median_turnover": baseline_median_turnover,
+        "challenger_median_turnover": challenger_median_turnover,
     }
+    if (not isinstance(turnover_ratio, (int, float))
+            or not math.isfinite(turnover_ratio)
+            or not math.isclose(turnover_ratio, actual_turnover_ratio, rel_tol=1e-10, abs_tol=1e-10)):
+        return "NOT_ELIGIBLE", {**info, "failed": "turnover",
+                                "reason": "claimed turnover ratio differs from independently recomputed five-phase medians"}
     if worst < FINAL_WORST_MIN_PP:
         return "NOT_ELIGIBLE", {**info, "failed": "worst_phase"}
     if median < FINAL_MEDIAN_MIN_PP:
@@ -854,11 +873,7 @@ def final_verdict(
         return "NOT_ELIGIBLE", {**info, "failed": "breadth"}
     if mdd_deg > FINAL_MDD_MAX_DEGRADE_PP:
         return "NOT_ELIGIBLE", {**info, "failed": "mdd"}
-    if (
-        not isinstance(turnover_ratio, (int, float))
-        or not math.isfinite(turnover_ratio)
-        or turnover_ratio > FINAL_TURNOVER_MAX_RATIO
-    ):
+    if actual_turnover_ratio > FINAL_TURNOVER_MAX_RATIO:
         return "NOT_ELIGIBLE", {**info, "failed": "turnover"}
     if not stress:
         return "NOT_ELIGIBLE", {**info, "failed": "cost_stress_10bp"}
