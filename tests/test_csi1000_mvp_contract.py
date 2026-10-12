@@ -255,3 +255,97 @@ def test_holiday_resolution_does_not_bypass_20_session_maturity():
     training["valid_end"] = cal[-11]
     with pytest.raises(ValueError, match="validation label tail"):
         validate_label_maturity(cal, training, cal[-1])
+
+
+def test_reference_st_risk_is_unknown_not_verified_clean(tmp_path):
+    from csi1000_mvp_contract import REFERENCE_ST_POLICY
+
+    kw = _fixture(tmp_path)
+    kw["paper"]["execution_st_policy"] = REFERENCE_ST_POLICY
+    kw["risk"]["execution_st_policy"] = REFERENCE_ST_POLICY
+    kw["risk"]["st"] = {
+        "status": "NOT_CHECKED_REFERENCE_ONLY",
+        "source": "akshare.stock_zh_a_st_em",
+        "failure_kind": "TRANSPORT",
+        "top20_st": None,
+        "top20_st_count": None,
+        "tradeability_certified": False,
+    }
+    m = build_mvp_metadata(**kw)
+    assert m["publication"]["status"] == "PASS"
+    assert m["paper"]["execution_st_policy"] == REFERENCE_ST_POLICY
+    assert m["paper"]["return_interpretation"] == "REFERENCE_ONLY_ST_NOT_MODELED"
+    assert m["risk"]["st"]["top20_st_count"] is None
+
+    kw["risk"]["st"]["top20_st_count"] = 0
+    with pytest.raises(ValueError, match="explicitly unknown"):
+        build_mvp_metadata(**kw)
+    kw["risk"]["st"]["top20_st_count"] = None
+    kw["paper"].pop("execution_st_policy")
+    with pytest.raises(ValueError, match="explicitly unknown"):
+        build_mvp_metadata(**kw)
+
+
+def test_reference_pending_requires_same_date_before_market_open():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    from csi1000_mvp_contract import require_reference_preopen
+
+    shanghai = ZoneInfo("Asia/Shanghai")
+    ok = datetime(2026, 10, 13, 9, 29, 59, tzinfo=shanghai)
+    assert require_reference_preopen("2026-10-13", observed_at=ok).startswith(
+        "2026-10-13T09:29:59"
+    )
+    for bad in (
+        datetime(2026, 10, 13, 9, 30, tzinfo=shanghai),
+        datetime(2026, 10, 13, 11, 0, tzinfo=shanghai),
+        datetime(2026, 10, 14, 7, 0, tzinfo=shanghai),
+    ):
+        with pytest.raises(RuntimeError, match="same-day pre-open"):
+            require_reference_preopen("2026-10-13", observed_at=bad)
+    with pytest.raises(ValueError, match="may not backfill"):
+        require_reference_preopen("2026-10-09", observed_at=ok)
+
+
+def test_verified_st_metadata_requires_real_preopen_source_evidence(tmp_path):
+    from csi1000_mvp_contract import VERIFIED_ST_POLICY
+
+    kw = _fixture(tmp_path)
+    usage = kw["usage_date"]
+    kw["paper"]["execution_st_policy"] = VERIFIED_ST_POLICY
+    kw["risk"]["execution_st_policy"] = VERIFIED_ST_POLICY
+    kw["risk"]["st"] = {
+        "date": usage, "status": "SOURCE_SNAPSHOT_AVAILABLE",
+        "source": "akshare.stock_zh_a_st_em",
+        "fetched_at_cst": usage + "T07:02:00+08:00",
+        "source_row_count": 230,
+        "top20_st": [_symbols()[0]],
+        "top20_st_count": 1,
+    }
+    meta = build_mvp_metadata(**kw)
+    assert meta["paper"]["execution_st_policy"] == VERIFIED_ST_POLICY
+    kw["risk"]["st"]["fetched_at_cst"] = usage + "T10:14:00+08:00"
+    with pytest.raises(ValueError, match="not captured before"):
+        build_mvp_metadata(**kw)
+
+
+def test_verified_st_snapshot_rejects_wrong_date_source_and_corrupt_symbols():
+    from csi1000_mvp_contract import validate_verified_st_snapshot
+
+    snapshot = {
+        "date": "2026-10-13", "status": "SOURCE_SNAPSHOT_AVAILABLE",
+        "source": "akshare.stock_zh_a_st_em",
+        "fetched_at_cst": "2026-10-13T07:00:00+08:00",
+        "source_row_count": 240, "st_symbols": ["SH600000"],
+    }
+    assert validate_verified_st_snapshot(snapshot, "2026-10-13") == {"SH600000"}
+    for key, value in (
+        ("date", "2026-10-12"),
+        ("source", "UNVERIFIED_CACHE"),
+        ("source_row_count", 0),
+        ("st_symbols", ["BAD"]),
+        ("fetched_at_cst", "2026-10-13T09:30:00+08:00"),
+    ):
+        broken = dict(snapshot, **{key: value})
+        with pytest.raises(ValueError):
+            validate_verified_st_snapshot(broken, "2026-10-13")

@@ -1340,14 +1340,27 @@ def _paper_execution_context(
         rows[inst] = row
 
     insts = sorted(symbols)
-    snapshot = (pending.get("metadata") or {}).get("execution_st_snapshot") or {}
-    if execution_date >= "2026-10-12" and (
-        snapshot.get("date") != execution_date or
-        snapshot.get("status") != "SOURCE_SNAPSHOT_AVAILABLE" or
-        not isinstance(snapshot.get("st_symbols"), list)
-    ):
-        return {"status": "unverified_preopen_st", "execution_date": execution_date}
-    st_symbols = snapshot.get("st_symbols", [])
+    from csi1000_mvp_contract import (
+        REFERENCE_ST_POLICY, VERIFIED_ST_POLICY, validate_verified_st_snapshot,
+    )
+
+    pending_metadata = pending.get("metadata") or {}
+    execution_st_policy = pending_metadata.get("execution_st_policy")
+    snapshot = pending_metadata.get("execution_st_snapshot") or {}
+    if execution_st_policy == REFERENCE_ST_POLICY:
+        # Reference P&L deliberately ignores ST risk: NEVER convert a missing
+        # feed to an empty *verified* ST list. Continue enforcing price limits,
+        # factors, real quotes and independent full-session halt evidence.
+        if execution_date < "2026-10-12":
+            raise RuntimeError("reference ST policy cannot apply before forward inception")
+        st_symbols = set()
+    else:
+        if execution_date >= "2026-10-12":
+            if execution_st_policy != VERIFIED_ST_POLICY:
+                return {"status": "unverified_preopen_st", "execution_date": execution_date}
+            st_symbols = validate_verified_st_snapshot(snapshot, execution_date)
+        else:
+            st_symbols = set(snapshot.get("st_symbols", []))
     opens, prevs, close_na, factors = [], [], [], []
     open_prices = {}
     close_prices = {}
@@ -1406,11 +1419,12 @@ def _paper_execution_context(
         listing_dates=listing,
         calendar=calendar,
         factors=factors,
-        st_symbols=set(st_symbols),
+        st_symbols=st_symbols,
     )
     return {
         "status": "ready",
         "execution_date": execution_date,
+        "execution_st_policy": execution_st_policy,
         "open_prices": open_prices,
         "close_prices": close_prices,
         "factors": factor_by_symbol,
@@ -1438,6 +1452,9 @@ def _apply_paper_portfolio(
     """
     import json as _json
     from paper_portfolio import PaperPortfolio
+    from csi1000_mvp_contract import (
+        REFERENCE_ST_POLICY, VERIFIED_ST_POLICY, require_reference_preopen,
+    )
 
     market = res["market"]
     state_path = _paper_state_path(market, lineage)
@@ -1476,6 +1493,10 @@ def _apply_paper_portfolio(
                 raise RuntimeError(
                     f"paper execution context unavailable for {market} {pending_date}: {ctx.get('status')}"
                 )
+            if ctx.get("execution_st_policy") != (
+                pp.pending_signal.get("metadata") or {}
+            ).get("execution_st_policy"):
+                raise RuntimeError("paper execution ST policy drift across provider refresh")
             execution_report = pp.execute_pending(
                 pending_date,
                 ctx.get("open_prices", {}),
@@ -1489,6 +1510,7 @@ def _apply_paper_portfolio(
             )
 
     planned = None
+    st_risk = None
     if awaiting_execution_data:
         p = pp.pending_signal
         planned = {
@@ -1499,14 +1521,45 @@ def _apply_paper_portfolio(
             "status": "awaiting_execution_data",
         }
     elif pp.pending_signal is None:
-        # Freeze the execution-date PRE-OPEN ST observation together with
-        # pending orders. It will be replayed at the next provider refresh;
-        # never query today's ST list retroactively for yesterday's trade.
+        # Try verified ST first. Only a genuine transport outage permits the
+        # explicit reference-mode fallback; bad schemas/empty source still fail.
+        # Both paths require a real same-day preopen decision, never backdating.
+        require_reference_preopen(usage_date)
         st_risk = _current_st_risk_snapshot(
             sorted(set(pp.positions).union(s for s, _ in res["ranking_full"]))
         )
-        if usage_date >= "2026-10-12" and st_risk["status"] != "SOURCE_SNAPSHOT_AVAILABLE":
-            raise RuntimeError("cannot freeze pre-open ST evidence: refusing new verified paper plan")
+        if st_risk["status"] == "SOURCE_SNAPSHOT_AVAILABLE":
+            st_risk["date"] = usage_date
+            policy = VERIFIED_ST_POLICY
+            frozen_st = {
+                "date": usage_date,
+                "status": st_risk["status"],
+                "source": st_risk["source"],
+                "fetched_at_cst": st_risk["fetched_at_cst"],
+                "source_row_count": st_risk["source_row_count"],
+                "st_symbols": st_risk["top20_st"],
+            }
+        elif st_risk.get("failure_kind") == "TRANSPORT":
+            policy = REFERENCE_ST_POLICY
+            frozen_st = None  # never invent a successful/empty ST source
+            st_risk = {
+                "status": "NOT_CHECKED_REFERENCE_ONLY",
+                "date": usage_date,
+                "source": st_risk.get("source", "akshare.stock_zh_a_st_em"),
+                "scope": "transport outage; reference paper without ST restrictions",
+                "failure_kind": "TRANSPORT",
+                "detail": st_risk.get("detail", "ST_SOURCE_UNAVAILABLE")[:180],
+                "top20_st": None, "top20_st_count": None,
+                "selection_filter_applied": False,
+                "tradeability_certified": False,
+            }
+            print(f"[risk] ST transport failed; reference-only paper mode for {usage_date}")
+        else:
+            raise RuntimeError(
+                "ST response invalid; refusing to bypass risk source: "
+                f"{st_risk.get('detail', 'SOURCE_INVALID_RESPONSE')}"
+            )
+        plan_created_at = require_reference_preopen(usage_date)
         planned = pp.plan_signal(
             signal_date=res["date"],
             execution_date=usage_date,
@@ -1520,12 +1573,9 @@ def _apply_paper_portfolio(
                 "nd": nd,
                 "paper_lineage": lineage,
                 "production_lineage": res.get("production_lineage"),
-                "execution_st_snapshot": {
-                    "date": usage_date,
-                    "status": st_risk["status"],
-                    "source": st_risk["source"],
-                    "st_symbols": st_risk.get("top20_st", []),
-                },
+                "execution_st_policy": policy,
+                "reference_plan_created_at_cst": plan_created_at,
+                "execution_st_snapshot": frozen_st,
             },
         )
     else:
@@ -1546,6 +1596,36 @@ def _apply_paper_portfolio(
 
     if usage_date >= "2026-10-12" and not verified_calendar:
         raise RuntimeError("independent exchange trading calendar must be captured for public paper")
+    if st_risk is None:
+        # An unchanged pending uses the originally frozen ST evidence; never
+        # query today's list to retroactively annotate yesterday's order.
+        prior = (pp.pending_signal or {}).get("metadata") or {}
+        snapshot = prior.get("execution_st_snapshot") or {}
+        if prior.get("execution_st_policy") == VERIFIED_ST_POLICY and (
+            snapshot.get("status") == "SOURCE_SNAPSHOT_AVAILABLE"
+        ):
+            matches = snapshot.get("st_symbols", [])
+            st_risk = {
+                "status": "SOURCE_SNAPSHOT_AVAILABLE",
+                "date": snapshot.get("date"),
+                "source": snapshot.get("source"),
+                "source_row_count": snapshot.get("source_row_count"),
+                "scope": "frozen preopen pending",
+                "fetched_at_cst": snapshot.get("fetched_at_cst"),
+                "top20_st": matches, "top20_st_count": len(matches),
+                "selection_filter_applied": False,
+                "tradeability_certified": False,
+            }
+        elif prior.get("execution_st_policy") == REFERENCE_ST_POLICY:
+            st_risk = {
+                "status": "NOT_CHECKED_REFERENCE_ONLY", "source": "PRIOR_PENDING",
+                "date": prior.get("execution_date", usage_date), "failure_kind": "TRANSPORT",
+                "scope": "prior reference-only pending", "top20_st": None,
+                "top20_st_count": None,
+                "selection_filter_applied": False, "tradeability_certified": False,
+            }
+        else:
+            raise RuntimeError("missing explicit frozen ST policy in pending paper state")
     calendar_dates = sorted(str(d) for d in (verified_calendar or ())
                             if "2026-10-12" <= str(d) <= usage_date)
     artifact = {
@@ -1558,6 +1638,11 @@ def _apply_paper_portfolio(
         "market": market,
         "paper_lineage": lineage,
         "production_lineage": res.get("production_lineage"),
+        "execution_st_policy": (
+            (pp.pending_signal or {}).get("metadata")
+            or (execution_report or {}).get("metadata")
+            or {}
+        ).get("execution_st_policy"),
         "signal_data_date": res["date"],
         "usage_date": usage_date,
         "execution_report": execution_report,
@@ -1576,6 +1661,7 @@ def _apply_paper_portfolio(
     }
     return {
         "artifact": artifact,
+        "risk_st": st_risk,
         "artifact_json": _json.dumps(artifact, ensure_ascii=False, indent=2) + "\n",
         "state_path": str(state_path),
         "state_json": _json.dumps(pp.to_dict(), ensure_ascii=False, indent=2) + "\n",
@@ -3989,11 +4075,19 @@ def _current_st_risk_snapshot(instruments: list[str]) -> dict:
     claiming the names are clean.
     """
     import time
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
 
     import akshare as ak
+    from requests.exceptions import (
+        ConnectionError as RequestsConnectionError,
+        Timeout as RequestsTimeout,
+        HTTPError as RequestsHTTPError,
+    )
 
     wanted = [str(x).upper() for x in instruments]
     last_err = None
+    failure_kind = "INVALID_RESPONSE"
     for attempt in (1, 2):
         try:
             frame = ak.stock_zh_a_st_em()
@@ -4003,15 +4097,24 @@ def _current_st_risk_snapshot(instruments: list[str]) -> dict:
             )
             if code_col is None:
                 raise RuntimeError(f"ST source has no code column: {list(frame.columns)}")
-            st_codes = {
-                str(value).strip().split(".")[0].zfill(6)[-6:]
-                for value in frame[code_col].dropna().tolist()
-            }
+            # A successful HTTP response is not automatically a trustworthy
+            # snapshot: reject empty/partial/error payloads rather than
+            # classifying unknown securities as ST-free.
+            if frame.empty or frame[code_col].isna().any():
+                raise RuntimeError("ST source returned empty or missing-code rows")
+            import re
+            codes = [str(value).strip().split(".")[0]
+                     for value in frame[code_col].tolist()]
+            if any(not re.fullmatch(r"\d{6}", code) for code in codes):
+                raise RuntimeError("ST source returned invalid security codes")
+            st_codes = set(codes)
             matches = sorted(inst for inst in wanted if inst[2:] in st_codes)
             return {
                 "status": "SOURCE_SNAPSHOT_AVAILABLE",
                 "source": "akshare.stock_zh_a_st_em",
                 "scope": "current risk-warning board snapshot",
+                "fetched_at_cst": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
+                "source_row_count": len(codes),
                 "top20_st": matches,
                 "top20_st_count": len(matches),
                 "selection_filter_applied": False,
@@ -4019,10 +4122,27 @@ def _current_st_risk_snapshot(instruments: list[str]) -> dict:
             }
         except Exception as exc:  # pylint: disable=W0703
             last_err = exc
+            # Fail-open applies exclusively to transport failure. A malformed
+            # response, missing codes or unknown HTTP status is NOT a legitimate
+            # reason to ignore exchange risk on a public paper series.
+            failure_kind = (
+                "TRANSPORT" if isinstance(exc, (RequestsConnectionError, RequestsTimeout))
+                or (isinstance(exc, RequestsHTTPError)
+                    and getattr(getattr(exc, "response", None), "status_code", None)
+                    in (502, 503, 504))
+                else "INVALID_RESPONSE"
+            )
+            print(
+                f"[risk] ST snapshot attempt={attempt}/2 {failure_kind}: "
+                f"{type(exc).__name__}: {str(exc)[:180]}"
+            )
+            if failure_kind != "TRANSPORT":
+                break
             if attempt == 1:
                 time.sleep(5)
     return {
         "status": "UNAVAILABLE",
+        "failure_kind": failure_kind,
         "source": "akshare.stock_zh_a_st_em",
         "scope": "current risk-warning board snapshot",
         "top20_st": [],
@@ -4168,8 +4288,11 @@ def daily_cron():
 
         from csi1000_mvp_contract import build_mvp_metadata, dumps_metadata
 
+        # Use the exact observation frozen with the pending order; never run
+        # a second ST query with possibly different contents or time of day.
         risk = {
-            "st": _current_st_risk_snapshot(res["display_top20"]),
+            "st": paper_proposals["csi1000"]["risk_st"],
+            "execution_st_policy": paper_proposals["csi1000"]["artifact"]["execution_st_policy"],
             "usage_day_suspension": {
                 "status": "NOT_INDEPENDENTLY_VERIFIED_PREOPEN",
                 "scope": signal_date,

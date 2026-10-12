@@ -134,3 +134,41 @@ def test_new_forward_artifacts_need_calendar_source():
     del broken["trading_calendar"]
     with pytest.raises(ValueError, match="unverified publication calendar"):
         build_forward_performance([broken])
+
+
+def test_reference_forward_nav_propagates_st_not_modeled_policy():
+    from csi1000_mvp_contract import REFERENCE_ST_POLICY
+
+    first = _artifact("2026-10-12", 200, 210)
+    first["execution_report"]["metadata"] = {"execution_st_policy": REFERENCE_ST_POLICY}
+    result = build_forward_performance([first])
+    assert result["status"] == "active"
+    assert result["execution_st_policy"] == REFERENCE_ST_POLICY
+    assert result["return_interpretation"] == "PAPER_WITH_DISCLOSED_ST_FALLBACK"
+
+
+def test_mixed_verified_and_fallback_days_expose_per_point_st_policy():
+    from csi1000_mvp_contract import REFERENCE_ST_POLICY, VERIFIED_ST_POLICY
+
+    first = _artifact("2026-10-12", 200, 210)
+    second = _artifact("2026-10-13", 211, 220)
+    first["execution_report"]["metadata"] = {"execution_st_policy": REFERENCE_ST_POLICY}
+    second["execution_report"]["metadata"] = {"execution_st_policy": VERIFIED_ST_POLICY}
+    result = build_forward_performance([first, second])
+    assert result["status"] == "active"
+    assert result["execution_st_policy"] == "MIXED_ST_MODES"
+    assert result["st_fallback_dates"] == ["2026-10-12"]
+    assert [p["execution_st_policy"] for p in result["points"]] == [
+        REFERENCE_ST_POLICY, VERIFIED_ST_POLICY,
+    ]
+    assert result["return_interpretation"] == "PAPER_WITH_DISCLOSED_ST_FALLBACK"
+
+
+def test_reference_and_missing_st_policy_cannot_silently_mix():
+    from csi1000_mvp_contract import REFERENCE_ST_POLICY
+
+    first = _artifact("2026-10-12", 200, 210)
+    second = _artifact("2026-10-13", 211, 220)
+    first["execution_report"]["metadata"] = {"execution_st_policy": REFERENCE_ST_POLICY}
+    with pytest.raises(ValueError, match="mixed ST execution policies with unspecified"):
+        build_forward_performance([first, second])

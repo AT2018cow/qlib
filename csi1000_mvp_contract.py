@@ -19,6 +19,9 @@ from pathlib import Path
 import re
 
 MVP_CONTRACT_VERSION = "csi1000_mvp_daily_v1"
+# Explicit execution assumption, separate from the frozen model/candidate identity.
+REFERENCE_ST_POLICY = "ST_IGNORED_REFERENCE_ONLY"
+VERIFIED_ST_POLICY = "ST_VERIFIED_PREOPEN"
 _SYMBOL = re.compile(r"^(SH|SZ|BJ)\d{6}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _REQUIRED_LINEAGE = (
@@ -28,6 +31,64 @@ _REQUIRED_LINEAGE = (
     "stage_b_snapshot_token",
     "contract_version",
 )
+
+
+def require_reference_preopen(usage_date: str, *, observed_at=None) -> str:
+    """Allow a new reference-only pending order only before its own market open.
+
+    This does not certify execution-day ST/tradability. It prevents a failed
+    07:00 cron from being rewritten later as if the order was planned pre-open.
+    The timestamp is frozen with the pending order for reproducibility.
+    """
+    from datetime import datetime, time
+    from zoneinfo import ZoneInfo
+
+    usage_date = _iso_day(usage_date, "usage_date")
+    if usage_date < "2026-10-12":
+        raise ValueError("reference-only paper may not backfill pre-forward dates")
+    now = observed_at if observed_at is not None else datetime.now(ZoneInfo("Asia/Shanghai"))
+    if now.tzinfo is None or now.utcoffset() is None:
+        raise ValueError("preopen observation must have a timezone")
+    cst = now.astimezone(ZoneInfo("Asia/Shanghai"))
+    if cst.date().isoformat() != usage_date or cst.time() >= time(9, 30):
+        raise RuntimeError(
+            f"reference-only paper requires a same-day pre-open plan before 09:30 "
+            f"Asia/Shanghai; usage_date={usage_date} observed={cst.isoformat()}"
+        )
+    return cst.isoformat()
+
+
+def validate_verified_st_snapshot(snapshot: dict, execution_date: str) -> set[str]:
+    """Reject stale/retroactive/partial ST evidence before paper settlement."""
+    from datetime import datetime, time
+    from zoneinfo import ZoneInfo
+
+    if not isinstance(snapshot, dict):
+        raise ValueError("verified ST snapshot missing")
+    if snapshot.get("date") != execution_date:
+        raise ValueError("verified ST date mismatch")
+    if snapshot.get("status") != "SOURCE_SNAPSHOT_AVAILABLE":
+        raise ValueError("verified ST source status missing")
+    if snapshot.get("source") != "akshare.stock_zh_a_st_em":
+        raise ValueError("unrecognized verified ST source")
+    count = snapshot.get("source_row_count")
+    if type(count) is not int or count <= 0:
+        raise ValueError("verified ST source must include positive row count")
+    symbols = snapshot.get("st_symbols")
+    if not isinstance(symbols, list) or any(
+        not isinstance(x, str) or not _SYMBOL.fullmatch(x) for x in symbols
+    ) or len(set(symbols)) != len(symbols):
+        raise ValueError("verified ST matched symbols missing or invalid")
+    try:
+        at = datetime.fromisoformat(snapshot["fetched_at_cst"])
+        if at.tzinfo is None or at.utcoffset() is None:
+            raise ValueError("timezone missing")
+        local = at.astimezone(ZoneInfo("Asia/Shanghai"))
+    except (TypeError, KeyError, ValueError) as exc:
+        raise ValueError("verified ST timestamp missing/invalid") from exc
+    if local.date().isoformat() != execution_date or local.time() >= time(9, 30):
+        raise ValueError("verified ST was not captured before execution-day open")
+    return set(symbols)
 
 
 def _iso_day(value, label: str) -> str:
@@ -307,6 +368,12 @@ def summarize_paper_state(
         "prior_execution_blocked_order_count": blocked,
         "n_positions": int(paper.get("n_positions", 0)),
         "real_fill_execution": "NOT_CERTIFIED_PAPER_ONLY",
+        "execution_st_policy": paper.get("execution_st_policy"),
+        "return_interpretation": (
+            "REFERENCE_ONLY_ST_NOT_MODELED"
+            if paper.get("execution_st_policy") == REFERENCE_ST_POLICY
+            else "PAPER_ONLY"
+        ),
     }
 
 
@@ -382,6 +449,37 @@ def build_mvp_metadata(
         raise ValueError("current ST/suspension risk boundary missing")
     if risk.get("tradeability_certified") is not False:
         raise ValueError("research MVP must not claim tradeability certification")
+    if risk["st"].get("status") == "NOT_CHECKED_REFERENCE_ONLY":
+        if (
+            risk.get("execution_st_policy") != REFERENCE_ST_POLICY
+            or paper.get("execution_st_policy") != REFERENCE_ST_POLICY
+            or risk["st"].get("top20_st_count") is not None
+            or risk["st"].get("top20_st") is not None
+            or risk["st"].get("failure_kind") != "TRANSPORT"
+        ):
+            raise ValueError("unverified reference ST risk must stay explicitly unknown")
+    elif paper.get("execution_st_policy") == REFERENCE_ST_POLICY:
+        raise ValueError("reference-only paper must disclose skipped ST risk")
+    elif paper.get("execution_st_policy") == VERIFIED_ST_POLICY:
+        if (
+            risk.get("execution_st_policy") != VERIFIED_ST_POLICY
+            or risk["st"].get("status") != "SOURCE_SNAPSHOT_AVAILABLE"
+            or not isinstance(risk["st"].get("top20_st"), list)
+            or not isinstance(risk["st"].get("top20_st_count"), int)
+            or risk["st"]["top20_st_count"] != len(risk["st"]["top20_st"])
+        ):
+            raise ValueError("verified ST paper requires a genuine frozen source snapshot")
+        validate_verified_st_snapshot(
+            {
+                "date": risk["st"].get("date"),
+                "status": risk["st"]["status"],
+                "source": risk["st"].get("source"),
+                "fetched_at_cst": risk["st"].get("fetched_at_cst"),
+                "source_row_count": risk["st"].get("source_row_count"),
+                "st_symbols": risk["st"]["top20_st"],
+            },
+            usage_date,
+        )
 
     public_pit = {k: v for k, v in pit_universe.items() if k != "active_members"}
     return {

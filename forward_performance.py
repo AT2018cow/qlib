@@ -11,6 +11,7 @@ from datetime import date
 from typing import Any, Iterable, Mapping
 
 from paper_accounting import verify_ledger
+from csi1000_mvp_contract import REFERENCE_ST_POLICY, VERIFIED_ST_POLICY
 
 FORWARD_PERFORMANCE_START = "2026-10-12"
 CANONICAL_LINEAGE = "stage_b_winner_canonical"
@@ -24,6 +25,7 @@ def build_forward_performance(
     scheduled = set()
     calendar_snapshots = {}
     calendar_dates = set()
+    reported_st_policies = set()
     for artifact in artifacts:
         if artifact.get("market") != "csi1000":
             continue
@@ -70,6 +72,10 @@ def build_forward_performance(
         # Cash flow, inventory and close NAV are recomputed from the primitive
         # filled orders and marked positions, independently of paper state.
         verify_ledger(report)
+        policy = (report.get("metadata") or {}).get("execution_st_policy") or "UNSPECIFIED"
+        if policy not in (REFERENCE_ST_POLICY, VERIFIED_ST_POLICY, "UNSPECIFIED"):
+            raise ValueError(f"unrecognized ST execution policy for {day}: {policy}")
+        reported_st_policies.add(policy)
         try:
             opening = float(report["portfolio_value_pre_trade_open"])
             closing = float(report["portfolio_value_close"])
@@ -79,6 +85,7 @@ def build_forward_performance(
             raise ValueError(f"invalid NAV report {day}")
         item = {
             "date": day,
+            "execution_st_policy": None if policy == "UNSPECIFIED" else policy,
             "portfolio_value_pre_trade_open": opening,
             "portfolio_value_close": closing,
             "cash": float(report["cash"]),
@@ -106,10 +113,24 @@ def build_forward_performance(
         prev_calendar = snapshot
 
     ordered = [reports[d] for d in sorted(reports)]
+    if "UNSPECIFIED" in reported_st_policies and len(reported_st_policies) > 1:
+        raise ValueError("mixed ST execution policies with unspecified legacy assumptions")
+    execution_st_policy = (
+        "MIXED_ST_MODES" if len(reported_st_policies) > 1
+        else next(iter(reported_st_policies), None)
+    )
+    if execution_st_policy == "UNSPECIFIED":
+        execution_st_policy = None
+    fallback_dates = sorted(
+        row["date"] for row in reports.values()
+        if row["execution_st_policy"] == REFERENCE_ST_POLICY
+    )
     if not ordered:
         return {
             "start_date": start_date,
             "status": "awaiting_first_valuation",
+            "execution_st_policy": execution_st_policy,
+            "st_fallback_dates": [],
             "latest_date": None,
             "cumulative_return": None,
             "points": [],
@@ -145,6 +166,7 @@ def build_forward_performance(
         base = baseline if prev is None else prev["portfolio_value_close"]
         points.append({
             "date": row["date"],
+            "execution_st_policy": row["execution_st_policy"],
             "nav": close / baseline,
             "daily_return": close / base - 1,
             "cumulative_return": close / baseline - 1,
@@ -154,6 +176,13 @@ def build_forward_performance(
         "start_date": start_date,
         "inception_date": first,
         "status": "active",
+        "execution_st_policy": execution_st_policy,
+        "st_fallback_dates": fallback_dates,
+        "return_interpretation": (
+            "PAPER_WITH_DISCLOSED_ST_FALLBACK"
+            if fallback_dates else "PAPER_WITH_VERIFIED_ST"
+            if execution_st_policy == VERIFIED_ST_POLICY else "PAPER_ONLY"
+        ),
         "latest_date": latest,
         "cumulative_return": points[-1]["cumulative_return"],
         "points": points,

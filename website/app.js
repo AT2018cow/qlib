@@ -169,6 +169,9 @@ function dateKeyToUTC(value) {
 function normalizeForwardPerformance(raw) {
   const invalid = { status: 'invalid' };
   if (!raw || raw.start_date !== FORWARD_START || !Array.isArray(raw.points)) return invalid;
+  const stModes = ['ST_IGNORED_REFERENCE_ONLY', 'ST_VERIFIED_PREOPEN'];
+  if (raw.execution_st_policy != null &&
+      ![...stModes, 'MIXED_ST_MODES'].includes(raw.execution_st_policy)) return invalid;
   if (raw.status === 'awaiting_first_valuation') {
     return raw.points.length === 0 && raw.latest_date == null && raw.cumulative_return == null
       ? raw : invalid;
@@ -178,6 +181,8 @@ function normalizeForwardPerformance(raw) {
       raw.inception_date !== raw.points[0]?.date) return invalid;
   let previousDate = '';
   let previousNav = 1;
+  const observedModes = new Set();
+  const fallbackDates = [];
   for (const point of raw.points) {
     if (!point || !Number.isFinite(dateKeyToUTC(point.date)) ||
         point.date < FORWARD_START || point.date <= previousDate ||
@@ -188,8 +193,24 @@ function normalizeForwardPerformance(raw) {
         Math.abs(point.daily_return - (point.nav / previousNav - 1)) > 1e-6) {
       return invalid;
     }
+    if (raw.execution_st_policy != null) {
+      if (!stModes.includes(point.execution_st_policy)) return invalid;
+      observedModes.add(point.execution_st_policy);
+      if (point.execution_st_policy === 'ST_IGNORED_REFERENCE_ONLY') {
+        fallbackDates.push(point.date);
+      }
+    } else if (point.execution_st_policy != null) {
+      return invalid;
+    }
     previousDate = point.date;
     previousNav = point.nav;
+  }
+  if (raw.execution_st_policy != null) {
+    const actualMode = observedModes.size === 2
+      ? 'MIXED_ST_MODES' : Array.from(observedModes)[0];
+    if (actualMode !== raw.execution_st_policy ||
+        !Array.isArray(raw.st_fallback_dates) ||
+        JSON.stringify(raw.st_fallback_dates) !== JSON.stringify(fallbackDates)) return invalid;
   }
   const last = raw.points[raw.points.length - 1];
   if (raw.latest_date !== last.date || typeof raw.cumulative_return !== 'number' ||
@@ -288,8 +309,14 @@ function renderForwardPerformance(data) {
   value.className = 'performance-value ' + (data.cumulative_return >= 0 ? 'gain' : 'loss');
   latest.textContent = '最新估值 ' + formatDate(data.latest_date) + (stale ? ' · 可能滞后' : '');
   if (stale) latest.classList.add('stale');
-  status.textContent = 'Forward tracking · ' + formatDate(data.inception_date) + ' 首次核验起' +
-    (stale ? ' · 请核对估值时效' : '');
+  status.textContent = data.execution_st_policy === 'MIXED_ST_MODES'
+    ? '参考模拟收益 · 部分日期 ST 接口故障，未考虑 ST · ' + formatDate(data.inception_date) + ' 起'
+    : data.execution_st_policy === 'ST_IGNORED_REFERENCE_ONLY'
+      ? '参考模拟收益 · 不考虑 ST（接口故障降级） · ' + formatDate(data.inception_date) + ' 起'
+      : data.execution_st_policy === 'ST_VERIFIED_PREOPEN'
+        ? '参考模拟收益 · 已使用 ST 快照 · ' + formatDate(data.inception_date) + ' 起'
+        : 'Forward tracking · ' + formatDate(data.inception_date) + ' 首次核验起';
+  if (stale) status.textContent += ' · 请核对估值时效';
   if (stale) status.classList.add('stale');
   chart.innerHTML = makePerformanceChart(data.points);
 }
@@ -358,9 +385,22 @@ function evaluateMvpContract(metadata, paper, date, rows) {
   }
 
   const st = risk?.st;
-  const stText = st?.status === 'SOURCE_SNAPSHOT_AVAILABLE'
-    ? (st.top20_st_count ? `ST命中 ${st.top20_st_count}` : 'ST快照无命中')
-    : 'ST状态未知';
+  const stText = st?.status === 'NOT_CHECKED_REFERENCE_ONLY'
+    ? 'ST未纳入模拟'
+    : st?.status === 'SOURCE_SNAPSHOT_AVAILABLE'
+      ? (st.top20_st_count ? `ST命中 ${st.top20_st_count}` : 'ST快照无命中')
+      : 'ST状态未知';
+  if (st?.status === 'NOT_CHECKED_REFERENCE_ONLY' &&
+      (risk?.execution_st_policy !== 'ST_IGNORED_REFERENCE_ONLY' ||
+       paper?.execution_st_policy !== 'ST_IGNORED_REFERENCE_ONLY' ||
+       st.top20_st_count != null)) {
+    errors.push('reference ST policy disclosure mismatch');
+  }
+  if (paper?.execution_st_policy === 'ST_VERIFIED_PREOPEN' &&
+      (risk?.execution_st_policy !== 'ST_VERIFIED_PREOPEN' ||
+       st?.status !== 'SOURCE_SNAPSHOT_AVAILABLE')) {
+    errors.push('verified ST evidence/policy mismatch');
+  }
   const suspensionText = risk?.usage_day_suspension?.status === 'NOT_INDEPENDENTLY_VERIFIED_PREOPEN'
     ? '停牌待执行后确认' : '停牌状态异常';
   return {
@@ -545,7 +585,7 @@ function pageShell(dates) {
         <div class="performance-head">
           <div>
             <div class="panel-kicker">Forward performance</div>
-            <h2>模型累计收益</h2>
+            <h2>模型累计收益 · Paper 参考</h2>
             <p id="forward-status" class="performance-status">Forward tracking · 2026.10.12 起</p>
           </div>
           <div class="performance-summary">
@@ -558,7 +598,7 @@ function pageShell(dates) {
         </div>
         <div class="performance-foot">
           <span>起点：2026.10.12 开盘前账户价值 = 1.0000</span>
-          <span>按 paper 账户真实调仓、交易成本与不可成交约束计算 · 每日收盘估值</span>
+          <span>ST 接口正常则纳入 ST 快照；仅连接故障时不考虑 ST 并逐日披露。仅研究模拟，非真实成交</span>
         </div>
       </section>
 
@@ -669,7 +709,11 @@ async function main() {
         health.textContent = !ctx
           ? '正在核对 provider、PIT 股票池、标签成熟、Top20 lineage、paper 与风险状态。'
           : contract.ok
-            ? '每日发布合同已通过 freshness / PIT / Label20 / frozen lineage / paper 绑定。ST 为独立风险快照；执行日停牌与真实成交仍未获认证。'
+            ? '每日发布合同已通过 freshness / PIT / Label20 / frozen lineage / paper 绑定。' +
+              (ctx.metadata?.risk?.st?.status === 'NOT_CHECKED_REFERENCE_ONLY'
+                ? '今日 ST 接口故障，paper 收益降级为不考虑 ST 的参考模拟；'
+                : '今日已获取 ST 快照用于 paper；') +
+              '停牌与真实成交仍未获认证。'
             : contract.legacy
               ? '该历史日期没有 MVP metadata sidecar，因此不会把 winner 标识单独解释为“已核验”。旧 artifact 保持只读。'
               : 'MVP 发布合同未通过：' + contract.errors.join('；');
