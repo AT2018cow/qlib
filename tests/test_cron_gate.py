@@ -188,3 +188,105 @@ def test_modal_image_bundles_mvp_contract_runtime_module():
         and command.rstrip().endswith("/root/")
         for command in copies
     ), "Modal runtime missing csi1000_mvp_contract.py: daily_standalone cannot import gate"
+
+
+def test_reference_paper_planner_skips_st_fetch_and_marks_uncertainty(tmp_path, monkeypatch):
+    """Exercise the actual Modal plan function without loading cloud dependencies."""
+    import ast
+    import json
+    import sys
+    import types
+    from pathlib import Path
+
+    import csi1000_mvp_contract as contract
+
+    source_file = Path(__file__).resolve().parents[1] / "modal_qlib_cn_a10g.py"
+    tree = ast.parse(source_file.read_text())
+    node = next(n for n in tree.body
+                if isinstance(n, ast.FunctionDef) and n.name == "_apply_paper_portfolio")
+
+    class StubPaperPortfolio:
+        def __init__(self, *, topk, nd, initial_cash):
+            self.topk, self.nd = topk, nd
+            self.cash = initial_cash
+            self.positions = {}
+            self.history = []
+            self.pending_signal = None
+
+        def plan_signal(self, *, signal_date, execution_date, ranking, metadata):
+            self.pending_signal = {
+                "signal_date": signal_date,
+                "execution_date": execution_date,
+                "planned_buy": ["SH600000"],
+                "planned_sell": [],
+                "metadata": metadata,
+            }
+            return {
+                "signal_date": signal_date,
+                "execution_date": execution_date,
+                "buy": ["SH600000"],
+                "sell": [],
+            }
+
+        def to_dict(self):
+            return {"pending_signal": self.pending_signal}
+
+    stub_module = types.ModuleType("paper_portfolio")
+    stub_module.PaperPortfolio = StubPaperPortfolio
+    monkeypatch.setitem(sys.modules, "paper_portfolio", stub_module)
+    monkeypatch.setattr(contract, "require_reference_preopen",
+                        lambda date: date + "T07:01:00+08:00")
+    ns = {
+        "Path": Path,
+        "vol": types.SimpleNamespace(reload=lambda: None),
+        "_paper_state_path": lambda market, lineage: tmp_path / "state.json",
+        "_current_st_risk_snapshot": lambda *args: (
+            (_ for _ in ()).throw(AssertionError("ST feed must never be called"))
+        ),
+    }
+    exec(compile(ast.Module(body=[node], type_ignores=[]),
+                 str(source_file), "exec"), ns)
+    proposal = ns["_apply_paper_portfolio"](
+        {
+            "market": "csi1000",
+            "date": "2026-10-12",
+            "ranking_full": [["SH600000", 0.5]],
+            "model_fit_asof": "2026-10-12",
+            "train_end": "2026-09-01",
+            "valid_end": "2026-09-11",
+            "production_lineage": {"profile": "stage_b_winner"},
+        },
+        "2026-10-13", topk=20, nd=2,
+        lineage="stage_b_winner_canonical",
+        verified_calendar={"2026-10-12", "2026-10-13"},
+    )
+    artifact = json.loads(proposal["artifact_json"])
+    assert artifact["execution_st_policy"] == contract.REFERENCE_ST_POLICY
+    assert artifact["pending_orders"]["execution_date"] == "2026-10-13"
+    state = json.loads(proposal["state_json"])
+    meta = state["pending_signal"]["metadata"]
+    assert meta["execution_st_policy"] == contract.REFERENCE_ST_POLICY
+    assert meta["execution_st_snapshot"] is None
+    assert meta["reference_plan_created_at_cst"] == "2026-10-13T07:01:00+08:00"
+    assert not (tmp_path / "state.json").exists(), "must not persist pre-push"
+
+
+def test_reference_execution_context_requires_explicit_mode_and_keeps_price_gates():
+    from pathlib import Path
+
+    src = (Path(__file__).resolve().parents[1] / "modal_qlib_cn_a10g.py").read_text()
+    context = src.split("def _paper_execution_context(", 1)[1].split(
+        "\ndef _apply_paper_portfolio(", 1
+    )[0]
+    cron = src.split("def daily_cron():", 1)[1].split(
+        "\n# ===================== 第六步", 1
+    )[0]
+    assert 'execution_st_policy == REFERENCE_ST_POLICY' in context
+    assert 'st_symbols = set()' in context
+    assert 'snapshot.get("status") != "SOURCE_SNAPSHOT_AVAILABLE"' in context
+    assert 'compute_limit_masks(' in context
+    assert 'certify_full_session_halts(' in context
+    assert '"$open", "Ref($close,1)", "$close", "$factor"' in context
+    assert '_current_st_risk_snapshot(res["display_top20"])' not in cron
+    assert '"status": "NOT_CHECKED_REFERENCE_ONLY"' in cron
+    assert '"top20_st_count": None' in cron
