@@ -225,7 +225,7 @@ def test_favicon_is_valid_svg_and_published_on_both_pages():
     assert "website/*.svg _site/" in workflow
     assert "test -s _site/favicon.svg" in workflow
 
-\n
+
 def test_st_free_reference_return_is_explicit_not_certified():
     app = (ROOT / "website" / "app.js").read_text()
     method = (ROOT / "website" / "methodology.html").read_text()
