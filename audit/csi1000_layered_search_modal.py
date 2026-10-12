@@ -124,7 +124,17 @@ if _HAS_MODAL:
         modal.Image.debian_slim(python_version="3.11")
         .apt_install("build-essential")
         .env({"PYTHONPATH": "/root/qlib:/root", "MLFLOW_ALLOW_FILE_STORE": "true"})
-        .pip_install("numpy==1.26.4", "pandas==2.2.3", "pyarrow==17.0.0", "lightgbm==4.7.0", "cython", "setuptools-scm", "pyyaml", "fire")
+        # Match the known working Stage-A replay image (same Python/Qlib source).
+        # Importing source-tree qlib needs both the pyqlib install (to generate
+        # qlib/_version.py without .git) and in-place Cython .so extensions.
+        .pip_install(
+            "numpy==1.26.4", "pandas==2.2.3", "pyarrow==17.0.0",
+            "lightgbm==4.7.0", "cython", "setuptools-scm", "pyyaml",
+            "ruamel.yaml", "fire", "mlflow", "dill", "filelock", "tqdm",
+            "loguru", "joblib", "pydantic-settings", "redis",
+            "python-redis-lock", "pymongo", "gym", "cvxpy", "matplotlib",
+            "torch",
+        )
         .add_local_dir(
             ".",
             remote_path=str(REPO),
@@ -134,8 +144,11 @@ if _HAS_MODAL:
                 or any(part in str(p) for part in (".venv", "mlruns", "__pycache__", ".git"))
             ),
         )
-        .run_commands("cd /root/qlib && make prerequisite && pip install -e . --no-build-isolation")
-        .run_commands("cd /tmp && python -c 'import qlib; from qlib.data._libs import rolling, expanding'")
+        .run_commands(
+            "cd /root/qlib && pip install . --no-build-isolation --no-deps",
+            "cd /root/qlib && python -c \"from setuptools import setup, Extension; from Cython.Build import cythonize; import numpy; extensions = [Extension('qlib.data._libs.rolling', ['qlib/data/_libs/rolling.pyx'], language='c++', include_dirs=[numpy.get_include()]), Extension('qlib.data._libs.expanding', ['qlib/data/_libs/expanding.pyx'], language='c++', include_dirs=[numpy.get_include()])]; setup(ext_modules=cythonize(extensions, language_level='3'), script_args=['build_ext', '--inplace'])\"",
+            "cd /tmp && python -c 'import qlib; from qlib.data._libs import rolling, expanding'",
+        )
     )
     app = modal.App("qlib-csi1000-layered-search-pr-s0", image=image)
 
