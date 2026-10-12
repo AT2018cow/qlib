@@ -228,3 +228,15 @@ test('ranking change labels reflect position, not paper account holdings', () =>
   assert.match(source, /<th>排名变化<\/th>/);
   assert.match(source, /排名变化对比上一期可用榜单，不代表实际持仓/);
 });
+
+
+test('ST-free forward NAV is explicitly shown as research reference', () => {
+  const ref = { ...validForward, execution_st_policy: 'ST_IGNORED_REFERENCE_ONLY' };
+  assert.equal(normalizeForwardPerformance(ref).status, 'active');
+  assert.equal(normalizeForwardPerformance({
+    ...validForward, execution_st_policy: 'UNVERIFIED_BUT_CLEAN',
+  }).status, 'invalid');
+  renderForwardPerformance(ref);
+  assert.match(nodes.get('forward-status').textContent, /参考模拟收益 · 不考虑 ST/);
+  assert.equal(nodes.get('forward-return').textContent, '+3.00%');
+});
