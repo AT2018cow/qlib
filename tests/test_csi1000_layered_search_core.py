@@ -12,7 +12,7 @@ from audit import csi1000_layered_search_core as core
 from audit import csi1000_layered_search_modal as runner
 
 
-def _rows(phases, base_rel=0.02, chall_rel=0.05, base_mdd=9.0, chall_mdd=7.0, turnover=0.02, beat=True):
+def _rows(phases, base_rel=0.02, chall_rel=0.05, base_mdd=9.0, chall_mdd=7.0, turnover=0.022, beat=True):
     chall, base = [], []
     for p in phases:
         chall.append(
@@ -195,6 +195,12 @@ def test_coarse_pass_uses_improvements_not_absolutes():
     chall, base = _rows([0, 10])
     passed, _ = core.coarse_pass(chall, base)
     assert passed is True
+    # Median of two observations is their arithmetic mean, not their max.
+    asymmetric = [dict(r) for r in chall]
+    asymmetric[0]["net_relative_cagr_pp"] = 1.0
+    passed, details = core.coarse_pass(asymmetric, base)
+    assert passed is True
+    assert details["median_delta_pp"] == pytest.approx(2.0)
     # Challenger looks strong in absolute terms but loses to baseline: must fail.
     losing, _ = _rows([0, 10], base_rel=0.10, chall_rel=0.05)
     passed, info = core.coarse_pass(losing, base)
@@ -228,7 +234,24 @@ def test_final_verdict_paired_gates():
     assert core.final_verdict(duplicate, base, 1.1)[0] == "NOT_ELIGIBLE"
     strong, safe_base = _rows([0,4,6,10,15], base_mdd=12.0, chall_mdd=14.0)
     safe_base[0]["mdd_pp"] = 8.0
-    assert core.final_verdict(strong, safe_base, 1.1)[0] == "PASS"
+    verdict, risk = core.final_verdict(strong, safe_base, 1.1)
+    assert verdict == "PASS", risk
+    assert risk["mdd_degrade_pp"] == pytest.approx(2.0)
+    severe = [dict(r, mdd_pp=15.01) for r in strong]
+    assert core.final_verdict(severe, safe_base, 1.1)[1]["failed"] == "mdd"
+    # Single turnover outlier does not change median of five phases.
+    skewed = [dict(r) for r in chall]
+    skewed[0]["turnover"] = 0.10
+    still_pass, diag = core.final_verdict(skewed, base, 1.1)
+    assert still_pass == "PASS", diag
+    assert diag["turnover_ratio"] == pytest.approx(1.1)
+    # A caller-supplied fake low ratio cannot hide poor turnover evidence.
+    expensive = [dict(r, turnover=0.04) for r in chall]
+    cheated, info = core.final_verdict(expensive, base, 1.1)
+    assert cheated == "NOT_ELIGIBLE" and info["failed"] == "turnover"
+    assert info["turnover_ratio"] == pytest.approx(2.0)
+    # If the claimed ratio is corrected, the risk gate still blocks it.
+    assert core.final_verdict(expensive, base, 2.0)[1]["failed"] == "turnover"
     bad_base = [dict(r) for r in base]
     bad_base[0]["data_ok"] = False
     assert core.final_verdict(chall, bad_base, 1.1)[0] == "BASELINE_INELIGIBLE"
