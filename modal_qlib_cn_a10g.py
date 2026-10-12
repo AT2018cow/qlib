@@ -1451,7 +1451,9 @@ def _apply_paper_portfolio(
     """
     import json as _json
     from paper_portfolio import PaperPortfolio
-    from csi1000_mvp_contract import REFERENCE_ST_POLICY, require_reference_preopen
+    from csi1000_mvp_contract import (
+        REFERENCE_ST_POLICY, VERIFIED_ST_POLICY, require_reference_preopen,
+    )
 
     market = res["market"]
     state_path = _paper_state_path(market, lineage)
@@ -1507,6 +1509,7 @@ def _apply_paper_portfolio(
             )
 
     planned = None
+    st_risk = None
     if awaiting_execution_data:
         p = pp.pending_signal
         planned = {
@@ -1517,9 +1520,42 @@ def _apply_paper_portfolio(
             "status": "awaiting_execution_data",
         }
     elif pp.pending_signal is None:
-        # Forward reference plan deliberately does not query the unstable ST
-        # source. Require a genuinely pre-open decision timestamp instead;
-        # this never retroactively creates a pending order after the open.
+        # Try verified ST first. Only a genuine transport outage permits the
+        # explicit reference-mode fallback; bad schemas/empty source still fail.
+        # Both paths require a real same-day preopen decision, never backdating.
+        require_reference_preopen(usage_date)
+        st_risk = _current_st_risk_snapshot(
+            sorted(set(pp.positions).union(s for s, _ in res["ranking_full"]))
+        )
+        if st_risk["status"] == "SOURCE_SNAPSHOT_AVAILABLE":
+            policy = VERIFIED_ST_POLICY
+            frozen_st = {
+                "date": usage_date,
+                "status": st_risk["status"],
+                "source": st_risk["source"],
+                "fetched_at_cst": st_risk["fetched_at_cst"],
+                "source_row_count": st_risk["source_row_count"],
+                "st_symbols": st_risk["top20_st"],
+            }
+        elif st_risk.get("failure_kind") == "TRANSPORT":
+            policy = REFERENCE_ST_POLICY
+            frozen_st = None  # never invent a successful/empty ST source
+            st_risk = {
+                "status": "NOT_CHECKED_REFERENCE_ONLY",
+                "source": st_risk.get("source", "akshare.stock_zh_a_st_em"),
+                "scope": "transport outage; reference paper without ST restrictions",
+                "failure_kind": "TRANSPORT",
+                "detail": st_risk.get("detail", "ST_SOURCE_UNAVAILABLE")[:180],
+                "top20_st": None, "top20_st_count": None,
+                "selection_filter_applied": False,
+                "tradeability_certified": False,
+            }
+            print(f"[risk] ST transport failed; reference-only paper mode for {usage_date}")
+        else:
+            raise RuntimeError(
+                "ST response invalid; refusing to bypass risk source: "
+                f"{st_risk.get('detail', 'SOURCE_INVALID_RESPONSE')}"
+            )
         plan_created_at = require_reference_preopen(usage_date)
         planned = pp.plan_signal(
             signal_date=res["date"],
@@ -1534,9 +1570,9 @@ def _apply_paper_portfolio(
                 "nd": nd,
                 "paper_lineage": lineage,
                 "production_lineage": res.get("production_lineage"),
-                "execution_st_policy": REFERENCE_ST_POLICY,
+                "execution_st_policy": policy,
                 "reference_plan_created_at_cst": plan_created_at,
-                "execution_st_snapshot": None,  # no fake pre-open evidence
+                "execution_st_snapshot": frozen_st,
             },
         )
     else:
@@ -1557,6 +1593,33 @@ def _apply_paper_portfolio(
 
     if usage_date >= "2026-10-12" and not verified_calendar:
         raise RuntimeError("independent exchange trading calendar must be captured for public paper")
+    if st_risk is None:
+        # An unchanged pending uses the originally frozen ST evidence; never
+        # query today's list to retroactively annotate yesterday's order.
+        prior = (pp.pending_signal or {}).get("metadata") or {}
+        snapshot = prior.get("execution_st_snapshot") or {}
+        if prior.get("execution_st_policy") == VERIFIED_ST_POLICY and (
+            snapshot.get("status") == "SOURCE_SNAPSHOT_AVAILABLE"
+        ):
+            matches = snapshot.get("st_symbols", [])
+            st_risk = {
+                "status": "SOURCE_SNAPSHOT_AVAILABLE",
+                "source": snapshot.get("source"),
+                "scope": "frozen preopen pending",
+                "fetched_at_cst": snapshot.get("fetched_at_cst"),
+                "top20_st": matches, "top20_st_count": len(matches),
+                "selection_filter_applied": False,
+                "tradeability_certified": False,
+            }
+        elif prior.get("execution_st_policy") == REFERENCE_ST_POLICY:
+            st_risk = {
+                "status": "NOT_CHECKED_REFERENCE_ONLY", "source": "PRIOR_PENDING",
+                "scope": "prior reference-only pending", "top20_st": None,
+                "top20_st_count": None,
+                "selection_filter_applied": False, "tradeability_certified": False,
+            }
+        else:
+            raise RuntimeError("missing explicit frozen ST policy in pending paper state")
     calendar_dates = sorted(str(d) for d in (verified_calendar or ())
                             if "2026-10-12" <= str(d) <= usage_date)
     artifact = {
@@ -1592,6 +1655,7 @@ def _apply_paper_portfolio(
     }
     return {
         "artifact": artifact,
+        "risk_st": st_risk,
         "artifact_json": _json.dumps(artifact, ensure_ascii=False, indent=2) + "\n",
         "state_path": str(state_path),
         "state_json": _json.dumps(pp.to_dict(), ensure_ascii=False, indent=2) + "\n",
@@ -4218,20 +4282,11 @@ def daily_cron():
 
         from csi1000_mvp_contract import build_mvp_metadata, dumps_metadata
 
-        # Research reference P&L deliberately does not fetch the ST endpoint.
-        # UNKNOWN is not an empty/clean ST list, and it is not a tradeability
-        # certification. Other execution-day and quote gates stay unchanged.
+        # Use the exact observation frozen with the pending order; never run
+        # a second ST query with possibly different contents or time of day.
         risk = {
-            "st": {
-                "status": "NOT_CHECKED_REFERENCE_ONLY",
-                "source": "NOT_QUERIED",
-                "scope": "research reference NAV (ST restrictions not modeled)",
-                "top20_st": None,
-                "top20_st_count": None,
-                "selection_filter_applied": False,
-                "tradeability_certified": False,
-            },
-            "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
+            "st": paper_proposals["csi1000"]["risk_st"],
+            "execution_st_policy": paper_proposals["csi1000"]["artifact"]["execution_st_policy"],
             "usage_day_suspension": {
                 "status": "NOT_INDEPENDENTLY_VERIFIED_PREOPEN",
                 "scope": signal_date,
