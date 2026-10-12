@@ -156,3 +156,13 @@ def test_mixed_st_execution_assumptions_do_not_form_one_return_curve():
     second["execution_report"]["metadata"] = {"execution_st_policy": "ST_VERIFIED_PREOPEN"}
     with pytest.raises(ValueError, match="mixed ST execution policies"):
         build_forward_performance([first, second])
+
+
+def test_reference_and_missing_st_policy_cannot_silently_mix():
+    from csi1000_mvp_contract import REFERENCE_ST_POLICY
+
+    first = _artifact("2026-10-12", 200, 210)
+    second = _artifact("2026-10-13", 211, 220)
+    first["execution_report"]["metadata"] = {"execution_st_policy": REFERENCE_ST_POLICY}
+    with pytest.raises(ValueError, match="mixed ST execution policies"):
+        build_forward_performance([first, second])
