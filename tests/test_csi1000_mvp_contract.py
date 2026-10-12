@@ -265,7 +265,8 @@ def test_reference_st_risk_is_unknown_not_verified_clean(tmp_path):
     kw["risk"]["execution_st_policy"] = REFERENCE_ST_POLICY
     kw["risk"]["st"] = {
         "status": "NOT_CHECKED_REFERENCE_ONLY",
-        "source": "NOT_QUERIED",
+        "source": "akshare.stock_zh_a_st_em",
+        "failure_kind": "TRANSPORT",
         "top20_st": None,
         "top20_st_count": None,
         "tradeability_certified": False,
@@ -304,3 +305,47 @@ def test_reference_pending_requires_same_date_before_market_open():
             require_reference_preopen("2026-10-13", observed_at=bad)
     with pytest.raises(ValueError, match="may not backfill"):
         require_reference_preopen("2026-10-09", observed_at=ok)
+
+
+def test_verified_st_metadata_requires_real_preopen_source_evidence(tmp_path):
+    from csi1000_mvp_contract import VERIFIED_ST_POLICY
+
+    kw = _fixture(tmp_path)
+    usage = kw["usage_date"]
+    kw["paper"]["execution_st_policy"] = VERIFIED_ST_POLICY
+    kw["risk"]["execution_st_policy"] = VERIFIED_ST_POLICY
+    kw["risk"]["st"] = {
+        "date": usage, "status": "SOURCE_SNAPSHOT_AVAILABLE",
+        "source": "akshare.stock_zh_a_st_em",
+        "fetched_at_cst": usage + "T07:02:00+08:00",
+        "source_row_count": 230,
+        "top20_st": [_symbols()[0]],
+        "top20_st_count": 1,
+    }
+    meta = build_mvp_metadata(**kw)
+    assert meta["paper"]["execution_st_policy"] == VERIFIED_ST_POLICY
+    kw["risk"]["st"]["fetched_at_cst"] = usage + "T10:14:00+08:00"
+    with pytest.raises(ValueError, match="not captured before"):
+        build_mvp_metadata(**kw)
+
+
+def test_verified_st_snapshot_rejects_wrong_date_source_and_corrupt_symbols():
+    from csi1000_mvp_contract import validate_verified_st_snapshot
+
+    snapshot = {
+        "date": "2026-10-13", "status": "SOURCE_SNAPSHOT_AVAILABLE",
+        "source": "akshare.stock_zh_a_st_em",
+        "fetched_at_cst": "2026-10-13T07:00:00+08:00",
+        "source_row_count": 240, "st_symbols": ["SH600000"],
+    }
+    assert validate_verified_st_snapshot(snapshot, "2026-10-13") == {"SH600000"}
+    for key, value in (
+        ("date", "2026-10-12"),
+        ("source", "UNVERIFIED_CACHE"),
+        ("source_row_count", 0),
+        ("st_symbols", ["BAD"]),
+        ("fetched_at_cst", "2026-10-13T09:30:00+08:00"),
+    ):
+        broken = dict(snapshot, **{key: value})
+        with pytest.raises(ValueError):
+            validate_verified_st_snapshot(broken, "2026-10-13")
