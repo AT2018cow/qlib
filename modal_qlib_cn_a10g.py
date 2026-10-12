@@ -1529,6 +1529,7 @@ def _apply_paper_portfolio(
             sorted(set(pp.positions).union(s for s, _ in res["ranking_full"]))
         )
         if st_risk["status"] == "SOURCE_SNAPSHOT_AVAILABLE":
+            st_risk["date"] = usage_date
             policy = VERIFIED_ST_POLICY
             frozen_st = {
                 "date": usage_date,
@@ -1543,6 +1544,7 @@ def _apply_paper_portfolio(
             frozen_st = None  # never invent a successful/empty ST source
             st_risk = {
                 "status": "NOT_CHECKED_REFERENCE_ONLY",
+                "date": usage_date,
                 "source": st_risk.get("source", "akshare.stock_zh_a_st_em"),
                 "scope": "transport outage; reference paper without ST restrictions",
                 "failure_kind": "TRANSPORT",
@@ -1605,7 +1607,9 @@ def _apply_paper_portfolio(
             matches = snapshot.get("st_symbols", [])
             st_risk = {
                 "status": "SOURCE_SNAPSHOT_AVAILABLE",
+                "date": snapshot.get("date"),
                 "source": snapshot.get("source"),
+                "source_row_count": snapshot.get("source_row_count"),
                 "scope": "frozen preopen pending",
                 "fetched_at_cst": snapshot.get("fetched_at_cst"),
                 "top20_st": matches, "top20_st_count": len(matches),
@@ -1615,6 +1619,7 @@ def _apply_paper_portfolio(
         elif prior.get("execution_st_policy") == REFERENCE_ST_POLICY:
             st_risk = {
                 "status": "NOT_CHECKED_REFERENCE_ONLY", "source": "PRIOR_PENDING",
+                "date": prior.get("execution_date", usage_date), "failure_kind": "TRANSPORT",
                 "scope": "prior reference-only pending", "top20_st": None,
                 "top20_st_count": None,
                 "selection_filter_applied": False, "tradeability_certified": False,
