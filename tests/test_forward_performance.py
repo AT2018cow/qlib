@@ -134,3 +134,25 @@ def test_new_forward_artifacts_need_calendar_source():
     del broken["trading_calendar"]
     with pytest.raises(ValueError, match="unverified publication calendar"):
         build_forward_performance([broken])
+
+
+def test_reference_forward_nav_propagates_st_not_modeled_policy():
+    from csi1000_mvp_contract import REFERENCE_ST_POLICY
+
+    first = _artifact("2026-10-12", 200, 210)
+    first["execution_report"]["metadata"] = {"execution_st_policy": REFERENCE_ST_POLICY}
+    result = build_forward_performance([first])
+    assert result["status"] == "active"
+    assert result["execution_st_policy"] == REFERENCE_ST_POLICY
+    assert result["return_interpretation"] == "REFERENCE_ONLY_ST_NOT_MODELED"
+
+
+def test_mixed_st_execution_assumptions_do_not_form_one_return_curve():
+    from csi1000_mvp_contract import REFERENCE_ST_POLICY
+
+    first = _artifact("2026-10-12", 200, 210)
+    second = _artifact("2026-10-13", 211, 220)
+    first["execution_report"]["metadata"] = {"execution_st_policy": REFERENCE_ST_POLICY}
+    second["execution_report"]["metadata"] = {"execution_st_policy": "ST_VERIFIED_PREOPEN"}
+    with pytest.raises(ValueError, match="mixed ST execution policies"):
+        build_forward_performance([first, second])
