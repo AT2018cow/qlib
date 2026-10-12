@@ -356,6 +356,18 @@ def test_paired_rows_and_final_verdict_end_to_end():
     assert info["n_beat"] == 5 and info["stress10_ok"] is True
 
 
+def test_demo_fee_is_real_cny_and_reconciles_to_opening_equity():
+    from audit.csi1000_layered_search_reconcile import _demo_record, _synthetic_frame
+
+    frame = _synthetic_frame(0.0006, 0.0002, 0.02, 0.00005)
+    record = _demo_record("unit_checked", WINNER, 0, frame)
+    numbers, diagnostics = report_metrics(frame)
+    assert record["total_cost_cny"] == pytest.approx(float(frame["total_cost"].iloc[-1]))
+    assert record["total_cost_cny"] > numbers["total_cost_sum"] * 1_000_000
+    assert diagnostics["max_cost_rate_delta"] < 1e-10
+    assert diagnostics["max_turnover_rate_delta"] < 1e-10
+
+
 def test_reconcile_summary_ledger_and_demo(tmp_path):
     records = []
     for i in range(4):
