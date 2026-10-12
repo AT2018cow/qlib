@@ -1570,8 +1570,10 @@ def _apply_paper_portfolio(
         "paper_lineage": lineage,
         "production_lineage": res.get("production_lineage"),
         "execution_st_policy": (
-            (pp.pending_signal or {}).get("metadata") or {}
-        ).get("execution_st_policy", REFERENCE_ST_POLICY),
+            (pp.pending_signal or {}).get("metadata")
+            or (execution_report or {}).get("metadata")
+            or {}
+        ).get("execution_st_policy"),
         "signal_data_date": res["date"],
         "usage_date": usage_date,
         "execution_report": execution_report,
