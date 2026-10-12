@@ -231,12 +231,51 @@ test('ranking change labels reflect position, not paper account holdings', () =>
 
 
 test('ST-free forward NAV is explicitly shown as research reference', () => {
-  const ref = { ...validForward, execution_st_policy: 'ST_IGNORED_REFERENCE_ONLY' };
+  const ref = {
+    ...validForward, execution_st_policy: 'ST_IGNORED_REFERENCE_ONLY',
+    st_fallback_dates: ['2026-10-12'],
+    points: [{ ...firstPoint, execution_st_policy: 'ST_IGNORED_REFERENCE_ONLY' }],
+  };
+  const verified = {
+    ...validForward, execution_st_policy: 'ST_VERIFIED_PREOPEN',
+    st_fallback_dates: [],
+    points: [{ ...firstPoint, execution_st_policy: 'ST_VERIFIED_PREOPEN' }],
+  };
   assert.equal(normalizeForwardPerformance(ref).status, 'active');
+  assert.equal(normalizeForwardPerformance(verified).status, 'active');
   assert.equal(normalizeForwardPerformance({
     ...validForward, execution_st_policy: 'UNVERIFIED_BUT_CLEAN',
   }).status, 'invalid');
+  assert.equal(normalizeForwardPerformance({
+    ...ref, st_fallback_dates: [],
+  }).status, 'invalid', 'outage date may not be hidden');
   renderForwardPerformance(ref);
   assert.match(nodes.get('forward-status').textContent, /参考模拟收益 · 不考虑 ST/);
+  renderForwardPerformance(verified);
+  assert.match(nodes.get('forward-status').textContent, /已使用 ST 快照/);
   assert.equal(nodes.get('forward-return').textContent, '+3.00%');
+});
+
+
+test('mixed ST modes disclose exactly which forward dates skipped ST', () => {
+  const extra = {
+    date: '2026-10-13', nav: 1.04,
+    daily_return: 1.04 / 1.03 - 1, cumulative_return: 0.04,
+    execution_st_policy: 'ST_VERIFIED_PREOPEN',
+  };
+  const mixed = {
+    ...validForward, execution_st_policy: 'MIXED_ST_MODES',
+    latest_date: '2026-10-13', cumulative_return: 0.04,
+    st_fallback_dates: ['2026-10-12'],
+    points: [
+      { ...firstPoint, execution_st_policy: 'ST_IGNORED_REFERENCE_ONLY' },
+      extra,
+    ],
+  };
+  assert.equal(normalizeForwardPerformance(mixed).status, 'active');
+  renderForwardPerformance(mixed);
+  assert.match(nodes.get('forward-status').textContent, /部分日期 ST 接口故障/);
+  assert.equal(normalizeForwardPerformance({
+    ...mixed, st_fallback_dates: [],
+  }).status, 'invalid');
 });
