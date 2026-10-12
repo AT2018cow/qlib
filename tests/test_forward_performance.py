@@ -144,7 +144,7 @@ def test_reference_forward_nav_propagates_st_not_modeled_policy():
     result = build_forward_performance([first])
     assert result["status"] == "active"
     assert result["execution_st_policy"] == REFERENCE_ST_POLICY
-    assert result["return_interpretation"] == "REFERENCE_ONLY_ST_NOT_MODELED"
+    assert result["return_interpretation"] == "PAPER_WITH_DISCLOSED_ST_FALLBACK"
 
 
 def test_mixed_verified_and_fallback_days_expose_per_point_st_policy():
