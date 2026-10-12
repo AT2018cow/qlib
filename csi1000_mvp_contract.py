@@ -58,6 +58,39 @@ def require_reference_preopen(usage_date: str, *, observed_at=None) -> str:
     return cst.isoformat()
 
 
+def validate_verified_st_snapshot(snapshot: dict, execution_date: str) -> set[str]:
+    """Reject stale/retroactive/partial ST evidence before paper settlement."""
+    from datetime import datetime, time
+    from zoneinfo import ZoneInfo
+
+    if not isinstance(snapshot, dict):
+        raise ValueError("verified ST snapshot missing")
+    if snapshot.get("date") != execution_date:
+        raise ValueError("verified ST date mismatch")
+    if snapshot.get("status") != "SOURCE_SNAPSHOT_AVAILABLE":
+        raise ValueError("verified ST source status missing")
+    if snapshot.get("source") != "akshare.stock_zh_a_st_em":
+        raise ValueError("unrecognized verified ST source")
+    count = snapshot.get("source_row_count")
+    if type(count) is not int or count <= 0:
+        raise ValueError("verified ST source must include positive row count")
+    symbols = snapshot.get("st_symbols")
+    if not isinstance(symbols, list) or any(
+        not isinstance(x, str) or not _SYMBOL.fullmatch(x) for x in symbols
+    ) or len(set(symbols)) != len(symbols):
+        raise ValueError("verified ST matched symbols missing or invalid")
+    try:
+        at = datetime.fromisoformat(snapshot["fetched_at_cst"])
+        if at.tzinfo is None or at.utcoffset() is None:
+            raise ValueError("timezone missing")
+        local = at.astimezone(ZoneInfo("Asia/Shanghai"))
+    except (TypeError, KeyError, ValueError) as exc:
+        raise ValueError("verified ST timestamp missing/invalid") from exc
+    if local.date().isoformat() != execution_date or local.time() >= time(9, 30):
+        raise ValueError("verified ST was not captured before execution-day open")
+    return set(symbols)
+
+
 def _iso_day(value, label: str) -> str:
     value = str(value)
     if date.fromisoformat(value).isoformat() != value:
