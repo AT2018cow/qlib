@@ -521,6 +521,11 @@ if _HAS_MODAL:
             "promotion_authorized": False,
             "source_volume_read_only": True,
         }
+        # Validate the full stage roster, reuse SHA attestations and batch
+        # accounting BEFORE publishing any PASS summary to the research Volume.
+        from audit.csi1000_layered_search_reconcile import check_stage_summary
+
+        check_stage_summary(summary)
         root = RESULTS / prefix / "summaries" / stage
         root.mkdir(parents=True, exist_ok=True)
         from uuid import uuid4
