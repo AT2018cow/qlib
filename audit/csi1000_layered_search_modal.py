@@ -432,14 +432,12 @@ if _HAS_MODAL:
         outcomes: List[Dict[str, Any]],
         code_sha: str,
         run_id: str,
-        reuse_records: List[Dict[str, Any]] | None = None,
         attestations: List[Dict[str, Any]] | None = None,
     ) -> Dict[str, Any]:
-        """Re-validate every outcome (never trust incoming PASS), then sign the summary.
+        """Revalidate persisted bytes of new and materialized prior-run cells.
 
-        ``reuse_records`` carries prior-run cells already byte-verified by
-        :func:`verify_reuse_remote`; they are re-checked here and embedded so
-        the summary covers the full cumulative roster (e.g. 144/144 for L1-B).
+        L1-B old cells have already been copied to this run's own prefix and
+        are checked through the same artifact and metric gates as new cells.
         """
         from audit.csi1000_layered_search_core import sha256_file, write_sha256sums
         from audit.csi1000_layered_search_replay import report_metrics
