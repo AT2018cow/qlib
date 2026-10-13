@@ -905,9 +905,7 @@ def build_cli() -> argparse.ArgumentParser:
         "--p0-summary", default="", help="Downloaded stage_p0_summary.json; required for --stage l1-a/l1-b/l1-c."
     )
     p.add_argument("--reuse-summary", default="", help="Full signed L1-A summary for L1-B or L1-B summary for L1-C.")
-    p.add_argument(
-        "--reuse-prefix", default="", help="Source research prefix of L1-A (L1-B) or L1-B (L1-C) export."
-    )
+    p.add_argument("--reuse-prefix", default="", help="Source research prefix of L1-A (L1-B) or L1-B (L1-C) export.")
     p.add_argument(
         "--equivalence-ref",
         default="",
