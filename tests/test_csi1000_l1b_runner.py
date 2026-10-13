@@ -502,6 +502,54 @@ def test_materialize_copies_verified_cells(tmp_path):
         assert (tmp_path / "new/prefix/cells" / rec["cell_key"] / "daily_nav.csv").read_bytes() == b"nav"
 
 
+def test_materialize_multicell_resume_existing_destinations(tmp_path):
+    """Second batch must compare EACH old source with its matching copied cell.
+
+    A one-cell test misses the stale `src` bug: the first validation loop
+    leaves `src` pointing at its last record. Real L1-B resumes 32 cells.
+    """
+    cells = core.enumerate_cells("l1-a")[:4]
+    old = tmp_path / "old"
+    _export_tree(old, "l1-a", cells, "l1a-old", "a" * 40)
+    specs = []
+    for cell in cells:
+        key = cell["cell_key"]
+        record = json.loads((old / "cells" / key / "cell.json").read_text(encoding="utf-8"))
+        specs.append({k: record[k] for k in ("cell_key", "source_sha256", "output_sha256", "cache_key")})
+
+    # First invocation: smoke-style empty target -> all four cells copied.
+    first = core.materialize_reuse_cells(tmp_path, "new/prefix", "old", specs)
+    assert [r["cell_key"] for r in first] == [s["cell_key"] for s in specs]
+
+    # Second invocation: every destination already exists -> all four
+    # must be checked against their OWN source (not the final source key).
+    second = core.materialize_reuse_cells(tmp_path, "new/prefix", "old", specs)
+    assert [r["cell_key"] for r in second] == [s["cell_key"] for s in specs]
+    names = ("cell.json", "daily_nav.csv", "fixed_report.parquet", "fixed_decisions.json", "metrics.json")
+    for cell in cells:
+        key = cell["cell_key"]
+        for name in names:
+            assert (tmp_path / "new/prefix/cells" / key / name).read_bytes() == (
+                old / "cells" / key / name
+            ).read_bytes()
+
+    # Partial recovery: three destinations exist and a middle one is missing;
+    # the same invocation must validate the existing copies and restore only
+    # the missing cell from the matching source.
+    missing = tmp_path / "new/prefix/cells" / cells[1]["cell_key"]
+    import shutil
+
+    shutil.rmtree(missing)
+    assert not missing.exists()
+    third = core.materialize_reuse_cells(tmp_path, "new/prefix", "old", specs)
+    assert len(third) == 4
+    for cell in cells:
+        key = cell["cell_key"]
+        assert (tmp_path / "new/prefix/cells" / key / "cell.json").read_bytes() == (
+            old / "cells" / key / "cell.json"
+        ).read_bytes()
+
+
 def test_materialize_aborts_before_any_copy_on_tamper(tmp_path):
     old = tmp_path / "old"
     specs = []
