@@ -948,14 +948,21 @@ def _require_signed_export(summary_path: str, stage: str, gate: str) -> Dict[str
             expected_cells = {c["cell_key"] for c in enumerate_cells("p0")}
             signed = {r.get("cell_key"): r for r in summary.get("verified_cells", [])}
             verify_export_cells(Path(summary_path).resolve().parents[2], expected_cells, "P0", signed)
-        elif stage == "l1-a":
-            require_signed_l1a_export(summary, summary.get("verified_cells"))
-            expected_cells = {c["cell_key"] for c in enumerate_cells("l1-a")}
+        elif stage in ("l1-a", "l1-b"):
+            if stage == "l1-a":
+                require_signed_l1a_export(summary, summary.get("verified_cells"))
+            else:
+                require_signed_l1b_export(summary, summary.get("verified_cells"))
+            expected_cells = {c["cell_key"] for c in enumerate_cells(stage)}
             signed = {r.get("cell_key"): r for r in summary.get("verified_cells", [])}
-            # A JSON-only PASS is not evidence. Require the complete exported
-            # research prefix with its original relative paths and checksum index.
+            # JSON-only PASS claims are insufficient: verify full exported tree.
             verify_sha256sums(Path(summary_path).resolve().parents[2])
-            verify_export_cells(Path(summary_path).resolve().parents[2], expected_cells, "L1-A", signed)
+            verify_export_cells(
+                Path(summary_path).resolve().parents[2],
+                expected_cells,
+                "L1-A" if stage == "l1-a" else "L1-B",
+                signed,
+            )
         else:
             raise ValueError(f"unsupported export stage {stage}")
     except (ValueError, FileNotFoundError, KeyError, OSError) as exc:
@@ -965,7 +972,7 @@ def _require_signed_export(summary_path: str, stage: str, gate: str) -> Dict[str
 
 def _check_reuse_prefix(reuse_prefix: str) -> str:
     """Fail fast on unsafe or out-of-tree reuse prefixes (mirrors the remote check)."""
-    require(bool(reuse_prefix), "STOP_L1: l1-b requires --reuse-prefix with the prior research prefix")
+    require(bool(reuse_prefix), "STOP_L1: L1-B/C require --reuse-prefix with the prior research prefix")
     require(not reuse_prefix.startswith("/") and ".." not in reuse_prefix.split("/"), "STOP_L1: unsafe reuse prefix")
     require(reuse_prefix.startswith("csi1000_layered_search/"), "STOP_L1: reuse prefix outside layered-search tree")
     return reuse_prefix
@@ -1022,6 +1029,69 @@ def prepare_l1b_plan(
     }
 
 
+def prepare_l1c_plan(
+    reuse_summary_path: str,
+    p0_summary_path: str,
+    equivalence_ref: str,
+    current_code_sha: str,
+) -> Dict[str, Any]:
+    """Verify signed L1-B evidence and independently recalculate L1-C eligibility.
+
+    Only genuine two-phase qualified L1-B exports may enter L1-C. Source,
+    provider, quote and all 144 cell bytes must be identical to their
+    signed records; every overlap is reattested under the new code SHA.
+    """
+    from audit.csi1000_layered_search_core import sha256_file
+    from audit.csi1000_layered_search_selection import screen_l1
+
+    summary = _require_signed_export(reuse_summary_path, "l1-b", "STOP_L1")
+    _require_signed_export(p0_summary_path, "p0", "STOP_P0")
+    evidence = Path(reuse_summary_path).resolve().parents[2]
+    p0_root = Path(p0_summary_path).resolve().parents[2]
+    screen = screen_l1("l1-b", evidence / "cells", p0_root / "cells")
+    require(
+        screen.get("can_expand_to_l1_c") is True and screen.get("qualified_configs", 0) >= 2,
+        "STOP_L1_C_GATE: fewer than two independently qualified two-phase configurations",
+    )
+    records = summary["verified_cells"]
+    quotes = {r.get("quote_sha256") for r in records}
+    providers = {r.get("provider_snapshot_sha256") for r in records}
+    require(len(quotes) == 1 and all(quotes), "STOP_L1: L1-B quote identity not unanimous")
+    require(len(providers) == 1 and all(providers), "STOP_L1: L1-B provider identity not unanimous")
+    verified_output_sha = {}
+    for record in records:
+        key = record["cell_key"]
+        nav_file = evidence / "cells" / key / "daily_nav.csv"
+        measured = sha256_file(nav_file)
+        require(measured == record["output_sha256"], f"STOP_L1: L1-B NAV bytes drift: {key}")
+        verified_output_sha[key] = measured
+    manifest_path = evidence / "frozen_source_11x5.json"
+    require(manifest_path.is_file(), "STOP_L1: L1-B frozen 11x5 manifest missing")
+    original_sources = json.loads(manifest_path.read_text(encoding="utf-8"))["sources"]
+    sources = manifest_source_index({"sources": original_sources})
+    current = {
+        "quote_sha": quotes.pop(),
+        "provider_snapshot_sha256": providers.pop(),
+        "code_sha": current_code_sha,
+        "prior_run_id": summary.get("run_id", ""),
+        "prior_code_sha": summary.get("code_sha", ""),
+        "verified_output_sha": verified_output_sha,
+        "version_equivalence_ref": equivalence_ref,
+    }
+    plan = plan_l1c_reuse(records, sources, current)
+    return {
+        **plan,
+        "prior_run_id": current["prior_run_id"],
+        "prior_code_sha": current["prior_code_sha"],
+        "quote_sha": current["quote_sha"],
+        "source_55_sha256": frozen_source_digest(original_sources),
+        "l1b_screen": {
+            "qualified_configs": screen["qualified_configs"],
+            "can_expand_to_l1_c": screen["can_expand_to_l1_c"],
+        },
+    }
+
+
 def validate_for_dispatch(
     stage: str,
     run_id: str,
@@ -1043,15 +1113,15 @@ def validate_for_dispatch(
     cells; the 32 overlap cells travel via attestations (see
     :func:`prepare_l1b_plan`), never by silent cache hits.
     """
-    if stage not in ("p0", "l1-a", "l1-b"):
-        raise ValueError(f"STOP: stage {stage} needs a later reviewed PR (covers p0/l1-a/l1-b only)")
+    if stage not in ("p0", "l1-a", "l1-b", "l1-c"):
+        raise ValueError(f"STOP: stage {stage} needs a later reviewed PR (covers p0/l1-a/l1-b/l1-c only)")
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{3,63}", run_id or ""):
         raise ValueError("STOP: --run-id must match [A-Za-z0-9][A-Za-z0-9_-]{3,63}")
     if not isinstance(max_workers, int) or not 1 <= max_workers <= 8:
         raise ValueError("STOP: --max-workers must be 1..8 in PR-S0")
     import math as _math
 
-    if stage != "l1-b":
+    if stage not in ("l1-b", "l1-c"):
         if (
             not isinstance(estimated_total_usd, (int, float))
             or not _math.isfinite(estimated_total_usd)
@@ -1067,33 +1137,36 @@ def validate_for_dispatch(
         gate = ledger_obj.preflight(layer, float(estimated_total_usd))
         if gate != "OK_CONTINUE":
             raise ValueError(f"STOP: ledger preflight gate {gate} (spend unknown until record_actual)")
-    if smoke and stage != "l1-b":
-        raise ValueError("STOP_SMOKE: --smoke applies only to L1-B")
+    if smoke and stage not in ("l1-b", "l1-c"):
+        raise ValueError("STOP_SMOKE: --smoke applies only to L1-B/C")
     if smoke and (max_workers != 1 or batch_limit != 1):
         raise ValueError("STOP_SMOKE: use --max-workers 1 --batch-limit 1")
-    if stage in ("l1-a", "l1-b"):
+    if stage in ("l1-a", "l1-b", "l1-c"):
         if not p0_summary:
             raise ValueError(f"STOP_P0: {stage} requires --p0-summary with a verified 4/4 P0 summary")
         _require_signed_export(p0_summary, "p0", "STOP_P0")
-    if stage == "l1-b":
+    if stage in ("l1-b", "l1-c"):
         if not reuse_summary:
-            raise ValueError("STOP_L1: l1-b requires --reuse-summary with a verified 32/32 L1-A summary")
+            raise ValueError(f"STOP_L1: {stage} requires a complete signed prior L1 export")
         if resume_from_manifest:
             raise ValueError(
-                "STOP_L1: l1-b resumes inside its own research prefix; --resume-from-manifest is not accepted"
+                f"STOP_L1: {stage} resumes inside its own research prefix; --resume-from-manifest is not accepted"
             )
         _check_reuse_prefix(reuse_prefix)
-        plan = prepare_l1b_plan(reuse_summary, equivalence_ref, current_code_sha)
-        required_prefix = result_prefix(plan["prior_run_id"], "l1-a", plan["prior_code_sha"])
+        plan = (
+            prepare_l1b_plan(reuse_summary, equivalence_ref, current_code_sha)
+            if stage == "l1-b"
+            else prepare_l1c_plan(reuse_summary, p0_summary, equivalence_ref, current_code_sha)
+        )
+        prior_stage = "l1-a" if stage == "l1-b" else "l1-b"
+        required_prefix = result_prefix(plan["prior_run_id"], prior_stage, plan["prior_code_sha"])
         require(
             reuse_prefix == required_prefix,
-            "STOP_L1: --reuse-prefix does not match the audited L1-A run/stage/code SHA",
+            f"STOP_L1: --reuse-prefix does not match the audited {prior_stage} run/stage/code SHA",
         )
         new_cells = sorted(plan["new_cells"], key=lambda c: c["cell_key"])
         if batch_limit and (not isinstance(batch_limit, int) or not 1 <= batch_limit <= len(new_cells)):
-            raise ValueError("STOP: --batch-limit out of range for the 112 new L1-B cells")
-        # Preserve the full 112-cell eligible roster: run_search applies the
-        # batch limit only AFTER excluding completed keys in this run prefix.
+            raise ValueError(f"STOP: --batch-limit out of range for the {len(new_cells)} new {stage} cells")
         return new_cells
     if resume_from_manifest:
         _check_manifest(resume_from_manifest)
