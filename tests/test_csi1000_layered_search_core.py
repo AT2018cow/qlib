@@ -136,7 +136,10 @@ def test_check_cell_record_rejects_fake_pass():
 
 
 def test_require_p0_pass():
-    rows = [_record(**{k: v for k, v in cell.items() if k in ("cell_key", "candidate_id", "phase", "topk", "dropn")}) for cell in core.enumerate_cells("p0")]
+    rows = [
+        _record(**{k: v for k, v in cell.items() if k in ("cell_key", "candidate_id", "phase", "topk", "dropn")})
+        for cell in core.enumerate_cells("p0")
+    ]
     summary = {"stage": "p0", "expected": 4, "completed": 4, "blocked": 0}
     assert core.require_p0_pass(summary, rows)["status"] == "P0_VERIFIED"
     with pytest.raises(ValueError, match="identit"):
@@ -232,7 +235,7 @@ def test_final_verdict_paired_gates():
     duplicate = [dict(r) for r in chall]
     duplicate[1]["phase"] = duplicate[0]["phase"]
     assert core.final_verdict(duplicate, base, 1.1)[0] == "NOT_ELIGIBLE"
-    strong, safe_base = _rows([0,4,6,10,15], base_mdd=12.0, chall_mdd=14.0)
+    strong, safe_base = _rows([0, 4, 6, 10, 15], base_mdd=12.0, chall_mdd=14.0)
     safe_base[0]["mdd_pp"] = 8.0
     verdict, risk = core.final_verdict(strong, safe_base, 1.1)
     assert verdict == "PASS", risk
@@ -308,9 +311,19 @@ def test_output_isolation_and_trial_ledger(tmp_path):
     with pytest.raises(ValueError):
         core.check_output_not_in_source([tmp_path], "/vol/evil-out")
     ledger = tmp_path / "trial.jsonl"
-    core.append_trial_ledger(ledger, [{"cell_key": "a", "app_id": "app-1", "status": "PASS", "spend_usd": 0.5}])
-    with pytest.raises(ValueError):  # duplicate key across batches
-        core.append_trial_ledger(ledger, [{"cell_key": "a", "app_id": "app-2", "status": "PASS", "spend_usd": 0.1}])
+    core.append_trial_ledger(
+        ledger, [{"cell_key": "a", "run_id": "r1", "app_id": "app-1", "status": "PASS", "spend_usd": 0.5}]
+    )
+    with pytest.raises(ValueError):  # duplicate (run_id, cell_key)
+        core.append_trial_ledger(
+            ledger, [{"cell_key": "a", "run_id": "r1", "app_id": "app-2", "status": "PASS", "spend_usd": 0.1}]
+        )
+    # Same cell under a new run is a distinct audited row (reuse travels by attestation).
+    core.append_trial_ledger(
+        ledger, [{"cell_key": "a", "run_id": "r2", "app_id": "app-2", "status": "PASS", "spend_usd": 0.1}]
+    )
+    with pytest.raises(ValueError):  # run-id required
+        core.append_trial_ledger(tmp_path / "t0.jsonl", [{"cell_key": "z", "app_id": "app-1", "status": "PASS"}])
     with pytest.raises(ValueError):  # placeholder App ID
         core.append_trial_ledger(tmp_path / "t2.jsonl", [{"cell_key": "b", "app_id": "pending", "status": "PASS"}])
     with pytest.raises(ValueError):  # skeleton status never lands in the audited ledger
@@ -404,6 +417,9 @@ def test_modal_file_static_contract():
         "resume_from_manifest",
         "ledger",
         "p0_summary",
+        "reuse_summary",
+        "reuse_prefix",
+        "equivalence_ref",
     ):
         assert flag in params, f"entrypoint missing --{flag.replace('_', '-')}"
 

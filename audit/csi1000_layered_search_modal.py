@@ -1,10 +1,13 @@
-"""Modal P0/L1 runner for the CSI1000 budgeted layered search (PR-S0).
+"""Modal P0/L1 runner for the CSI1000 budgeted layered search (PR-S0/PR-S1).
 
 Real frozen-signal replay via :mod:`audit.csi1000_layered_search_replay`:
 read-only source volume, separate research volume, per-cell SHA resume with
 atomic publish, persistent cross-batch cost ledger and fail-closed STOP gates.
-Zero training for p0/l1-a: frozen Stage-B signals are replayed under different
-(TopK, DropN) combos only; L1-A additionally requires a verified P0 summary.
+Zero training for p0/l1-a/l1-b: frozen Stage-B signals are replayed under
+different (TopK, DropN) combos only. L1-A requires a verified P0 summary;
+L1-B additionally requires a verified L1-A summary plus an explicit
+equivalence ref, and reuses its 32 overlap cells only after byte-level
+re-verification (never by cell_key alone).
 
 Foreground rule: when launched through OpenCode, NEVER pass ``--detach`` to
 ``modal run``. Keep the launcher attached with a tool timeout longer than the
@@ -39,8 +42,13 @@ from audit.csi1000_layered_search_core import (
     check_cell_record,
     enumerate_cells,
     load_frozen_profiles,
+    manifest_source_index,
+    plan_l1b_reuse,
     replay_cache_key,
+    require,
     require_p0_pass,
+    require_signed_l1a_export,
+    verify_export_cells,
 )
 
 try:
@@ -67,6 +75,7 @@ def check_operator_cost_quote(path: str, estimated_usd: float, covered_cells: in
     """
     import math
     from datetime import datetime, timezone, timedelta
+
     if not path or not Path(path).is_file():
         raise ValueError("STOP_COST_UNKNOWN: operator billing-rate quote JSON missing")
     quote = json.loads(Path(path).read_text(encoding="utf-8"))
@@ -79,8 +88,13 @@ def check_operator_cost_quote(path: str, estimated_usd: float, covered_cells: in
     now = datetime.now(timezone.utc)
     if captured.tzinfo is None or captured > now + timedelta(minutes=5) or now - captured > timedelta(hours=24):
         raise ValueError("STOP_COST_UNKNOWN: billing-rate snapshot is stale or in the future")
-    keys = ("cpu_rate_per_second", "memory_rate_per_gib_second",
-            "p90_cpu_seconds_per_cell", "p90_gib_seconds_per_cell", "overhead_usd")
+    keys = (
+        "cpu_rate_per_second",
+        "memory_rate_per_gib_second",
+        "p90_cpu_seconds_per_cell",
+        "p90_gib_seconds_per_cell",
+        "overhead_usd",
+    )
     for key in keys:
         value = quote.get(key)
         if not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
@@ -89,20 +103,30 @@ def check_operator_cost_quote(path: str, estimated_usd: float, covered_cells: in
         raise ValueError("STOP_COST_UNKNOWN: current Modal billing rates must be positive")
     if not isinstance(quote.get("covered_cells"), int) or quote["covered_cells"] < covered_cells:
         raise ValueError("STOP_COST_UNKNOWN: quote covers fewer cells than dispatched batch")
-    if not isinstance(quote.get("rate_report_sha256"), str) or not re.fullmatch(r"[0-9a-f]{64}", quote["rate_report_sha256"]):
+    if not isinstance(quote.get("rate_report_sha256"), str) or not re.fullmatch(
+        r"[0-9a-f]{64}", quote["rate_report_sha256"]
+    ):
         raise ValueError("STOP_COST_UNKNOWN: signed rate evidence SHA missing")
     estimated = (
-        quote["covered_cells"] *
-        (quote["cpu_rate_per_second"] * quote["p90_cpu_seconds_per_cell"]
-         + quote["memory_rate_per_gib_second"] * quote["p90_gib_seconds_per_cell"])
+        quote["covered_cells"]
+        * (
+            quote["cpu_rate_per_second"] * quote["p90_cpu_seconds_per_cell"]
+            + quote["memory_rate_per_gib_second"] * quote["p90_gib_seconds_per_cell"]
+        )
         + quote["overhead_usd"]
     )
     if not math.isfinite(estimated) or estimated <= 0:
         raise ValueError("STOP_COST_UNKNOWN: estimated batch price is not positive")
     if estimated > estimated_usd + 1e-9:
-        raise ValueError(f"STOP_BUDGET: current-rate P90 USD {estimated:.6f} > authorized batch ceiling {estimated_usd:.6f}")
-    return {"source": path, "predicted_p90_usd": round(estimated, 6),
-            "covered_cells": quote["covered_cells"], "captured_utc": quote["captured_utc"]}
+        raise ValueError(
+            f"STOP_BUDGET: current-rate P90 USD {estimated:.6f} > authorized batch ceiling {estimated_usd:.6f}"
+        )
+    return {
+        "source": path,
+        "predicted_p90_usd": round(estimated, 6),
+        "covered_cells": quote["covered_cells"],
+        "captured_utc": quote["captured_utc"],
+    }
 
 
 def result_prefix(run_id: str, stage: str, code_sha: str) -> str:
@@ -129,11 +153,28 @@ if _HAS_MODAL:
         # modern setuptools-scm/vcs-versioning cannot infer its version.
         # An image-only _version.py avoids SCM metadata processing entirely.
         .pip_install(
-            "numpy==1.26.4", "pandas==2.2.3", "pyarrow==17.0.0",
-            "lightgbm==4.7.0", "cython", "setuptools-scm", "pyyaml",
-            "ruamel.yaml", "fire", "mlflow", "dill", "filelock", "tqdm",
-            "loguru", "joblib", "pydantic-settings", "redis",
-            "python-redis-lock", "pymongo", "gym", "cvxpy", "matplotlib",
+            "numpy==1.26.4",
+            "pandas==2.2.3",
+            "pyarrow==17.0.0",
+            "lightgbm==4.7.0",
+            "cython",
+            "setuptools-scm",
+            "pyyaml",
+            "ruamel.yaml",
+            "fire",
+            "mlflow",
+            "dill",
+            "filelock",
+            "tqdm",
+            "loguru",
+            "joblib",
+            "pydantic-settings",
+            "redis",
+            "python-redis-lock",
+            "pymongo",
+            "gym",
+            "cvxpy",
+            "matplotlib",
             "torch",
         )
         .add_local_dir(
@@ -189,7 +230,9 @@ if _HAS_MODAL:
                 raise ValueError("STOP_SOURCE_UNAVAILABLE: Stage-B provider snapshot missing")
             provider_meta = json.loads(provider_snapshot.read_text(encoding="utf-8"))
             frozen_manifest = result.get("manifest", {})
-            if provider_meta.get("snapshot_token") != frozen_manifest.get("snapshot_token") or provider_meta.get("provider_fingerprint") != frozen_manifest.get("provider_fingerprint"):
+            if provider_meta.get("snapshot_token") != frozen_manifest.get("snapshot_token") or provider_meta.get(
+                "provider_fingerprint"
+            ) != frozen_manifest.get("provider_fingerprint"):
                 raise ValueError("STOP_P0: source provider identity differs from frozen Stage-B")
             phase_row = lookup_phase(result, cell["candidate_id"], int(cell["phase"]))
             snapshot_root = SOURCE / "csi1000_stage_b" / result["manifest"]["snapshot_token"]
@@ -215,7 +258,9 @@ if _HAS_MODAL:
                 record["signal_sha256"], record["topk"], record["dropn"], record["quote_sha256"]
             )
             record["provider_fingerprint"] = frozen_manifest["provider_fingerprint"]
-            record["provider_snapshot_sha256"] = __import__("audit.csi1000_layered_search_core", fromlist=["sha256_file"]).sha256_file(provider_snapshot)
+            record["provider_snapshot_sha256"] = __import__(
+                "audit.csi1000_layered_search_core", fromlist=["sha256_file"]
+            ).sha256_file(provider_snapshot)
             final = publish_cell(RESULTS / job["prefix"] / "cells", record, artifacts, cache_key)
             # Only the independent research volume is ever committed; the source
             # volume object has no commit call anywhere in this file.
@@ -231,14 +276,18 @@ if _HAS_MODAL:
 
     @app.function(
         volumes={str(SOURCE): original.with_mount_options(read_only=True), str(RESULTS): research},
-        cpu=1, memory=2048, timeout=900,
+        cpu=1,
+        memory=2048,
+        timeout=900,
     )
     def inventory_frozen_sources_remote(prefix: str) -> Dict[str, Any]:
         """SHA-verify all 11x5 frozen signals before P0 portfolio selection."""
         from audit.csi1000_layered_search_replay import (
-            load_frozen_result, resolve_phase_sources, sha_bytes,
+            load_frozen_result,
+            resolve_phase_sources,
         )
         from audit.csi1000_layered_search_core import sha256_file
+
         research.reload()
         frozen = load_frozen_result(REPO)
         info = frozen["manifest"]
@@ -246,7 +295,9 @@ if _HAS_MODAL:
         if not snapshot.is_file():
             raise ValueError("STOP_SOURCE_UNAVAILABLE: provider snapshot manifest absent")
         actual = json.loads(snapshot.read_text(encoding="utf-8"))
-        if actual.get("snapshot_token") != info.get("snapshot_token") or actual.get("provider_fingerprint") != info.get("provider_fingerprint"):
+        if actual.get("snapshot_token") != info.get("snapshot_token") or actual.get("provider_fingerprint") != info.get(
+            "provider_fingerprint"
+        ):
             raise ValueError("STOP_P0: provider token/fingerprint mismatch")
         entries = []
         source_root = SOURCE / "csi1000_stage_b" / info["snapshot_token"]
@@ -263,22 +314,23 @@ if _HAS_MODAL:
                     raise ValueError("STOP_SOURCE_UNAVAILABLE: retrain chunk lineage missing")
                 if any(chunk.get("model_config_sha256") != expected_model for chunk in chunks):
                     raise ValueError("STOP_P0: retrain model config drift")
-                entries.append({
-                    "candidate_id": cid,
-                    "phase": phase,
-                    "model_config_sha256": expected_model,
-                    "signal_sha256": sources["signal_sha256"],
-                    "report_sha256": sources["report_sha256"],
-                    "decision_sha256": sources["decision_sha256"],
-                    "n_retrain_chunks": len(chunks),
-                    "chunk_prediction_sha256": [
-                        chunk.get("prediction_content_sha256") for chunk in chunks
-                    ],
-                })
-        if len(entries) != 55 or len({(e["candidate_id"],e["phase"]) for e in entries}) != 55:
+                entries.append(
+                    {
+                        "candidate_id": cid,
+                        "phase": phase,
+                        "model_config_sha256": expected_model,
+                        "signal_sha256": sources["signal_sha256"],
+                        "report_sha256": sources["report_sha256"],
+                        "decision_sha256": sources["decision_sha256"],
+                        "n_retrain_chunks": len(chunks),
+                        "chunk_prediction_sha256": [chunk.get("prediction_content_sha256") for chunk in chunks],
+                    }
+                )
+        if len(entries) != 55 or len({(e["candidate_id"], e["phase"]) for e in entries}) != 55:
             raise ValueError("STOP_P0: original frozen 11x5 source inventory incomplete")
         payload = {
-            "status": "SOURCE_11x5_SHA_VERIFIED", "protocol": PROTOCOL_VERSION,
+            "status": "SOURCE_11x5_SHA_VERIFIED",
+            "protocol": PROTOCOL_VERSION,
             "provider_fingerprint": actual["provider_fingerprint"],
             "provider_snapshot_sha256": sha256_file(snapshot),
             "snapshot_token": actual["snapshot_token"],
@@ -299,6 +351,7 @@ if _HAS_MODAL:
     def inventory_completed_remote(prefix: str, stage: str) -> List[str]:
         """Read existing research artifacts and accept only verified output hashes."""
         from audit.csi1000_layered_search_core import sha256_file
+
         research.reload()
         output = RESULTS / prefix / "cells"
         expected = {c["cell_key"] for c in enumerate_cells(stage)}
@@ -329,13 +382,66 @@ if _HAS_MODAL:
         memory=4096,
         timeout=900,
     )
+    def verify_reuse_remote(old_prefix: str, specs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Re-verify prior-run cells from research bytes before any reuse.
+
+        Reads each ``old_prefix/cells/<key>/`` record plus all four artifact
+        files from the shared research volume (read-only use of the source
+        volume is untouched) and requires full agreement with the supplied
+        specs. Any single mismatch aborts the whole batch: reuse is all or
+        nothing, never silent recomputation.
+        """
+        from audit.csi1000_layered_search_core import sha256_file
+
+        research.reload()
+        if not old_prefix or old_prefix.startswith("/") or ".." in old_prefix.split("/"):
+            raise RuntimeError("STOP_L1: unsafe reuse prefix")
+        if not old_prefix.startswith("csi1000_layered_search/"):
+            raise RuntimeError("STOP_L1: reuse prefix outside layered-search research tree")
+        verified = []
+        for spec in specs:
+            key = spec.get("cell_key")
+            root = RESULTS / old_prefix / "cells" / key
+            record = json.loads((root / "cell.json").read_text(encoding="utf-8"))
+            check_cell_record(record)
+            for field in ("source_sha256", "output_sha256", "cache_key"):
+                if record.get(field) != spec.get(field):
+                    raise RuntimeError(f"STOP_L1: reuse spec drift for {key}: {field}")
+            hashes = record.get("artifact_sha256")
+            required = ("daily_nav.csv", "fixed_report.parquet", "fixed_decisions.json", "metrics.json")
+            if not isinstance(hashes, dict) or set(hashes) != set(required):
+                raise RuntimeError(f"STOP_L1: reuse artifact manifest absent: {key}")
+            for filename in required:
+                if not (root / filename).is_file() or sha256_file(root / filename) != hashes[filename]:
+                    raise RuntimeError(f"STOP_L1: reuse artifact bytes drift: {key}/{filename}")
+            verified.append(record)
+        return verified
+
+    @app.function(
+        volumes={str(SOURCE): original.with_mount_options(read_only=True), str(RESULTS): research},
+        cpu=2,
+        memory=4096,
+        timeout=900,
+    )
     def finalize_remote(
-        prefix: str, stage: str, outcomes: List[Dict[str, Any]], code_sha: str, run_id: str
+        prefix: str,
+        stage: str,
+        outcomes: List[Dict[str, Any]],
+        code_sha: str,
+        run_id: str,
+        reuse_records: List[Dict[str, Any]] | None = None,
+        attestations: List[Dict[str, Any]] | None = None,
     ) -> Dict[str, Any]:
-        """Re-validate every outcome (never trust incoming PASS), then sign the summary."""
+        """Re-validate every outcome (never trust incoming PASS), then sign the summary.
+
+        ``reuse_records`` carries prior-run cells already byte-verified by
+        :func:`verify_reuse_remote`; they are re-checked here and embedded so
+        the summary covers the full cumulative roster (e.g. 144/144 for L1-B).
+        """
         from audit.csi1000_layered_search_core import sha256_file, write_sha256sums
         from audit.csi1000_layered_search_replay import report_metrics
         import pandas as pd
+
         research.reload()
         previous: List[Dict[str, Any]] = []
         expected_keys = {c["cell_key"] for c in enumerate_cells(stage)}
@@ -390,6 +496,20 @@ if _HAS_MODAL:
                 verified.append(o)
             except Exception as exc:
                 blocked.append({"cell_key": o.get("cell_key"), "reason": f"{type(exc).__name__}: {exc}"})
+        reuse_records = reuse_records or []
+        attestations = attestations or []
+        attested = {a.get("cell_key") for a in attestations}
+        for record in reuse_records:
+            key = record.get("cell_key")
+            if key in seen or key not in expected_keys:
+                raise RuntimeError(f"STOP_L1: reuse record outside the cumulative roster: {key}")
+            if key not in attested:
+                raise RuntimeError(f"STOP_L1: reuse without attestation: {key}")
+            check_cell_record(record)
+            seen.add(key)
+            verified.append(record)
+        if len(attestations) != len(reuse_records):
+            raise RuntimeError("STOP_L1: reuse attestation count differs from reuse records")
         summary = {
             "protocol": PROTOCOL_VERSION,
             "stage": stage,
@@ -399,10 +519,14 @@ if _HAS_MODAL:
             "completed": len(verified),
             "blocked": len(blocked),
             "remaining": len(expected_keys) - len(verified) - len(blocked),
-            "status": "PASS" if len(verified) == len(expected_keys) and not blocked
-                      else ("BLOCKED" if blocked else "INCOMPLETE_BATCH"),
+            "status": "PASS"
+            if len(verified) == len(expected_keys) and not blocked
+            else ("BLOCKED" if blocked else "INCOMPLETE_BATCH"),
             "blocked_cells": blocked,
             "verified_cells": verified,
+            "reuse_attestations": attestations,
+            "computed_new": len(verified) - len(reuse_records),
+            "reused": len(reuse_records),
             "training_performed": False,
             "promotion_authorized": False,
             "source_volume_read_only": True,
@@ -410,6 +534,7 @@ if _HAS_MODAL:
         root = RESULTS / prefix / "summaries" / stage
         root.mkdir(parents=True, exist_ok=True)
         from uuid import uuid4
+
         batch_path = root / f"batch_{uuid4().hex}.json"
         batch_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         if summary["status"] == "PASS":
@@ -436,27 +561,30 @@ if _HAS_MODAL:
             "run_id": run_id,
             "stage": stage,
             "code_sha": code_sha,
-            "cells": [{
-                "cell_key": item["cell_key"],
-                "candidate_id": item["candidate_id"],
-                "phase": item["phase"],
-                "signal_sha256": item["signal_sha256"],
-                "quote_sha256": item["quote_sha256"],
-                "provider_fingerprint": item["provider_fingerprint"],
-                "provider_snapshot_sha256": item["provider_snapshot_sha256"],
-                "source_sha256": item["source_sha256"],
-                "output_sha256": item["output_sha256"],
-                "cache_key": item["cache_key"],
-            } for item in verified],
+            "cells": [
+                {
+                    "cell_key": item["cell_key"],
+                    "candidate_id": item["candidate_id"],
+                    "phase": item["phase"],
+                    "signal_sha256": item["signal_sha256"],
+                    "quote_sha256": item["quote_sha256"],
+                    "provider_fingerprint": item["provider_fingerprint"],
+                    "provider_snapshot_sha256": item["provider_snapshot_sha256"],
+                    "source_sha256": item["source_sha256"],
+                    "output_sha256": item["output_sha256"],
+                    "cache_key": item["cache_key"],
+                }
+                for item in verified
+            ],
         }
-        manifest_path = (RESULTS / prefix / "source_manifest_final.json"
-                         if summary["status"] == "PASS"
-                         else RESULTS / prefix / f"source_manifest_partial_{__import__('uuid').uuid4().hex}.json")
+        manifest_path = (
+            RESULTS / prefix / "source_manifest_final.json"
+            if summary["status"] == "PASS"
+            else RESULTS / prefix / f"source_manifest_partial_{__import__('uuid').uuid4().hex}.json"
+        )
         if manifest_path.exists():
             raise RuntimeError("STOP_P0: signed source manifest already exists; refusing overwrite")
-        manifest_path.write_text(
-            json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-        )
+        manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         write_sha256sums(RESULTS / prefix)
         research.commit()
         return summary
@@ -472,25 +600,41 @@ if _HAS_MODAL:
         ledger: str = "~/.local/state/qlib-csi1000-layered/cost_ledger.json",
         p0_summary: str = "",
         cost_quote: str = "",
+        reuse_summary: str = "",
+        reuse_prefix: str = "",
+        equivalence_ref: str = "",
     ) -> None:
-        """Foreground Modal entrypoint: P0 controls, then gated L1-A screen.
+        """Foreground Modal entrypoint: P0 controls, then gated L1-A/L1-B screens.
 
         Execute attached, e.g. ``modal run audit/csi1000_layered_search_modal.py
         --stage p0 --run-id <id> --max-workers 2 --estimated-total-usd 2.0``.
         Never append ``--detach`` when launched through OpenCode. L1-A also
         needs ``--p0-summary <downloaded stage_p0_summary.json>`` proving 4/4
-        verified P0 cells.
+        verified P0 cells. L1-B additionally needs ``--reuse-summary`` (a
+        verified 32/32 L1-A export), ``--reuse-prefix`` (its research prefix)
+        and ``--equivalence-ref`` (the reviewer-approved equivalence decision).
         """
-        validate_for_dispatch(
-            stage, run_id, max_workers, batch_limit, estimated_total_usd, resume_from_manifest, ledger, p0_summary
-        )
-        if stage == "p0" and max_workers > 2:
-            raise ValueError("STOP_BUDGET: P0 must start with no more than two workers")
         sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
         if subprocess.check_output(["git", "status", "--porcelain"], text=True).strip():
             raise ValueError("STOP: worktree must be clean to bind code SHA to the Modal image")
+        cells = validate_for_dispatch(
+            stage,
+            run_id,
+            max_workers,
+            batch_limit,
+            estimated_total_usd,
+            resume_from_manifest,
+            ledger,
+            p0_summary,
+            reuse_summary,
+            equivalence_ref,
+            reuse_prefix,
+            sha,
+        )
+        if stage == "p0" and max_workers > 2:
+            raise ValueError("STOP_BUDGET: P0 must start with no more than two workers")
         prefix = result_prefix(run_id, stage, sha)
-        estimate_n = batch_limit if batch_limit else len(enumerate_cells(stage))
+        estimate_n = len(cells)
         check_operator_cost_quote(cost_quote, float(estimated_total_usd), estimate_n)
         ledger_obj = BudgetLedger.load(ledger)
         gate = ledger_obj.preflight("p0" if stage == "p0" else "l1", float(estimated_total_usd))
@@ -498,7 +642,8 @@ if _HAS_MODAL:
             raise ValueError(f"STOP: ledger preflight gate {gate}")
         ledger_obj.record_estimate(
             "p0" if stage == "p0" else "l1",
-            float(estimated_total_usd), run_id=run_id,
+            float(estimated_total_usd),
+            run_id=run_id,
             note="reserve before any billable remote inventory or replay",
         )
         ledger_obj.save(ledger)
@@ -529,7 +674,22 @@ if _HAS_MODAL:
             flush=True,
         )
         outcomes = list(replay_cell_remote.with_options(max_containers=max_workers).map(build_jobs(cells, prefix)))
-        summary = finalize_remote.remote(prefix, stage, outcomes, sha, run_id)
+        reuse_records: List[Dict[str, Any]] = []
+        attestations: List[Dict[str, Any]] = []
+        if stage == "l1-b":
+            plan = prepare_l1b_plan(reuse_summary, equivalence_ref, sha)
+            specs = [
+                {
+                    "cell_key": key,
+                    "source_sha256": next(r["source_sha256"] for r in plan["reuse_records"] if r["cell_key"] == key),
+                    "output_sha256": next(r["output_sha256"] for r in plan["reuse_records"] if r["cell_key"] == key),
+                    "cache_key": next(r["cache_key"] for r in plan["reuse_records"] if r["cell_key"] == key),
+                }
+                for key in plan["overlap_keys"]
+            ]
+            reuse_records = verify_reuse_remote.remote(reuse_prefix, specs)
+            attestations = plan["attestations"]
+        summary = finalize_remote.remote(prefix, stage, outcomes, sha, run_id, reuse_records, attestations)
         _write_inflight_ledger(
             Path(ledger).expanduser().parent / TRIAL_LEDGER_NAME,
             stage,
@@ -577,18 +737,37 @@ def _write_inflight_ledger(path: Path, stage: str, run_id: str, outcomes: List[D
 def build_cli() -> argparse.ArgumentParser:
     """CLI contract (real --help; mirrors the Modal entrypoint parameters)."""
     p = argparse.ArgumentParser(
-        description="PR-S0 Modal runner: P0 4-cell controls + L1-A small portfolio screen (zero-fit, read-only source).",
+        description="PR-S1 Modal runner: P0 controls + L1-A/L1-B portfolio screens (zero-fit, read-only source).",
         epilog="OpenCode foreground rule: run attached without --detach; set the tool timeout beyond worst-case wall time.",
     )
-    p.add_argument("--stage", default="p0", help="p0 | l1-a | inventory | dry-run (l1-b/l1-c/l2/l3/l4 need later PRs).")
+    p.add_argument(
+        "--stage", default="p0", help="p0 | l1-a | l1-b | inventory | dry-run (l1-c/l2/l3/l4 need later PRs)."
+    )
     p.add_argument("--run-id", default="", help="Pre-registered run id [A-Za-z0-9][A-Za-z0-9_-]{3,63}.")
     p.add_argument("--max-workers", type=int, default=2, help="Parallel workers, 1..8 (PR-S0 cap).")
-    p.add_argument("--batch-limit", type=int, default=0, help="Max cells this batch; 0 means all cells of the stage.")
+    p.add_argument(
+        "--batch-limit", type=int, default=0, help="Max NEW compute cells this batch; 0 means all remaining."
+    )
     p.add_argument("--estimated-total-usd", type=float, default=-1.0, help="REQUIRED provisional P90 ceiling in USD.")
     p.add_argument("--resume-from-manifest", default="", help="Existing source_manifest.json for hash-checked resume.")
-    p.add_argument("--ledger", default="~/.local/state/qlib-csi1000-layered/cost_ledger.json", help="Persisted cross-batch ledger outside the checkout.")
-    p.add_argument("--p0-summary", default="", help="Downloaded stage_p0_summary.json; required for --stage l1-a.")
-    p.add_argument("--cost-quote", default="", help="Required current-rate P90 operator quote JSON for remote execution.")
+    p.add_argument(
+        "--ledger",
+        default="~/.local/state/qlib-csi1000-layered/cost_ledger.json",
+        help="Persisted cross-batch ledger outside the checkout.",
+    )
+    p.add_argument("--p0-summary", default="", help="Downloaded stage_p0_summary.json; required for --stage l1-a/l1-b.")
+    p.add_argument("--reuse-summary", default="", help="Downloaded stage_l1-a_summary.json; required for --stage l1-b.")
+    p.add_argument(
+        "--reuse-prefix", default="", help="Research prefix of the reuse source export; required for --stage l1-b."
+    )
+    p.add_argument(
+        "--equivalence-ref",
+        default="",
+        help="Reviewer-approved equivalence decision for cross-code reuse; required for --stage l1-b.",
+    )
+    p.add_argument(
+        "--cost-quote", default="", help="Required current-rate P90 operator quote JSON for remote execution."
+    )
     p.add_argument("--dry-run", action="store_true", help="Local validation only; no Modal dispatch.")
     p.add_argument("--inventory", action="store_true", help="Print frozen enumeration and exit without dispatch.")
     return p
@@ -607,6 +786,96 @@ def _check_manifest(manifest_path: str) -> Dict[str, Any]:
     return manifest
 
 
+def _require_signed_export(summary_path: str, stage: str, gate: str) -> Dict[str, Any]:
+    """Deep-check a downloaded stage export: summary record plus full file tree.
+
+    ``gate`` selects messages (``STOP_P0`` for the P0 export, ``STOP_L1`` for
+    the L1-A reuse export). Returns the parsed summary and its evidence root.
+    """
+    from audit.csi1000_layered_search_reconcile import verify_sha256sums
+
+    try:
+        summary = json.loads(Path(summary_path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"{gate}: cannot read {stage} summary: {exc}") from exc
+    try:
+        if stage == "p0":
+            require_p0_pass(summary, summary.get("verified_cells"))
+            expected_cells = {c["cell_key"] for c in enumerate_cells("p0")}
+            signed = {r.get("cell_key"): r for r in summary.get("verified_cells", [])}
+            verify_export_cells(Path(summary_path).resolve().parents[2], expected_cells, "P0", signed)
+        elif stage == "l1-a":
+            require_signed_l1a_export(summary, summary.get("verified_cells"))
+            expected_cells = {c["cell_key"] for c in enumerate_cells("l1-a")}
+            signed = {r.get("cell_key"): r for r in summary.get("verified_cells", [])}
+            # A JSON-only PASS is not evidence. Require the complete exported
+            # research prefix with its original relative paths and checksum index.
+            verify_sha256sums(Path(summary_path).resolve().parents[2])
+            verify_export_cells(Path(summary_path).resolve().parents[2], expected_cells, "L1-A", signed)
+        else:
+            raise ValueError(f"unsupported export stage {stage}")
+    except (ValueError, FileNotFoundError, KeyError, OSError) as exc:
+        raise ValueError(f"{gate}: complete signed {stage} research export required: {exc}") from exc
+    return summary
+
+
+def _check_reuse_prefix(reuse_prefix: str) -> str:
+    """Fail fast on unsafe or out-of-tree reuse prefixes (mirrors the remote check)."""
+    require(bool(reuse_prefix), "STOP_L1: l1-b requires --reuse-prefix with the prior research prefix")
+    require(not reuse_prefix.startswith("/") and ".." not in reuse_prefix.split("/"), "STOP_L1: unsafe reuse prefix")
+    require(reuse_prefix.startswith("csi1000_layered_search/"), "STOP_L1: reuse prefix outside layered-search tree")
+    return reuse_prefix
+
+
+def prepare_l1b_plan(
+    reuse_summary_path: str,
+    equivalence_ref: str,
+    current_code_sha: str,
+) -> Dict[str, Any]:
+    """Build the L1-B reuse plan from a verified L1-A export (local, no cloud).
+
+    Deep-checks the export, derives the unanimous quote/provider identity,
+    re-measures prior output bytes, and splits the 144-cell roster into 32
+    verified reuses plus 112 new-compute cells with attestations.
+    """
+    from audit.csi1000_layered_search_core import sha256_file
+
+    summary = _require_signed_export(reuse_summary_path, "l1-a", "STOP_L1")
+    records = summary.get("verified_cells", [])
+    quotes = {r.get("quote_sha256") for r in records}
+    require(len(quotes) == 1 and all(quotes), "STOP_L1: reuse export has no unanimous quote identity")
+    providers = {r.get("provider_snapshot_sha256") for r in records}
+    require(len(providers) == 1 and all(providers), "STOP_L1: reuse export has no unanimous provider identity")
+    evidence = Path(reuse_summary_path).resolve().parents[2]
+    verified_output_sha = {}
+    for record in records:
+        nav_file = evidence / "cells" / record["cell_key"] / "daily_nav.csv"
+        require(nav_file.is_file(), f"STOP_L1: reuse output file missing: {record['cell_key']}")
+        measured = sha256_file(nav_file)
+        require(measured == record.get("output_sha256"), f"STOP_L1: reuse output bytes drift: {record['cell_key']}")
+        verified_output_sha[record["cell_key"]] = measured
+    manifest_path = evidence / "frozen_source_11x5.json"
+    require(manifest_path.is_file(), "STOP_L1: frozen 11x5 manifest missing from reuse export")
+    manifest_sources = manifest_source_index(json.loads(manifest_path.read_text(encoding="utf-8")))
+    current = {
+        "quote_sha": quotes.pop(),
+        "provider_snapshot_sha256": providers.pop(),
+        "code_sha": current_code_sha,
+        "prior_run_id": summary.get("run_id", ""),
+        "prior_code_sha": summary.get("code_sha", ""),
+        "verified_output_sha": verified_output_sha,
+        "version_equivalence_ref": equivalence_ref,
+    }
+    require(current["prior_run_id"] and current["prior_code_sha"], "STOP_L1: reuse summary lacks run identity")
+    plan = plan_l1b_reuse(records, manifest_sources, current)
+    return {
+        **plan,
+        "prior_run_id": current["prior_run_id"],
+        "prior_code_sha": current["prior_code_sha"],
+        "quote_sha": current["quote_sha"],
+    }
+
+
 def validate_for_dispatch(
     stage: str,
     run_id: str,
@@ -616,10 +885,19 @@ def validate_for_dispatch(
     resume_from_manifest: str,
     ledger: str,
     p0_summary: str = "",
+    reuse_summary: str = "",
+    equivalence_ref: str = "",
+    reuse_prefix: str = "",
+    current_code_sha: str = "",
 ) -> List[Dict[str, Any]]:
-    """Fail-closed validation shared by the local CLI and the Modal entrypoint."""
-    if stage not in ("p0", "l1-a"):
-        raise ValueError(f"STOP: stage {stage} needs a later reviewed PR (PR-S0 covers p0/l1-a only)")
+    """Fail-closed validation shared by the local CLI and the Modal entrypoint.
+
+    Returns the cells to really compute. For L1-B that is only the 112 new
+    cells; the 32 overlap cells travel via attestations (see
+    :func:`prepare_l1b_plan`), never by silent cache hits.
+    """
+    if stage not in ("p0", "l1-a", "l1-b"):
+        raise ValueError(f"STOP: stage {stage} needs a later reviewed PR (covers p0/l1-a/l1-b only)")
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{3,63}", run_id or ""):
         raise ValueError("STOP: --run-id must match [A-Za-z0-9][A-Za-z0-9_-]{3,63}")
     if not isinstance(max_workers, int) or not 1 <= max_workers <= 8:
@@ -641,40 +919,23 @@ def validate_for_dispatch(
     gate = ledger_obj.preflight(layer, float(estimated_total_usd))
     if gate != "OK_CONTINUE":
         raise ValueError(f"STOP: ledger preflight gate {gate} (spend unknown until record_actual)")
-    if stage == "l1-a":
+    if stage in ("l1-a", "l1-b"):
         if not p0_summary:
-            raise ValueError("STOP_P0: l1-a requires --p0-summary with a verified 4/4 P0 summary")
-        try:
-            summary = json.loads(Path(p0_summary).read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
-            raise ValueError(f"STOP_P0: cannot read P0 summary: {exc}") from exc
-        try:
-            require_p0_pass(summary, summary.get("verified_cells"))
-            # A JSON-only PASS is not evidence. Require the complete exported
-            # research prefix with its original relative paths and checksum index.
-            from audit.csi1000_layered_search_core import sha256_file
-            from audit.csi1000_layered_search_reconcile import verify_sha256sums
-            evidence = Path(p0_summary).resolve().parents[2]
-            verify_sha256sums(evidence)
-            manifest = json.loads((evidence / "source_manifest_final.json").read_text(encoding="utf-8"))
-            expected_cells = {c["cell_key"] for c in enumerate_cells("p0")}
-            if {x.get("cell_key") for x in manifest.get("cells", [])} != expected_cells:
-                raise ValueError("source manifest P0 roster differs from expected four")
-            for o in summary["verified_cells"]:
-                directory = evidence / "cells" / o["cell_key"]
-                persisted = json.loads((directory / "cell.json").read_text(encoding="utf-8"))
-                for key in ("cache_key", "source_sha256", "output_sha256", "provider_snapshot_sha256"):
-                    if persisted.get(key) != o.get(key):
-                        raise ValueError(f"P0 exported cell differs from summary: {key}")
-                names = ("daily_nav.csv", "fixed_report.parquet", "fixed_decisions.json", "metrics.json")
-                recorded_hashes = persisted.get("artifact_sha256")
-                if not isinstance(recorded_hashes, dict) or set(recorded_hashes) != set(names):
-                    raise ValueError("P0 exported artifact manifest incomplete")
-                for name in names:
-                    if sha256_file(directory / name) != recorded_hashes[name]:
-                        raise ValueError(f"P0 exported {name} hash differs")
-        except (ValueError, FileNotFoundError, KeyError, OSError) as exc:
-            raise ValueError(f"STOP_P0: complete signed P0 research export required: {exc}") from exc
+            raise ValueError(f"STOP_P0: {stage} requires --p0-summary with a verified 4/4 P0 summary")
+        _require_signed_export(p0_summary, "p0", "STOP_P0")
+    if stage == "l1-b":
+        if not reuse_summary:
+            raise ValueError("STOP_L1: l1-b requires --reuse-summary with a verified 32/32 L1-A summary")
+        if resume_from_manifest:
+            raise ValueError(
+                "STOP_L1: l1-b resumes inside its own research prefix; --resume-from-manifest is not accepted"
+            )
+        _check_reuse_prefix(reuse_prefix)
+        plan = prepare_l1b_plan(reuse_summary, equivalence_ref, current_code_sha)
+        new_cells = sorted(plan["new_cells"], key=lambda c: c["cell_key"])
+        if batch_limit and (not isinstance(batch_limit, int) or not 1 <= batch_limit <= len(new_cells)):
+            raise ValueError("STOP: --batch-limit out of range for the 112 new L1-B cells")
+        return new_cells[:batch_limit] if batch_limit else new_cells
     if resume_from_manifest:
         _check_manifest(resume_from_manifest)
     cells = enumerate_cells(stage)
@@ -699,6 +960,9 @@ def validate_args(args: argparse.Namespace) -> List[Dict[str, Any]]:
         args.resume_from_manifest,
         args.ledger,
         args.p0_summary,
+        args.reuse_summary,
+        args.equivalence_ref,
+        args.reuse_prefix,
     )
 
 
@@ -723,6 +987,8 @@ def main(argv: List[str] | None = None) -> int:
                     "protocol": PROTOCOL_VERSION,
                     "p0": len(enumerate_cells("p0")),
                     "l1-a": len(enumerate_cells("l1-a")),
+                    "l1-b": len(enumerate_cells("l1-b")),
+                    "l1-b-new": 112,
                     "layer_caps": LAYER_CAPS_USD,
                 },
                 indent=2,

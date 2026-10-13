@@ -419,7 +419,9 @@ def require_p0_pass(summary: Dict[str, Any], outcomes: List[Dict[str, Any]] | No
     require(len(rows) == 4, "P0 outcomes missing")
     expected_cells = {c["cell_key"] for c in enumerate_cells("p0")}
     actual_cells = [r.get("cell_key") for r in rows]
-    require(len(set(actual_cells)) == 4 and set(actual_cells) == expected_cells, "P0 has wrong or duplicate cell identities")
+    require(
+        len(set(actual_cells)) == 4 and set(actual_cells) == expected_cells, "P0 has wrong or duplicate cell identities"
+    )
     for r in rows:
         require(r.get("candidate_id") in (BASELINE_CANDIDATE, WINNER_CANDIDATE), "P0 candidate identity invalid")
         require(r.get("phase") in (0, 10), "P0 phase invalid")
@@ -428,6 +430,206 @@ def require_p0_pass(summary: Dict[str, Any], outcomes: List[Dict[str, Any]] | No
         require(r.get("corrected_reference") == "PASS", "P0 F1 reproducibility missing")
     checked = [check_cell_record(r) for r in rows]
     return {"status": "P0_VERIFIED", "cells": [c["cell_key"] for c in checked]}
+
+
+def require_signed_l1a_export(summary: Dict[str, Any], outcomes: List[Dict[str, Any]] | None = None) -> Dict[str, Any]:
+    """Gate L1-B reuse on a fully verified L1-A summary: exactly 32/32 real PASS cells.
+
+    Mirrors :func:`require_p0_pass` for the L1-A roster. Every record is
+    re-validated with :func:`check_cell_record`; anything else blocks reuse
+    with STOP_L1.
+    """
+    require(summary.get("stage") == "l1-a", "L1-A summary missing: run --stage l1-a first")
+    require(int(summary.get("expected", -1)) == 32, "L1-A must cover exactly 32 cells")
+    require(int(summary.get("completed", -1)) == 32 and int(summary.get("blocked", -1)) == 0, "L1-A is not 32/32 PASS")
+    rows = outcomes if outcomes is not None else summary.get("verified_cells", [])
+    require(len(rows) == 32, "L1-A verified cells missing")
+    expected_cells = {c["cell_key"] for c in enumerate_cells("l1-a")}
+    actual_cells = [r.get("cell_key") for r in rows]
+    require(
+        len(set(actual_cells)) == 32 and set(actual_cells) == expected_cells,
+        "L1-A has wrong or duplicate cell identities",
+    )
+    checked = [check_cell_record(r) for r in rows]
+    return {"status": "L1A_VERIFIED", "cells": [c["cell_key"] for c in checked]}
+
+
+def verify_export_cells(
+    evidence_root: str | Path,
+    expected_keys: set,
+    scope: str,
+    summary_cells: Dict[str, Dict[str, Any]] | None = None,
+) -> Dict[str, Path]:
+    """Re-read a downloaded research export: manifest roster plus per-cell bytes.
+
+    Checks the export ``source_manifest_final.json`` roster against the
+    expected cell keys, then re-reads every ``cells/<key>/cell.json`` and
+    verifies the recorded cache/source/output SHAs plus all four artifact
+    file hashes against real bytes. When ``summary_cells`` is given, each
+    persisted record must also match the signed summary on cache, source,
+    output and provider-snapshot SHAs. The SHA256SUMS walk itself stays with
+    the caller (reconcile owns it). Returns paths for further checks.
+    """
+    require(scope in ("P0", "L1-A"), f"unknown export scope {scope}")
+    root = Path(evidence_root)
+    manifest_path = root / "source_manifest_final.json"
+    require(manifest_path.is_file(), f"{scope} source manifest missing")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest_keys = {x.get("cell_key") for x in manifest.get("cells", [])}
+    require(manifest_keys == expected_keys, f"{scope} source manifest roster differs from expected cells")
+    for key in sorted(expected_keys):
+        directory = root / "cells" / key
+        persisted = json.loads((directory / "cell.json").read_text(encoding="utf-8"))
+        require(persisted.get("cell_key") == key, f"{scope} exported cell identity drift: {key}")
+        check_cell_record(persisted)
+        if summary_cells is not None:
+            signed = summary_cells.get(key)
+            require(signed is not None, f"{scope} summary lacks exported cell: {key}")
+            for sha_field in ("cache_key", "source_sha256", "output_sha256", "provider_snapshot_sha256"):
+                require(
+                    persisted.get(sha_field) == signed.get(sha_field),
+                    f"{scope} exported cell differs from summary: {sha_field}",
+                )
+        names = ("daily_nav.csv", "fixed_report.parquet", "fixed_decisions.json", "metrics.json")
+        recorded_hashes = persisted.get("artifact_sha256")
+        require(
+            isinstance(recorded_hashes, dict) and set(recorded_hashes) == set(names),
+            f"{scope} exported artifact manifest incomplete: {key}",
+        )
+        for name in names:
+            require(
+                (directory / name).is_file() and sha256_file(directory / name) == recorded_hashes[name],
+                f"{scope} exported {name} hash differs: {key}",
+            )
+    return {"root": root, "manifest": manifest_path}
+
+
+def trial_row_key(run_id: str | None, cell_key: str | None) -> Tuple[str, str]:
+    """Run-scoped trial identity. Re-execution under a new run is a new row."""
+    require(bool(run_id) and isinstance(run_id, str), "trial row needs a real run-id")
+    require(bool(cell_key), "trial row missing cell_key")
+    return (run_id, cell_key)
+
+
+def manifest_source_index(manifest: Dict[str, Any]) -> Dict[Tuple[str, int], Dict[str, str]]:
+    """Index frozen 11x5 source SHAs by (candidate_id, phase)."""
+    sources = manifest.get("frozen_11x5_sources", manifest.get("sources", []))
+    index = {}
+    for entry in sources:
+        if isinstance(entry, dict) and entry.get("candidate_id") is not None and entry.get("phase") is not None:
+            index[(entry["candidate_id"], int(entry["phase"]))] = entry
+    require(len(index) == 55, f"frozen 11x5 source index has {len(index)} entries, need 55")
+    return index
+
+
+def _same_code(prior_sha: str, current_sha: str) -> bool:
+    """Code identity across full (40-hex) and short (12-hex) SHA forms."""
+    require(bool(prior_sha) and bool(current_sha), "code SHA missing for reuse comparison")
+    return prior_sha == current_sha or current_sha.startswith(prior_sha) or prior_sha.startswith(current_sha)
+
+
+def verify_reuse_compatibility(
+    prior_record: Dict[str, Any],
+    manifest_sources: Dict[Tuple[str, int], Dict[str, str]],
+    current: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Judge whether a prior verified cell may be reused without recomputation.
+
+    Never trusts the incoming record: re-validates it with
+    :func:`check_cell_record`, recomputes the replay cache key from real
+    frozen SHAs (which transitively pins fees, execution schema and engine
+    version to the frozen constants), and requires quote/provider/source
+    identity with the current run. ``current`` must carry ``quote_sha``,
+    ``provider_snapshot_sha256``, ``code_sha`` (this run), ``prior_run_id``
+    and ``prior_code_sha`` (from the prior summary, which owns run identity —
+    cell records do not), plus ``verified_output_sha`` (output SHAs re-measured
+    from real bytes by the caller). A differing replay code SHA additionally
+    requires an explicit reviewer-approved ``version_equivalence_ref``;
+    without it the cell must be recomputed instead of reused. Returns an
+    immutable attestation dict.
+    """
+    check_cell_record(prior_record)
+    for ctx_field in ("quote_sha", "provider_snapshot_sha256", "prior_run_id", "prior_code_sha", "verified_output_sha"):
+        require(current.get(ctx_field), f"reuse context missing {ctx_field}")
+    require("code_sha" in current, "reuse context missing code_sha")
+    require(prior_record.get("engine") == PROTOCOL_VERSION, "reuse engine version drift")
+    require(prior_record.get("execution") == EXECUTION_SCHEMA, "reuse execution schema drift")
+    require(prior_record.get("quote_sha256") == current["quote_sha"], "reuse quote union drift")
+    require(
+        prior_record.get("provider_snapshot_sha256") == current["provider_snapshot_sha256"],
+        "reuse provider snapshot drift",
+    )
+    frozen = manifest_sources.get((prior_record.get("candidate_id"), int(prior_record.get("phase", -1))))
+    require(frozen is not None, "reuse candidate/phase absent from frozen manifest")
+    for record_key, frozen_key in (
+        ("signal_sha256", "signal_sha256"),
+        ("frozen_report_sha256", "report_sha256"),
+        ("frozen_decision_sha256", "decision_sha256"),
+    ):
+        require(prior_record.get(record_key) == frozen.get(frozen_key), f"reuse frozen {frozen_key} drift")
+    expected_cache = replay_cache_key(
+        prior_record["signal_sha256"],
+        int(prior_record["topk"]),
+        int(prior_record["dropn"]),
+        prior_record["quote_sha256"],
+    )
+    require(prior_record.get("cache_key") == expected_cache, "reuse cache key does not recompute")
+    require(
+        prior_record.get("output_sha256") == current["verified_output_sha"].get(prior_record["cell_key"]),
+        "reuse output bytes were not re-measured",
+    )
+    if current.get("code_sha") and _same_code(current["prior_code_sha"], current["code_sha"]):
+        equivalence = "IDENTICAL_CODE"
+    else:
+        require(
+            bool(current.get("version_equivalence_ref")),
+            "reuse across code versions needs an explicit reviewer-approved equivalence ref",
+        )
+        equivalence = f"REVIEWED_EQUIVALENT:{current['version_equivalence_ref']}"
+    return {
+        "cell_key": prior_record["cell_key"],
+        "prior_run_id": current["prior_run_id"],
+        "prior_code_sha": current["prior_code_sha"],
+        "output_sha256": prior_record["output_sha256"],
+        "source_sha256": prior_record["source_sha256"],
+        "quote_sha256": prior_record["quote_sha256"],
+        "engine": PROTOCOL_VERSION,
+        "equivalence": equivalence,
+        "verified_utc": utcnow(),
+    }
+
+
+def plan_l1b_reuse(
+    prior_verified_cells: List[Dict[str, Any]],
+    manifest_sources: Dict[Tuple[str, int], Dict[str, str]],
+    current: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Split the 144-cell L1-B roster into verified reuse and new compute.
+
+    The overlap is exactly the 32 L1-A cells (same deterministic keys); the
+    remaining 112 must be really executed. Every overlap cell needs a prior
+    verified record passing :func:`verify_reuse_compatibility`; a missing or
+    incompatible overlap cell is STOP, never silent recomputation (that would
+    invalidate the bounded compute budget).
+    """
+    roster_b = {c["cell_key"]: c for c in enumerate_cells("l1-b")}
+    roster_a = {c["cell_key"] for c in enumerate_cells("l1-a")}
+    require(len(roster_b) == 144 and len(roster_a) == 32, "L1 roster geometry drift")
+    overlap_keys = sorted(set(roster_b) & roster_a)
+    new_keys = sorted(set(roster_b) - roster_a)
+    require(len(overlap_keys) == 32, f"L1-B/L1-A overlap is {len(overlap_keys)}, need 32")
+    require(len(new_keys) == 112, f"L1-B new compute is {len(new_keys)}, need 112")
+    by_key = {r.get("cell_key"): r for r in prior_verified_cells}
+    missing = [k for k in overlap_keys if k not in by_key]
+    require(not missing, f"reuse source lacks overlap cells: {missing[:4]}")
+    attestations = [verify_reuse_compatibility(by_key[k], manifest_sources, current) for k in overlap_keys]
+    return {
+        "overlap_keys": overlap_keys,
+        "new_keys": new_keys,
+        "new_cells": [roster_b[k] for k in new_keys],
+        "reuse_records": [by_key[k] for k in overlap_keys],
+        "attestations": attestations,
+    }
 
 
 # Negative controls (§P0): each raises on violation, never warns-and-continues.
@@ -522,8 +724,11 @@ class BudgetLedger:
         return GLOBAL_FIT_CAP - self.fits_used
 
     def _pending_for(self, layer: str) -> float:
-        return sum(float(ev.get("spend_usd", 0.0)) for ev in self.events
-                   if ev.get("kind") == "estimate_pending" and ev.get("layer") == layer)
+        return sum(
+            float(ev.get("spend_usd", 0.0))
+            for ev in self.events
+            if ev.get("kind") == "estimate_pending" and ev.get("layer") == layer
+        )
 
     @staticmethod
     def estimate_p90(
@@ -715,14 +920,20 @@ class BudgetLedger:
         ledger.events = list(raw.get("events", []))
         ledger.started_utc = raw.get("started_utc")
         require(
-            ledger.fits_used >= 0 and math.isfinite(ledger.elapsed_hours) and ledger.elapsed_hours >= 0
-            and math.isfinite(ledger.pending_estimate_usd) and ledger.pending_estimate_usd >= 0,
+            ledger.fits_used >= 0
+            and math.isfinite(ledger.elapsed_hours)
+            and ledger.elapsed_hours >= 0
+            and math.isfinite(ledger.pending_estimate_usd)
+            and ledger.pending_estimate_usd >= 0,
             "ledger fits/hours/pending invalid",
         )
-        actual_pending = sum(float(ev.get("spend_usd", 0.0)) for ev in ledger.events
-                             if ev.get("kind") == "estimate_pending")
-        require(math.isclose(actual_pending, ledger.pending_estimate_usd, abs_tol=1e-6),
-                "ledger pending reserve differs from immutable events")
+        actual_pending = sum(
+            float(ev.get("spend_usd", 0.0)) for ev in ledger.events if ev.get("kind") == "estimate_pending"
+        )
+        require(
+            math.isclose(actual_pending, ledger.pending_estimate_usd, abs_tol=1e-6),
+            "ledger pending reserve differs from immutable events",
+        )
         return ledger
 
 
@@ -740,9 +951,7 @@ def _paired_deltas(
                 return "NOT_ELIGIBLE", {**detail, "reason": f"{leg_name} missing fields {missing}"}, []
     base_by_phase = {r["phase"]: r for r in baseline}
     chall_by_phase = {r["phase"]: r for r in challenger}
-    expected_phases = ({0, 10} if n_expected == 2 else [
-        {0, 4, 6, 10, 15}, {0, 2, 3, 5, 7}, {0, 8, 12, 20, 30}
-    ])
+    expected_phases = {0, 10} if n_expected == 2 else [{0, 4, 6, 10, 15}, {0, 2, 3, 5, 7}, {0, 8, 12, 20, 30}]
     if len(base_by_phase) != n_expected or len(chall_by_phase) != n_expected:
         return "NOT_ELIGIBLE", {**detail, "reason": "duplicate phase in candidate or baseline"}, []
     if set(base_by_phase) != set(chall_by_phase):
@@ -769,8 +978,11 @@ def _paired_deltas(
                 return "NOT_ELIGIBLE", {**detail, "reason": "mdd_pp must be a positive magnitude"}, []
             turnover = row["turnover"]
             if not isinstance(turnover, (int, float)) or not math.isfinite(turnover) or turnover < 0:
-                return ("BASELINE_INELIGIBLE" if leg is baseline else "NOT_ELIGIBLE"), {
-                    **detail, "reason": "phase turnover nonfinite or negative"}, []
+                return (
+                    ("BASELINE_INELIGIBLE" if leg is baseline else "NOT_ELIGIBLE"),
+                    {**detail, "reason": "phase turnover nonfinite or negative"},
+                    [],
+                )
             if leg is baseline and turnover <= 0:
                 return "BASELINE_INELIGIBLE", {**detail, "reason": "baseline turnover must be positive"}, []
     for phase in base_by_phase:
@@ -860,11 +1072,16 @@ def final_verdict(
         "baseline_median_turnover": baseline_median_turnover,
         "challenger_median_turnover": challenger_median_turnover,
     }
-    if (not isinstance(turnover_ratio, (int, float))
-            or not math.isfinite(turnover_ratio)
-            or not math.isclose(turnover_ratio, actual_turnover_ratio, rel_tol=1e-10, abs_tol=1e-10)):
-        return "NOT_ELIGIBLE", {**info, "failed": "turnover",
-                                "reason": "claimed turnover ratio differs from independently recomputed five-phase medians"}
+    if (
+        not isinstance(turnover_ratio, (int, float))
+        or not math.isfinite(turnover_ratio)
+        or not math.isclose(turnover_ratio, actual_turnover_ratio, rel_tol=1e-10, abs_tol=1e-10)
+    ):
+        return "NOT_ELIGIBLE", {
+            **info,
+            "failed": "turnover",
+            "reason": "claimed turnover ratio differs from independently recomputed five-phase medians",
+        }
     if worst < FINAL_WORST_MIN_PP:
         return "NOT_ELIGIBLE", {**info, "failed": "worst_phase"}
     if median < FINAL_MEDIAN_MIN_PP:
@@ -951,13 +1168,17 @@ def build_protocol(run_id: str, approved_by: str = "PENDING_BUDGET_APPROVAL") ->
 
 
 def append_trial_ledger(path: str | Path, rows: List[Dict[str, Any]]) -> Path:
-    """Append trial rows; duplicate cell keys across the whole file are refused."""
+    """Append trial rows keyed by (run_id, cell_key); same-run duplicates refused.
+
+    A re-execution under a new run-id is a distinct row; cross-run reuse is
+    referenced by attestations, never by silently reusing rows.
+    """
     out = Path(path)
     existing: List[Dict[str, Any]] = []
     if out.exists():
         existing = [json.loads(line) for line in out.read_text(encoding="utf-8").splitlines() if line.strip()]
-    keys = [r.get("cell_key") for r in existing] + [r.get("cell_key") for r in rows]
-    require(len(set(keys)) == len(keys), "duplicate cell keys in trial ledger")
+    keys = [trial_row_key(r.get("run_id"), r.get("cell_key")) for r in existing + rows]
+    require(len(set(keys)) == len(keys), "duplicate (run_id, cell_key) in trial ledger")
     for r in rows:
         require(r.get("cell_key"), "trial row missing cell_key")
         require(r.get("app_id") and r["app_id"] not in ("pending", "null", "unknown"), "trial row needs a real App ID")
@@ -1023,15 +1244,23 @@ def main(argv: List[str] | None = None) -> int:
     """
     args = build_cli().parse_args(argv)
     if args.book_actual:
-        require(args.billing_report and Path(args.billing_report).is_file(),
-                "booking requires an actual saved Modal billing report")
+        require(
+            args.billing_report and Path(args.billing_report).is_file(),
+            "booking requires an actual saved Modal billing report",
+        )
         require(args.run_id and args.app_id, "booking requires run-id and real App ID")
-        require(args.elapsed_hours is not None and math.isfinite(args.elapsed_hours)
-                and args.elapsed_hours >= 0, "elapsed hours unknown")
+        require(
+            args.elapsed_hours is not None and math.isfinite(args.elapsed_hours) and args.elapsed_hours >= 0,
+            "elapsed hours unknown",
+        )
         ledger = BudgetLedger.load(args.ledger)
         status = ledger.record_actual(
-            args.layer, args.spent_usd, app_id=args.app_id, run_id=args.run_id,
-            fits=args.fits, hours=args.elapsed_hours,
+            args.layer,
+            args.spent_usd,
+            app_id=args.app_id,
+            run_id=args.run_id,
+            fits=args.fits,
+            hours=args.elapsed_hours,
             note=f"operator billing report sha256={sha256_file(args.billing_report)}",
         )
         ledger.save(args.ledger)
@@ -1040,31 +1269,48 @@ def main(argv: List[str] | None = None) -> int:
         final_file = ledger_dir / "trial_ledger.jsonl"
         booked = 0
         if pending_file.exists():
-            event_rows = [json.loads(line) for line in pending_file.read_text(encoding="utf-8").splitlines()
-                          if line.strip()]
+            event_rows = [
+                json.loads(line) for line in pending_file.read_text(encoding="utf-8").splitlines() if line.strip()
+            ]
             existing_keys = set()
             if final_file.exists():
-                existing_keys = {json.loads(line)["cell_key"] for line in final_file.read_text(encoding="utf-8").splitlines()
-                                 if line.strip()}
+                existing_keys = {
+                    json.loads(line)["cell_key"]
+                    for line in final_file.read_text(encoding="utf-8").splitlines()
+                    if line.strip()
+                }
             new_rows = []
             for event in event_rows:
                 if event.get("run_id") != args.run_id or event.get("cell_key") in existing_keys:
                     continue
-                new_rows.append({
-                    "cell_key": event["cell_key"], "run_id": args.run_id,
-                    "stage": event.get("stage"), "status": event["status"],
-                    "app_id": args.app_id, "spend_usd": 0.0,
-                    "per_cell_spend_unallocated": True,
-                    "billed_app_total_usd": args.spent_usd,
-                    "billing_report_sha256": sha256_file(args.billing_report),
-                })
+                new_rows.append(
+                    {
+                        "cell_key": event["cell_key"],
+                        "run_id": args.run_id,
+                        "stage": event.get("stage"),
+                        "status": event["status"],
+                        "app_id": args.app_id,
+                        "spend_usd": 0.0,
+                        "per_cell_spend_unallocated": True,
+                        "billed_app_total_usd": args.spent_usd,
+                        "billing_report_sha256": sha256_file(args.billing_report),
+                    }
+                )
                 existing_keys.add(event["cell_key"])
             if new_rows:
                 append_trial_ledger(final_file, new_rows)
                 booked = len(new_rows)
-        print(json.dumps({"booked_final_trial_rows": booked, "status": status,
-                          "ledger": str(Path(args.ledger).expanduser()),
-                          "remaining_global_usd": ledger.remaining_global()}, indent=2))
+        print(
+            json.dumps(
+                {
+                    "booked_final_trial_rows": booked,
+                    "status": status,
+                    "ledger": str(Path(args.ledger).expanduser()),
+                    "remaining_global_usd": ledger.remaining_global(),
+                },
+                indent=2,
+            )
+        )
         return 0 if status == "OK_CONTINUE" else 3
     if args.inventory:
         check_layer_totals()
