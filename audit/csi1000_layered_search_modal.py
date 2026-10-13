@@ -642,7 +642,9 @@ if _HAS_MODAL:
                         "run_id": run_id,
                         "code_sha": code_sha,
                         "cell_key": done[0]["cell_key"],
-                        "cell_record_sha256": sha256_file(RESULTS / prefix / "cells" / done[0]["cell_key"] / "cell.json"),
+                        "cell_record_sha256": sha256_file(
+                            RESULTS / prefix / "cells" / done[0]["cell_key"] / "cell.json"
+                        ),
                         "status": "SMOKE_PASS",
                     },
                     sort_keys=True,
