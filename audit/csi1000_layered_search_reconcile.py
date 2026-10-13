@@ -134,7 +134,8 @@ def check_stage_summary(summary: Dict[str, Any]) -> Dict[str, Any]:
                     record.get("phase"),
                     record.get("topk"),
                     record.get("dropn"),
-                ) == (spec["candidate_id"], spec["phase"], spec["topk"], spec["dropn"]),
+                )
+                == (spec["candidate_id"], spec["phase"], spec["topk"], spec["dropn"]),
                 "l1-b cell metadata differs from registered roster",
             )
         require(
