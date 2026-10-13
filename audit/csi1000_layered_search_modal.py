@@ -138,9 +138,13 @@ def check_l1b_smoke_gate(
     """Require one fully finalized replay before dispatching a longer L1-B batch."""
     if smoke:
         require(max_workers == 1 and batch_limit == 1, "STOP_SMOKE: use one worker and one new cell")
-        require(completed_new == 0 and not smoke_passed, "STOP_SMOKE: smoke already completed; use normal batch")
+        require(
+            completed_new in (0, 1) and not smoke_passed,
+            "STOP_SMOKE: smoke already completed or more than one new cell exists",
+        )
     else:
         require(smoke_passed and completed_new >= 1, "STOP_SMOKE_FIRST: run --smoke with 1 worker/1 cell first")
+        require(1 <= batch_limit <= 32, "STOP_BATCH_BOUND: choose 1..32 new cells per L1-B batch")
 
 
 def result_prefix(run_id: str, stage: str, code_sha: str) -> str:
@@ -565,7 +569,16 @@ if _HAS_MODAL:
                 raise RuntimeError("summary already finalized: refusing to overwrite")
             target.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         protocol_path = root / "protocol.json"
-        protocol_bytes = json.dumps(build_protocol(run_id), indent=2, sort_keys=True) + "\n"
+        protocol_bytes = json.dumps(
+            build_protocol(
+                run_id,
+                approved_by=(
+                    "L1B_SMOKE_FIRST_NO_COST_APPROVAL" if stage == "l1-b" else "PENDING_BUDGET_APPROVAL"
+                ),
+            ),
+            indent=2,
+            sort_keys=True,
+        ) + "\n"
         if protocol_path.exists() and protocol_path.read_text(encoding="utf-8") != protocol_bytes:
             raise RuntimeError("STOP_P0: frozen protocol already exists with different content")
         if not protocol_path.exists():
@@ -753,10 +766,12 @@ if _HAS_MODAL:
                 smoke_passed=completed_state["smoke_passed"],
             )
         cells = select_pending_batch(planned, completed, batch_limit)
-        # Recovery: if a prior run published all 112 new cells but failed
-        # before finalization, re-verify and finalize WITHOUT replaying them.
+        # Recovery after a completed cell but interrupted finalizer: verify
+        # and sign the existing smoke result WITHOUT paying to recompute it.
+        smoke_recover = stage == "l1-b" and smoke and not cells and completed_new == 1
+        # Recovery: all new cells verified but a previous finalization crashed.
         finalize_only = stage == "l1-b" and not cells and len(completed) == len(enumerate_cells("l1-b"))
-        if not cells and not finalize_only:
+        if not cells and not (finalize_only or smoke_recover):
             raise ValueError("STOP: no unexecuted cells in this batch; request the existing verified summary")
         print(
             json.dumps(
@@ -779,7 +794,7 @@ if _HAS_MODAL:
         )
         outcomes = (
             []
-            if finalize_only
+            if finalize_only or smoke_recover
             else list(replay_cell_remote.with_options(max_containers=max_workers).map(build_jobs(cells, prefix)))
         )
         summary = finalize_remote.remote(prefix, stage, outcomes, sha, run_id, attestations=attestations, smoke=smoke)
