@@ -190,8 +190,10 @@ def check_stage_summary(summary: Dict[str, Any]) -> Dict[str, Any]:
             "l1-c batch accounting must report 144 reused and all remaining as newly computed",
         )
         if status == "PASS":
-            require(set(keys) == set(roster) and completed == 264 and blocked == 0 and remaining == 0,
-                    "l1-c PASS needs exact 264/264 roster")
+            require(
+                set(keys) == set(roster) and completed == 264 and blocked == 0 and remaining == 0,
+                "l1-c PASS needs exact 264/264 roster",
+            )
             require(summary.get("computed_new") == 120, "l1-c PASS must compute 120 new cells")
     elif reuse:
         reuse_info = check_reuse_attestations(reuse, {a.get("cell_key") for a in reuse})
