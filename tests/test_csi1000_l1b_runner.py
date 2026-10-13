@@ -126,7 +126,33 @@ def _export_tree(root, stage, cells, run_id, code_sha):
         "source_volume_read_only": True,
         "verified_cells": records,
     }
-    name = "stage_p0_summary.json" if stage == "p0" else "stage_l1-a_summary.json"
+    name = f"stage_{stage}_summary.json"
+    if stage == "l1-b":
+        overlap = {c["cell_key"] for c in core.enumerate_cells("l1-a")}
+        by_key = {r["cell_key"]: r for r in records}
+        summary.update(
+            {
+                "status": "PASS",
+                "remaining": 0,
+                "reused": 32,
+                "computed_new": 112,
+                "blocked_cells": [],
+                "reuse_attestations": [
+                    {
+                        "cell_key": key,
+                        "prior_run_id": "l1a-old",
+                        "prior_code_sha": code_sha,
+                        "output_sha256": by_key[key]["output_sha256"],
+                        "source_sha256": by_key[key]["source_sha256"],
+                        "quote_sha256": QUOTE,
+                        "engine": core.PROTOCOL_VERSION,
+                        "equivalence": "IDENTICAL_CODE",
+                        "verified_utc": "2026-10-13T00:00:00Z",
+                    }
+                    for key in sorted(overlap)
+                ],
+            }
+        )
     (root / "summaries" / stage / name).parent.mkdir(parents=True, exist_ok=True)
     (root / "summaries" / stage / name).write_text(
         json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"
@@ -322,8 +348,8 @@ def test_dispatch_l1b_guards(tmp_path):
         )
 
 
-def test_dispatch_l1c_still_refused(tmp_path):
-    with pytest.raises(ValueError, match="later reviewed PR"):
+def test_dispatch_l1c_requires_verified_p0(tmp_path):
+    with pytest.raises(ValueError, match="STOP_P0"):
         runner.validate_args(
             runner.build_cli().parse_args(
                 [
@@ -899,7 +925,7 @@ def test_finalize_only_path_does_not_replay():
     """All-complete recovery must still publish without recomputing a cell."""
     text = Path("audit/csi1000_layered_search_modal.py").read_text(encoding="utf-8")
     entrypoint = text.split("def run_search(", 1)[1].split("\ndef _write_inflight_ledger(", 1)[0]
-    assert 'stage == "l1-b" and not cells and len(completed) == len(enumerate_cells("l1-b"))' in entrypoint
+    assert 'stage in ("l1-b", "l1-c") and not cells and len(completed) == len(enumerate_cells(stage))' in entrypoint
     assert "if finalize_only" in entrypoint and "else list(" in entrypoint
 
 
@@ -972,7 +998,7 @@ def test_l1b_smoke_entrypoint_uses_fixed_container_and_no_charge_booking():
     assert "cpu=2" in text and "memory=4096" in text and "timeout=3600" in text
     assert '"smoke_pass.json"' in text
     assert "smoke=smoke" in text
-    assert 'if stage != "l1-b":' in text
-    assert 'smoke_recover = stage == "l1-b" and smoke and not cells and completed_new == 1' in text
-    assert 'if stage == "l1-b" and smoke and completed_new == 1:' in text
+    assert 'if stage not in ("l1-b", "l1-c"):' in text
+    assert 'smoke_recover = stage in ("l1-b", "l1-c") and smoke and not cells and completed_new == 1' in text
+    assert 'if stage in ("l1-b", "l1-c") and smoke and completed_new == 1:' in text
     assert "cells = []" in text
