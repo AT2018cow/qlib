@@ -740,7 +740,7 @@ def test_l1b_prefix_bound_to_signed_l1a_run(tmp_path):
 def test_materialize_detects_self_consistent_non_nav_drift(tmp_path):
     cell = core.enumerate_cells("l1-a")[0]
     root = tmp_path / "old"
-    summary = _export_tree(root, "l1-a", [cell], "l1a-old", "a" * 40)
+    _export_tree(root, "l1-a", [cell], "l1a-old", "a" * 40)
     record = json.loads((root / "cells" / cell["cell_key"] / "cell.json").read_text())
     spec = {k: record[k] for k in ("cell_key", "source_sha256", "output_sha256", "cache_key")}
     core.materialize_reuse_cells(tmp_path, "new", "old", [spec])
