@@ -615,6 +615,27 @@ def check_live_provider_match(
     return {"status": "PROVIDER_MATCH", "snapshot_sha256": live_snapshot_sha, "quote_sha256": live_quote_sha}
 
 
+def frozen_source_digest(entries: List[Dict[str, Any]]) -> str:
+    """Content identity of the entire frozen 11x5 inventory across runs."""
+    manifest_source_index({"sources": entries})  # 55 distinct candidate/phase rows
+    return stable_sha(sorted(entries, key=lambda e: (e["candidate_id"], int(e["phase"]))))
+
+
+def select_pending_batch(
+    eligible_cells: List[Dict[str, Any]], completed_keys: set, batch_limit: int
+) -> List[Dict[str, Any]]:
+    """Apply the batch limit AFTER removing verified completed work.
+
+    For L1-B, callers pass only the 112 eligible new cells, never the 32
+    materialized reuse cells. The complete roster is retained across runs.
+    """
+    keys = [c["cell_key"] for c in eligible_cells]
+    require(len(set(keys)) == len(keys), "duplicate eligible dispatch keys")
+    require(isinstance(batch_limit, int) and batch_limit >= 0, "invalid batch limit")
+    pending = [c for c in eligible_cells if c["cell_key"] not in completed_keys]
+    return pending[:batch_limit] if batch_limit else pending
+
+
 def materialize_reuse_cells(
     results_root: str | Path, new_prefix: str, old_prefix: str, specs: List[Dict[str, Any]]
 ) -> List[Dict[str, Any]]:
@@ -653,17 +674,13 @@ def materialize_reuse_cells(
         key = spec["cell_key"]
         dest = root / new_prefix / "cells" / key
         if dest.exists():
-            current = json.loads((dest / "cell.json").read_text(encoding="utf-8"))
-            require(
-                current.get("output_sha256") == record["output_sha256"]
-                and current.get("source_sha256") == record["source_sha256"],
-                f"reuse destination conflict: {key}",
-            )
-            manifest_hashes = current.get("artifact_sha256", {})
-            for name in ("daily_nav.csv", "fixed_report.parquet", "fixed_decisions.json", "metrics.json"):
+            # A resumed copy must be BYTE-IDENTICAL to the source, including
+            # cell metadata and non-NAV reports; self-consistent hashes on a
+            # divergent destination are not sufficient for reuse.
+            for name in ("cell.json", "daily_nav.csv", "fixed_report.parquet", "fixed_decisions.json", "metrics.json"):
                 require(
-                    (dest / name).is_file() and sha256_file(dest / name) == manifest_hashes.get(name),
-                    f"reuse destination bytes drift: {key}/{name}",
+                    (dest / name).is_file() and sha256_file(dest / name) == sha256_file(src / name),
+                    f"reuse destination bytes drift/conflict: {key}/{name}",
                 )
             continue
         tmp = dest.parent / (dest.name + ".reuse-tmp")
