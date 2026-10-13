@@ -819,7 +819,7 @@ def test_l1b_prefix_bound_to_signed_l1a_run(tmp_path):
     )
     exact = runner.result_prefix("l1a-old", "l1-a", "a" * 40)
     assert len(runner.validate_for_dispatch(*args, exact, "b" * 40)) == 112
-    with pytest.raises(ValueError, match="audited L1-A"):
+    with pytest.raises(ValueError, match="audited l1-a"):
         runner.validate_for_dispatch(*args, exact.replace("l1a-old", "other-old"), "b" * 40)
 
 
@@ -1110,7 +1110,7 @@ def test_l1c_reconcile_pass_requires_exact_144_attestations():
     assert rec.check_stage_summary(summary)["attestations"] == 144
     with pytest.raises(ValueError, match="144-cell"):
         rec.check_stage_summary({**summary, "reuse_attestations": att[:-1]})
-    with pytest.raises(ValueError, match="120"):
+    with pytest.raises(ValueError, match="batch accounting"):
         rec.check_stage_summary({**summary, "computed_new": 119})
     with pytest.raises(ValueError, match="mix prior run"):
         rec.check_stage_summary(
