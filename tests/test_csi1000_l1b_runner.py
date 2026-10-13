@@ -1112,6 +1112,10 @@ def test_l1c_reconcile_pass_requires_exact_144_attestations():
         rec.check_stage_summary({**summary, "reuse_attestations": att[:-1]})
     with pytest.raises(ValueError, match="120"):
         rec.check_stage_summary({**summary, "computed_new": 119})
+    with pytest.raises(ValueError, match="mix prior run"):
+        rec.check_stage_summary(
+            {**summary, "reuse_attestations": [{**att[0], "prior_run_id": "other-run"}] + att[1:]}
+        )
     with pytest.raises(ValueError, match="differs from cell"):
         rec.check_stage_summary(
             {**summary, "reuse_attestations": [{**att[0], "source_sha256": "0" * 64}] + att[1:]}
@@ -1220,3 +1224,25 @@ def test_l1c_smoke_gate_and_runtime_code_paths():
     assert "cpu=2" in script and "memory=4096" in script and "timeout=3600" in script
     assert "retries=0" in script
     assert "else prepare_l1c_plan(" in script
+
+
+def test_l1c_materialize_all_144_then_resume_without_copying_new_cells(tmp_path):
+    """The real L1-C smoke copies 144 cells; later batches must recheck all."""
+    old = tmp_path / "l1b-original"
+    roster = core.enumerate_cells("l1-b")
+    _export_tree(old, "l1-b", roster, "l1b-old", "a" * 40)
+    specs = []
+    for cell in roster:
+        record = json.loads((old / "cells" / cell["cell_key"] / "cell.json").read_text(encoding="utf-8"))
+        specs.append({k: record[k] for k in ("cell_key", "source_sha256", "output_sha256", "cache_key")})
+
+    first = core.materialize_reuse_cells(tmp_path, "l1c-new", "l1b-original", specs)
+    second = core.materialize_reuse_cells(tmp_path, "l1c-new", "l1b-original", specs)
+    assert len(first) == len(second) == 144
+    assert [r["cell_key"] for r in second] == [spec["cell_key"] for spec in specs]
+    assert len(list((tmp_path / "l1c-new/cells").iterdir())) == 144
+
+    corrupted = tmp_path / "l1c-new/cells" / roster[5]["cell_key"] / "metrics.json"
+    corrupted.write_text('{"tampered":true}', encoding="utf-8")
+    with pytest.raises(ValueError, match="reuse destination bytes drift"):
+        core.materialize_reuse_cells(tmp_path, "l1c-new", "l1b-original", specs)
