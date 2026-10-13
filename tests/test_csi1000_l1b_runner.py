@@ -923,7 +923,7 @@ def test_l1b_smoke_entrypoint_uses_fixed_container_and_no_charge_booking():
     assert "retries=0" in text
     assert "cpu=2" in text and "memory=4096" in text and "timeout=3600" in text
     assert '"smoke_pass.json"' in text
-    assert 'smoke=smoke' in text
+    assert "smoke=smoke" in text
     assert 'if stage != "l1-b":' in text
     assert 'smoke_recover = stage == "l1-b" and smoke and not cells and completed_new == 1' in text
     assert 'if stage == "l1-b" and smoke and completed_new == 1:' in text
