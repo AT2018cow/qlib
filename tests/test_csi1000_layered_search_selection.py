@@ -27,7 +27,10 @@ def test_l3_variants_do_not_claim_any_fit():
     assert all(v["status"].startswith("BLOCKED") for v in preliminary["variants"])
     qualified = selection.l3_structure_plan(anchor, freq_screen_qualified=True)
     assert {(v["label_horizon"], v["retrain_frequency"]) for v in qualified["variants"]} == {
-        (20, 10), (20, 40), (10, 20), (40, 20)
+        (20, 10),
+        (20, 40),
+        (10, 20),
+        (40, 20),
     }
     assert qualified["max_new_fit_calls"] == 250
 
@@ -63,8 +66,9 @@ def test_finalists_are_capped_and_deterministically_sorted():
 
 def test_final_decision_does_not_promote_embedded_pass(tmp_path):
     path = tmp_path / "paired.json"
-    path.write_text(json.dumps({"stage": "l4", "baseline_eligible": True,
-                               "finalists": [{"verdict": "PASS"}]}), encoding="utf-8")
+    path.write_text(
+        json.dumps({"stage": "l4", "baseline_eligible": True, "finalists": [{"verdict": "PASS"}]}), encoding="utf-8"
+    )
     result = selection.decide_from_paired_file(path)
     assert result["decision"] == "KEEP_BASELINE_FOR_PRODUCT_SELECTION"
     assert result["promotion_authorized"] is False

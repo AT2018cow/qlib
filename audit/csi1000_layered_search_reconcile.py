@@ -62,32 +62,122 @@ def verify_sha256sums(root: str | Path) -> Dict[str, Any]:
     return {"files": n, "status": "SHA_VERIFIED"}
 
 
+def check_reuse_attestations(attestations: List[Dict[str, Any]], expected_keys: set) -> Dict[str, Any]:
+    """Every reused cell needs a complete attestation; silent reuse is refused."""
+    keys = [a.get("cell_key") for a in attestations]
+    require(len(set(keys)) == len(keys), "duplicate reuse attestations")
+    require(set(keys) == set(expected_keys), "reuse attestations do not cover the overlap roster")
+    for a in attestations:
+        for field in (
+            "cell_key",
+            "prior_run_id",
+            "prior_code_sha",
+            "output_sha256",
+            "source_sha256",
+            "quote_sha256",
+            "engine",
+            "equivalence",
+            "verified_utc",
+        ):
+            require(a.get(field), f"reuse attestation missing {field}: {a.get('cell_key')}")
+        require(
+            a["equivalence"] == "IDENTICAL_CODE" or a["equivalence"].startswith("REVIEWED_EQUIVALENT:"),
+            f"reuse equivalence undeclared: {a.get('cell_key')}",
+        )
+    return {"attestations": len(attestations)}
+
+
 def check_stage_summary(summary: Dict[str, Any]) -> Dict[str, Any]:
-    """Validate a stage summary, re-checking every verified cell record."""
-    require(summary.get("training_performed") is False, "training flag must be false for PR-S0 stages")
+    """Validate cumulative PASS and incomplete batch accounting against roster."""
+    require(summary.get("training_performed") is False, "training flag must be false")
     require(summary.get("promotion_authorized") is False, "promotion must never be pre-authorized")
     require(summary.get("source_volume_read_only") is True, "source must stay read-only")
     expected = int(summary.get("expected", -1))
     completed = int(summary.get("completed", -1))
     blocked = int(summary.get("blocked", -1))
-    require(expected >= 0 and completed >= 0 and blocked >= 0, "summary counters missing")
-    require(completed + blocked == expected, "summary counters inconsistent")
-    if summary.get("stage") in ("l1-a", "l1-b", "l1-c"):
+    remaining = int(summary.get("remaining", 0))
+    require(min(expected, completed, blocked, remaining) >= 0, "summary counters missing")
+    require(completed + blocked + remaining == expected, "summary counters inconsistent")
+    status = summary.get("status")
+    if status == "PASS":
+        require(blocked == 0 and remaining == 0 and completed == expected, "PASS requires all expected cells")
+    elif status == "INCOMPLETE_BATCH":
+        require(blocked == 0 and remaining > 0, "incomplete batch counters invalid")
+    elif status == "BLOCKED":
+        require(blocked > 0, "BLOCKED summary has no blocked cells")
+    else:
+        require(status is None and remaining == 0, "unknown stage status")
+    if summary.get("stage") == "l1-c":
         require(expected <= L1_CELL_CAP, "L1 exceeds 264-cell cap")
     verified = summary.get("verified_cells", [])
     require(len(verified) == completed, "verified cell list does not match completed count")
+    keys = [record.get("cell_key") for record in verified]
+    require(len(keys) == len(set(keys)), "duplicate verified cell identities")
     for record in verified:
         check_cell_record(record)
     for row in summary.get("blocked_cells", []):
         require(row.get("cell_key") and row.get("reason"), "blocked cell without reason")
-    return {"stage": summary.get("stage"), "expected": expected, "completed": completed, "blocked": blocked}
+    reuse = summary.get("reuse_attestations", [])
+    reuse_info: Dict[str, Any] = {"attestations": 0}
+    if summary.get("stage") == "l1-b":
+        from audit.csi1000_layered_search_core import enumerate_cells
+
+        roster = {c["cell_key"]: c for c in enumerate_cells("l1-b")}
+        overlap = {c["cell_key"] for c in enumerate_cells("l1-a")}
+        require(expected == len(roster) == 144, "l1-b expected roster must be exactly 144")
+        require(set(keys).issubset(roster), "l1-b verified cells outside registered roster")
+        for record in verified:
+            spec = roster[record["cell_key"]]
+            require(
+                (
+                    record.get("candidate_id"),
+                    record.get("phase"),
+                    record.get("topk"),
+                    record.get("dropn"),
+                )
+                == (spec["candidate_id"], spec["phase"], spec["topk"], spec["dropn"]),
+                "l1-b cell metadata differs from registered roster",
+            )
+        require(
+            set(a.get("cell_key") for a in reuse) == overlap and len(reuse) == 32,
+            "l1-b needs exactly the 32-cell overlap attested",
+        )
+        reuse_info = check_reuse_attestations(reuse, overlap)
+        by_key = {r["cell_key"]: r for r in verified}
+        for attestation in reuse:
+            record = by_key.get(attestation["cell_key"])
+            require(record is not None, "l1-b attestation references absent verified cell")
+            for field in ("source_sha256", "output_sha256", "quote_sha256"):
+                require(attestation[field] == record.get(field), f"l1-b attestation {field} differs from cell")
+            require(attestation["engine"] == record.get("engine"), "l1-b attestation engine differs from cell")
+        if status == "PASS":
+            require(
+                set(keys) == set(roster) and completed == 144 and blocked == 0 and remaining == 0,
+                "l1-b PASS needs exact 144/144 roster",
+            )
+            require(
+                summary.get("reused") == 32 and summary.get("computed_new") == 112,
+                "l1-b PASS must book 32 reused / 112 newly computed",
+            )
+    elif reuse:
+        reuse_info = check_reuse_attestations(reuse, {a.get("cell_key") for a in reuse})
+    return {
+        "stage": summary.get("stage"),
+        "status": status,
+        "expected": expected,
+        "completed": completed,
+        "blocked": blocked,
+        "remaining": remaining,
+        **reuse_info,
+    }
 
 
 def check_trial_ledger(path: str | Path) -> Dict[str, Any]:
-    """Trial ledger: unique keys, real App IDs, booked finite spend, no placeholders."""
+    """Trial ledger: run-scoped unique keys, real App IDs, booked finite spend."""
     rows = [json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
-    keys = [r.get("cell_key") for r in rows]
-    require(len(set(keys)) == len(keys), "duplicate cell keys in trial ledger")
+    keys = [(r.get("run_id"), r.get("cell_key")) for r in rows]
+    require(all(k[0] and k[1] for k in keys), "trial row missing run_id or cell_key")
+    require(len(set(keys)) == len(keys), "duplicate (run_id, cell_key) in trial ledger")
     for r in rows:
         require(r.get("cell_key"), "trial row missing cell_key")
         require(r.get("app_id") not in PLACEHOLDER_IDS, f"trial {r.get('cell_key')} has no real App ID")
@@ -202,10 +292,13 @@ def _demo_metrics(frame: Dict[str, List[float]]) -> Dict[str, Any]:
 def _demo_record(cell_key: str, candidate: str, phase: int, frame: Dict[str, List[float]]) -> Dict[str, Any]:
     numbers = _demo_metrics(frame)
     from audit.csi1000_layered_search_replay import report_metrics
+
     _, checks = report_metrics(frame)
-    if (checks["max_account_return_delta"] > 1e-10
-            or checks["max_cost_rate_delta"] > 1e-10
-            or checks["max_turnover_rate_delta"] > 1e-10):
+    if (
+        checks["max_account_return_delta"] > 1e-10
+        or checks["max_cost_rate_delta"] > 1e-10
+        or checks["max_turnover_rate_delta"] > 1e-10
+    ):
         raise ValueError("synthetic demonstration violates the real daily accounting contract")
     tag = hashlib.sha256(cell_key.encode()).hexdigest()
     return {
@@ -301,6 +394,7 @@ def write_demo(root: str | Path) -> Dict[str, Any]:
         json.dumps(
             {
                 "cell_key": tamper_key,
+                "run_id": "demo-fail",
                 "status": "PASS",
                 "app_id": "",
                 "spend_usd": float("nan"),

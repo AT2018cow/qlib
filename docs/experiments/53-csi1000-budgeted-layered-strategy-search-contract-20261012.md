@@ -1,8 +1,18 @@
 # 53 — CSI1000 有预算上限的分层历史策略搜索合同（2026-10-12）
 
-> **状态：待评审研究计划 / NOT EXECUTED。** 这是给独立新任务的执行基础，不表示已运行任何新 Modal 任务、已取得新最优、已获新预算授权，亦不批准自动切换生产。**目标是尽快选定可用于每日选股和收益网页的历史优选策略，不要求先等待数月前向数据。**
+> **状态：历史合同及 L1-B 执行修订。** P0 和 L1-A 已有独立运行证据；L1-B 尚未执行。本文件不授权自动切换生产。**目标是尽快选定可用于每日选股和收益网页的历史优选策略，不要求先等待数月前向数据。**
 >
 > **独立研究例外与权限边界：** 本文建议在新的隔离研究分支、独立 Modal research Volume 内对已经消费过的历史数据开展公开标注的产品选型。它**不**改写既有 Stage-A / Stage-B 实验结论，不将已观察的 2025–2026 区间重新包装成 OOS，不覆盖当前 Winner 的生产配置；正式选择和上线需要单独 reviewed decision/release PR。当前默认仍是 KEEP_CANONICAL_PENDING_RESEARCH_DECISION，直到新的书面决策获批。
+
+## 2026-10-13 L1-B 运行政策修订（优先于本文旧费用门禁）
+
+**用户要求：实验进度优先，避免明显的大额浪费，但不要求每批填写费用账本、生成实时 P90 报价或另走预算审批。** 下述政策只适用于已审查、已合并的 L1-B 组合回放代码；此前 P0/L1-A 的历史实际费用/审计资料保持原样，L2/L3/L4 的实施及生产晋级仍须相应代码与数据验收。本节明确替代下文 §2.1/§2.2、§7.2、§7.3 中与 L1-B 冲突的 **USD30/$6 硬费用门、每批 P90/20% 预留、账本预占与结算、每批人工预算审批** 条文。原 $30 和各层数字保留作历史研究规划基线，**不再阻断 L1-B 派发**。
+
+- **第一成功率优先**：检出干净且固定的 commit SHA，离线 pytest、Black -l 120、pyflakes 和 Modal CLI 验收通过；用同一 Modal image、原冻结 Volume、原研究输出前缀跑 **1 格新增计算/1 worker** 的实际付费 `--smoke --batch-limit 1 --max-workers 1`。预检仍必须核验 55 条冻结来源、live provider/F1 quote SHA、32 格 L1-A 字节复用。smoke 必须经过完整文件、指标与汇总校验并产生 `smoke_pass.json`；无有效 smoke proof，程序拒绝长批任务。
+- **可控扩并发**：smoke PASS 后，同一 `run_id`、同一 code SHA/resume prefix，先用 **2 workers × 8 新格**验证稳定性，然后可提高至 **4 workers、每批 16–32 新格**；仅在资源与延迟稳定时考虑进一步提高，**最多 8 workers**。每个 replay 容器固定 **2 vCPU、4 GiB RAM、3600 秒单格超时、0 次自动重试**；4 workers 理论峰值约 8 vCPU/16 GiB，不改变冻结策略及算法。前台连接、工具超时覆盖整个批次；不能满足则减小批次。不得无约束长批、自动无限重试、切换 SHA 混用结果。
+- **轻量现场保护**：保留 Modal App ID、真正退出码、耗时、失败类型、容器 OOM/timeout、完成格数以及出现异常时可见的账单概览；**不强制价格快照、P90 文件、手工入账或逐批审批**。如 image 构建或 import/Cython smoke 失败，停止而非盲目多次重启；相同故障连续出现、OOM、费用突增或重复跑已完成格，立即中止并定位原因。
+- **不能放松的可信度门**：只读原数据 Volume、既有 4/4 P0 和 32/32 L1-A 导出、复用 SHA/代码等价证明、预注册 144 格、112 新格、单元指标独立复算、无代码漂移和仅研究 Volume 写入、L1-C 晋级条件、人工批准生产发布，全部保留。不能把已消费的历史期说成 OOS。
+- **启动边界**：本合同修订和代码合并均不自行启动云端任务。操作者在确认离线测试通过、原研究证据路径齐全后执行一次有限 smoke；其后按本节无需逐批审批即可继续明确受控的 L1-B 批次。
 
 ## 0. 目标、成功定义和关键约束
 
@@ -49,7 +59,7 @@
 
 ## 2. 总预算、停止规则和授权边界
 
-### 2.1 整轮硬上限（新研究，不沿用原 320 格的 $20 授权）
+### 2.1 原始全轮费用规划（保留为历史基线；L1-B 适用上文修订）
 
 | 项目 | 初始硬上限 | 计数规则 |
 | --- | ---: | --- |
@@ -63,7 +73,7 @@
 
 **分层费用硬封顶**（累计总额不可超，默认不可层间挪用；未花完也不授权下一层超限）：P0/预检 USD 2，L1 USD 6，L2 USD 12，L3 USD 6，L4/决赛 USD 4；总计 **USD 30**。每层若实际费率显示不够做完预定范围，则**提前缩减**该层规模，保留审计证据，不默许提额。任何提高费用/fit/时间或改变搜索空间需新 PR 和显式授权；本草案本身不构成已批准云端消费。
 
-### 2.2 程序必须执行的 fail-closed 止损
+### 2.2 原始费用门禁和保留的来源/数据 fail-closed（L1-B 费用例外见修订）
 
 1. **每批开始前**从 Modal 当时实际 billing rates 和已完成同规格作业的真实耗时、CPU/GiB 秒、App/image startup 开销估算 P50/P90 单元费，测算这一批的 P90 新增金额；若预计超过**本层剩余额度或全局剩余额度**，不启动，先减少 batch size 或 STOP_BUDGET。
 2. 总费用达到本层上限/全局上限，或真实 fit 次数/累计时间达上限，停止申请新任务；在飞任务由预设 batch 与剩余预算覆盖，不依赖杀掉正在提交结果的 worker 追求零超支。账单更新滞后时预留 **至少 20% 剩余预算**给已派发但未结算工作，费用未知即 STOP_COST_UNKNOWN。
@@ -146,7 +156,7 @@
 - **两级缓存**：信号级缓存 key = (code_sha, provider SHA, PIT/feature/label SHA, candidate/params SHA, training cutoff, retrain calendar, phase, seed, version, prediction SHA)；回放级缓存再加入 (TopK,DropN,execution schema,quote-union SHA, fee/limit/factor rules, date interval, initial cash, engine version)。必须严格 SHA+版本重新验证，mtime 或文件名相同不能视为缓存命中。
 - 训练提案层优先**多保真筛选**：4×20 日折只训练最少候选，再挑几套做双 phase 长期 rolling，最终五 phase 决赛；若用 Optuna TPE/Successive Halving，仅能在已预注册的阶段和指标上提出/剪枝，不把 Stage-B 的 2025–2026 已见成绩冒充 unseen validation，不在最终决赛依据部分结果剪掉落后候选。
 - 为避免当前仓库此前的 Modal nested-remote/hydration 失败：需要新 app 调用其他 Modal apps 时用**可审计的 local entrypoint/CLI 分批边界**；不要在一个 remote function 内直接用未 hydration 的 sibling remote；编排避免重复启动既有 App。
-- 首批实测后成本估算公式：P90 预测本批费用 = Σ 每种任务的 P90 实际 (physical_cpu×elapsed_s×当时费率 + GiB×elapsed_s×当时费率 + 其他已显示资源费用) + 已测 build/start/collector 开销；必须调用 operator 工作区当前真实 modal billing rates/report，**不得使用旧示例定价当作现价**。保存每个 batch 的预估 vs 账单校准与日累计剩余额度。
+- **非 L1-B 原始预算流程**：首批实测后成本估算公式：P90 预测本批费用 = Σ 每种任务的 P90 实际 (physical_cpu×elapsed_s×当时费率 + GiB×elapsed_s×当时费率 + 其他已显示资源费用) + 已测 build/start/collector 开销；必须调用 operator 工作区当前真实 modal billing rates/report，**不得使用旧示例定价当作现价**。保存每个 batch 的预估 vs 账单校准与日累计剩余额度。
 - 不先承诺 16 格 / 264 格 / 1,200 fit 一定可在 USD30 内做完：预算是**硬止损，不是保证能跑满**。按真实成本自动缩小候选数量，停在合理的可核验阶段；若成本不足以得到最小五相位证据，则以 Baseline 决策收尾。
 
 ### 7.3 通过 OpenCode 的 Modal CLI 运行：强制前台，禁止 detach
@@ -156,6 +166,7 @@
 下述示例只定义**未来实现后**应提供的 CLI 形状；文件、参数尚不存在，并非现在可运行的命令：
 
 ~~~bash
+# 此处为历史 P0 示例；L1-B 不需要每批 P90/审批，改见本文顶部修订与 operator README。
 # 先由操作员显式确认本次审批的预算，并设置充分长的 OpenCode tool timeout
 export ESTIMATED_TOTAL_USD="2.00"
 set -o pipefail
@@ -168,7 +179,7 @@ modal run audit/csi1000_layered_search_modal.py \
 # 同时保存真实 CLI exit code、Modal App ID、UTC 起止、server-side log 与账单明细
 ~~~
 
-CLI 需支持 --help、--stage、--run-id、--max-workers、--batch-limit、--estimated-total-usd、--resume-from-manifest 和 --dry-run / --inventory 等经测试接口；**实际以新 runner 的真实 --help 为准，不得假定这些 flags 已有**。若单批 P90 超过工具 timeout：先减小单批任务数/训练日历区间且保留严格 checkpoint 依赖和排序，或停下来取得**受批准的长驻前台执行机制**；不可先派发大批，再由 CLI 强退并宣称作业成功。
+原始 P0/L1-A CLI 需支持 --help、--stage、--run-id、--max-workers、--batch-limit、--estimated-total-usd、--resume-from-manifest 和 --dry-run / --inventory 等经测试接口；L1-B 不需要 --estimated-total-usd/--ledger/--cost-quote，但必须先使用 --smoke；**实际以新 runner 的真实 --help 为准，不得假定这些 flags 已有**。若单批 P90 超过工具 timeout：先减小单批任务数/训练日历区间且保留严格 checkpoint 依赖和排序，或停下来取得**受批准的长驻前台执行机制**；不可先派发大批，再由 CLI 强退并宣称作业成功。
 
 ### 7.4 Modal Volume、身份、作业隔离与恢复
 

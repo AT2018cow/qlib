@@ -408,12 +408,19 @@ def test_reconcile_summary_ledger_and_demo(tmp_path):
         rec.check_stage_summary({**summary, "verified_cells": records[:3]})
     ledger = tmp_path / "trial.jsonl"
     ledger.write_text(
-        json.dumps({"cell_key": "c0", "status": "PASS", "app_id": "app-1", "spend_usd": 0.4, "fits": 0}) + "\n",
+        json.dumps({"cell_key": "c0", "run_id": "r1", "status": "PASS", "app_id": "app-1", "spend_usd": 0.4, "fits": 0})
+        + "\n",
         encoding="utf-8",
     )
     assert rec.check_trial_ledger(ledger)["trials"] == 1
     ledger.write_text(
-        json.dumps({"cell_key": "c1", "status": "PASS", "app_id": "", "spend_usd": 0.4}) + "\n", encoding="utf-8"
+        json.dumps({"cell_key": "c0", "run_id": "r2", "status": "PASS", "app_id": "app-2", "spend_usd": 0.1}) + "\n",
+        encoding="utf-8",
+    )
+    assert rec.check_trial_ledger(ledger)["trials"] == 1  # same cell, new run: distinct row
+    ledger.write_text(
+        json.dumps({"cell_key": "c1", "run_id": "r1", "status": "PASS", "app_id": "", "spend_usd": 0.4}) + "\n",
+        encoding="utf-8",
     )
     with pytest.raises(ValueError, match="no real App ID"):
         rec.check_trial_ledger(ledger)
