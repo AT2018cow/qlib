@@ -41,6 +41,7 @@ from audit.csi1000_layered_search_core import (
     build_protocol,
     check_cell_record,
     enumerate_cells,
+    frozen_source_digest,
     load_frozen_profiles,
     manifest_source_index,
     plan_l1b_reuse,
@@ -48,6 +49,7 @@ from audit.csi1000_layered_search_core import (
     require,
     require_p0_pass,
     require_signed_l1a_export,
+    select_pending_batch,
     verify_export_cells,
 )
 
@@ -345,6 +347,7 @@ if _HAS_MODAL:
             "quote_sha256": quote_sha,
             "sources": entries,
         }
+        payload["source_55_sha256"] = frozen_source_digest(entries)
         target = RESULTS / prefix / "frozen_source_11x5.json"
         target.parent.mkdir(parents=True, exist_ok=True)
         encoded = json.dumps(payload, indent=2, sort_keys=True, allow_nan=False) + "\n"
@@ -362,6 +365,7 @@ if _HAS_MODAL:
             "provider_fingerprint": payload["provider_fingerprint"],
             "quote_sha256": payload["quote_sha256"],
             "quote_union_size": payload["quote_union_size"],
+            "source_55_sha256": payload["source_55_sha256"],
         }
 
     @app.function(volumes={str(RESULTS): research}, cpu=1, memory=1024, timeout=120)
@@ -620,7 +624,9 @@ if _HAS_MODAL:
         if stage == "p0" and max_workers > 2:
             raise ValueError("STOP_BUDGET: P0 must start with no more than two workers")
         prefix = result_prefix(run_id, stage, sha)
-        estimate_n = len(cells)
+        # Quote only the bounded NEW work in this batch; do not charge the
+        # 32 reused cells or quote all 112 when --batch-limit is smaller.
+        estimate_n = min(len(cells), batch_limit) if stage == "l1-b" and batch_limit else len(cells)
         check_operator_cost_quote(cost_quote, float(estimated_total_usd), estimate_n)
         ledger_obj = BudgetLedger.load(ledger)
         gate = ledger_obj.preflight("p0" if stage == "p0" else "l1", float(estimated_total_usd))
@@ -647,6 +653,10 @@ if _HAS_MODAL:
                 plan["provider_snapshot_sha256"],
                 plan["quote_sha"],
             )
+            require(
+                verified_roster.get("source_55_sha256") == plan["source_55_sha256"],
+                "STOP_L1: live frozen 11x5 source inventory differs from audited L1-A export",
+            )
             # Materialize BEFORE the empty-batch check and BEFORE any new
             # compute: reuse must be proven with zero replay spend at risk.
             # Idempotent: identical bytes resume, conflicts refuse.
@@ -665,8 +675,7 @@ if _HAS_MODAL:
         else:
             planned = sorted(enumerate_cells(stage), key=lambda c: c["cell_key"])
         completed = set(inventory_completed_remote.remote(prefix, stage))
-        pending = [c for c in planned if c["cell_key"] not in completed]
-        cells = pending[:batch_limit] if batch_limit else pending
+        cells = select_pending_batch(planned, completed, batch_limit)
         if not cells:
             raise ValueError("STOP: no unexecuted cells in this batch; request the existing verified summary")
         print(
@@ -687,7 +696,7 @@ if _HAS_MODAL:
             flush=True,
         )
         outcomes = list(replay_cell_remote.with_options(max_containers=max_workers).map(build_jobs(cells, prefix)))
-        summary = finalize_remote.remote(prefix, stage, outcomes, sha, run_id, attestations)
+        summary = finalize_remote.remote(prefix, stage, outcomes, sha, run_id, attestations=attestations)
         _write_inflight_ledger(
             Path(ledger).expanduser().parent / TRIAL_LEDGER_NAME,
             stage,
@@ -854,7 +863,8 @@ def prepare_l1b_plan(
         verified_output_sha[record["cell_key"]] = measured
     manifest_path = evidence / "frozen_source_11x5.json"
     require(manifest_path.is_file(), "STOP_L1: frozen 11x5 manifest missing from reuse export")
-    manifest_sources = manifest_source_index(json.loads(manifest_path.read_text(encoding="utf-8")))
+    original_sources = json.loads(manifest_path.read_text(encoding="utf-8"))["sources"]
+    manifest_sources = manifest_source_index({"sources": original_sources})
     current = {
         "quote_sha": quotes.pop(),
         "provider_snapshot_sha256": providers.pop(),
@@ -871,6 +881,7 @@ def prepare_l1b_plan(
         "prior_run_id": current["prior_run_id"],
         "prior_code_sha": current["prior_code_sha"],
         "quote_sha": current["quote_sha"],
+        "source_55_sha256": frozen_source_digest(original_sources),
     }
 
 
@@ -930,10 +941,17 @@ def validate_for_dispatch(
             )
         _check_reuse_prefix(reuse_prefix)
         plan = prepare_l1b_plan(reuse_summary, equivalence_ref, current_code_sha)
+        required_prefix = result_prefix(plan["prior_run_id"], "l1-a", plan["prior_code_sha"])
+        require(
+            reuse_prefix == required_prefix,
+            "STOP_L1: --reuse-prefix does not match the audited L1-A run/stage/code SHA",
+        )
         new_cells = sorted(plan["new_cells"], key=lambda c: c["cell_key"])
         if batch_limit and (not isinstance(batch_limit, int) or not 1 <= batch_limit <= len(new_cells)):
             raise ValueError("STOP: --batch-limit out of range for the 112 new L1-B cells")
-        return new_cells[:batch_limit] if batch_limit else new_cells
+        # Preserve the full 112-cell eligible roster: run_search applies the
+        # batch limit only AFTER excluding completed keys in this run prefix.
+        return new_cells
     if resume_from_manifest:
         _check_manifest(resume_from_manifest)
     cells = enumerate_cells(stage)
