@@ -57,74 +57,35 @@ Collect current authorized Modal billing rates and real measured worker resource
 
 **The zero prices, zero resource seconds and placeholders above are deliberately invalid.** Do not use them as executable estimates. Fill every field from approved actual cost evidence; check that P90 cost and pending spend stay within each layer and global cap. The remote P0 entrypoint requires --stage p0, --run-id, --max-workers 2, --estimated-total-usd, --cost-quote and a persistent --ledger outside the repository.
 
-## P0 image-build failure and re-attempt guard (2026-10-13)
+## P0 build incident and fast unblocking (2026-10-13)
 
-- The first P0 attempt was **BLOCKED before any replay cell was dispatched**:
-  the git-less source image ran `make prerequisite` before installing pyqlib,
-  and setuptools-scm raised `LookupError: unable to detect version`.
-  No P0 result exists from that attempt.
-- The operator reported a real billed image-build charge of
-  **USD 0.00052688** (App ID `ap-xVpkAvkIqizi3X3lHMKHMg`),
-  booked to P0 with billing evidence. Check the actual local
-  persisted ledger and saved bill again before any new attempt;
-  these claims in this document are not a substitute for billing verification.
-- PR-S0 now mirrors the working Stage-A image: install pyqlib
-  non-editably with `pip install . --no-build-isolation --no-deps`
-  so source-tree `qlib/_version.py` is populated, then invoke
-  the two-extension direct Cython build in-place. Smoke-import both
-  compiled extensions. Image-build/runtime compatibility still needs
-  a genuine subsequent Modal test; static/pytest green does not prove it.
-- Re-run the offline suite and independent clean-commit check first,
-  confirm the previous provisional estimate has been cleared by
-  real billing, then refresh the rate SHA/P90 quote for the **new**
-  image and report the residual P0 cap (less than USD 2).
-  Keep the **same persistent ledger** and use a **new run_id**;
-  never silently reset booked spend or reuse an old image/code SHA.
-- A new `modal run` constitutes new billable activity and is **not**
-  authorized by the code fix itself. Obtain explicit operator budget
-  approval and remain in the attached foreground. If anything fails,
-  stop and book the App's actual build/queue/helper costs before
-  deciding on another attempt.
+The two prior P0 attempts **never reached replay**:
 
-## P0 second attempt: SCM version override hotfix (2026-10-13)
+- First: `make prerequisite` failed because setuptools-scm could not
+  derive the dynamic pyqlib package version in a Modal image without `.git`.
+- Second: `pip install . --no-build-isolation --no-deps` failed for the
+  same reason under the newer setuptools/vcs-versioning toolchain.
+- Operator reported two actual App charges, USD 0.00052688 +
+  USD 0.00384060 = **USD 0.00436748** P0 cumulative. No replay
+  cells ran. Preserve the existing ledger and billing evidence.
 
-- Second operator attempt **also failed before any P0 cell executed**. The
-  Git-less image's `pip install . --no-build-isolation --no-deps` triggered
-  `setuptools_scm/vcs_versioning LookupError`; using the Stage-A image recipe
-  is **not** proof that this image builds with today's toolchain.
-- Operator reports App `ap-4Wput1MKLoRCEcTqua5m2G` billed
-  **USD 0.00384060**, with the first attempt's USD 0.00052688
-  making reported P0 actual spend USD 0.00436748. Both failed attempts were
-  reportedly booked with zero pending, no emitted trial rows, and zero
-  dispatched replay cells. These are operator claims, not independent
-  billing access by this PR's author; retain original billing JSON hashes.
-- Fix: configure **distribution-scoped**, pinned synthetic build metadata
-  `SETUPTOOLS_SCM_PRETEND_VERSION_FOR_PYQLIB=0.0.0`
-  and `VCS_VERSIONING_PRETEND_VERSION_FOR_PYQLIB=0.0.0` inside the
-  *P0 image only*. The Git SHA and frozen source hashes remain authoritative
-  for model/replay provenance; the metadata string is not a research version.
-  The image now asserts that installed `pyqlib` metadata and source-tree
-  `qlib.__version__` match this build-only value.
-- Offline revalidation has two separate steps: (a) full LOCAL_PASS pytest,
-  which tests the configured image guard, and (b) **real non-network build**
-  of the actual pyqlib package from a copied Git-less source tree:
+**Current fix:** P0 does **not need to package/install pyqlib** to replay
+already frozen signals. The image now copies the repository as before,
+writes a build-only `qlib/_version.py`, compiles the two needed Cython
+modules from a separate `/tmp` working directory, writes compiled
+extensions into the copied source tree and smoke-imports Qlib. This
+avoids invoking `setuptools-scm` metadata generation altogether.
+The canonical code Git SHA and provider/source SHA are unchanged.
 
-~~~bash
-python audit/csi1000_p0_scmless_build_check.py
-~~~
-
-  Step (b) requires installed `setuptools`, `setuptools-scm`, `Cython`,
-  `numpy`, `wheel`, and `pip` (prefer image-equivalent versions). A
-  missing prerequisite is BLOCKED, not PASS. The tool executes `pip wheel`
-  against a scratch source tree with **no .git and no preexisting
-  qlib/_version.py**, then verifies the generated wheel metadata and version
-  file. It performs no remote Modal actions, and disallows pip index access.
-- Only after both offline gates pass should the operator check `modal run
-  audit/csi1000_layered_search_modal.py --help`, take fresh P90 quotes for
-  the changed image, and obtain explicit approval for another attached P0
-  attempt. Never skip invoice reconciliation or reset the **same** persistent
-  ledger. If building or importing fails, STOP and book that App's actual
-  spend before further work. No L1 or production promotion is authorized.
+Do not waste cycles on wheel packaging tests (P0 never creates one).
+Run the existing short local pytest once and check the Modal CLI. Then,
+with the **same** persisted ledger, a refreshed P90 estimate and the
+operator's approval, run the actual **four-cell P0** in the attached
+foreground (initial maximum two workers) and collect the real results.
+Only genuine remote replay verifies the image. If the build fails again,
+save its exact traceback and App ID; do not trigger an automatic
+unbounded retry. The existing P0 $2 budget remains the software
+contract unless separately reviewed.
 
 ## After a P0 run, before L1
 
