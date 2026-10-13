@@ -88,50 +88,75 @@ def check_reuse_attestations(attestations: List[Dict[str, Any]], expected_keys: 
 
 
 def check_stage_summary(summary: Dict[str, Any]) -> Dict[str, Any]:
-    """Validate one stage summary's completeness and no-overwrite invariants."""
-    require(summary.get("training_performed") in (False,), "training flag must be false for PR-S0 stages")
+    """Validate cumulative PASS and incomplete batch accounting against roster."""
+    require(summary.get("training_performed") is False, "training flag must be false")
     require(summary.get("promotion_authorized") is False, "promotion must never be pre-authorized")
     require(summary.get("source_volume_read_only") is True, "source must stay read-only")
     expected = int(summary.get("expected", -1))
     completed = int(summary.get("completed", -1))
     blocked = int(summary.get("blocked", -1))
-    require(expected >= 0 and completed >= 0 and blocked >= 0, "summary counters missing")
-    require(completed + blocked == expected, "summary counters inconsistent")
+    remaining = int(summary.get("remaining", 0))
+    require(min(expected, completed, blocked, remaining) >= 0, "summary counters missing")
+    require(completed + blocked + remaining == expected, "summary counters inconsistent")
+    status = summary.get("status")
+    if status == "PASS":
+        require(blocked == 0 and remaining == 0 and completed == expected, "PASS requires all expected cells")
+    elif status == "INCOMPLETE_BATCH":
+        require(blocked == 0 and remaining > 0, "incomplete batch counters invalid")
+    elif status == "BLOCKED":
+        require(blocked > 0, "BLOCKED summary has no blocked cells")
+    else:
+        require(status is None and remaining == 0, "unknown stage status")
     if summary.get("stage") == "l1-c":
         require(expected <= L1_CELL_CAP, "L1 exceeds 264-cell cap")
     verified = summary.get("verified_cells", [])
     require(len(verified) == completed, "verified cell list does not match completed count")
+    keys = [record.get("cell_key") for record in verified]
+    require(len(keys) == len(set(keys)), "duplicate verified cell identities")
     for record in verified:
         check_cell_record(record)
     for row in summary.get("blocked_cells", []):
         require(row.get("cell_key") and row.get("reason"), "blocked cell without reason")
     reuse = summary.get("reuse_attestations", [])
     reuse_info: Dict[str, Any] = {"attestations": 0}
-    if reuse or summary.get("stage") == "l1-b":
-        overlap = {c["cell_key"] for c in verified} & {a.get("cell_key") for a in reuse}
-        require(len(reuse) == len(overlap) and overlap, "l1-b reuse attestations incomplete")
-        reuse_info = check_reuse_attestations(reuse, overlap)
-    if summary.get("stage") == "l1-b" and summary.get("status") == "PASS":
-        # A PASS l1-b summary is a final claim: the full 144 roster verified
-        # with exactly the 32-cell L1-A overlap attested. Anything less is an
-        # incomplete batch, never a passing evaluation.
+    if summary.get("stage") == "l1-b":
         from audit.csi1000_layered_search_core import enumerate_cells
 
-        overlap_roster = {c["cell_key"] for c in enumerate_cells("l1-b")} & {
-            c["cell_key"] for c in enumerate_cells("l1-a")
-        }
-        require(expected == 144 and completed == 144 and blocked == 0, "l1-b PASS needs 144/144 with 0 blocked")
-        require(len(verified) == 144, "l1-b PASS needs 144 verified cells")
-        require(
-            {a.get("cell_key") for a in reuse} == overlap_roster and len(reuse) == 32,
-            "l1-b PASS needs exactly the 32-cell overlap attested",
-        )
-        reuse_info = check_reuse_attestations(reuse, overlap_roster)
+        roster = {c["cell_key"]: c for c in enumerate_cells("l1-b")}
+        overlap = {c["cell_key"] for c in enumerate_cells("l1-a")}
+        require(expected == len(roster) == 144, "l1-b expected roster must be exactly 144")
+        require(set(keys).issubset(roster), "l1-b verified cells outside registered roster")
+        for record in verified:
+            spec = roster[record["cell_key"]]
+            require(
+                (record.get("candidate_id"), record.get("phase"), record.get("topk"), record.get("dropn"))
+                == (spec["candidate_id"], spec["phase"], spec["topk"], spec["dropn"]),
+                "l1-b cell metadata differs from registered roster",
+            )
+        require(set(a.get("cell_key") for a in reuse) == overlap and len(reuse) == 32,
+                "l1-b needs exactly the 32-cell overlap attested")
+        reuse_info = check_reuse_attestations(reuse, overlap)
+        by_key = {r["cell_key"]: r for r in verified}
+        for attestation in reuse:
+            record = by_key.get(attestation["cell_key"])
+            require(record is not None, "l1-b attestation references absent verified cell")
+            for field in ("source_sha256", "output_sha256", "quote_sha256"):
+                require(attestation[field] == record.get(field), f"l1-b attestation {field} differs from cell")
+            require(attestation["engine"] == record.get("engine"), "l1-b attestation engine differs from cell")
+        if status == "PASS":
+            require(set(keys) == set(roster) and completed == 144 and blocked == 0 and remaining == 0,
+                    "l1-b PASS needs exact 144/144 roster")
+            require(summary.get("reused") == 32 and summary.get("computed_new") == 112,
+                    "l1-b PASS must book 32 reused / 112 newly computed")
+    elif reuse:
+        reuse_info = check_reuse_attestations(reuse, {a.get("cell_key") for a in reuse})
     return {
         "stage": summary.get("stage"),
+        "status": status,
         "expected": expected,
         "completed": completed,
         "blocked": blocked,
+        "remaining": remaining,
         **reuse_info,
     }
 
