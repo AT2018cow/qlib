@@ -2,13 +2,13 @@
 
 Real frozen-signal replay via :mod:`audit.csi1000_layered_search_replay`:
 read-only source volume, separate research volume, per-cell SHA resume with
-atomic publish and fail-closed source/evidence gates. L1-B uses a smoke-first
+atomic publish and fail-closed source/evidence gates. L1-B/L1-C use a smoke-first
 execution policy without mandatory cost quotes or per-batch ledger booking.
-Zero training for p0/l1-a/l1-b: frozen Stage-B signals are replayed under
+Zero training for p0/l1-a/l1-b/l1-c: frozen Stage-B signals are replayed under
 different (TopK, DropN) combos only. L1-A requires a verified P0 summary;
-L1-B additionally requires a verified L1-A summary plus an explicit
-equivalence ref, and reuses its 32 overlap cells only after byte-level
-re-verification (never by cell_key alone).
+L1-B reuses 32 verified L1-A cells; L1-C reuses all 144 verified L1-B
+cells only after their two-phase screen independently passes. Both require
+reviewed cross-code replay equivalence and byte-level SHA verification.
 
 Foreground rule: when launched through OpenCode, NEVER pass ``--detach`` to
 ``modal run``. Keep the launcher attached with a tool timeout longer than the
@@ -46,10 +46,12 @@ from audit.csi1000_layered_search_core import (
     load_frozen_profiles,
     manifest_source_index,
     plan_l1b_reuse,
+    plan_l1c_reuse,
     replay_cache_key,
     require,
     require_p0_pass,
     require_signed_l1a_export,
+    require_signed_l1b_export,
     select_pending_batch,
     verify_export_cells,
 )
@@ -135,7 +137,7 @@ def check_operator_cost_quote(path: str, estimated_usd: float, covered_cells: in
 def check_l1b_smoke_gate(
     *, smoke: bool, max_workers: int, batch_limit: int, completed_new: int, smoke_passed: bool
 ) -> None:
-    """Require one fully finalized replay before dispatching a longer L1-B batch."""
+    """Require one finalized replay before dispatching a longer L1-B/C batch."""
     if smoke:
         require(max_workers == 1 and batch_limit == 1, "STOP_SMOKE: use one worker and one new cell")
         require(
@@ -144,7 +146,7 @@ def check_l1b_smoke_gate(
         )
     else:
         require(smoke_passed and completed_new >= 1, "STOP_SMOKE_FIRST: run --smoke with 1 worker/1 cell first")
-        require(1 <= batch_limit <= 32, "STOP_BATCH_BOUND: choose 1..32 new cells per L1-B batch")
+        require(1 <= batch_limit <= 32, "STOP_BATCH_BOUND: choose 1..32 new cells per L1-B/C batch")
 
 
 def result_prefix(run_id: str, stage: str, code_sha: str) -> str:
@@ -413,10 +415,11 @@ if _HAS_MODAL:
                 completed.append(root.name)
         smoke_passed = False
         marker = RESULTS / prefix / "smoke_pass.json"
-        if stage == "l1-b" and marker.is_file():
+        if stage in ("l1-b", "l1-c") and marker.is_file():
             proof = json.loads(marker.read_text(encoding="utf-8"))
-            new_keys = {c["cell_key"] for c in enumerate_cells("l1-b")} - {
-                c["cell_key"] for c in enumerate_cells("l1-a")
+            prior_stage = "l1-a" if stage == "l1-b" else "l1-b"
+            new_keys = {c["cell_key"] for c in enumerate_cells(stage)} - {
+                c["cell_key"] for c in enumerate_cells(prior_stage)
             }
             smoke_key = proof.get("cell_key")
             if (
@@ -576,7 +579,11 @@ if _HAS_MODAL:
             json.dumps(
                 build_protocol(
                     run_id,
-                    approved_by=("L1B_SMOKE_FIRST_NO_COST_APPROVAL" if stage == "l1-b" else "PENDING_BUDGET_APPROVAL"),
+                    approved_by=(
+                        "L1B_SMOKE_FIRST_NO_COST_APPROVAL"
+                        if stage == "l1-b"
+                        else ("L1C_SMOKE_FIRST_NO_COST_APPROVAL" if stage == "l1-c" else "PENDING_BUDGET_APPROVAL")
+                    ),
                 ),
                 indent=2,
                 sort_keys=True,
@@ -625,13 +632,17 @@ if _HAS_MODAL:
             raise RuntimeError("STOP_P0: signed source manifest already exists; refusing overwrite")
         manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         if smoke:
-            if stage != "l1-b" or summary["status"] != "INCOMPLETE_BATCH" or summary["completed"] != 33:
-                raise RuntimeError("STOP_SMOKE: expected 32 reused and exactly one verified new cell")
-            new_keys = {c["cell_key"] for c in enumerate_cells("l1-b")} - {
-                c["cell_key"] for c in enumerate_cells("l1-a")
+            prior_stage = {"l1-b": "l1-a", "l1-c": "l1-b"}.get(stage)
+            if prior_stage is None:
+                raise RuntimeError("STOP_SMOKE: only L1-B/L1-C have first-cell smoke")
+            reused_count = len(enumerate_cells(prior_stage))
+            if summary["status"] != "INCOMPLETE_BATCH" or summary["completed"] != reused_count + 1:
+                raise RuntimeError(f"STOP_SMOKE: expected {reused_count} reused and exactly one verified new cell")
+            new_keys = {c["cell_key"] for c in enumerate_cells(stage)} - {
+                c["cell_key"] for c in enumerate_cells(prior_stage)
             }
             done = [c for c in verified if c["cell_key"] in new_keys]
-            if len(done) != 1 or summary["blocked"] or len(attestations) != 32:
+            if len(done) != 1 or summary["blocked"] or len(attestations) != reused_count:
                 raise RuntimeError("STOP_SMOKE: incomplete first-cell evidence")
             smoke_file = RESULTS / prefix / "smoke_pass.json"
             if smoke_file.exists():
@@ -683,9 +694,10 @@ if _HAS_MODAL:
         verified P0 cells. L1-B additionally needs ``--reuse-summary`` (a
         verified 32/32 L1-A export), ``--reuse-prefix`` (its research prefix)
         and ``--equivalence-ref`` (the reviewer-approved equivalence decision).
-        For L1-B run ``--smoke --max-workers 1 --batch-limit 1`` first;
-        after verified smoke use 2–4 workers and bounded batches (8 maximum).
-        The L1-B path ignores legacy cost-quote and budget-ledger flags.
+        For L1-B/C run ``--smoke --max-workers 1 --batch-limit 1`` first;
+        after verified smoke start with 2 workers and 8 cells; successful
+        batches may grow to 4 workers and 16–32 cells. Both stages skip
+        legacy quote/ledger paperwork while retaining strict evidence gates.
         """
         sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
         if subprocess.check_output(["git", "status", "--porcelain"], text=True).strip():
@@ -708,7 +720,7 @@ if _HAS_MODAL:
         if stage == "p0" and max_workers > 2:
             raise ValueError("STOP_BUDGET: P0 must start with no more than two workers")
         prefix = result_prefix(run_id, stage, sha)
-        if stage != "l1-b":
+        if stage not in ("l1-b", "l1-c"):
             # Historical P0/L1-A accounting is unchanged. L1-B intentionally
             # does not require a bill quote, ledger write, or batch approval.
             estimate_n = len(cells)
@@ -728,10 +740,14 @@ if _HAS_MODAL:
         if verified_roster.get("count") != 55:
             raise RuntimeError("STOP_P0: missing 11x5 source inventory")
         attestations: List[Dict[str, Any]] = []
-        if stage == "l1-b":
+        if stage in ("l1-b", "l1-c"):
             from audit.csi1000_layered_search_core import check_live_provider_match
 
-            plan = prepare_l1b_plan(reuse_summary, equivalence_ref, sha)
+            plan = (
+                prepare_l1b_plan(reuse_summary, equivalence_ref, sha)
+                if stage == "l1-b"
+                else prepare_l1c_plan(reuse_summary, p0_summary, equivalence_ref, sha)
+            )
             check_live_provider_match(
                 verified_roster.get("provider_snapshot_sha256", ""),
                 verified_roster.get("quote_sha256", ""),
@@ -761,7 +777,7 @@ if _HAS_MODAL:
             planned = sorted(enumerate_cells(stage), key=lambda c: c["cell_key"])
         completed_state = inventory_completed_remote.remote(prefix, stage, run_id, sha)
         completed = set(completed_state["completed"])
-        if stage == "l1-b":
+        if stage in ("l1-b", "l1-c"):
             eligible_new = {c["cell_key"] for c in planned}
             completed_new = len(completed & eligible_new)
             check_l1b_smoke_gate(
@@ -773,15 +789,15 @@ if _HAS_MODAL:
             )
         # An interrupted smoke can leave one verified new cell without its
         # final smoke_pass.json. Never select a second new cell on retry.
-        if stage == "l1-b" and smoke and completed_new == 1:
+        if stage in ("l1-b", "l1-c") and smoke and completed_new == 1:
             cells = []
         else:
             cells = select_pending_batch(planned, completed, batch_limit)
         # Recovery after a completed cell but interrupted finalizer: verify
         # and sign the existing smoke result WITHOUT paying to recompute it.
-        smoke_recover = stage == "l1-b" and smoke and not cells and completed_new == 1
+        smoke_recover = stage in ("l1-b", "l1-c") and smoke and not cells and completed_new == 1
         # Recovery: all new cells verified but a previous finalization crashed.
-        finalize_only = stage == "l1-b" and not cells and len(completed) == len(enumerate_cells("l1-b"))
+        finalize_only = stage in ("l1-b", "l1-c") and not cells and len(completed) == len(enumerate_cells(stage))
         if not cells and not (finalize_only or smoke_recover):
             raise ValueError("STOP: no unexecuted cells in this batch; request the existing verified summary")
         print(
@@ -809,7 +825,7 @@ if _HAS_MODAL:
             else list(replay_cell_remote.with_options(max_containers=max_workers).map(build_jobs(cells, prefix)))
         )
         summary = finalize_remote.remote(prefix, stage, outcomes, sha, run_id, attestations=attestations, smoke=smoke)
-        if stage != "l1-b":
+        if stage not in ("l1-b", "l1-c"):
             _write_inflight_ledger(
                 Path(ledger).expanduser().parent / TRIAL_LEDGER_NAME,
                 stage,
@@ -820,7 +836,7 @@ if _HAS_MODAL:
         print(json.dumps(summary, indent=2), flush=True)
         if summary["blocked"]:
             raise RuntimeError("STOP_P0: one or more P0/L1 controls failed; not eligible for continuation")
-        if stage == "l1-b":
+        if stage in ("l1-b", "l1-c"):
             if smoke:
                 print("SMOKE_PASS: evidence recorded; proceed with bounded 2-worker batches.", flush=True)
             elif summary["status"] == "INCOMPLETE_BATCH":
@@ -867,36 +883,36 @@ def _write_inflight_ledger(path: Path, stage: str, run_id: str, outcomes: List[D
 def build_cli() -> argparse.ArgumentParser:
     """CLI contract (real --help; mirrors the Modal entrypoint parameters)."""
     p = argparse.ArgumentParser(
-        description="PR-S1 Modal runner: P0 controls + L1-A/L1-B portfolio screens (zero-fit, read-only source).",
+        description="P0 + L1-A/B/C portfolio replay runner (zero-fit, read-only source).",
         epilog="OpenCode foreground rule: run attached without --detach; set the tool timeout beyond worst-case wall time.",
     )
     p.add_argument(
-        "--stage", default="p0", help="p0 | l1-a | l1-b | inventory | dry-run (l1-c/l2/l3/l4 need later PRs)."
+        "--stage", default="p0", help="p0 | l1-a | l1-b | l1-c | inventory | dry-run (l2/l3/l4 need later PRs)."
     )
     p.add_argument("--run-id", default="", help="Pre-registered run id [A-Za-z0-9][A-Za-z0-9_-]{3,63}.")
     p.add_argument("--max-workers", type=int, default=2, help="Parallel workers, 1..8 (PR-S0 cap).")
     p.add_argument(
         "--batch-limit", type=int, default=0, help="Max NEW compute cells this batch; 0 means all remaining."
     )
-    p.add_argument("--estimated-total-usd", type=float, default=-1.0, help="Legacy P0/L1-A only; ignored for L1-B.")
+    p.add_argument("--estimated-total-usd", type=float, default=-1.0, help="Legacy P0/L1-A only; ignored for L1-B/C.")
     p.add_argument("--resume-from-manifest", default="", help="Existing source_manifest.json for hash-checked resume.")
     p.add_argument(
         "--ledger",
         default="~/.local/state/qlib-csi1000-layered/cost_ledger.json",
-        help="Legacy P0/L1-A only; not read or written by L1-B.",
+        help="Legacy P0/L1-A only; not read or written by L1-B/C.",
     )
-    p.add_argument("--p0-summary", default="", help="Downloaded stage_p0_summary.json; required for --stage l1-a/l1-b.")
-    p.add_argument("--reuse-summary", default="", help="Downloaded stage_l1-a_summary.json; required for --stage l1-b.")
     p.add_argument(
-        "--reuse-prefix", default="", help="Research prefix of the reuse source export; required for --stage l1-b."
+        "--p0-summary", default="", help="Downloaded stage_p0_summary.json; required for --stage l1-a/l1-b/l1-c."
     )
+    p.add_argument("--reuse-summary", default="", help="Full signed L1-A summary for L1-B or L1-B summary for L1-C.")
+    p.add_argument("--reuse-prefix", default="", help="Source research prefix of L1-A (L1-B) or L1-B (L1-C) export.")
     p.add_argument(
         "--equivalence-ref",
         default="",
-        help="Reviewer-approved equivalence decision for cross-code reuse; required for --stage l1-b.",
+        help="Reviewed equivalence decision for cross-code L1-B/C reuse.",
     )
-    p.add_argument("--cost-quote", default="", help="Legacy P0/L1-A only; not required or read for L1-B.")
-    p.add_argument("--smoke", action="store_true", help="L1-B first-run gate: exactly 1 new replay cell with 1 worker.")
+    p.add_argument("--cost-quote", default="", help="Legacy P0/L1-A only; not required or read for L1-B/C.")
+    p.add_argument("--smoke", action="store_true", help="L1-B/C first-run gate: 1 new replay cell with 1 worker.")
     p.add_argument("--dry-run", action="store_true", help="Local validation only; no Modal dispatch.")
     p.add_argument("--inventory", action="store_true", help="Print frozen enumeration and exit without dispatch.")
     return p
@@ -933,14 +949,21 @@ def _require_signed_export(summary_path: str, stage: str, gate: str) -> Dict[str
             expected_cells = {c["cell_key"] for c in enumerate_cells("p0")}
             signed = {r.get("cell_key"): r for r in summary.get("verified_cells", [])}
             verify_export_cells(Path(summary_path).resolve().parents[2], expected_cells, "P0", signed)
-        elif stage == "l1-a":
-            require_signed_l1a_export(summary, summary.get("verified_cells"))
-            expected_cells = {c["cell_key"] for c in enumerate_cells("l1-a")}
+        elif stage in ("l1-a", "l1-b"):
+            if stage == "l1-a":
+                require_signed_l1a_export(summary, summary.get("verified_cells"))
+            else:
+                require_signed_l1b_export(summary, summary.get("verified_cells"))
+            expected_cells = {c["cell_key"] for c in enumerate_cells(stage)}
             signed = {r.get("cell_key"): r for r in summary.get("verified_cells", [])}
-            # A JSON-only PASS is not evidence. Require the complete exported
-            # research prefix with its original relative paths and checksum index.
+            # JSON-only PASS claims are insufficient: verify full exported tree.
             verify_sha256sums(Path(summary_path).resolve().parents[2])
-            verify_export_cells(Path(summary_path).resolve().parents[2], expected_cells, "L1-A", signed)
+            verify_export_cells(
+                Path(summary_path).resolve().parents[2],
+                expected_cells,
+                "L1-A" if stage == "l1-a" else "L1-B",
+                signed,
+            )
         else:
             raise ValueError(f"unsupported export stage {stage}")
     except (ValueError, FileNotFoundError, KeyError, OSError) as exc:
@@ -950,7 +973,7 @@ def _require_signed_export(summary_path: str, stage: str, gate: str) -> Dict[str
 
 def _check_reuse_prefix(reuse_prefix: str) -> str:
     """Fail fast on unsafe or out-of-tree reuse prefixes (mirrors the remote check)."""
-    require(bool(reuse_prefix), "STOP_L1: l1-b requires --reuse-prefix with the prior research prefix")
+    require(bool(reuse_prefix), "STOP_L1: L1-B/C require --reuse-prefix with the prior research prefix")
     require(not reuse_prefix.startswith("/") and ".." not in reuse_prefix.split("/"), "STOP_L1: unsafe reuse prefix")
     require(reuse_prefix.startswith("csi1000_layered_search/"), "STOP_L1: reuse prefix outside layered-search tree")
     return reuse_prefix
@@ -1007,6 +1030,69 @@ def prepare_l1b_plan(
     }
 
 
+def prepare_l1c_plan(
+    reuse_summary_path: str,
+    p0_summary_path: str,
+    equivalence_ref: str,
+    current_code_sha: str,
+) -> Dict[str, Any]:
+    """Verify signed L1-B evidence and independently recalculate L1-C eligibility.
+
+    Only genuine two-phase qualified L1-B exports may enter L1-C. Source,
+    provider, quote and all 144 cell bytes must be identical to their
+    signed records; every overlap is reattested under the new code SHA.
+    """
+    from audit.csi1000_layered_search_core import sha256_file
+    from audit.csi1000_layered_search_selection import screen_l1
+
+    summary = _require_signed_export(reuse_summary_path, "l1-b", "STOP_L1")
+    _require_signed_export(p0_summary_path, "p0", "STOP_P0")
+    evidence = Path(reuse_summary_path).resolve().parents[2]
+    p0_root = Path(p0_summary_path).resolve().parents[2]
+    screen = screen_l1("l1-b", evidence / "cells", p0_root / "cells")
+    require(
+        screen.get("can_expand_to_l1_c") is True and screen.get("qualified_configs", 0) >= 2,
+        "STOP_L1_C_GATE: fewer than two independently qualified two-phase configurations",
+    )
+    records = summary["verified_cells"]
+    quotes = {r.get("quote_sha256") for r in records}
+    providers = {r.get("provider_snapshot_sha256") for r in records}
+    require(len(quotes) == 1 and all(quotes), "STOP_L1: L1-B quote identity not unanimous")
+    require(len(providers) == 1 and all(providers), "STOP_L1: L1-B provider identity not unanimous")
+    verified_output_sha = {}
+    for record in records:
+        key = record["cell_key"]
+        nav_file = evidence / "cells" / key / "daily_nav.csv"
+        measured = sha256_file(nav_file)
+        require(measured == record["output_sha256"], f"STOP_L1: L1-B NAV bytes drift: {key}")
+        verified_output_sha[key] = measured
+    manifest_path = evidence / "frozen_source_11x5.json"
+    require(manifest_path.is_file(), "STOP_L1: L1-B frozen 11x5 manifest missing")
+    original_sources = json.loads(manifest_path.read_text(encoding="utf-8"))["sources"]
+    sources = manifest_source_index({"sources": original_sources})
+    current = {
+        "quote_sha": quotes.pop(),
+        "provider_snapshot_sha256": providers.pop(),
+        "code_sha": current_code_sha,
+        "prior_run_id": summary.get("run_id", ""),
+        "prior_code_sha": summary.get("code_sha", ""),
+        "verified_output_sha": verified_output_sha,
+        "version_equivalence_ref": equivalence_ref,
+    }
+    plan = plan_l1c_reuse(records, sources, current)
+    return {
+        **plan,
+        "prior_run_id": current["prior_run_id"],
+        "prior_code_sha": current["prior_code_sha"],
+        "quote_sha": current["quote_sha"],
+        "source_55_sha256": frozen_source_digest(original_sources),
+        "l1b_screen": {
+            "qualified_configs": screen["qualified_configs"],
+            "can_expand_to_l1_c": screen["can_expand_to_l1_c"],
+        },
+    }
+
+
 def validate_for_dispatch(
     stage: str,
     run_id: str,
@@ -1028,15 +1114,15 @@ def validate_for_dispatch(
     cells; the 32 overlap cells travel via attestations (see
     :func:`prepare_l1b_plan`), never by silent cache hits.
     """
-    if stage not in ("p0", "l1-a", "l1-b"):
-        raise ValueError(f"STOP: stage {stage} needs a later reviewed PR (covers p0/l1-a/l1-b only)")
+    if stage not in ("p0", "l1-a", "l1-b", "l1-c"):
+        raise ValueError(f"STOP: stage {stage} needs a later reviewed PR (covers p0/l1-a/l1-b/l1-c only)")
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{3,63}", run_id or ""):
         raise ValueError("STOP: --run-id must match [A-Za-z0-9][A-Za-z0-9_-]{3,63}")
     if not isinstance(max_workers, int) or not 1 <= max_workers <= 8:
         raise ValueError("STOP: --max-workers must be 1..8 in PR-S0")
     import math as _math
 
-    if stage != "l1-b":
+    if stage not in ("l1-b", "l1-c"):
         if (
             not isinstance(estimated_total_usd, (int, float))
             or not _math.isfinite(estimated_total_usd)
@@ -1052,33 +1138,36 @@ def validate_for_dispatch(
         gate = ledger_obj.preflight(layer, float(estimated_total_usd))
         if gate != "OK_CONTINUE":
             raise ValueError(f"STOP: ledger preflight gate {gate} (spend unknown until record_actual)")
-    if smoke and stage != "l1-b":
-        raise ValueError("STOP_SMOKE: --smoke applies only to L1-B")
+    if smoke and stage not in ("l1-b", "l1-c"):
+        raise ValueError("STOP_SMOKE: --smoke applies only to L1-B/C")
     if smoke and (max_workers != 1 or batch_limit != 1):
         raise ValueError("STOP_SMOKE: use --max-workers 1 --batch-limit 1")
-    if stage in ("l1-a", "l1-b"):
+    if stage in ("l1-a", "l1-b", "l1-c"):
         if not p0_summary:
             raise ValueError(f"STOP_P0: {stage} requires --p0-summary with a verified 4/4 P0 summary")
         _require_signed_export(p0_summary, "p0", "STOP_P0")
-    if stage == "l1-b":
+    if stage in ("l1-b", "l1-c"):
         if not reuse_summary:
-            raise ValueError("STOP_L1: l1-b requires --reuse-summary with a verified 32/32 L1-A summary")
+            raise ValueError(f"STOP_L1: {stage} requires a complete signed prior L1 export")
         if resume_from_manifest:
             raise ValueError(
-                "STOP_L1: l1-b resumes inside its own research prefix; --resume-from-manifest is not accepted"
+                f"STOP_L1: {stage} resumes inside its own research prefix; --resume-from-manifest is not accepted"
             )
         _check_reuse_prefix(reuse_prefix)
-        plan = prepare_l1b_plan(reuse_summary, equivalence_ref, current_code_sha)
-        required_prefix = result_prefix(plan["prior_run_id"], "l1-a", plan["prior_code_sha"])
+        plan = (
+            prepare_l1b_plan(reuse_summary, equivalence_ref, current_code_sha)
+            if stage == "l1-b"
+            else prepare_l1c_plan(reuse_summary, p0_summary, equivalence_ref, current_code_sha)
+        )
+        prior_stage = "l1-a" if stage == "l1-b" else "l1-b"
+        required_prefix = result_prefix(plan["prior_run_id"], prior_stage, plan["prior_code_sha"])
         require(
             reuse_prefix == required_prefix,
-            "STOP_L1: --reuse-prefix does not match the audited L1-A run/stage/code SHA",
+            f"STOP_L1: --reuse-prefix does not match the audited {prior_stage} run/stage/code SHA",
         )
         new_cells = sorted(plan["new_cells"], key=lambda c: c["cell_key"])
         if batch_limit and (not isinstance(batch_limit, int) or not 1 <= batch_limit <= len(new_cells)):
-            raise ValueError("STOP: --batch-limit out of range for the 112 new L1-B cells")
-        # Preserve the full 112-cell eligible roster: run_search applies the
-        # batch limit only AFTER excluding completed keys in this run prefix.
+            raise ValueError(f"STOP: --batch-limit out of range for the {len(new_cells)} new {stage} cells")
         return new_cells
     if resume_from_manifest:
         _check_manifest(resume_from_manifest)
@@ -1134,6 +1223,9 @@ def main(argv: List[str] | None = None) -> int:
                     "l1-a": len(enumerate_cells("l1-a")),
                     "l1-b": len(enumerate_cells("l1-b")),
                     "l1-b-new": 112,
+                    "l1-c": len(enumerate_cells("l1-c")),
+                    "l1-c-reused-from-l1-b": 144,
+                    "l1-c-new": 120,
                     "layer_caps": LAYER_CAPS_USD,
                 },
                 indent=2,

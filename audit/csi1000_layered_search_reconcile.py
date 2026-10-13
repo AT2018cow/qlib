@@ -159,6 +159,48 @@ def check_stage_summary(summary: Dict[str, Any]) -> Dict[str, Any]:
                 summary.get("reused") == 32 and summary.get("computed_new") == 112,
                 "l1-b PASS must book 32 reused / 112 newly computed",
             )
+    elif summary.get("stage") == "l1-c":
+        from audit.csi1000_layered_search_core import enumerate_cells
+
+        roster = {c["cell_key"]: c for c in enumerate_cells("l1-c")}
+        overlap = {c["cell_key"] for c in enumerate_cells("l1-b")}
+        require(expected == len(roster) == 264, "l1-c expected roster must be exactly 264")
+        require(set(keys).issubset(roster), "l1-c verified cells outside registered roster")
+        for record in verified:
+            spec = roster[record["cell_key"]]
+            require(
+                (record.get("candidate_id"), record.get("phase"), record.get("topk"), record.get("dropn"))
+                == (spec["candidate_id"], spec["phase"], spec["topk"], spec["dropn"]),
+                "l1-c cell metadata differs from registered roster",
+            )
+        require(
+            len(reuse) == 144 and {a.get("cell_key") for a in reuse} == overlap,
+            "l1-c needs exactly the 144-cell L1-B overlap attested",
+        )
+        reuse_info = check_reuse_attestations(reuse, overlap)
+        # All inherited cells must trace back to ONE finalized L1-B export.
+        # Mixed run/code provenance is not a valid L1-C research baseline.
+        require(
+            len({(a["prior_run_id"], a["prior_code_sha"]) for a in reuse}) == 1,
+            "l1-c reuse attestations mix prior run or code SHA",
+        )
+        by_key = {r["cell_key"]: r for r in verified}
+        for attestation in reuse:
+            record = by_key.get(attestation["cell_key"])
+            require(record is not None, "l1-c attestation references absent verified cell")
+            for field in ("source_sha256", "output_sha256", "quote_sha256"):
+                require(attestation[field] == record.get(field), f"l1-c attestation {field} differs from cell")
+            require(attestation["engine"] == record.get("engine"), "l1-c attestation engine differs from cell")
+        require(
+            summary.get("reused") == 144 and summary.get("computed_new") == completed - 144,
+            "l1-c batch accounting must report 144 reused and all remaining as newly computed",
+        )
+        if status == "PASS":
+            require(
+                set(keys) == set(roster) and completed == 264 and blocked == 0 and remaining == 0,
+                "l1-c PASS needs exact 264/264 roster",
+            )
+            require(summary.get("computed_new") == 120, "l1-c PASS must compute 120 new cells")
     elif reuse:
         reuse_info = check_reuse_attestations(reuse, {a.get("cell_key") for a in reuse})
     return {
