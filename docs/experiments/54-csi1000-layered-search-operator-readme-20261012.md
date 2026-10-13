@@ -86,6 +86,46 @@ Collect current authorized Modal billing rates and real measured worker resource
   stop and book the App's actual build/queue/helper costs before
   deciding on another attempt.
 
+## P0 second attempt: SCM version override hotfix (2026-10-13)
+
+- Second operator attempt **also failed before any P0 cell executed**. The
+  Git-less image's `pip install . --no-build-isolation --no-deps` triggered
+  `setuptools_scm/vcs_versioning LookupError`; using the Stage-A image recipe
+  is **not** proof that this image builds with today's toolchain.
+- Operator reports App `ap-4Wput1MKLoRCEcTqua5m2G` billed
+  **USD 0.00384060**, with the first attempt's USD 0.00052688
+  making reported P0 actual spend USD 0.00436748. Both failed attempts were
+  reportedly booked with zero pending, no emitted trial rows, and zero
+  dispatched replay cells. These are operator claims, not independent
+  billing access by this PR's author; retain original billing JSON hashes.
+- Fix: configure **distribution-scoped**, pinned synthetic build metadata
+  `SETUPTOOLS_SCM_PRETEND_VERSION_FOR_PYQLIB=0.0.0`
+  and `VCS_VERSIONING_PRETEND_VERSION_FOR_PYQLIB=0.0.0` inside the
+  *P0 image only*. The Git SHA and frozen source hashes remain authoritative
+  for model/replay provenance; the metadata string is not a research version.
+  The image now asserts that installed `pyqlib` metadata and source-tree
+  `qlib.__version__` match this build-only value.
+- Offline revalidation has two separate steps: (a) full LOCAL_PASS pytest,
+  which tests the configured image guard, and (b) **real non-network build**
+  of the actual pyqlib package from a copied Git-less source tree:
+
+~~~bash
+python audit/csi1000_p0_scmless_build_check.py
+~~~
+
+  Step (b) requires installed `setuptools`, `setuptools-scm`, `Cython`,
+  `numpy`, `wheel`, and `pip` (prefer image-equivalent versions). A
+  missing prerequisite is BLOCKED, not PASS. The tool executes `pip wheel`
+  against a scratch source tree with **no .git and no preexisting
+  qlib/_version.py**, then verifies the generated wheel metadata and version
+  file. It performs no remote Modal actions, and disallows pip index access.
+- Only after both offline gates pass should the operator check `modal run
+  audit/csi1000_layered_search_modal.py --help`, take fresh P90 quotes for
+  the changed image, and obtain explicit approval for another attached P0
+  attempt. Never skip invoice reconciliation or reset the **same** persistent
+  ledger. If building or importing fails, STOP and book that App's actual
+  spend before further work. No L1 or production promotion is authorized.
+
 ## After a P0 run, before L1
 
 1. Retain actual Modal App ID, true exit status, UTC timestamps, both server and CLI logs, failures/retries and billed charges.
