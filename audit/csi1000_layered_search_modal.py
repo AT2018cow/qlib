@@ -46,10 +46,12 @@ from audit.csi1000_layered_search_core import (
     load_frozen_profiles,
     manifest_source_index,
     plan_l1b_reuse,
+    plan_l1c_reuse,
     replay_cache_key,
     require,
     require_p0_pass,
     require_signed_l1a_export,
+    require_signed_l1b_export,
     select_pending_batch,
     verify_export_cells,
 )
@@ -135,7 +137,7 @@ def check_operator_cost_quote(path: str, estimated_usd: float, covered_cells: in
 def check_l1b_smoke_gate(
     *, smoke: bool, max_workers: int, batch_limit: int, completed_new: int, smoke_passed: bool
 ) -> None:
-    """Require one fully finalized replay before dispatching a longer L1-B batch."""
+    """Require one finalized replay before dispatching a longer L1-B/C batch."""
     if smoke:
         require(max_workers == 1 and batch_limit == 1, "STOP_SMOKE: use one worker and one new cell")
         require(
@@ -144,7 +146,7 @@ def check_l1b_smoke_gate(
         )
     else:
         require(smoke_passed and completed_new >= 1, "STOP_SMOKE_FIRST: run --smoke with 1 worker/1 cell first")
-        require(1 <= batch_limit <= 32, "STOP_BATCH_BOUND: choose 1..32 new cells per L1-B batch")
+        require(1 <= batch_limit <= 32, "STOP_BATCH_BOUND: choose 1..32 new cells per L1-B/C batch")
 
 
 def result_prefix(run_id: str, stage: str, code_sha: str) -> str:
@@ -413,10 +415,11 @@ if _HAS_MODAL:
                 completed.append(root.name)
         smoke_passed = False
         marker = RESULTS / prefix / "smoke_pass.json"
-        if stage == "l1-b" and marker.is_file():
+        if stage in ("l1-b", "l1-c") and marker.is_file():
             proof = json.loads(marker.read_text(encoding="utf-8"))
-            new_keys = {c["cell_key"] for c in enumerate_cells("l1-b")} - {
-                c["cell_key"] for c in enumerate_cells("l1-a")
+            prior_stage = "l1-a" if stage == "l1-b" else "l1-b"
+            new_keys = {c["cell_key"] for c in enumerate_cells(stage)} - {
+                c["cell_key"] for c in enumerate_cells(prior_stage)
             }
             smoke_key = proof.get("cell_key")
             if (
@@ -576,7 +579,11 @@ if _HAS_MODAL:
             json.dumps(
                 build_protocol(
                     run_id,
-                    approved_by=("L1B_SMOKE_FIRST_NO_COST_APPROVAL" if stage == "l1-b" else "PENDING_BUDGET_APPROVAL"),
+                    approved_by=(
+                        "L1B_SMOKE_FIRST_NO_COST_APPROVAL"
+                        if stage == "l1-b"
+                        else ("L1C_SMOKE_FIRST_NO_COST_APPROVAL" if stage == "l1-c" else "PENDING_BUDGET_APPROVAL")
+                    ),
                 ),
                 indent=2,
                 sort_keys=True,
@@ -625,13 +632,17 @@ if _HAS_MODAL:
             raise RuntimeError("STOP_P0: signed source manifest already exists; refusing overwrite")
         manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         if smoke:
-            if stage != "l1-b" or summary["status"] != "INCOMPLETE_BATCH" or summary["completed"] != 33:
-                raise RuntimeError("STOP_SMOKE: expected 32 reused and exactly one verified new cell")
-            new_keys = {c["cell_key"] for c in enumerate_cells("l1-b")} - {
-                c["cell_key"] for c in enumerate_cells("l1-a")
+            prior_stage = {"l1-b": "l1-a", "l1-c": "l1-b"}.get(stage)
+            if prior_stage is None:
+                raise RuntimeError("STOP_SMOKE: only L1-B/L1-C have first-cell smoke")
+            reused_count = len(enumerate_cells(prior_stage))
+            if summary["status"] != "INCOMPLETE_BATCH" or summary["completed"] != reused_count + 1:
+                raise RuntimeError(f"STOP_SMOKE: expected {reused_count} reused and exactly one verified new cell")
+            new_keys = {c["cell_key"] for c in enumerate_cells(stage)} - {
+                c["cell_key"] for c in enumerate_cells(prior_stage)
             }
             done = [c for c in verified if c["cell_key"] in new_keys]
-            if len(done) != 1 or summary["blocked"] or len(attestations) != 32:
+            if len(done) != 1 or summary["blocked"] or len(attestations) != reused_count:
                 raise RuntimeError("STOP_SMOKE: incomplete first-cell evidence")
             smoke_file = RESULTS / prefix / "smoke_pass.json"
             if smoke_file.exists():
@@ -708,7 +719,7 @@ if _HAS_MODAL:
         if stage == "p0" and max_workers > 2:
             raise ValueError("STOP_BUDGET: P0 must start with no more than two workers")
         prefix = result_prefix(run_id, stage, sha)
-        if stage != "l1-b":
+        if stage not in ("l1-b", "l1-c"):
             # Historical P0/L1-A accounting is unchanged. L1-B intentionally
             # does not require a bill quote, ledger write, or batch approval.
             estimate_n = len(cells)
@@ -728,10 +739,14 @@ if _HAS_MODAL:
         if verified_roster.get("count") != 55:
             raise RuntimeError("STOP_P0: missing 11x5 source inventory")
         attestations: List[Dict[str, Any]] = []
-        if stage == "l1-b":
+        if stage in ("l1-b", "l1-c"):
             from audit.csi1000_layered_search_core import check_live_provider_match
 
-            plan = prepare_l1b_plan(reuse_summary, equivalence_ref, sha)
+            plan = (
+                prepare_l1b_plan(reuse_summary, equivalence_ref, sha)
+                if stage == "l1-b"
+                else prepare_l1c_plan(reuse_summary, p0_summary, equivalence_ref, sha)
+            )
             check_live_provider_match(
                 verified_roster.get("provider_snapshot_sha256", ""),
                 verified_roster.get("quote_sha256", ""),
@@ -761,7 +776,7 @@ if _HAS_MODAL:
             planned = sorted(enumerate_cells(stage), key=lambda c: c["cell_key"])
         completed_state = inventory_completed_remote.remote(prefix, stage, run_id, sha)
         completed = set(completed_state["completed"])
-        if stage == "l1-b":
+        if stage in ("l1-b", "l1-c"):
             eligible_new = {c["cell_key"] for c in planned}
             completed_new = len(completed & eligible_new)
             check_l1b_smoke_gate(
@@ -773,15 +788,15 @@ if _HAS_MODAL:
             )
         # An interrupted smoke can leave one verified new cell without its
         # final smoke_pass.json. Never select a second new cell on retry.
-        if stage == "l1-b" and smoke and completed_new == 1:
+        if stage in ("l1-b", "l1-c") and smoke and completed_new == 1:
             cells = []
         else:
             cells = select_pending_batch(planned, completed, batch_limit)
         # Recovery after a completed cell but interrupted finalizer: verify
         # and sign the existing smoke result WITHOUT paying to recompute it.
-        smoke_recover = stage == "l1-b" and smoke and not cells and completed_new == 1
+        smoke_recover = stage in ("l1-b", "l1-c") and smoke and not cells and completed_new == 1
         # Recovery: all new cells verified but a previous finalization crashed.
-        finalize_only = stage == "l1-b" and not cells and len(completed) == len(enumerate_cells("l1-b"))
+        finalize_only = stage in ("l1-b", "l1-c") and not cells and len(completed) == len(enumerate_cells(stage))
         if not cells and not (finalize_only or smoke_recover):
             raise ValueError("STOP: no unexecuted cells in this batch; request the existing verified summary")
         print(
@@ -809,7 +824,7 @@ if _HAS_MODAL:
             else list(replay_cell_remote.with_options(max_containers=max_workers).map(build_jobs(cells, prefix)))
         )
         summary = finalize_remote.remote(prefix, stage, outcomes, sha, run_id, attestations=attestations, smoke=smoke)
-        if stage != "l1-b":
+        if stage not in ("l1-b", "l1-c"):
             _write_inflight_ledger(
                 Path(ledger).expanduser().parent / TRIAL_LEDGER_NAME,
                 stage,
@@ -820,7 +835,7 @@ if _HAS_MODAL:
         print(json.dumps(summary, indent=2), flush=True)
         if summary["blocked"]:
             raise RuntimeError("STOP_P0: one or more P0/L1 controls failed; not eligible for continuation")
-        if stage == "l1-b":
+        if stage in ("l1-b", "l1-c"):
             if smoke:
                 print("SMOKE_PASS: evidence recorded; proceed with bounded 2-worker batches.", flush=True)
             elif summary["status"] == "INCOMPLETE_BATCH":
