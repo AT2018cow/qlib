@@ -710,7 +710,11 @@ if _HAS_MODAL:
         outcomes = (
             []
             if finalize_only
-            else list(replay_cell_remote.with_options(max_containers=max_workers).map(build_jobs(cells, prefix)))
+            else list(
+                replay_cell_remote.with_options(max_containers=max_workers).map(
+                    build_jobs(cells, prefix)
+                )
+            )
         )
         summary = finalize_remote.remote(
             prefix, stage, outcomes, sha, run_id, attestations=attestations
