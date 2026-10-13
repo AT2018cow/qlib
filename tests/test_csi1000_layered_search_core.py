@@ -361,42 +361,17 @@ def test_runner_guards_and_p0_gate(tmp_path):
         runner.validate_for_dispatch("p0", "run-01", 2, 99, 1.0, "", str(tmp_path / "l.json"), "")
 
 
-def test_p0_no_git_build_version_is_project_scoped():
-    """Static smoke: the real wheel build is the separate git-less check CLI."""
-    import tomllib
-    from audit.csi1000_p0_scmless_build_check import p0_image_version_env
-
-    name = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["name"]
-    assert name == "pyqlib"
-    env = p0_image_version_env(Path("audit/csi1000_layered_search_modal.py"))
-    assert env["SETUPTOOLS_SCM_PRETEND_VERSION_FOR_PYQLIB"] == "0.0.0"
-    assert env["VCS_VERSIONING_PRETEND_VERSION_FOR_PYQLIB"] == "0.0.0"
-    # A generic fallback could quietly rewrite versions of *dependencies*.
-    assert "SETUPTOOLS_SCM_PRETEND_VERSION" not in env
-    assert "VCS_VERSIONING_PRETEND_VERSION" not in env
+def test_p0_image_avoids_git_metadata_build():
+    """A single guard for the actual two-failure root cause."""
     text = Path("audit/csi1000_layered_search_modal.py").read_text(encoding="utf-8")
-    assert 'version("pyqlib") == "0.0.0"' in text
-    assert 'qlib.__version__ == "0.0.0"' in text
-
-
-def test_p0_modal_image_uses_stage_a_compilation_recipe():
-    """Protect against SCM version failures when .git is excluded from Modal image."""
-    text = Path("audit/csi1000_layered_search_modal.py").read_text(encoding="utf-8")
-    stage_a = Path("audit/stage_a_corrected_replay_modal.py").read_text(encoding="utf-8")
-    # Packaging first populates qlib/_version.py; direct compilation then
-    # places extensions into the source tree used by PYTHONPATH.
-    package_cmd = "cd /root/qlib && pip install . --no-build-isolation --no-deps"
-    assert package_cmd in stage_a and package_cmd in text
-    for token in ("from Cython.Build import cythonize", "'qlib.data._libs.rolling'",
-                  "'qlib.data._libs.expanding'", "'build_ext', '--inplace'"):
-        assert token in stage_a and token in text, token
-    for forbidden in ("make prerequisite", "pip install -e . --no-build-isolation"):
-        assert forbidden not in text, forbidden
-    assert 'str(p).endswith((".cpp", ".so"))' in text
-    assert '".git"' in text
+    assert "make prerequisite" not in text
+    assert "pip install . --no-build-isolation" not in text
+    assert "pip install -e ." not in text
+    assert "cd /tmp && python -c" in text
+    assert "from Cython.Build import cythonize" in text
+    assert "'qlib-image-cython-only'" in text
+    assert "/root/qlib/qlib/_version.py" in text
     assert "from qlib.data._libs import rolling, expanding" in text
-    for dependency in ("ruamel.yaml", "mlflow", "dill", "filelock", "torch"):
-        assert dependency in text, dependency
 
 
 def test_modal_file_static_contract():
