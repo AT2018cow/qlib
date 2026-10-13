@@ -467,8 +467,10 @@ def require_signed_l1b_export(summary: Dict[str, Any], outcomes: List[Dict[str, 
     require(int(summary.get("expected", -1)) == 144, "STOP_L1: L1-B must contain 144 cells")
     require(int(summary.get("completed", -1)) == 144, "STOP_L1: L1-B must be 144/144")
     require(int(summary.get("blocked", -1)) == 0, "STOP_L1: L1-B has blocked cells")
-    require(re.fullmatch(r"[0-9a-f]{40}", summary.get("code_sha") or "") is not None,
-            "STOP_L1: L1-B summary lacks a full code SHA")
+    require(
+        re.fullmatch(r"[0-9a-f]{40}", summary.get("code_sha") or "") is not None,
+        "STOP_L1: L1-B summary lacks a full code SHA",
+    )
     require(bool(summary.get("run_id")), "STOP_L1: L1-B summary lacks a run ID")
     if outcomes is not None:
         summary = {**summary, "verified_cells": outcomes}
@@ -780,11 +782,15 @@ def plan_l1c_reuse(
     require(len(roster_c) == 264 and len(roster_b) == 144, "STOP_L1: L1-C roster geometry drift")
     overlap_keys = sorted(set(roster_c) & set(roster_b))
     new_keys = sorted(set(roster_c) - set(roster_b))
-    require(len(overlap_keys) == 144 and len(new_keys) == 120,
-            "STOP_L1: L1-C must reuse 144 and calculate exactly 120")
+    require(
+        len(overlap_keys) == 144 and len(new_keys) == 120,
+        "STOP_L1: L1-C must reuse 144 and calculate exactly 120",
+    )
     by_key = {r.get("cell_key"): r for r in prior_verified_cells}
-    require(len(prior_verified_cells) == len(by_key) == 144 and set(by_key) == set(roster_b),
-            "STOP_L1: L1-B reuse export must have exactly 144 unique roster cells")
+    require(
+        len(prior_verified_cells) == len(by_key) == 144 and set(by_key) == set(roster_b),
+        "STOP_L1: L1-B reuse export must have exactly 144 unique roster cells",
+    )
     providers = {by_key[k].get("provider_snapshot_sha256") for k in overlap_keys}
     require(len(providers) == 1 and all(providers), "STOP_L1: L1-B provider identity differs across cells")
     attestations = [verify_reuse_compatibility(by_key[k], manifest_sources, current) for k in overlap_keys]
