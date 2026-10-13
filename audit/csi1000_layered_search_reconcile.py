@@ -178,6 +178,12 @@ def check_stage_summary(summary: Dict[str, Any]) -> Dict[str, Any]:
             "l1-c needs exactly the 144-cell L1-B overlap attested",
         )
         reuse_info = check_reuse_attestations(reuse, overlap)
+        # All inherited cells must trace back to ONE finalized L1-B export.
+        # Mixed run/code provenance is not a valid L1-C research baseline.
+        require(
+            len({(a["prior_run_id"], a["prior_code_sha"]) for a in reuse}) == 1,
+            "l1-c reuse attestations mix prior run or code SHA",
+        )
         by_key = {r["cell_key"]: r for r in verified}
         for attestation in reuse:
             record = by_key.get(attestation["cell_key"])
