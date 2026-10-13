@@ -240,7 +240,7 @@ def test_dispatch_l1b_guards(tmp_path):
         str(p0sum),
         str(l1asum),
         "ref-1",
-        "csi1000_layered_search/v1",
+        runner.result_prefix("l1a-old", "l1-a", "a" * 40),
         "a" * 40,
     )
     assert len(cells) == 112
@@ -255,10 +255,11 @@ def test_dispatch_l1b_guards(tmp_path):
         str(p0sum),
         str(l1asum),
         "ref-1",
-        "csi1000_layered_search/v1",
+        runner.result_prefix("l1a-old", "l1-a", "a" * 40),
         "a" * 40,
     )
-    assert len(part) == 5
+    assert len(part) == 112  # full eligible roster; batch clipping occurs after resume inventory
+    assert len(core.select_pending_batch(part, set(), 5)) == 5
     with pytest.raises(ValueError, match="batch-limit"):
         runner.validate_for_dispatch(
             "l1-b",
@@ -271,7 +272,7 @@ def test_dispatch_l1b_guards(tmp_path):
             str(p0sum),
             str(l1asum),
             "ref-1",
-            "csi1000_layered_search/v1",
+            runner.result_prefix("l1a-old", "l1-a", "a" * 40),
             "a" * 40,
         )
     with pytest.raises(ValueError, match="reuse-prefix|reuse prefix"):
@@ -301,7 +302,7 @@ def test_dispatch_l1b_guards(tmp_path):
             str(p0sum),
             str(l1asum),
             "",
-            "csi1000_layered_search/v1",
+            runner.result_prefix("l1a-old", "l1-a", "a" * 40),
             "b" * 40,
         )
     with pytest.raises(ValueError, match="resume-from-manifest"):
@@ -316,7 +317,7 @@ def test_dispatch_l1b_guards(tmp_path):
             str(p0sum),
             str(l1asum),
             "ref-1",
-            "csi1000_layered_search/v1",
+            runner.result_prefix("l1a-old", "l1-a", "a" * 40),
             "a" * 40,
         )
 
@@ -649,13 +650,14 @@ def test_l1b_pass_summary_strictness():
         c["cell_key"] for c in core.enumerate_cells("l1-a")
     }
     assert len(overlap) == 32
+    by_key = {r["cell_key"]: r for r in records}
     attest = [
         {
             "cell_key": k,
             "prior_run_id": "r",
             "prior_code_sha": "a" * 40,
-            "output_sha256": _hex("o" + k),
-            "source_sha256": _hex("s" + k),
+            "output_sha256": by_key[k]["output_sha256"],
+            "source_sha256": by_key[k]["source_sha256"],
             "quote_sha256": QUOTE,
             "engine": core.PROTOCOL_VERSION,
             "equivalence": "IDENTICAL_CODE",
@@ -673,6 +675,9 @@ def test_l1b_pass_summary_strictness():
             "expected": 144,
             "completed": 144,
             "blocked": 0,
+            "remaining": 0,
+            "reused": 32,
+            "computed_new": 112,
             "training_performed": False,
             "promotion_authorized": False,
             "source_volume_read_only": True,
