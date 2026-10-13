@@ -617,6 +617,7 @@ def check_live_provider_match(
 
 def frozen_source_digest(entries: List[Dict[str, Any]]) -> str:
     """Content identity of the entire frozen 11x5 inventory across runs."""
+    require(len(entries) == 55, "frozen inventory must have exactly 55 records")
     manifest_source_index({"sources": entries})  # 55 distinct candidate/phase rows
     return stable_sha(sorted(entries, key=lambda e: (e["candidate_id"], int(e["phase"]))))
 
@@ -677,7 +678,13 @@ def materialize_reuse_cells(
             # A resumed copy must be BYTE-IDENTICAL to the source, including
             # cell metadata and non-NAV reports; self-consistent hashes on a
             # divergent destination are not sufficient for reuse.
-            for name in ("cell.json", "daily_nav.csv", "fixed_report.parquet", "fixed_decisions.json", "metrics.json"):
+            for name in (
+                "cell.json",
+                "daily_nav.csv",
+                "fixed_report.parquet",
+                "fixed_decisions.json",
+                "metrics.json",
+            ):
                 require(
                     (dest / name).is_file() and sha256_file(dest / name) == sha256_file(src / name),
                     f"reuse destination bytes drift/conflict: {key}/{name}",
@@ -687,7 +694,13 @@ def materialize_reuse_cells(
         require(not tmp.exists(), f"stale reuse temp dir blocks copy: {key}")
         tmp.mkdir(parents=True, exist_ok=False)
         src = root / old_prefix / "cells" / key
-        for name in ("cell.json", "daily_nav.csv", "fixed_report.parquet", "fixed_decisions.json", "metrics.json"):
+        for name in (
+            "cell.json",
+            "daily_nav.csv",
+            "fixed_report.parquet",
+            "fixed_decisions.json",
+            "metrics.json",
+        ):
             (tmp / name).write_bytes((src / name).read_bytes())
         tmp.replace(dest)
     return verified
