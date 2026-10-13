@@ -97,6 +97,27 @@ cell's `cell.json` hash at the start of every longer L1-B batch.
 first failure and App ID before a second attempt; do not blindly retry or launch
 a large batch. Do not mistake `modal run ... --help` for a real smoke.
 
+### 2026-10-13 L1-B resume hotfix: code SHA changes
+
+The first L1-B smoke on commit `f2ebda089ee7` passed (32 reused + 1
+new), but the next 2×8 batch was blocked before replay: the original
+`materialize_reuse_cells` implementation accidentally compared existing
+destinations against the last source key. **The failure was a software
+false positive, not a source-byte drift.** This is corrected by binding
+`src` for each spec before checking an existing destination, with a
+multi-cell resumability regression test.
+
+**A merged code fix necessarily changes the `git rev-parse HEAD` SHA**,
+and the versioned research output prefix includes its first 12 hex
+digits. The old run's `smoke_pass.json` is not a valid proof for a
+different code SHA. Do **not** issue a 2×8 batch directly after checking
+out the fix: it will correctly fail the smoke-first gate. Use a **new
+L1-B run ID and the new merged SHA**, perform the same one-new-cell
+smoke first, and only then proceed with 2×8. Keep all old Volume
+prefixes and logs as immutable failure evidence; never rename, edit, or
+copy `smoke_pass.json` to bypass this gate. The original L1-A 32-cell
+export and its exact `--reuse-prefix` are unchanged and can be reused.
+
 ## 3. After SMOKE_PASS: bounded batches, moderate concurrency
 
 Start with 2 workers and 8 **new** cells, same arguments as above **minus
