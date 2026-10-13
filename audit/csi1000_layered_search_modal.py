@@ -572,16 +572,17 @@ if _HAS_MODAL:
                 raise RuntimeError("summary already finalized: refusing to overwrite")
             target.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         protocol_path = root / "protocol.json"
-        protocol_bytes = json.dumps(
-            build_protocol(
-                run_id,
-                approved_by=(
-                    "L1B_SMOKE_FIRST_NO_COST_APPROVAL" if stage == "l1-b" else "PENDING_BUDGET_APPROVAL"
+        protocol_bytes = (
+            json.dumps(
+                build_protocol(
+                    run_id,
+                    approved_by=("L1B_SMOKE_FIRST_NO_COST_APPROVAL" if stage == "l1-b" else "PENDING_BUDGET_APPROVAL"),
                 ),
-            ),
-            indent=2,
-            sort_keys=True,
-        ) + "\n"
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n"
+        )
         if protocol_path.exists() and protocol_path.read_text(encoding="utf-8") != protocol_bytes:
             raise RuntimeError("STOP_P0: frozen protocol already exists with different content")
         if not protocol_path.exists():
@@ -824,7 +825,10 @@ if _HAS_MODAL:
                 print("SMOKE_PASS: evidence recorded; proceed with bounded 2-worker batches.", flush=True)
             elif summary["status"] == "INCOMPLETE_BATCH":
                 print("INCOMPLETE_BATCH: resume same run_id/code SHA with another bounded batch.", flush=True)
-            print("OBSERVE: keep App ID, runtime and failure logs; stop repeated failures or resource pressure.", flush=True)
+            print(
+                "OBSERVE: keep App ID, runtime and failure logs; stop repeated failures or resource pressure.",
+                flush=True,
+            )
         else:
             if summary["status"] == "INCOMPLETE_BATCH":
                 print("INCOMPLETE_BATCH: book the real bill before launching the next bounded batch.", flush=True)
@@ -874,9 +878,7 @@ def build_cli() -> argparse.ArgumentParser:
     p.add_argument(
         "--batch-limit", type=int, default=0, help="Max NEW compute cells this batch; 0 means all remaining."
     )
-    p.add_argument(
-        "--estimated-total-usd", type=float, default=-1.0, help="Legacy P0/L1-A only; ignored for L1-B."
-    )
+    p.add_argument("--estimated-total-usd", type=float, default=-1.0, help="Legacy P0/L1-A only; ignored for L1-B.")
     p.add_argument("--resume-from-manifest", default="", help="Existing source_manifest.json for hash-checked resume.")
     p.add_argument(
         "--ledger",
@@ -893,12 +895,8 @@ def build_cli() -> argparse.ArgumentParser:
         default="",
         help="Reviewer-approved equivalence decision for cross-code reuse; required for --stage l1-b.",
     )
-    p.add_argument(
-        "--cost-quote", default="", help="Legacy P0/L1-A only; not required or read for L1-B."
-    )
-    p.add_argument(
-        "--smoke", action="store_true", help="L1-B first-run gate: exactly 1 new replay cell with 1 worker."
-    )
+    p.add_argument("--cost-quote", default="", help="Legacy P0/L1-A only; not required or read for L1-B.")
+    p.add_argument("--smoke", action="store_true", help="L1-B first-run gate: exactly 1 new replay cell with 1 worker.")
     p.add_argument("--dry-run", action="store_true", help="Local validation only; no Modal dispatch.")
     p.add_argument("--inventory", action="store_true", help="Print frozen enumeration and exit without dispatch.")
     return p
