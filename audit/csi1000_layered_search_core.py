@@ -454,6 +454,28 @@ def require_signed_l1a_export(summary: Dict[str, Any], outcomes: List[Dict[str, 
     return {"status": "L1A_VERIFIED", "cells": [c["cell_key"] for c in checked]}
 
 
+def require_signed_l1b_export(summary: Dict[str, Any], outcomes: List[Dict[str, Any]] | None = None) -> Dict[str, Any]:
+    """Require a fully reconciled 144/144 L1-B PASS before L1-C reuse.
+
+    This checks the exact 32 L1-A attestations and 112 newly computed cells
+    through the shared reconciler, not just a claimed PASS flag.
+    """
+    from audit.csi1000_layered_search_reconcile import check_stage_summary
+
+    require(summary.get("stage") == "l1-b", "STOP_L1: L1-B stage identity missing")
+    require(summary.get("status") == "PASS", "STOP_L1: L1-B is not a final PASS")
+    require(int(summary.get("expected", -1)) == 144, "STOP_L1: L1-B must contain 144 cells")
+    require(int(summary.get("completed", -1)) == 144, "STOP_L1: L1-B must be 144/144")
+    require(int(summary.get("blocked", -1)) == 0, "STOP_L1: L1-B has blocked cells")
+    require(re.fullmatch(r"[0-9a-f]{40}", summary.get("code_sha") or "") is not None,
+            "STOP_L1: L1-B summary lacks a full code SHA")
+    require(bool(summary.get("run_id")), "STOP_L1: L1-B summary lacks a run ID")
+    if outcomes is not None:
+        summary = {**summary, "verified_cells": outcomes}
+    check_stage_summary(summary)
+    return {"status": "L1B_VERIFIED", "cells": [r["cell_key"] for r in summary["verified_cells"]]}
+
+
 def verify_export_cells(
     evidence_root: str | Path,
     expected_keys: set,
@@ -470,7 +492,7 @@ def verify_export_cells(
     output and provider-snapshot SHAs. The SHA256SUMS walk itself stays with
     the caller (reconcile owns it). Returns paths for further checks.
     """
-    require(scope in ("P0", "L1-A"), f"unknown export scope {scope}")
+    require(scope in ("P0", "L1-A", "L1-B"), f"unknown export scope {scope}")
     root = Path(evidence_root)
     manifest_path = root / "source_manifest_final.json"
     require(manifest_path.is_file(), f"{scope} source manifest missing")
@@ -736,6 +758,40 @@ def plan_l1b_reuse(
         "overlap_keys": overlap_keys,
         "new_keys": new_keys,
         "new_cells": [roster_b[k] for k in new_keys],
+        "reuse_records": [by_key[k] for k in overlap_keys],
+        "attestations": attestations,
+        "provider_snapshot_sha256": providers.pop(),
+    }
+
+
+def plan_l1c_reuse(
+    prior_verified_cells: List[Dict[str, Any]],
+    manifest_sources: Dict[Tuple[str, int], Dict[str, str]],
+    current: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Extend final 144-cell L1-B evidence to the 264-cell L1-C roster.
+
+    All 144 L1-B cells must be byte-verified against the same frozen inputs;
+    only 120 cells belonging to the other five pre-registered models may run.
+    No silent recomputation of existing cells, fitting, or roster expansion.
+    """
+    roster_c = {c["cell_key"]: c for c in enumerate_cells("l1-c")}
+    roster_b = {c["cell_key"]: c for c in enumerate_cells("l1-b")}
+    require(len(roster_c) == 264 and len(roster_b) == 144, "STOP_L1: L1-C roster geometry drift")
+    overlap_keys = sorted(set(roster_c) & set(roster_b))
+    new_keys = sorted(set(roster_c) - set(roster_b))
+    require(len(overlap_keys) == 144 and len(new_keys) == 120,
+            "STOP_L1: L1-C must reuse 144 and calculate exactly 120")
+    by_key = {r.get("cell_key"): r for r in prior_verified_cells}
+    require(len(prior_verified_cells) == len(by_key) == 144 and set(by_key) == set(roster_b),
+            "STOP_L1: L1-B reuse export must have exactly 144 unique roster cells")
+    providers = {by_key[k].get("provider_snapshot_sha256") for k in overlap_keys}
+    require(len(providers) == 1 and all(providers), "STOP_L1: L1-B provider identity differs across cells")
+    attestations = [verify_reuse_compatibility(by_key[k], manifest_sources, current) for k in overlap_keys]
+    return {
+        "overlap_keys": overlap_keys,
+        "new_keys": new_keys,
+        "new_cells": [roster_c[k] for k in new_keys],
         "reuse_records": [by_key[k] for k in overlap_keys],
         "attestations": attestations,
         "provider_snapshot_sha256": providers.pop(),
