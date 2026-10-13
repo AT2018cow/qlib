@@ -700,11 +700,15 @@ def test_l1b_pass_summary_strictness():
 
 def test_l1b_batching_advances_across_all_112_new_cells():
     """A small-batch replay must progress, not repeat its original first N."""
-    eligible = sorted(core.plan_l1b_reuse(
-        _l1a_records(),
-        core.manifest_source_index(_frozen_manifest(core.enumerate_cells("l1-a"))),
-        _ctx(_l1a_records(), "a" * 40, "a" * 40),
-    )["new_cells"], key=lambda c: c["cell_key"])
+    records = _l1a_records()
+    eligible = sorted(
+        core.plan_l1b_reuse(
+            records,
+            core.manifest_source_index(_frozen_manifest(core.enumerate_cells("l1-a"))),
+            _ctx(records, "a" * 40, "a" * 40),
+        )["new_cells"],
+        key=lambda c: c["cell_key"],
+    )
     assert len(eligible) == 112
     reused = {c["cell_key"] for c in core.enumerate_cells("l1-a")}
     completed = set(reused)
@@ -726,11 +730,19 @@ def test_l1b_batching_advances_across_all_112_new_cells():
 
 def test_l1b_prefix_bound_to_signed_l1a_run(tmp_path):
     p0 = _export_tree(tmp_path / "p0exp", "p0", core.enumerate_cells("p0"), "p0-old", "a" * 40)
-    l1a = _export_tree(
-        tmp_path / "l1aexp", "l1-a", core.enumerate_cells("l1-a"), "l1a-old", "a" * 40
+    l1a = _export_tree(tmp_path / "l1aexp", "l1-a", core.enumerate_cells("l1-a"), "l1a-old", "a" * 40)
+    args = (
+        "l1-b",
+        "new-run",
+        2,
+        5,
+        1.0,
+        "",
+        str(tmp_path / "ledger.json"),
+        str(p0),
+        str(l1a),
+        "reviewed-PR72",
     )
-    args = ("l1-b", "new-run", 2, 5, 1.0, "", str(tmp_path / "ledger.json"),
-            str(p0), str(l1a), "reviewed-PR72")
     exact = runner.result_prefix("l1a-old", "l1-a", "a" * 40)
     assert len(runner.validate_for_dispatch(*args, exact, "b" * 40)) == 112
     with pytest.raises(ValueError, match="audited L1-A"):
@@ -771,7 +783,8 @@ def test_real_finalizer_call_binds_attestations_by_name():
 
     tree = ast.parse(Path("audit/csi1000_layered_search_modal.py").read_text(encoding="utf-8"))
     calls = [
-        node for node in ast.walk(tree)
+        node
+        for node in ast.walk(tree)
         if isinstance(node, ast.Call)
         and isinstance(node.func, ast.Attribute)
         and node.func.attr == "remote"
@@ -780,8 +793,10 @@ def test_real_finalizer_call_binds_attestations_by_name():
     ]
     assert len(calls) == 1
     assert len(calls[0].args) == 5
-    assert any(k.arg == "attestations" and isinstance(k.value, ast.Name)
-               and k.value.id == "attestations" for k in calls[0].keywords)
+    assert any(
+        k.arg == "attestations" and isinstance(k.value, ast.Name) and k.value.id == "attestations"
+        for k in calls[0].keywords
+    )
 
 
 def test_l1b_incomplete_batch_and_attestation_linkage_are_audited():
@@ -792,20 +807,33 @@ def test_l1b_incomplete_batch_and_attestation_linkage_are_audited():
     records = [_record(c, _hex("sig" + c["candidate_id"] + str(c["phase"]))) for c in selected]
     by_key = {r["cell_key"]: r for r in records}
     attest = [
-        {"cell_key": k, "prior_run_id": "l1a-old", "prior_code_sha": "a" * 40,
-         "source_sha256": by_key[k]["source_sha256"],
-         "output_sha256": by_key[k]["output_sha256"],
-         "quote_sha256": by_key[k]["quote_sha256"],
-         "engine": by_key[k]["engine"], "equivalence": "REVIEWED_EQUIVALENT:PR72",
-         "verified_utc": "2026-10-13T00:00:00Z"}
+        {
+            "cell_key": k,
+            "prior_run_id": "l1a-old",
+            "prior_code_sha": "a" * 40,
+            "source_sha256": by_key[k]["source_sha256"],
+            "output_sha256": by_key[k]["output_sha256"],
+            "quote_sha256": by_key[k]["quote_sha256"],
+            "engine": by_key[k]["engine"],
+            "equivalence": "REVIEWED_EQUIVALENT:PR72",
+            "verified_utc": "2026-10-13T00:00:00Z",
+        }
         for k in sorted(overlap)
     ]
     incomplete = {
-        "stage": "l1-b", "status": "INCOMPLETE_BATCH",
-        "expected": 144, "completed": 34, "blocked": 0, "remaining": 110,
-        "verified_cells": records, "blocked_cells": [], "reuse_attestations": attest,
-        "reused": 32, "computed_new": 2,
-        "training_performed": False, "promotion_authorized": False,
+        "stage": "l1-b",
+        "status": "INCOMPLETE_BATCH",
+        "expected": 144,
+        "completed": 34,
+        "blocked": 0,
+        "remaining": 110,
+        "verified_cells": records,
+        "blocked_cells": [],
+        "reuse_attestations": attest,
+        "reused": 32,
+        "computed_new": 2,
+        "training_performed": False,
+        "promotion_authorized": False,
         "source_volume_read_only": True,
     }
     assert rec.check_stage_summary(incomplete)["status"] == "INCOMPLETE_BATCH"
@@ -824,4 +852,4 @@ def test_finalize_only_path_does_not_replay():
     text = Path("audit/csi1000_layered_search_modal.py").read_text(encoding="utf-8")
     entrypoint = text.split("def run_search(", 1)[1].split("\ndef _write_inflight_ledger(", 1)[0]
     assert 'stage == "l1-b" and not cells and len(completed) == len(enumerate_cells("l1-b"))' in entrypoint
-    assert "[]\n            if finalize_only\n            else list(" in entrypoint
+    assert "if finalize_only" in entrypoint and "else list(" in entrypoint
