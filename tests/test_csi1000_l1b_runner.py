@@ -864,15 +864,25 @@ def test_l1b_does_not_require_operator_quote_or_ledger(tmp_path):
     unchanged = invalid_ledger.read_bytes()
     args = runner.build_cli().parse_args(
         [
-            "--stage", "l1-b",
-            "--run-id", "l1b-smoke",
-            "--max-workers", "1",
-            "--batch-limit", "1",
+            "--stage",
+            "l1-b",
+            "--run-id",
+            "l1b-smoke",
+            "--max-workers",
+            "1",
+            "--batch-limit",
+            "1",
             "--smoke",
-            "--p0-summary", str(p0),
-            "--reuse-summary", str(l1a),
-            "--reuse-prefix", runner.result_prefix("l1a-old", "l1-a", "a" * 40),
-            "--equivalence-ref", "signed-eq-review",
+            "--ledger",
+            str(invalid_ledger),
+            "--p0-summary",
+            str(p0),
+            "--reuse-summary",
+            str(l1a),
+            "--reuse-prefix",
+            runner.result_prefix("l1a-old", "l1-a", "a" * 40),
+            "--equivalence-ref",
+            "signed-eq-review",
         ]
     )
     assert args.estimated_total_usd == -1
@@ -903,13 +913,9 @@ def test_l1b_smoke_mandatory_once_and_bounded_batches():
 
 def test_l1b_smoke_stage_flag_rejects_legacy_stages(tmp_path):
     with pytest.raises(ValueError, match="STOP_SMOKE"):
-        runner.validate_for_dispatch(
-            "p0", "smoke-p0", 1, 1, 0.5, "", str(tmp_path / "ledger.json"), smoke=True
-        )
+        runner.validate_for_dispatch("p0", "smoke-p0", 1, 1, 0.5, "", str(tmp_path / "ledger.json"), smoke=True)
     with pytest.raises(ValueError, match="STOP_SMOKE"):
-        runner.validate_for_dispatch(
-            "l1-b", "smoke-new", 2, 1, -1, "", str(tmp_path / "ledger.json"), smoke=True
-        )
+        runner.validate_for_dispatch("l1-b", "smoke-new", 2, 1, -1, "", str(tmp_path / "ledger.json"), smoke=True)
 
 
 def test_l1b_smoke_entrypoint_uses_fixed_container_and_no_charge_booking():
@@ -920,3 +926,5 @@ def test_l1b_smoke_entrypoint_uses_fixed_container_and_no_charge_booking():
     assert 'smoke=smoke' in text
     assert 'if stage != "l1-b":' in text
     assert 'smoke_recover = stage == "l1-b" and smoke and not cells and completed_new == 1' in text
+    assert 'if stage == "l1-b" and smoke and completed_new == 1:' in text
+    assert "cells = []" in text
