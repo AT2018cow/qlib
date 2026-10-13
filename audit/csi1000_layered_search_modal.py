@@ -385,7 +385,7 @@ if _HAS_MODAL:
         }
 
     @app.function(volumes={str(RESULTS): research}, cpu=1, memory=1024, timeout=120)
-    def inventory_completed_remote(prefix: str, stage: str) -> Dict[str, Any]:
+    def inventory_completed_remote(prefix: str, stage: str, run_id: str = "", code_sha: str = "") -> Dict[str, Any]:
         """Read existing research artifacts and accept only verified output hashes."""
         from audit.csi1000_layered_search_core import sha256_file
 
@@ -421,6 +421,9 @@ if _HAS_MODAL:
             smoke_key = proof.get("cell_key")
             if (
                 proof.get("stage") != stage
+                or proof.get("run_id") != run_id
+                or proof.get("code_sha") != code_sha
+                or proof.get("status") != "SMOKE_PASS"
                 or smoke_key not in new_keys
                 or smoke_key not in completed
                 or sha256_file(output / smoke_key / "cell.json") != proof.get("cell_record_sha256")
@@ -753,7 +756,7 @@ if _HAS_MODAL:
             planned = list(cells)
         else:
             planned = sorted(enumerate_cells(stage), key=lambda c: c["cell_key"])
-        completed_state = inventory_completed_remote.remote(prefix, stage)
+        completed_state = inventory_completed_remote.remote(prefix, stage, run_id, sha)
         completed = set(completed_state["completed"])
         if stage == "l1-b":
             eligible_new = {c["cell_key"] for c in planned}
