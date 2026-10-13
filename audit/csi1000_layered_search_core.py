@@ -673,6 +673,7 @@ def materialize_reuse_cells(
         verified.append(record)
     for spec, record in zip(specs, verified):
         key = spec["cell_key"]
+        src = root / old_prefix / "cells" / key
         dest = root / new_prefix / "cells" / key
         if dest.exists():
             # A resumed copy must be BYTE-IDENTICAL to the source, including
@@ -693,7 +694,6 @@ def materialize_reuse_cells(
         tmp = dest.parent / (dest.name + ".reuse-tmp")
         require(not tmp.exists(), f"stale reuse temp dir blocks copy: {key}")
         tmp.mkdir(parents=True, exist_ok=False)
-        src = root / old_prefix / "cells" / key
         for name in (
             "cell.json",
             "daily_nav.csv",
