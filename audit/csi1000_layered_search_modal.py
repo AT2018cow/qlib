@@ -901,7 +901,9 @@ def build_cli() -> argparse.ArgumentParser:
         default="~/.local/state/qlib-csi1000-layered/cost_ledger.json",
         help="Legacy P0/L1-A only; not read or written by L1-B/C.",
     )
-    p.add_argument("--p0-summary", default="", help="Downloaded stage_p0_summary.json; required for --stage l1-a/l1-b/l1-c.")
+    p.add_argument(
+        "--p0-summary", default="", help="Downloaded stage_p0_summary.json; required for --stage l1-a/l1-b/l1-c."
+    )
     p.add_argument("--reuse-summary", default="", help="Full signed L1-A summary for L1-B or L1-B summary for L1-C.")
     p.add_argument(
         "--reuse-prefix", default="", help="Source research prefix of L1-A (L1-B) or L1-B (L1-C) export."
