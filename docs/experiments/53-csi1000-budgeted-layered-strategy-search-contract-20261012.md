@@ -1,5 +1,42 @@
 # 53 — CSI1000 有预算上限的分层历史策略搜索合同（2026-10-12）
 
+## 2026-10-13 L1-C runner implementation addendum (review required)
+
+L1-B reached 144/144 independently reconciled cells, including 32 L1-A
+reuse attestations. The pre-registered L1-C promotion condition is satisfied
+by six two-phase coarse-screen configurations across four different models,
+as reported in [PR #68](https://github.com/AT2018cow/qlib/pull/68#issuecomment-6149341657).
+This does **not** constitute new OOS evidence, five-phase selection, or
+permission to change production Winner.
+
+L1-C implementation may reuse exactly **144** byte-verified L1-B cells and
+replay **120** new zero-fit portfolio cells, reaching **264 cumulative**
+cells (11 Stage-B models × 12 portfolios × 2 phases). Before launching any
+replay, validate the complete signed 144/144 L1-B export, all original
+32 L1-A attestations, independent two-phase screening against verified
+P0 Baseline, 55 frozen source rows, current provider/quote identity and
+144 artifact SHA attestations. A changed code SHA needs a recorded reviewed
+replay-equivalence decision; otherwise STOP.
+
+The user's simplified L1-B execution policy extends to **this specifically
+reviewed L1-C zero-fit runner**: first run 1 worker × 1 new cell smoke;
+then 2 workers × 8, scaling to 4 workers × 16–32 only after observed
+stability. Per-container replay allocation remains 2 vCPU / 4 GiB, timeout
+3600s, no automatic retries. P90 cost quotes, per-batch billing ledgers,
+USD budget pre-approvals and repeated manual cost signoffs are **not**
+mandatory blockers for L1-C. Avoid obvious waste with smoke, bounded
+concurrency, no unnecessary model fits, one active foreground coordinator,
+run-ID/SHA-scoped outputs and STOP on deterministic failures. The old
+P0/L1-A accounting history is untouched; later L2/L3 and production gates
+remain separate. This L1-C amendment supersedes conflicting historical
+expense paperwork provisions for L1-C alone.
+
+L1-C code must pass independent offline pytest, Black, pyflakes and
+argument smoke checks on the exact merged SHA **before a paid task**. See
+[runbook 55](55-csi1000-l1c-smoke-first-operator-20261013.md). No paid
+Modal execution is authorized merely by creating this code PR.
+
+
 > **状态：历史合同及 L1-B 执行修订。** P0 和 L1-A 已有独立运行证据；L1-B 尚未执行。本文件不授权自动切换生产。**目标是尽快选定可用于每日选股和收益网页的历史优选策略，不要求先等待数月前向数据。**
 >
 > **独立研究例外与权限边界：** 本文建议在新的隔离研究分支、独立 Modal research Volume 内对已经消费过的历史数据开展公开标注的产品选型。它**不**改写既有 Stage-A / Stage-B 实验结论，不将已观察的 2025–2026 区间重新包装成 OOS，不覆盖当前 Winner 的生产配置；正式选择和上线需要单独 reviewed decision/release PR。当前默认仍是 KEEP_CANONICAL_PENDING_RESEARCH_DECISION，直到新的书面决策获批。
