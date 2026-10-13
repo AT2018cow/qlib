@@ -57,34 +57,35 @@ Collect current authorized Modal billing rates and real measured worker resource
 
 **The zero prices, zero resource seconds and placeholders above are deliberately invalid.** Do not use them as executable estimates. Fill every field from approved actual cost evidence; check that P90 cost and pending spend stay within each layer and global cap. The remote P0 entrypoint requires --stage p0, --run-id, --max-workers 2, --estimated-total-usd, --cost-quote and a persistent --ledger outside the repository.
 
-## P0 image-build failure and re-attempt guard (2026-10-13)
+## P0 build incident and fast unblocking (2026-10-13)
 
-- The first P0 attempt was **BLOCKED before any replay cell was dispatched**:
-  the git-less source image ran `make prerequisite` before installing pyqlib,
-  and setuptools-scm raised `LookupError: unable to detect version`.
-  No P0 result exists from that attempt.
-- The operator reported a real billed image-build charge of
-  **USD 0.00052688** (App ID `ap-xVpkAvkIqizi3X3lHMKHMg`),
-  booked to P0 with billing evidence. Check the actual local
-  persisted ledger and saved bill again before any new attempt;
-  these claims in this document are not a substitute for billing verification.
-- PR-S0 now mirrors the working Stage-A image: install pyqlib
-  non-editably with `pip install . --no-build-isolation --no-deps`
-  so source-tree `qlib/_version.py` is populated, then invoke
-  the two-extension direct Cython build in-place. Smoke-import both
-  compiled extensions. Image-build/runtime compatibility still needs
-  a genuine subsequent Modal test; static/pytest green does not prove it.
-- Re-run the offline suite and independent clean-commit check first,
-  confirm the previous provisional estimate has been cleared by
-  real billing, then refresh the rate SHA/P90 quote for the **new**
-  image and report the residual P0 cap (less than USD 2).
-  Keep the **same persistent ledger** and use a **new run_id**;
-  never silently reset booked spend or reuse an old image/code SHA.
-- A new `modal run` constitutes new billable activity and is **not**
-  authorized by the code fix itself. Obtain explicit operator budget
-  approval and remain in the attached foreground. If anything fails,
-  stop and book the App's actual build/queue/helper costs before
-  deciding on another attempt.
+The two prior P0 attempts **never reached replay**:
+
+- First: `make prerequisite` failed because setuptools-scm could not
+  derive the dynamic pyqlib package version in a Modal image without `.git`.
+- Second: `pip install . --no-build-isolation --no-deps` failed for the
+  same reason under the newer setuptools/vcs-versioning toolchain.
+- Operator reported two actual App charges, USD 0.00052688 +
+  USD 0.00384060 = **USD 0.00436748** P0 cumulative. No replay
+  cells ran. Preserve the existing ledger and billing evidence.
+
+**Current fix:** P0 does **not need to package/install pyqlib** to replay
+already frozen signals. The image now copies the repository as before,
+writes a build-only `qlib/_version.py`, compiles the two needed Cython
+modules from a separate `/tmp` working directory, writes compiled
+extensions into the copied source tree and smoke-imports Qlib. This
+avoids invoking `setuptools-scm` metadata generation altogether.
+The canonical code Git SHA and provider/source SHA are unchanged.
+
+Do not waste cycles on wheel packaging tests (P0 never creates one).
+Run the existing short local pytest once and check the Modal CLI. Then,
+with the **same** persisted ledger, a refreshed P90 estimate and the
+operator's approval, run the actual **four-cell P0** in the attached
+foreground (initial maximum two workers) and collect the real results.
+Only genuine remote replay verifies the image. If the build fails again,
+save its exact traceback and App ID; do not trigger an automatic
+unbounded retry. The existing P0 $2 budget remains the software
+contract unless separately reviewed.
 
 ## After a P0 run, before L1
 
