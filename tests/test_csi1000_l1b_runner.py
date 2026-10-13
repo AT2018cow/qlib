@@ -853,3 +853,70 @@ def test_finalize_only_path_does_not_replay():
     entrypoint = text.split("def run_search(", 1)[1].split("\ndef _write_inflight_ledger(", 1)[0]
     assert 'stage == "l1-b" and not cells and len(completed) == len(enumerate_cells("l1-b"))' in entrypoint
     assert "if finalize_only" in entrypoint and "else list(" in entrypoint
+
+
+def test_l1b_does_not_require_operator_quote_or_ledger(tmp_path):
+    """Legacy price gates must not prevent legitimate L1-B smoke preflight."""
+    p0 = _export_tree(tmp_path / "p0exp", "p0", core.enumerate_cells("p0"), "p0-old", "a" * 40)
+    l1a = _export_tree(tmp_path / "l1aexp", "l1-a", core.enumerate_cells("l1-a"), "l1a-old", "a" * 40)
+    invalid_ledger = tmp_path / "existing_historical_ledger.json"
+    invalid_ledger.write_text("{not valid json}", encoding="utf-8")
+    unchanged = invalid_ledger.read_bytes()
+    args = runner.build_cli().parse_args(
+        [
+            "--stage", "l1-b",
+            "--run-id", "l1b-smoke",
+            "--max-workers", "1",
+            "--batch-limit", "1",
+            "--smoke",
+            "--p0-summary", str(p0),
+            "--reuse-summary", str(l1a),
+            "--reuse-prefix", runner.result_prefix("l1a-old", "l1-a", "a" * 40),
+            "--equivalence-ref", "signed-eq-review",
+        ]
+    )
+    assert args.estimated_total_usd == -1
+    assert args.cost_quote == ""
+    assert len(runner.validate_args(args)) == 112
+    assert invalid_ledger.read_bytes() == unchanged
+
+
+def test_l1b_smoke_mandatory_once_and_bounded_batches():
+    gate = runner.check_l1b_smoke_gate
+    gate(smoke=True, max_workers=1, batch_limit=1, completed_new=0, smoke_passed=False)
+    with pytest.raises(ValueError, match="STOP_SMOKE_FIRST"):
+        gate(smoke=False, max_workers=2, batch_limit=8, completed_new=0, smoke_passed=False)
+    with pytest.raises(ValueError, match="STOP_SMOKE"):
+        gate(smoke=True, max_workers=2, batch_limit=1, completed_new=0, smoke_passed=False)
+    with pytest.raises(ValueError, match="STOP_SMOKE"):
+        gate(smoke=True, max_workers=1, batch_limit=2, completed_new=0, smoke_passed=False)
+    with pytest.raises(ValueError, match="STOP_SMOKE"):
+        gate(smoke=True, max_workers=1, batch_limit=1, completed_new=1, smoke_passed=True)
+    # A valid first-cell artifact can be finalized after interrupted smoke.
+    gate(smoke=True, max_workers=1, batch_limit=1, completed_new=1, smoke_passed=False)
+    for workers, cells in ((2, 8), (4, 24), (8, 32)):
+        gate(smoke=False, max_workers=workers, batch_limit=cells, completed_new=1, smoke_passed=True)
+    for bad_limit in (0, 33, 112):
+        with pytest.raises(ValueError, match="STOP_BATCH_BOUND"):
+            gate(smoke=False, max_workers=4, batch_limit=bad_limit, completed_new=1, smoke_passed=True)
+
+
+def test_l1b_smoke_stage_flag_rejects_legacy_stages(tmp_path):
+    with pytest.raises(ValueError, match="STOP_SMOKE"):
+        runner.validate_for_dispatch(
+            "p0", "smoke-p0", 1, 1, 0.5, "", str(tmp_path / "ledger.json"), smoke=True
+        )
+    with pytest.raises(ValueError, match="STOP_SMOKE"):
+        runner.validate_for_dispatch(
+            "l1-b", "smoke-new", 2, 1, -1, "", str(tmp_path / "ledger.json"), smoke=True
+        )
+
+
+def test_l1b_smoke_entrypoint_uses_fixed_container_and_no_charge_booking():
+    text = Path("audit/csi1000_layered_search_modal.py").read_text(encoding="utf-8")
+    assert "retries=0" in text
+    assert "cpu=2" in text and "memory=4096" in text and "timeout=3600" in text
+    assert '"smoke_pass.json"' in text
+    assert 'smoke=smoke' in text
+    assert 'if stage != "l1-b":' in text
+    assert 'smoke_recover = stage == "l1-b" and smoke and not cells and completed_new == 1' in text
