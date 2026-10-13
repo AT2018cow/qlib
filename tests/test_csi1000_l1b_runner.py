@@ -1113,13 +1113,9 @@ def test_l1c_reconcile_pass_requires_exact_144_attestations():
     with pytest.raises(ValueError, match="batch accounting"):
         rec.check_stage_summary({**summary, "computed_new": 119})
     with pytest.raises(ValueError, match="mix prior run"):
-        rec.check_stage_summary(
-            {**summary, "reuse_attestations": [{**att[0], "prior_run_id": "other-run"}] + att[1:]}
-        )
+        rec.check_stage_summary({**summary, "reuse_attestations": [{**att[0], "prior_run_id": "other-run"}] + att[1:]})
     with pytest.raises(ValueError, match="differs from cell"):
-        rec.check_stage_summary(
-            {**summary, "reuse_attestations": [{**att[0], "source_sha256": "0" * 64}] + att[1:]}
-        )
+        rec.check_stage_summary({**summary, "reuse_attestations": [{**att[0], "source_sha256": "0" * 64}] + att[1:]})
     partial = {
         **summary,
         "status": "INCOMPLETE_BATCH",
@@ -1220,7 +1216,7 @@ def test_l1c_smoke_gate_and_runtime_code_paths():
     assert 'stage in ("l1-b", "l1-c")' in script
     assert '"l1-c": "l1-b"' in script
     assert '"smoke_pass.json"' in script
-    assert 'len(enumerate_cells(stage))' in script
+    assert "len(enumerate_cells(stage))" in script
     assert "cpu=2" in script and "memory=4096" in script and "timeout=3600" in script
     assert "retries=0" in script
     assert "else prepare_l1c_plan(" in script
