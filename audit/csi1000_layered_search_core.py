@@ -599,6 +599,83 @@ def verify_reuse_compatibility(
     }
 
 
+def check_live_provider_match(
+    live_snapshot_sha: str, live_quote_sha: str, plan_snapshot_sha: str, plan_quote_sha: str
+) -> Dict[str, str]:
+    """True cross-comparison: live volume identity must equal the reuse plan's.
+
+    Called with values measured from the live source volume at dispatch time,
+    against the unanimous values from the prior export. Any drift means the
+    current provider snapshot differs from the one behind the old evidence, so
+    mixing them into one evaluation is refused.
+    """
+    require(bool(live_snapshot_sha) and bool(live_quote_sha), "live provider identity missing")
+    require(live_snapshot_sha == plan_snapshot_sha, "live provider snapshot differs from reuse evidence")
+    require(live_quote_sha == plan_quote_sha, "live quote union differs from reuse evidence")
+    return {"status": "PROVIDER_MATCH", "snapshot_sha256": live_snapshot_sha, "quote_sha256": live_quote_sha}
+
+
+def materialize_reuse_cells(
+    results_root: str | Path, new_prefix: str, old_prefix: str, specs: List[Dict[str, Any]]
+) -> List[Dict[str, Any]]:
+    """Copy verified prior-run cells under the new prefix (all or nothing).
+
+    Validates every spec against old-prefix bytes FIRST (record re-check,
+    spec SHA agreement, all four artifact file hashes); only then copies each
+    cell tree into the new prefix atomically (temp dir + rename, identical
+    bytes resume, conflicts refuse). A later finalize therefore sees complete
+    local files for reused cells, and ranking tools work over one directory.
+    Returns the verified records in spec order.
+    """
+    require(bool(new_prefix) and bool(old_prefix) and new_prefix != old_prefix, "reuse prefixes invalid")
+    root = Path(results_root)
+    for part in (new_prefix, old_prefix):
+        require(not part.startswith("/") and ".." not in part.split("/"), "unsafe reuse prefix")
+    verified: List[Dict[str, Any]] = []
+    for spec in specs:
+        key = spec.get("cell_key")
+        require(key, "reuse spec missing cell_key")
+        src = root / old_prefix / "cells" / key
+        record = json.loads((src / "cell.json").read_text(encoding="utf-8"))
+        check_cell_record(record)
+        for sha_field in ("source_sha256", "output_sha256", "cache_key"):
+            require(record.get(sha_field) == spec.get(sha_field), f"reuse spec drift for {key}: {sha_field}")
+        names = ("daily_nav.csv", "fixed_report.parquet", "fixed_decisions.json", "metrics.json")
+        hashes = record.get("artifact_sha256")
+        require(isinstance(hashes, dict) and set(hashes) == set(names), f"reuse artifact manifest absent: {key}")
+        for name in names:
+            require(
+                (src / name).is_file() and sha256_file(src / name) == hashes[name],
+                f"reuse artifact bytes drift: {key}/{name}",
+            )
+        verified.append(record)
+    for spec, record in zip(specs, verified):
+        key = spec["cell_key"]
+        dest = root / new_prefix / "cells" / key
+        if dest.exists():
+            current = json.loads((dest / "cell.json").read_text(encoding="utf-8"))
+            require(
+                current.get("output_sha256") == record["output_sha256"]
+                and current.get("source_sha256") == record["source_sha256"],
+                f"reuse destination conflict: {key}",
+            )
+            manifest_hashes = current.get("artifact_sha256", {})
+            for name in ("daily_nav.csv", "fixed_report.parquet", "fixed_decisions.json", "metrics.json"):
+                require(
+                    (dest / name).is_file() and sha256_file(dest / name) == manifest_hashes.get(name),
+                    f"reuse destination bytes drift: {key}/{name}",
+                )
+            continue
+        tmp = dest.parent / (dest.name + ".reuse-tmp")
+        require(not tmp.exists(), f"stale reuse temp dir blocks copy: {key}")
+        tmp.mkdir(parents=True, exist_ok=False)
+        src = root / old_prefix / "cells" / key
+        for name in ("cell.json", "daily_nav.csv", "fixed_report.parquet", "fixed_decisions.json", "metrics.json"):
+            (tmp / name).write_bytes((src / name).read_bytes())
+        tmp.replace(dest)
+    return verified
+
+
 def plan_l1b_reuse(
     prior_verified_cells: List[Dict[str, Any]],
     manifest_sources: Dict[Tuple[str, int], Dict[str, str]],
@@ -622,6 +699,8 @@ def plan_l1b_reuse(
     by_key = {r.get("cell_key"): r for r in prior_verified_cells}
     missing = [k for k in overlap_keys if k not in by_key]
     require(not missing, f"reuse source lacks overlap cells: {missing[:4]}")
+    providers = {by_key[k].get("provider_snapshot_sha256") for k in overlap_keys}
+    require(len(providers) == 1 and all(providers), "reuse export has no unanimous provider identity")
     attestations = [verify_reuse_compatibility(by_key[k], manifest_sources, current) for k in overlap_keys]
     return {
         "overlap_keys": overlap_keys,
@@ -629,6 +708,7 @@ def plan_l1b_reuse(
         "new_cells": [roster_b[k] for k in new_keys],
         "reuse_records": [by_key[k] for k in overlap_keys],
         "attestations": attestations,
+        "provider_snapshot_sha256": providers.pop(),
     }
 
 

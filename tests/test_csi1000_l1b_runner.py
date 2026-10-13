@@ -6,6 +6,7 @@ fully self-consistent (real file bytes, real SHA walks).
 
 import hashlib
 import json
+from pathlib import Path
 
 import pytest
 
@@ -402,3 +403,291 @@ def test_interrupted_batch_summary_shape():
     }
     with pytest.raises(ValueError, match="verified cell list"):
         rec.check_stage_summary(summary)
+
+
+def _frame_for_metrics(drift, seed):
+    import math
+
+    import pandas as pd
+
+    from audit.independent_stage_b_metrics import REQUIRED, metrics
+
+    n = 424
+    account, cash, rows = 100_000_000.0, 100_000_000.0, {c: [] for c in REQUIRED}
+    total_cost, total_turn = 0.0, 0.0
+    for i in range(n):
+        wave = math.sin(i / 9.0 + seed) * 0.0004
+        daily = drift + wave
+        account *= 1 + daily
+        total_cost += account * 0.00005
+        total_turn += account * 0.02
+        rows["account"].append(account)
+        rows["cash"].append(cash)
+        rows["value"].append(account - cash)
+        rows["return"].append(daily + 0.00005)
+        rows["cost"].append(0.00005)
+        rows["total_cost"].append(total_cost)
+        rows["total_turnover"].append(total_turn)
+        rows["turnover"].append(0.02)
+        rows["bench"].append(0.0001)
+    frame = pd.DataFrame(rows, index=pd.date_range("2025-01-02", periods=n, freq="B"))
+    frame.index.name = "datetime"
+    numbers, _, _, _ = metrics(list(frame.index.date), {k: frame[k].astype(float).to_list() for k in REQUIRED})
+    return frame, {k: (float(v) if isinstance(v, float) else v) for k, v in numbers.items()}
+
+
+def _persisted_cell(root, cell, metrics, signal_sha):
+    record = _record(cell, signal_sha)
+    record["metrics"] = metrics
+    record["mean_turnover"] = float(metrics["mean_turnover"])
+    d = root / cell["cell_key"]
+    d.mkdir(parents=True, exist_ok=True)
+    artifacts = {}
+    for name, body in (("daily_nav.csv", "a,b\n1,2\n"), ("fixed_decisions.json", "[]"), ("metrics.json", "{}")):
+        (d / name).write_bytes(body.encode())
+        artifacts[name] = hashlib.sha256(body.encode()).hexdigest()
+    frame, _ = _frame_for_metrics(0.0006, 1.0)
+    frame.to_parquet(d / "fixed_report.parquet")
+    artifacts["fixed_report.parquet"] = hashlib.sha256((d / "fixed_report.parquet").read_bytes()).hexdigest()
+    # Recompute metrics from the persisted parquet so independent re-checks agree.
+    import pandas as pd
+
+    from audit.independent_stage_b_metrics import REQUIRED, metrics as _metrics
+
+    reread = pd.read_parquet(d / "fixed_report.parquet")
+    numbers, _, _, _ = _metrics(list(reread.index.date), {k: reread[k].astype(float).to_list() for k in REQUIRED})
+    record["metrics"] = {k: (float(v) if isinstance(v, float) else v) for k, v in numbers.items()}
+    record["mean_turnover"] = float(numbers["mean_turnover"])
+    record["artifact_sha256"] = artifacts
+    record["output_sha256"] = artifacts["daily_nav.csv"]
+    record["final_nav_cny"] = float(reread["account"].iloc[-1])
+    record["total_cost_cny"] = float(numbers["total_cost_sum"])
+    (d / "cell.json").write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return record
+
+
+def test_materialize_copies_verified_cells(tmp_path):
+    old = tmp_path / "old"
+    specs, records = [], []
+    for cell in core.enumerate_cells("l1-a")[:4]:
+        signal = _hex("sig" + cell["candidate_id"] + str(cell["phase"]))
+        rec = _record(cell, signal)
+        d = old / "cells" / cell["cell_key"]
+        d.mkdir(parents=True, exist_ok=True)
+        arts = {}
+        for name, body in (
+            ("daily_nav.csv", "nav"),
+            ("fixed_report.parquet", "rp"),
+            ("fixed_decisions.json", "[]"),
+            ("metrics.json", "{}"),
+        ):
+            (d / name).write_bytes(body.encode())
+            arts[name] = hashlib.sha256(body.encode()).hexdigest()
+        rec["artifact_sha256"] = arts
+        rec["output_sha256"] = arts["daily_nav.csv"]
+        (d / "cell.json").write_text(json.dumps(rec, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        records.append(rec)
+        specs.append(
+            {
+                "cell_key": rec["cell_key"],
+                "source_sha256": rec["source_sha256"],
+                "output_sha256": rec["output_sha256"],
+                "cache_key": rec["cache_key"],
+            }
+        )
+    out = core.materialize_reuse_cells(tmp_path, "new/prefix", "old", specs)
+    assert [r["cell_key"] for r in out] == [s["cell_key"] for s in specs]
+    for rec in records:
+        assert (tmp_path / "new/prefix/cells" / rec["cell_key"] / "daily_nav.csv").read_bytes() == b"nav"
+
+
+def test_materialize_aborts_before_any_copy_on_tamper(tmp_path):
+    old = tmp_path / "old"
+    specs = []
+    for cell in core.enumerate_cells("l1-a")[:3]:
+        signal = _hex("sig" + cell["candidate_id"] + str(cell["phase"]))
+        rec = _record(cell, signal)
+        d = old / "cells" / cell["cell_key"]
+        d.mkdir(parents=True, exist_ok=True)
+        arts = {}
+        for name, body in (
+            ("daily_nav.csv", "nav"),
+            ("fixed_report.parquet", "rp"),
+            ("fixed_decisions.json", "[]"),
+            ("metrics.json", "{}"),
+        ):
+            (d / name).write_bytes(body.encode())
+            arts[name] = hashlib.sha256(body.encode()).hexdigest()
+        rec["artifact_sha256"] = arts
+        rec["output_sha256"] = arts["daily_nav.csv"]
+        (d / "cell.json").write_text(json.dumps(rec, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        specs.append(
+            {
+                "cell_key": rec["cell_key"],
+                "source_sha256": rec["source_sha256"],
+                "output_sha256": rec["output_sha256"],
+                "cache_key": rec["cache_key"],
+            }
+        )
+    victim = old / "cells" / specs[1]["cell_key"] / "fixed_report.parquet"
+    victim.write_bytes(b"tampered")
+    with pytest.raises(ValueError, match="bytes drift"):
+        core.materialize_reuse_cells(tmp_path, "new/prefix", "old", specs)
+    assert not (tmp_path / "new/prefix/cells").exists()
+
+
+def test_materialize_resume_and_conflict(tmp_path):
+    old = tmp_path / "old"
+    cell = core.enumerate_cells("l1-a")[0]
+    signal = _hex("sig" + cell["candidate_id"] + str(cell["phase"]))
+    rec = _record(cell, signal)
+    d = old / "cells" / cell["cell_key"]
+    d.mkdir(parents=True, exist_ok=True)
+    arts = {}
+    for name, body in (
+        ("daily_nav.csv", "nav"),
+        ("fixed_report.parquet", "rp"),
+        ("fixed_decisions.json", "[]"),
+        ("metrics.json", "{}"),
+    ):
+        (d / name).write_bytes(body.encode())
+        arts[name] = hashlib.sha256(body.encode()).hexdigest()
+    rec["artifact_sha256"] = arts
+    rec["output_sha256"] = arts["daily_nav.csv"]
+    (d / "cell.json").write_text(json.dumps(rec, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    spec = {
+        "cell_key": rec["cell_key"],
+        "source_sha256": rec["source_sha256"],
+        "output_sha256": rec["output_sha256"],
+        "cache_key": rec["cache_key"],
+    }
+    core.materialize_reuse_cells(tmp_path, "new/prefix", "old", [spec])
+    # Identical rerun resumes without error.
+    core.materialize_reuse_cells(tmp_path, "new/prefix", "old", [spec])
+    # Diverged destination refuses.
+    (tmp_path / "new/prefix/cells" / rec["cell_key"] / "daily_nav.csv").write_bytes(b"evil")
+    with pytest.raises(ValueError, match="bytes drift|conflict"):
+        core.materialize_reuse_cells(tmp_path, "new/prefix", "old", [spec])
+
+
+def test_live_provider_match():
+    assert core.check_live_provider_match("a" * 64, "b" * 64, "a" * 64, "b" * 64)["status"] == "PROVIDER_MATCH"
+    with pytest.raises(ValueError, match="snapshot differs"):
+        core.check_live_provider_match("c" * 64, "b" * 64, "a" * 64, "b" * 64)
+    with pytest.raises(ValueError, match="quote union differs"):
+        core.check_live_provider_match("a" * 64, "c" * 64, "a" * 64, "b" * 64)
+    with pytest.raises(ValueError, match="missing"):
+        core.check_live_provider_match("", "b" * 64, "a" * 64, "b" * 64)
+
+
+def test_dispatch_order_verify_before_compute():
+    text = Path("audit/csi1000_layered_search_modal.py").read_text(encoding="utf-8")
+    body = text[text.index("def run_search") :]
+    assert body.index("verify_reuse_remote.remote") < body.index(".map(")
+    assert body.index("check_live_provider_match") < body.index(".map(")
+    assert "planned = list(cells)" in body
+
+
+def test_screen_l1b_end_to_end_144(tmp_path):
+    from audit import csi1000_layered_search_selection as selection
+
+    research = tmp_path / "cells"
+    baseroot = tmp_path / "base"
+    for cell in core.enumerate_cells("l1-b"):
+        signal = _hex("sig" + cell["candidate_id"] + str(cell["phase"]))
+        frame, numbers = _frame_for_metrics(0.0004 + (hash(cell["cell_key"]) % 5) * 0.0001, 2.0)
+        rec = _record(cell, signal)
+        rec["metrics"] = numbers
+        rec["mean_turnover"] = float(numbers["mean_turnover"])
+        rec["final_nav_cny"] = float(frame["account"].iloc[-1])
+        rec["total_cost_cny"] = float(numbers["total_cost_sum"])
+        d = research / cell["cell_key"]
+        d.mkdir(parents=True, exist_ok=True)
+        frame.to_parquet(d / "fixed_report.parquet")
+        arts = {"fixed_report.parquet": hashlib.sha256((d / "fixed_report.parquet").read_bytes()).hexdigest()}
+        for name, body in (("daily_nav.csv", "a,b\n1,2\n"), ("fixed_decisions.json", "[]"), ("metrics.json", "{}")):
+            (d / name).write_bytes(body.encode())
+            arts[name] = hashlib.sha256(body.encode()).hexdigest()
+        rec["artifact_sha256"] = arts
+        rec["output_sha256"] = arts["daily_nav.csv"]
+        (d / "cell.json").write_text(json.dumps(rec, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    for cell in core.enumerate_cells("p0"):
+        if cell["candidate_id"] != core.BASELINE_CANDIDATE:
+            continue
+        signal = _hex("sig" + cell["candidate_id"] + str(cell["phase"]))
+        frame, numbers = _frame_for_metrics(0.0003, 3.0)
+        rec = _record(cell, signal)
+        rec["metrics"] = numbers
+        rec["mean_turnover"] = float(numbers["mean_turnover"])
+        rec["final_nav_cny"] = float(frame["account"].iloc[-1])
+        rec["total_cost_cny"] = float(numbers["total_cost_sum"])
+        d = baseroot / cell["cell_key"]
+        d.mkdir(parents=True, exist_ok=True)
+        frame.to_parquet(d / "fixed_report.parquet")
+        arts = {"fixed_report.parquet": hashlib.sha256((d / "fixed_report.parquet").read_bytes()).hexdigest()}
+        for name, body in (("daily_nav.csv", "a,b\n1,2\n"), ("fixed_decisions.json", "[]"), ("metrics.json", "{}")):
+            (d / name).write_bytes(body.encode())
+            arts[name] = hashlib.sha256(body.encode()).hexdigest()
+        rec["artifact_sha256"] = arts
+        rec["output_sha256"] = arts["daily_nav.csv"]
+        (d / "cell.json").write_text(json.dumps(rec, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    out = selection.screen_l1("l1-b", research, baseroot)
+    assert out["status"] == "AUDITED_HISTORICALLY_CONSUMED"
+    assert out["expected_cells"] == 144
+    assert len(out["all_ranked_trials"]) == 71
+    assert all("passed_coarse" in r for r in out["all_ranked_trials"])
+
+
+def test_l1b_pass_summary_strictness():
+    cells = core.enumerate_cells("l1-b")
+    records = []
+    for cell in cells:
+        signal = _hex("sig" + cell["candidate_id"] + str(cell["phase"]))
+        record = _record(cell, signal)
+        records.append(record)
+    overlap = {c["cell_key"] for c in core.enumerate_cells("l1-b")} & {
+        c["cell_key"] for c in core.enumerate_cells("l1-a")
+    }
+    assert len(overlap) == 32
+    attest = [
+        {
+            "cell_key": k,
+            "prior_run_id": "r",
+            "prior_code_sha": "a" * 40,
+            "output_sha256": _hex("o" + k),
+            "source_sha256": _hex("s" + k),
+            "quote_sha256": QUOTE,
+            "engine": core.PROTOCOL_VERSION,
+            "equivalence": "IDENTICAL_CODE",
+            "verified_utc": "t",
+        }
+        for k in sorted(overlap)
+    ]
+
+    def summary_with(verified, attestations):
+        return {
+            "protocol": core.PROTOCOL_VERSION,
+            "stage": "l1-b",
+            "run_id": "r",
+            "code_sha": "a" * 40,
+            "expected": 144,
+            "completed": 144,
+            "blocked": 0,
+            "training_performed": False,
+            "promotion_authorized": False,
+            "source_volume_read_only": True,
+            "status": "PASS",
+            "verified_cells": verified,
+            "blocked_cells": [],
+            "reuse_attestations": attestations,
+        }
+
+    assert rec.check_stage_summary(summary_with(records, attest))["attestations"] == 32
+    with pytest.raises(ValueError, match="32-cell overlap"):
+        rec.check_stage_summary(summary_with(records, attest[:31]))
+    new_only_key = sorted(
+        {c["cell_key"] for c in core.enumerate_cells("l1-b")} - {c["cell_key"] for c in core.enumerate_cells("l1-a")}
+    )[0]
+    forged = attest[:31] + [dict(attest[31], cell_key=new_only_key)]
+    with pytest.raises(ValueError, match="32-cell overlap"):
+        rec.check_stage_summary(summary_with(records, forged))

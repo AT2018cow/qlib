@@ -328,12 +328,21 @@ if _HAS_MODAL:
                 )
         if len(entries) != 55 or len({(e["candidate_id"], e["phase"]) for e in entries}) != 55:
             raise ValueError("STOP_P0: original frozen 11x5 source inventory incomplete")
+        import qlib
+        from audit.csi1000_layered_search_replay import static_quote_union
+        from csi1000_stage_b_core import MARKET, RESERVED_EXECUTION_END, RESERVED_EXECUTION_START
+        from qlib.data import D
+
+        qlib.init(provider_uri=str(SOURCE / "cn_data"), region="cn")
+        quote_codes, quote_sha = static_quote_union(MARKET, RESERVED_EXECUTION_START, RESERVED_EXECUTION_END, D)
         payload = {
             "status": "SOURCE_11x5_SHA_VERIFIED",
             "protocol": PROTOCOL_VERSION,
             "provider_fingerprint": actual["provider_fingerprint"],
             "provider_snapshot_sha256": sha256_file(snapshot),
             "snapshot_token": actual["snapshot_token"],
+            "quote_union_size": len(quote_codes),
+            "quote_sha256": quote_sha,
             "sources": entries,
         }
         target = RESULTS / prefix / "frozen_source_11x5.json"
@@ -345,7 +354,15 @@ if _HAS_MODAL:
         else:
             target.write_text(encoded, encoding="utf-8")
             research.commit()
-        return {"status": payload["status"], "count": len(entries), "manifest_sha256": sha256_file(target)}
+        return {
+            "status": payload["status"],
+            "count": len(entries),
+            "manifest_sha256": sha256_file(target),
+            "provider_snapshot_sha256": payload["provider_snapshot_sha256"],
+            "provider_fingerprint": payload["provider_fingerprint"],
+            "quote_sha256": payload["quote_sha256"],
+            "quote_union_size": payload["quote_union_size"],
+        }
 
     @app.function(volumes={str(RESULTS): research}, cpu=1, memory=1024, timeout=120)
     def inventory_completed_remote(prefix: str, stage: str) -> List[str]:
@@ -382,40 +399,22 @@ if _HAS_MODAL:
         memory=4096,
         timeout=900,
     )
-    def verify_reuse_remote(old_prefix: str, specs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Re-verify prior-run cells from research bytes before any reuse.
+    def verify_reuse_remote(new_prefix: str, old_prefix: str, specs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Materialize prior-run cells under the new prefix (all or nothing).
 
-        Reads each ``old_prefix/cells/<key>/`` record plus all four artifact
-        files from the shared research volume (read-only use of the source
-        volume is untouched) and requires full agreement with the supplied
-        specs. Any single mismatch aborts the whole batch: reuse is all or
-        nothing, never silent recomputation.
+        Byte-verifies every spec against the old prefix FIRST, then copies
+        each verified cell tree into the new prefix. Runs BEFORE any new
+        compute: a reuse failure aborts the batch with zero replay spend.
         """
-        from audit.csi1000_layered_search_core import sha256_file
+        from audit.csi1000_layered_search_core import materialize_reuse_cells
 
         research.reload()
-        if not old_prefix or old_prefix.startswith("/") or ".." in old_prefix.split("/"):
-            raise RuntimeError("STOP_L1: unsafe reuse prefix")
-        if not old_prefix.startswith("csi1000_layered_search/"):
-            raise RuntimeError("STOP_L1: reuse prefix outside layered-search research tree")
-        verified = []
-        for spec in specs:
-            key = spec.get("cell_key")
-            root = RESULTS / old_prefix / "cells" / key
-            record = json.loads((root / "cell.json").read_text(encoding="utf-8"))
-            check_cell_record(record)
-            for field in ("source_sha256", "output_sha256", "cache_key"):
-                if record.get(field) != spec.get(field):
-                    raise RuntimeError(f"STOP_L1: reuse spec drift for {key}: {field}")
-            hashes = record.get("artifact_sha256")
-            required = ("daily_nav.csv", "fixed_report.parquet", "fixed_decisions.json", "metrics.json")
-            if not isinstance(hashes, dict) or set(hashes) != set(required):
-                raise RuntimeError(f"STOP_L1: reuse artifact manifest absent: {key}")
-            for filename in required:
-                if not (root / filename).is_file() or sha256_file(root / filename) != hashes[filename]:
-                    raise RuntimeError(f"STOP_L1: reuse artifact bytes drift: {key}/{filename}")
-            verified.append(record)
-        return verified
+        try:
+            records = materialize_reuse_cells(RESULTS, new_prefix, old_prefix, specs)
+        except ValueError as exc:
+            raise RuntimeError(f"STOP_L1: reuse materialization failed: {exc}") from exc
+        research.commit()
+        return records
 
     @app.function(
         volumes={str(SOURCE): original.with_mount_options(read_only=True), str(RESULTS): research},
@@ -464,9 +463,6 @@ if _HAS_MODAL:
                     continue
                 raise RuntimeError("STOP_P0: conflicting duplicate cell result")
             seen.add(o.get("cell_key"))
-            if o.get("cell_key") not in expected_keys:
-                blocked.append({"cell_key": o.get("cell_key"), "reason": "unexpected cell identity"})
-                continue
             try:
                 check_cell_record(o)
                 data_dir = RESULTS / prefix / "cells" / o["cell_key"]
@@ -496,20 +492,10 @@ if _HAS_MODAL:
                 verified.append(o)
             except Exception as exc:
                 blocked.append({"cell_key": o.get("cell_key"), "reason": f"{type(exc).__name__}: {exc}"})
-        reuse_records = reuse_records or []
         attestations = attestations or []
         attested = {a.get("cell_key") for a in attestations}
-        for record in reuse_records:
-            key = record.get("cell_key")
-            if key in seen or key not in expected_keys:
-                raise RuntimeError(f"STOP_L1: reuse record outside the cumulative roster: {key}")
-            if key not in attested:
-                raise RuntimeError(f"STOP_L1: reuse without attestation: {key}")
-            check_cell_record(record)
-            seen.add(key)
-            verified.append(record)
-        if len(attestations) != len(reuse_records):
-            raise RuntimeError("STOP_L1: reuse attestation count differs from reuse records")
+        if attested - seen:
+            raise RuntimeError("STOP_L1: attestation without verified cell")
         summary = {
             "protocol": PROTOCOL_VERSION,
             "stage": stage,
@@ -525,8 +511,8 @@ if _HAS_MODAL:
             "blocked_cells": blocked,
             "verified_cells": verified,
             "reuse_attestations": attestations,
-            "computed_new": len(verified) - len(reuse_records),
-            "reused": len(reuse_records),
+            "computed_new": len(verified) - len(attested),
+            "reused": len(attested),
             "training_performed": False,
             "promotion_authorized": False,
             "source_volume_read_only": True,
@@ -650,8 +636,35 @@ if _HAS_MODAL:
         verified_roster = inventory_frozen_sources_remote.remote(prefix)
         if verified_roster.get("count") != 55:
             raise RuntimeError("STOP_P0: missing 11x5 source inventory")
+        attestations: List[Dict[str, Any]] = []
+        if stage == "l1-b":
+            from audit.csi1000_layered_search_core import check_live_provider_match
+
+            plan = prepare_l1b_plan(reuse_summary, equivalence_ref, sha)
+            check_live_provider_match(
+                verified_roster.get("provider_snapshot_sha256", ""),
+                verified_roster.get("quote_sha256", ""),
+                plan["provider_snapshot_sha256"],
+                plan["quote_sha"],
+            )
+            # Materialize BEFORE the empty-batch check and BEFORE any new
+            # compute: reuse must be proven with zero replay spend at risk.
+            # Idempotent: identical bytes resume, conflicts refuse.
+            specs = [
+                {
+                    "cell_key": key,
+                    "source_sha256": next(r["source_sha256"] for r in plan["reuse_records"] if r["cell_key"] == key),
+                    "output_sha256": next(r["output_sha256"] for r in plan["reuse_records"] if r["cell_key"] == key),
+                    "cache_key": next(r["cache_key"] for r in plan["reuse_records"] if r["cell_key"] == key),
+                }
+                for key in plan["overlap_keys"]
+            ]
+            verify_reuse_remote.remote(prefix, reuse_prefix, specs)
+            attestations = plan["attestations"]
+            planned = list(cells)
+        else:
+            planned = sorted(enumerate_cells(stage), key=lambda c: c["cell_key"])
         completed = set(inventory_completed_remote.remote(prefix, stage))
-        planned = sorted(enumerate_cells(stage), key=lambda c: c["cell_key"])
         pending = [c for c in planned if c["cell_key"] not in completed]
         cells = pending[:batch_limit] if batch_limit else pending
         if not cells:
@@ -674,22 +687,7 @@ if _HAS_MODAL:
             flush=True,
         )
         outcomes = list(replay_cell_remote.with_options(max_containers=max_workers).map(build_jobs(cells, prefix)))
-        reuse_records: List[Dict[str, Any]] = []
-        attestations: List[Dict[str, Any]] = []
-        if stage == "l1-b":
-            plan = prepare_l1b_plan(reuse_summary, equivalence_ref, sha)
-            specs = [
-                {
-                    "cell_key": key,
-                    "source_sha256": next(r["source_sha256"] for r in plan["reuse_records"] if r["cell_key"] == key),
-                    "output_sha256": next(r["output_sha256"] for r in plan["reuse_records"] if r["cell_key"] == key),
-                    "cache_key": next(r["cache_key"] for r in plan["reuse_records"] if r["cell_key"] == key),
-                }
-                for key in plan["overlap_keys"]
-            ]
-            reuse_records = verify_reuse_remote.remote(reuse_prefix, specs)
-            attestations = plan["attestations"]
-        summary = finalize_remote.remote(prefix, stage, outcomes, sha, run_id, reuse_records, attestations)
+        summary = finalize_remote.remote(prefix, stage, outcomes, sha, run_id, attestations)
         _write_inflight_ledger(
             Path(ledger).expanduser().parent / TRIAL_LEDGER_NAME,
             stage,

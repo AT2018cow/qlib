@@ -111,6 +111,22 @@ def check_stage_summary(summary: Dict[str, Any]) -> Dict[str, Any]:
         overlap = {c["cell_key"] for c in verified} & {a.get("cell_key") for a in reuse}
         require(len(reuse) == len(overlap) and overlap, "l1-b reuse attestations incomplete")
         reuse_info = check_reuse_attestations(reuse, overlap)
+    if summary.get("stage") == "l1-b" and summary.get("status") == "PASS":
+        # A PASS l1-b summary is a final claim: the full 144 roster verified
+        # with exactly the 32-cell L1-A overlap attested. Anything less is an
+        # incomplete batch, never a passing evaluation.
+        from audit.csi1000_layered_search_core import enumerate_cells
+
+        overlap_roster = {c["cell_key"] for c in enumerate_cells("l1-b")} & {
+            c["cell_key"] for c in enumerate_cells("l1-a")
+        }
+        require(expected == 144 and completed == 144 and blocked == 0, "l1-b PASS needs 144/144 with 0 blocked")
+        require(len(verified) == 144, "l1-b PASS needs 144 verified cells")
+        require(
+            {a.get("cell_key") for a in reuse} == overlap_roster and len(reuse) == 32,
+            "l1-b PASS needs exactly the 32-cell overlap attested",
+        )
+        reuse_info = check_reuse_attestations(reuse, overlap_roster)
     return {
         "stage": summary.get("stage"),
         "expected": expected,
