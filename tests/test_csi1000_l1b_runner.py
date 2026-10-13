@@ -1002,3 +1002,189 @@ def test_l1b_smoke_entrypoint_uses_fixed_container_and_no_charge_booking():
     assert 'smoke_recover = stage in ("l1-b", "l1-c") and smoke and not cells and completed_new == 1' in text
     assert 'if stage in ("l1-b", "l1-c") and smoke and completed_new == 1:' in text
     assert "cells = []" in text
+
+
+# L1-C: 144 strictly verified L1-B reuses + 120 zero-fit new combinations.
+
+
+def _l1c_evidence(tmp_path, monkeypatch, qualified=6):
+    """Complete byte-signed synthetic export; screen is mocked, never real PnL."""
+    from audit import csi1000_layered_search_selection as selection
+
+    p0 = _export_tree(tmp_path / "p0exp", "p0", core.enumerate_cells("p0"), "p0-old", "a" * 40)
+    l1b = _export_tree(tmp_path / "l1bexp", "l1-b", core.enumerate_cells("l1-b"), "l1b-old", "a" * 40)
+    seen = []
+
+    def screen(stage, research_cells, p0_cells):
+        seen.append((stage, Path(research_cells), Path(p0_cells)))
+        return {"qualified_configs": qualified, "can_expand_to_l1_c": qualified >= 2}
+
+    monkeypatch.setattr(selection, "screen_l1", screen)
+    return p0, l1b, seen
+
+
+def _l1c_dispatch(p0, l1b, *, reuse_prefix=None, ref="reviewed-replay-sha", batch=8, sha=None, smoke=False):
+    if reuse_prefix is None:
+        reuse_prefix = runner.result_prefix("l1b-old", "l1-b", "a" * 40)
+    return runner.validate_for_dispatch(
+        "l1-c",
+        "l1c-new",
+        1 if smoke else 2,
+        1 if smoke else batch,
+        -1,
+        "",
+        "/nonexistent/history.json",
+        str(p0),
+        str(l1b),
+        ref,
+        reuse_prefix,
+        sha or "b" * 40,
+        smoke,
+    )
+
+
+def test_l1c_roster_geometry_and_only_five_other_models():
+    prior = {c["cell_key"] for c in core.enumerate_cells("l1-b")}
+    all_cells = core.enumerate_cells("l1-c")
+    new = [c for c in all_cells if c["cell_key"] not in prior]
+    assert len(all_cells) == 264 and len(prior) == 144 and len(new) == 120
+    assert len({c["candidate_id"] for c in new}) == 5
+    assert all(c["candidate_id"] not in core.L1B_6_MODELS for c in new)
+    assert {c["phase"] for c in new} == {0, 10}
+
+
+def test_l1c_core_reuse_plan_checks_144_prior_and_refuses_missing_cell():
+    records = [_record(c, _hex("sig" + c["candidate_id"] + str(c["phase"]))) for c in core.enumerate_cells("l1-b")]
+    manifest = core.manifest_source_index(_frozen_manifest(core.enumerate_cells("l1-b")))
+    ctx = _ctx(records, "b" * 40, "a" * 40, "reviewed-replay")
+    plan = core.plan_l1c_reuse(records, manifest, ctx)
+    assert len(plan["overlap_keys"]) == len(plan["reuse_records"]) == len(plan["attestations"]) == 144
+    assert len(plan["new_cells"]) == 120
+    assert all(a["equivalence"] == "REVIEWED_EQUIVALENT:reviewed-replay" for a in plan["attestations"])
+    with pytest.raises(ValueError, match="144 unique"):
+        core.plan_l1c_reuse(records[:-1], manifest, ctx)
+    with pytest.raises(ValueError, match="144 unique"):
+        core.plan_l1c_reuse(records[:-1] + [records[0]], manifest, ctx)
+    with pytest.raises(ValueError, match="equivalence"):
+        core.plan_l1c_reuse(records, manifest, {**ctx, "version_equivalence_ref": ""})
+
+
+def test_l1c_reconcile_pass_requires_exact_144_attestations():
+    cells = core.enumerate_cells("l1-c")
+    rows = [_record(c, _hex("sig" + c["candidate_id"] + str(c["phase"]))) for c in cells]
+    overlap = {c["cell_key"] for c in core.enumerate_cells("l1-b")}
+    by_key = {r["cell_key"]: r for r in rows}
+    att = [
+        {
+            "cell_key": key, "prior_run_id": "l1b-old", "prior_code_sha": "a" * 40,
+            "output_sha256": by_key[key]["output_sha256"], "source_sha256": by_key[key]["source_sha256"],
+            "quote_sha256": QUOTE, "engine": core.PROTOCOL_VERSION,
+            "equivalence": "REVIEWED_EQUIVALENT:reviewed", "verified_utc": "2026-10-13T00:00:00Z",
+        }
+        for key in sorted(overlap)
+    ]
+    summary = {
+        "stage": "l1-c", "protocol": core.PROTOCOL_VERSION, "run_id": "l1c-new", "code_sha": "b" * 40,
+        "expected": 264, "completed": 264, "blocked": 0, "remaining": 0, "status": "PASS",
+        "verified_cells": rows, "blocked_cells": [], "reuse_attestations": att,
+        "reused": 144, "computed_new": 120, "training_performed": False,
+        "promotion_authorized": False, "source_volume_read_only": True,
+    }
+    assert rec.check_stage_summary(summary)["attestations"] == 144
+    with pytest.raises(ValueError, match="144-cell"):
+        rec.check_stage_summary({**summary, "reuse_attestations": att[:-1]})
+    with pytest.raises(ValueError, match="120"):
+        rec.check_stage_summary({**summary, "computed_new": 119})
+    with pytest.raises(ValueError, match="differs from cell"):
+        rec.check_stage_summary({**summary, "reuse_attestations": [{**att[0], "source_sha256": "0" * 64}] + att[1:]})
+    partial = {
+        **summary, "status": "INCOMPLETE_BATCH", "completed": 145, "remaining": 119,
+        "verified_cells": [r for r in rows if r["cell_key"] in overlap]
+        + [next(r for r in rows if r["cell_key"] not in overlap)],
+        "computed_new": 1,
+    }
+    assert rec.check_stage_summary(partial)["completed"] == 145
+
+
+def test_l1c_verified_export_and_120_dispatch(tmp_path, monkeypatch):
+    p0, l1b, seen = _l1c_evidence(tmp_path, monkeypatch, qualified=6)
+    plan = runner.prepare_l1c_plan(str(l1b), str(p0), "reviewed-replay-sha", "b" * 40)
+    assert len(plan["overlap_keys"]) == 144 and len(plan["new_cells"]) == 120
+    assert plan["l1b_screen"]["qualified_configs"] == 6
+    cells = _l1c_dispatch(p0, l1b)
+    assert len(cells) == 120
+    assert seen and all(call[0] == "l1-b" for call in seen)
+    assert str(seen[0][1]).endswith("/l1bexp/cells")
+    assert len(_l1c_dispatch(p0, l1b, smoke=True)) == 120
+
+
+def test_l1c_source_prefix_and_equivalence_are_fail_closed(tmp_path, monkeypatch):
+    p0, l1b, _ = _l1c_evidence(tmp_path, monkeypatch)
+    correct = runner.result_prefix("l1b-old", "l1-b", "a" * 40)
+    with pytest.raises(ValueError, match="audited l1-b"):
+        _l1c_dispatch(p0, l1b, reuse_prefix=correct.replace("l1b-old", "wrong-id"))
+    with pytest.raises(ValueError, match="equivalence"):
+        _l1c_dispatch(p0, l1b, ref="")
+    with pytest.raises(ValueError, match="unsafe reuse prefix"):
+        _l1c_dispatch(p0, l1b, reuse_prefix="../bad")
+    with pytest.raises(ValueError, match="resume-from-manifest"):
+        runner.validate_for_dispatch(
+            "l1-c", "l1c-new", 2, 8, -1, "some.json", "/nonexistent/ledger", str(p0),
+            str(l1b), "reviewed-replay", correct, "b" * 40,
+        )
+
+
+def test_l1c_coarse_screen_two_distinct_gate(tmp_path, monkeypatch):
+    p0, l1b, _ = _l1c_evidence(tmp_path, monkeypatch, qualified=1)
+    with pytest.raises(ValueError, match="STOP_L1_C_GATE"):
+        _l1c_dispatch(p0, l1b)
+
+
+def test_l1c_rejects_tampered_signed_l1b_export(tmp_path, monkeypatch):
+    p0, l1b, _ = _l1c_evidence(tmp_path, monkeypatch)
+    root = l1b.parents[2]
+    first = core.enumerate_cells("l1-b")[0]["cell_key"]
+    (root / "cells" / first / "fixed_decisions.json").write_text("[tampered]", encoding="utf-8")
+    with pytest.raises(ValueError, match="STOP_L1"):
+        _l1c_dispatch(p0, l1b)
+
+
+def test_l1c_batches_resume_120_without_replaying_144_prior():
+    old = {c["cell_key"] for c in core.enumerate_cells("l1-b")}
+    candidates = sorted(
+        (c for c in core.enumerate_cells("l1-c") if c["cell_key"] not in old),
+        key=lambda c: c["cell_key"],
+    )
+    completed = set(old)
+    smoke = core.select_pending_batch(candidates, completed, 1)
+    assert len(smoke) == 1 and smoke[0]["cell_key"] not in old
+    completed.add(smoke[0]["cell_key"])
+    sizes = [1]
+    while True:
+        batch = core.select_pending_batch(candidates, completed, 8)
+        if not batch:
+            break
+        assert not {c["cell_key"] for c in batch} & completed
+        completed.update(c["cell_key"] for c in batch)
+        sizes.append(len(batch))
+    assert len(completed) == 264 and sum(sizes) == 120
+    assert sizes == [1] + [8] * 14 + [7]
+
+
+def test_l1c_smoke_gate_and_runtime_code_paths():
+    gate = runner.check_l1b_smoke_gate
+    gate(smoke=True, max_workers=1, batch_limit=1, completed_new=0, smoke_passed=False)
+    gate(smoke=True, max_workers=1, batch_limit=1, completed_new=1, smoke_passed=False)
+    with pytest.raises(ValueError, match="STOP_SMOKE_FIRST"):
+        gate(smoke=False, max_workers=2, batch_limit=8, completed_new=0, smoke_passed=False)
+    with pytest.raises(ValueError, match="STOP_SMOKE"):
+        gate(smoke=True, max_workers=1, batch_limit=1, completed_new=1, smoke_passed=True)
+    gate(smoke=False, max_workers=2, batch_limit=8, completed_new=1, smoke_passed=True)
+    script = Path("audit/csi1000_layered_search_modal.py").read_text(encoding="utf-8")
+    assert 'stage in ("l1-b", "l1-c")' in script
+    assert '"l1-c": "l1-b"' in script
+    assert '"smoke_pass.json"' in script
+    assert 'len(enumerate_cells(stage))' in script
+    assert "cpu=2" in script and "memory=4096" in script and "timeout=3600" in script
+    assert "retries=0" in script
+    assert "stage == \"l1-b\" else prepare_l1c_plan" in script
