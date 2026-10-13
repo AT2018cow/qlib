@@ -2,7 +2,8 @@
 
 Real frozen-signal replay via :mod:`audit.csi1000_layered_search_replay`:
 read-only source volume, separate research volume, per-cell SHA resume with
-atomic publish, persistent cross-batch cost ledger and fail-closed STOP gates.
+atomic publish and fail-closed source/evidence gates. L1-B uses a smoke-first
+execution policy without mandatory cost quotes or per-batch ledger booking.
 Zero training for p0/l1-a/l1-b: frozen Stage-B signals are replayed under
 different (TopK, DropN) combos only. L1-A requires a verified P0 summary;
 L1-B additionally requires a verified L1-A summary plus an explicit
@@ -16,8 +17,8 @@ batch, shrink ``--batch-limit`` first or STOP. ``git checkout --detach`` is
 unrelated and remains allowed. No ``nohup``, shell ``&`` or untracked
 background mechanism is used anywhere in this file.
 
-Status: code only, NOT EXECUTED. Real spend needs explicit USD30 approval,
-and no billed run is claimed by merging or reviewing this file.
+Status: code only, NOT EXECUTED. L1-B runtime is smoke-first; this code
+does not itself launch any work merely by being merged or reviewed.
 """
 
 from __future__ import annotations
@@ -129,6 +130,17 @@ def check_operator_cost_quote(path: str, estimated_usd: float, covered_cells: in
         "covered_cells": quote["covered_cells"],
         "captured_utc": quote["captured_utc"],
     }
+
+
+def check_l1b_smoke_gate(
+    *, smoke: bool, max_workers: int, batch_limit: int, completed_new: int, smoke_passed: bool
+) -> None:
+    """Require one fully finalized replay before dispatching a longer L1-B batch."""
+    if smoke:
+        require(max_workers == 1 and batch_limit == 1, "STOP_SMOKE: use one worker and one new cell")
+        require(completed_new == 0 and not smoke_passed, "STOP_SMOKE: smoke already completed; use normal batch")
+    else:
+        require(smoke_passed and completed_new >= 1, "STOP_SMOKE_FIRST: run --smoke with 1 worker/1 cell first")
 
 
 def result_prefix(run_id: str, stage: str, code_sha: str) -> str:
@@ -369,7 +381,7 @@ if _HAS_MODAL:
         }
 
     @app.function(volumes={str(RESULTS): research}, cpu=1, memory=1024, timeout=120)
-    def inventory_completed_remote(prefix: str, stage: str) -> List[str]:
+    def inventory_completed_remote(prefix: str, stage: str) -> Dict[str, Any]:
         """Read existing research artifacts and accept only verified output hashes."""
         from audit.csi1000_layered_search_core import sha256_file
 
@@ -395,7 +407,23 @@ if _HAS_MODAL:
                 if hashes["daily_nav.csv"] != record["output_sha256"]:
                     raise RuntimeError("STOP_P0: persisted NAV SHA drift")
                 completed.append(root.name)
-        return sorted(completed)
+        smoke_passed = False
+        marker = RESULTS / prefix / "smoke_pass.json"
+        if stage == "l1-b" and marker.is_file():
+            proof = json.loads(marker.read_text(encoding="utf-8"))
+            new_keys = {c["cell_key"] for c in enumerate_cells("l1-b")} - {
+                c["cell_key"] for c in enumerate_cells("l1-a")
+            }
+            smoke_key = proof.get("cell_key")
+            if (
+                proof.get("stage") != stage
+                or smoke_key not in new_keys
+                or smoke_key not in completed
+                or sha256_file(output / smoke_key / "cell.json") != proof.get("cell_record_sha256")
+            ):
+                raise RuntimeError("STOP_SMOKE: stored smoke proof is invalid or artifact changed")
+            smoke_passed = True
+        return {"completed": sorted(completed), "smoke_passed": smoke_passed}
 
     @app.function(
         volumes={str(SOURCE): original.with_mount_options(read_only=True), str(RESULTS): research},
@@ -433,6 +461,7 @@ if _HAS_MODAL:
         code_sha: str,
         run_id: str,
         attestations: List[Dict[str, Any]] | None = None,
+        smoke: bool = False,
     ) -> Dict[str, Any]:
         """Revalidate persisted bytes of new and materialized prior-run cells.
 
@@ -578,6 +607,34 @@ if _HAS_MODAL:
         if manifest_path.exists():
             raise RuntimeError("STOP_P0: signed source manifest already exists; refusing overwrite")
         manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        if smoke:
+            if stage != "l1-b" or summary["status"] != "INCOMPLETE_BATCH" or summary["completed"] != 33:
+                raise RuntimeError("STOP_SMOKE: expected 32 reused and exactly one verified new cell")
+            new_keys = {c["cell_key"] for c in enumerate_cells("l1-b")} - {
+                c["cell_key"] for c in enumerate_cells("l1-a")
+            }
+            done = [c for c in verified if c["cell_key"] in new_keys]
+            if len(done) != 1 or summary["blocked"] or len(attestations) != 32:
+                raise RuntimeError("STOP_SMOKE: incomplete first-cell evidence")
+            smoke_file = RESULTS / prefix / "smoke_pass.json"
+            if smoke_file.exists():
+                raise RuntimeError("STOP_SMOKE: smoke proof exists; never overwrite")
+            smoke_file.write_text(
+                json.dumps(
+                    {
+                        "stage": stage,
+                        "run_id": run_id,
+                        "code_sha": code_sha,
+                        "cell_key": done[0]["cell_key"],
+                        "cell_record_sha256": sha256_file(RESULTS / prefix / "cells" / done[0]["cell_key"] / "cell.json"),
+                        "status": "SMOKE_PASS",
+                    },
+                    sort_keys=True,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
         write_sha256sums(RESULTS / prefix)
         research.commit()
         return summary
@@ -596,6 +653,7 @@ if _HAS_MODAL:
         reuse_summary: str = "",
         reuse_prefix: str = "",
         equivalence_ref: str = "",
+        smoke: bool = False,
     ) -> None:
         """Foreground Modal entrypoint: P0 controls, then gated L1-A/L1-B screens.
 
@@ -606,6 +664,9 @@ if _HAS_MODAL:
         verified P0 cells. L1-B additionally needs ``--reuse-summary`` (a
         verified 32/32 L1-A export), ``--reuse-prefix`` (its research prefix)
         and ``--equivalence-ref`` (the reviewer-approved equivalence decision).
+        For L1-B run ``--smoke --max-workers 1 --batch-limit 1`` first;
+        after verified smoke use 2–4 workers and bounded batches (8 maximum).
+        The L1-B path ignores legacy cost-quote and budget-ledger flags.
         """
         sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
         if subprocess.check_output(["git", "status", "--porcelain"], text=True).strip():
@@ -623,25 +684,27 @@ if _HAS_MODAL:
             equivalence_ref,
             reuse_prefix,
             sha,
+            smoke,
         )
         if stage == "p0" and max_workers > 2:
             raise ValueError("STOP_BUDGET: P0 must start with no more than two workers")
         prefix = result_prefix(run_id, stage, sha)
-        # Quote only the bounded NEW work in this batch; do not charge the
-        # 32 reused cells or quote all 112 when --batch-limit is smaller.
-        estimate_n = min(len(cells), batch_limit) if stage == "l1-b" and batch_limit else len(cells)
-        check_operator_cost_quote(cost_quote, float(estimated_total_usd), estimate_n)
-        ledger_obj = BudgetLedger.load(ledger)
-        gate = ledger_obj.preflight("p0" if stage == "p0" else "l1", float(estimated_total_usd))
-        if gate != "OK_CONTINUE":
-            raise ValueError(f"STOP: ledger preflight gate {gate}")
-        ledger_obj.record_estimate(
-            "p0" if stage == "p0" else "l1",
-            float(estimated_total_usd),
-            run_id=run_id,
-            note="reserve before any billable remote inventory or replay",
-        )
-        ledger_obj.save(ledger)
+        if stage != "l1-b":
+            # Historical P0/L1-A accounting is unchanged. L1-B intentionally
+            # does not require a bill quote, ledger write, or batch approval.
+            estimate_n = len(cells)
+            check_operator_cost_quote(cost_quote, float(estimated_total_usd), estimate_n)
+            ledger_obj = BudgetLedger.load(ledger)
+            gate = ledger_obj.preflight("p0" if stage == "p0" else "l1", float(estimated_total_usd))
+            if gate != "OK_CONTINUE":
+                raise ValueError(f"STOP: ledger preflight gate {gate}")
+            ledger_obj.record_estimate(
+                "p0" if stage == "p0" else "l1",
+                float(estimated_total_usd),
+                run_id=run_id,
+                note="reserve before remote inventory or replay",
+            )
+            ledger_obj.save(ledger)
         verified_roster = inventory_frozen_sources_remote.remote(prefix)
         if verified_roster.get("count") != 55:
             raise RuntimeError("STOP_P0: missing 11x5 source inventory")
@@ -677,7 +740,18 @@ if _HAS_MODAL:
             planned = list(cells)
         else:
             planned = sorted(enumerate_cells(stage), key=lambda c: c["cell_key"])
-        completed = set(inventory_completed_remote.remote(prefix, stage))
+        completed_state = inventory_completed_remote.remote(prefix, stage)
+        completed = set(completed_state["completed"])
+        if stage == "l1-b":
+            eligible_new = {c["cell_key"] for c in planned}
+            completed_new = len(completed & eligible_new)
+            check_l1b_smoke_gate(
+                smoke=smoke,
+                max_workers=max_workers,
+                batch_limit=batch_limit,
+                completed_new=completed_new,
+                smoke_passed=completed_state["smoke_passed"],
+            )
         cells = select_pending_batch(planned, completed, batch_limit)
         # Recovery: if a prior run published all 112 new cells but failed
         # before finalization, re-verify and finalize WITHOUT replaying them.
@@ -690,7 +764,9 @@ if _HAS_MODAL:
                     "stage": stage,
                     "cells": len(cells),
                     "max_workers": max_workers,
-                    "estimated_total_usd": estimated_total_usd,
+                    "execution_mode": "smoke" if smoke else "bounded_batch",
+                    "replay_cpu": 2,
+                    "replay_memory_mib": 4096,
                     "code_sha": sha,
                     "source_volume_read_only": True,
                     "output_prefix": prefix,
@@ -706,20 +782,28 @@ if _HAS_MODAL:
             if finalize_only
             else list(replay_cell_remote.with_options(max_containers=max_workers).map(build_jobs(cells, prefix)))
         )
-        summary = finalize_remote.remote(prefix, stage, outcomes, sha, run_id, attestations=attestations)
-        _write_inflight_ledger(
-            Path(ledger).expanduser().parent / TRIAL_LEDGER_NAME,
-            stage,
-            run_id,
-            outcomes,
-            note="in-flight: App ID + billed spend must be filled from the Modal run header/billing report before audit",
-        )
+        summary = finalize_remote.remote(prefix, stage, outcomes, sha, run_id, attestations=attestations, smoke=smoke)
+        if stage != "l1-b":
+            _write_inflight_ledger(
+                Path(ledger).expanduser().parent / TRIAL_LEDGER_NAME,
+                stage,
+                run_id,
+                outcomes,
+                note="historical stage: billing can be booked from the operator report",
+            )
         print(json.dumps(summary, indent=2), flush=True)
         if summary["blocked"]:
             raise RuntimeError("STOP_P0: one or more P0/L1 controls failed; not eligible for continuation")
-        if summary["status"] == "INCOMPLETE_BATCH":
-            print("INCOMPLETE_BATCH: book the real bill before launching the next bounded batch.", flush=True)
-        print("NEXT: fill the real App ID/billed spend, then book it with BudgetLedger.record_actual.", flush=True)
+        if stage == "l1-b":
+            if smoke:
+                print("SMOKE_PASS: evidence recorded; proceed with bounded 2-worker batches.", flush=True)
+            elif summary["status"] == "INCOMPLETE_BATCH":
+                print("INCOMPLETE_BATCH: resume same run_id/code SHA with another bounded batch.", flush=True)
+            print("OBSERVE: keep App ID, runtime and failure logs; stop repeated failures or resource pressure.", flush=True)
+        else:
+            if summary["status"] == "INCOMPLETE_BATCH":
+                print("INCOMPLETE_BATCH: book the real bill before launching the next bounded batch.", flush=True)
+            print("NEXT: fill the real App ID/billed spend, then book it with BudgetLedger.record_actual.", flush=True)
 
 
 def _write_inflight_ledger(path: Path, stage: str, run_id: str, outcomes: List[Dict[str, Any]], note: str) -> Path:
@@ -765,12 +849,14 @@ def build_cli() -> argparse.ArgumentParser:
     p.add_argument(
         "--batch-limit", type=int, default=0, help="Max NEW compute cells this batch; 0 means all remaining."
     )
-    p.add_argument("--estimated-total-usd", type=float, default=-1.0, help="REQUIRED provisional P90 ceiling in USD.")
+    p.add_argument(
+        "--estimated-total-usd", type=float, default=-1.0, help="Legacy P0/L1-A only; ignored for L1-B."
+    )
     p.add_argument("--resume-from-manifest", default="", help="Existing source_manifest.json for hash-checked resume.")
     p.add_argument(
         "--ledger",
         default="~/.local/state/qlib-csi1000-layered/cost_ledger.json",
-        help="Persisted cross-batch ledger outside the checkout.",
+        help="Legacy P0/L1-A only; not read or written by L1-B.",
     )
     p.add_argument("--p0-summary", default="", help="Downloaded stage_p0_summary.json; required for --stage l1-a/l1-b.")
     p.add_argument("--reuse-summary", default="", help="Downloaded stage_l1-a_summary.json; required for --stage l1-b.")
@@ -783,7 +869,10 @@ def build_cli() -> argparse.ArgumentParser:
         help="Reviewer-approved equivalence decision for cross-code reuse; required for --stage l1-b.",
     )
     p.add_argument(
-        "--cost-quote", default="", help="Required current-rate P90 operator quote JSON for remote execution."
+        "--cost-quote", default="", help="Legacy P0/L1-A only; not required or read for L1-B."
+    )
+    p.add_argument(
+        "--smoke", action="store_true", help="L1-B first-run gate: exactly 1 new replay cell with 1 worker."
     )
     p.add_argument("--dry-run", action="store_true", help="Local validation only; no Modal dispatch.")
     p.add_argument("--inventory", action="store_true", help="Print frozen enumeration and exit without dispatch.")
@@ -908,6 +997,7 @@ def validate_for_dispatch(
     equivalence_ref: str = "",
     reuse_prefix: str = "",
     current_code_sha: str = "",
+    smoke: bool = False,
 ) -> List[Dict[str, Any]]:
     """Fail-closed validation shared by the local CLI and the Modal entrypoint.
 
@@ -923,21 +1013,26 @@ def validate_for_dispatch(
         raise ValueError("STOP: --max-workers must be 1..8 in PR-S0")
     import math as _math
 
-    if (
-        not isinstance(estimated_total_usd, (int, float))
-        or not _math.isfinite(estimated_total_usd)
-        or estimated_total_usd <= 0
-    ):
-        raise ValueError("STOP_COST_UNKNOWN: --estimated-total-usd is required and must be finite > 0")
-    layer = "p0" if stage == "p0" else "l1"
-    if estimated_total_usd > LAYER_CAPS_USD[layer]:
-        raise ValueError(
-            f"STOP_BUDGET: estimate {estimated_total_usd} exceeds layer {layer} cap {LAYER_CAPS_USD[layer]}"
-        )
-    ledger_obj = BudgetLedger.load(ledger)
-    gate = ledger_obj.preflight(layer, float(estimated_total_usd))
-    if gate != "OK_CONTINUE":
-        raise ValueError(f"STOP: ledger preflight gate {gate} (spend unknown until record_actual)")
+    if stage != "l1-b":
+        if (
+            not isinstance(estimated_total_usd, (int, float))
+            or not _math.isfinite(estimated_total_usd)
+            or estimated_total_usd <= 0
+        ):
+            raise ValueError("STOP_COST_UNKNOWN: --estimated-total-usd is required and must be finite > 0")
+        layer = "p0" if stage == "p0" else "l1"
+        if estimated_total_usd > LAYER_CAPS_USD[layer]:
+            raise ValueError(
+                f"STOP_BUDGET: estimate {estimated_total_usd} exceeds layer {layer} cap {LAYER_CAPS_USD[layer]}"
+            )
+        ledger_obj = BudgetLedger.load(ledger)
+        gate = ledger_obj.preflight(layer, float(estimated_total_usd))
+        if gate != "OK_CONTINUE":
+            raise ValueError(f"STOP: ledger preflight gate {gate} (spend unknown until record_actual)")
+    if smoke and stage != "l1-b":
+        raise ValueError("STOP_SMOKE: --smoke applies only to L1-B")
+    if smoke and (max_workers != 1 or batch_limit != 1):
+        raise ValueError("STOP_SMOKE: use --max-workers 1 --batch-limit 1")
     if stage in ("l1-a", "l1-b"):
         if not p0_summary:
             raise ValueError(f"STOP_P0: {stage} requires --p0-summary with a verified 4/4 P0 summary")
@@ -989,6 +1084,7 @@ def validate_args(args: argparse.Namespace) -> List[Dict[str, Any]]:
         args.reuse_summary,
         args.equivalence_ref,
         args.reuse_prefix,
+        smoke=args.smoke,
     )
 
 
