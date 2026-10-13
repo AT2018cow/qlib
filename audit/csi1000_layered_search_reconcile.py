@@ -100,7 +100,10 @@ def check_stage_summary(summary: Dict[str, Any]) -> Dict[str, Any]:
     require(completed + blocked + remaining == expected, "summary counters inconsistent")
     status = summary.get("status")
     if status == "PASS":
-        require(blocked == 0 and remaining == 0 and completed == expected, "PASS requires all expected cells")
+        require(
+            blocked == 0 and remaining == 0 and completed == expected,
+            "PASS requires all expected cells",
+        )
     elif status == "INCOMPLETE_BATCH":
         require(blocked == 0 and remaining > 0, "incomplete batch counters invalid")
     elif status == "BLOCKED":
@@ -129,25 +132,41 @@ def check_stage_summary(summary: Dict[str, Any]) -> Dict[str, Any]:
         for record in verified:
             spec = roster[record["cell_key"]]
             require(
-                (record.get("candidate_id"), record.get("phase"), record.get("topk"), record.get("dropn"))
-                == (spec["candidate_id"], spec["phase"], spec["topk"], spec["dropn"]),
+                (
+                    record.get("candidate_id"),
+                    record.get("phase"),
+                    record.get("topk"),
+                    record.get("dropn"),
+                ) == (spec["candidate_id"], spec["phase"], spec["topk"], spec["dropn"]),
                 "l1-b cell metadata differs from registered roster",
             )
-        require(set(a.get("cell_key") for a in reuse) == overlap and len(reuse) == 32,
-                "l1-b needs exactly the 32-cell overlap attested")
+        require(
+            set(a.get("cell_key") for a in reuse) == overlap and len(reuse) == 32,
+            "l1-b needs exactly the 32-cell overlap attested",
+        )
         reuse_info = check_reuse_attestations(reuse, overlap)
         by_key = {r["cell_key"]: r for r in verified}
         for attestation in reuse:
             record = by_key.get(attestation["cell_key"])
             require(record is not None, "l1-b attestation references absent verified cell")
             for field in ("source_sha256", "output_sha256", "quote_sha256"):
-                require(attestation[field] == record.get(field), f"l1-b attestation {field} differs from cell")
-            require(attestation["engine"] == record.get("engine"), "l1-b attestation engine differs from cell")
+                require(
+                    attestation[field] == record.get(field),
+                    f"l1-b attestation {field} differs from cell",
+                )
+            require(
+                attestation["engine"] == record.get("engine"),
+                "l1-b attestation engine differs from cell",
+            )
         if status == "PASS":
-            require(set(keys) == set(roster) and completed == 144 and blocked == 0 and remaining == 0,
-                    "l1-b PASS needs exact 144/144 roster")
-            require(summary.get("reused") == 32 and summary.get("computed_new") == 112,
-                    "l1-b PASS must book 32 reused / 112 newly computed")
+            require(
+                set(keys) == set(roster) and completed == 144 and blocked == 0 and remaining == 0,
+                "l1-b PASS needs exact 144/144 roster",
+            )
+            require(
+                summary.get("reused") == 32 and summary.get("computed_new") == 112,
+                "l1-b PASS must book 32 reused / 112 newly computed",
+            )
     elif reuse:
         reuse_info = check_reuse_attestations(reuse, {a.get("cell_key") for a in reuse})
     return {
