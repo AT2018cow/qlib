@@ -1,103 +1,153 @@
-# CSI1000 layered search — operator checklist (code only, NOT EXECUTED)
+# CSI1000 layered search — operator README (L1-B smoke-first update, 2026-10-13)
 
-This is an operational companion to contract 53. It is not a budget approval, proof of a P0 run or release authorization.
+This document accompanies [contract 53](53-csi1000-budgeted-layered-strategy-search-contract-20261012.md).
+**For L1-B only, its 2026-10-13 amendment supersedes legacy mandatory USD30/$6 gates,
+operator P90 quote, charge-booking ledger and per-batch budget approval.** Retain all
+P0/L1-A artifacts and billing history; do not reset or rewrite them. No Modal
+job is launched merely by merging this PR. Production remains unchanged.
 
-## Existing selection code that must be reused
+## Known completed research and protected invariants
 
-- csi1000_tuner_core.py, csi1000_tuner.py: deterministic Stage-A 80 candidates, 4 folds, ranking and training.
-- csi1000_stage_b_core.py, csi1000_stage_b.py: Stage-B 11 candidate long-run rolling fits and five-phase ranking.
-- audit/replay_stage_b_f1.py and audit/run_stage_b_corrected_rerank.py: fixed-quote audit and independent Stage-B accounting.
-- csi1000_production_config.py: frozen Baseline/Winner production identities; unchanged by PR-S0.
+- P0 **4/4** and L1-A **32/32** evidence exist and must be independently exported
+  and verified. **Do not replay these cells.** L1-B contains 144 cumulative cells:
+  **32 SHA-verified reused + 112 truly new**.
+- Existing canonical Baseline/Winner and frozen Stage-B sources remain unchanged.
+  The original source Modal Volume is mounted read-only; only a separate research
+  Volume and versioned run prefix receive outputs.
+- The L1-B prior-run prefix is derived from the signed L1-A run ID, stage and
+  code SHA. All five reuse files per cell must match, and live provider,
+  static F1 quote union and 55-row frozen-source hashes must match the export.
+  The existing reviewer-approved cross-code equivalence reference is still required.
+- L1-C remains gated until at least two different model/portfolio configurations
+  meet the predefined **two-phase coarse screen**; this is historically consumed
+  selection, **not new OOS**. No experimental result automatically goes live.
+- L2/L3 real-fit implementation and L4 final selection still need separate
+  executable reviews. The older P0/L1-A cost CLI remains for history and
+  compatibility; **L1-B does not call it**.
 
-## New files on PR #68
+## 1. Free, local preflight (before any Modal spend)
 
-- audit/csi1000_layered_search_core.py: frozen contract, budgets, paired comparisons and human actual-charge booking CLI.
-- audit/csi1000_layered_search_replay.py: original frozen-signal Qlib replay, corrected F1 reference comparison, full artifact SHA.
-- audit/csi1000_layered_search_modal.py: attached P0/L1-A, 55-source readonly inventory, separate research volume, bounded resume and finalization.
-- audit/csi1000_layered_search_reconcile.py: offline evidence and decision checking.
-- audit/csi1000_layered_search_selection.py: offline L1 ranking, deterministic L2 four-plus-four proposals, conditional L3 *plan*, final shortlist and L4 verdict arithmetic.
+On a clean worktree at the exact code SHA intended for **both** smoke and
+subsequent batches, run and record true exit codes:
 
-**Important:** L2 and L3 here are deterministic candidate/structure planners, NOT full real-fit cloud runners. Real PIT label, purge, rolling fit and five-phase execution remain BLOCKED until separate executable code review. Do not treat the old Stage-B worker as a safe source-writing substitute.
-
-## Non-billable static/local verification
-
-Run from the root of a clean research branch checkout:
-
-~~~bash
-python -m compileall -q audit/csi1000_layered_search_*.py tests/test_csi1000_layered_search_*.py
-python -m pytest -q tests/test_csi1000_layered_search_core.py tests/test_csi1000_layered_search_replay.py tests/test_csi1000_layered_search_selection.py
-python audit/csi1000_layered_search_core.py --check-frozen
-python audit/csi1000_layered_search_selection.py --stage l2-propose --output /tmp/csi1000_l2_plan.json
+```bash
+git rev-parse HEAD
+git status --porcelain
+python -m compileall -q audit/csi1000_layered_search_*.py
+python -m pytest -q -p no:cacheprovider \
+  tests/test_csi1000_layered_search_core.py \
+  tests/test_csi1000_layered_search_replay.py \
+  tests/test_csi1000_layered_search_selection.py \
+  tests/test_csi1000_l1b_runner.py
+python -m black -l 120 --check \
+  audit/csi1000_layered_search_core.py \
+  audit/csi1000_layered_search_modal.py \
+  audit/csi1000_layered_search_reconcile.py \
+  tests/test_csi1000_l1b_runner.py
+python -m pyflakes \
+  audit/csi1000_layered_search_core.py \
+  audit/csi1000_layered_search_modal.py \
+  audit/csi1000_layered_search_reconcile.py \
+  tests/test_csi1000_l1b_runner.py
 python audit/csi1000_layered_search_modal.py --inventory
-python audit/csi1000_layered_search_modal.py --help
 modal run audit/csi1000_layered_search_modal.py --help
-~~~
+```
 
-Capture genuine exit codes; do not infer tests passed merely because tests were written.
+Verify that the complete **signed P0 and L1-A exported bundles** are available
+locally (summary plus source manifest, full cells, SHA256SUMS and frozen
+11×5 source list). Do not substitute incomplete summary-only JSON. Determine
+the exact remote old L1-A prefix from its signed run ID/stage/code SHA.
+Record a genuine review/equivalence reference for reusing outputs across code
+versions; inventing a reference is not a valid substitute for evidence.
 
-## Before any actual P0
+## 2. First billable Modal action: ONE-cell smoke
 
-Obtain explicit separate authorization for the new USD 30 research envelope and P0 USD 2 limit. Verify original source Volume identity, no source writes, independent research Volume, attached foreground Modal CLI, at most 2 initial P0 workers, and an OpenCode timeout sufficient for build/queue/execution/finalization. Never use modal run --detach, nohup, shell &, or an untracked background process.
+Run only after the above checks are green. Choose one new L1-B `run_id`;
+**keep that run ID, HEAD and research prefix for every later batch**. With the
+`modal run` launcher **attached in the foreground**, and a tool timeout long
+enough for build, queue, one replay and finalization:
 
-Collect current authorized Modal billing rates and real measured worker resource seconds, along with a saved billing report. Supply a local JSON quote of the following schema:
+```bash
+set -o pipefail
+modal run audit/csi1000_layered_search_modal.py \
+  --stage l1-b --run-id L1B_REPLACE_WITH_FIXED_RUN_ID \
+  --max-workers 1 --batch-limit 1 --smoke \
+  --p0-summary /path/to/complete/p0/summaries/p0/stage_p0_summary.json \
+  --reuse-summary /path/to/complete/l1a/summaries/l1-a/stage_l1-a_summary.json \
+  --reuse-prefix 'csi1000_layered_search/PROTOCOL/OLD_RUN/l1-a/OLD_CODE_SHA12' \
+  --equivalence-ref 'REAL_REVIEWED_EQUIVALENCE_REFERENCE' \
+  2>&1 | tee /tmp/csi1000-l1b-smoke.log
+```
 
-~~~json
-{
-  "schema": "modal_cost_p90_quote_v1",
-  "captured_utc": "REPLACE_WITH_CURRENT_REAL_ISO_UTC",
-  "rate_report_sha256": "REPLACE_WITH_ACTUAL_64_HEX_SHA256",
-  "cpu_rate_per_second": 0,
-  "memory_rate_per_gib_second": 0,
-  "p90_cpu_seconds_per_cell": 0,
-  "p90_gib_seconds_per_cell": 0,
-  "overhead_usd": 0,
-  "covered_cells": 4
-}
-~~~
+All uppercase placeholders MUST be replaced from the verified evidence before
+running; do not paste as executable identifiers. **No** `--ledger`,
+`--cost-quote`, `--estimated-total-usd` or separate per-batch approval is
+required for L1-B. These legacy CLI options are ignored for this stage.
 
-**The zero prices, zero resource seconds and placeholders above are deliberately invalid.** Do not use them as executable estimates. Fill every field from approved actual cost evidence; check that P90 cost and pending spend stay within each layer and global cap. The remote P0 entrypoint requires --stage p0, --run-id, --max-workers 2, --estimated-total-usd, --cost-quote and a persistent --ledger outside the repository.
+The smoke uses **the same image and remote replay function as longer batches**:
+2 vCPU, **4096 MiB RAM per replay container**, a 3600-second per-cell timeout
+and **zero automatic retries**. The smoke also verifies 55 sources, current
+provider/quote, 32 old cells before calculating the one new cell and checks all
+33 cumulative artifacts/metrics. Success must yield `SMOKE_PASS` in the CLI
+and `smoke_pass.json` in the new research prefix. A failed/blocked smoke does
+not authorize a long run. The code checks the persisted marker and corresponding
+cell's `cell.json` hash at the start of every longer L1-B batch.
 
-## P0 build incident and fast unblocking (2026-10-13)
+**If image build/import/Cython/volume mounting fails, stop.** Diagnose the exact
+first failure and App ID before a second attempt; do not blindly retry or launch
+a large batch. Do not mistake `modal run ... --help` for a real smoke.
 
-The two prior P0 attempts **never reached replay**:
+## 3. After SMOKE_PASS: bounded batches, moderate concurrency
 
-- First: `make prerequisite` failed because setuptools-scm could not
-  derive the dynamic pyqlib package version in a Modal image without `.git`.
-- Second: `pip install . --no-build-isolation --no-deps` failed for the
-  same reason under the newer setuptools/vcs-versioning toolchain.
-- Operator reported two actual App charges, USD 0.00052688 +
-  USD 0.00384060 = **USD 0.00436748** P0 cumulative. No replay
-  cells ran. Preserve the existing ledger and billing evidence.
+Start with 2 workers and 8 **new** cells, same arguments as above **minus
+`--smoke`**:
 
-**Current fix:** P0 does **not need to package/install pyqlib** to replay
-already frozen signals. The image now copies the repository as before,
-writes a build-only `qlib/_version.py`, compiles the two needed Cython
-modules from a separate `/tmp` working directory, writes compiled
-extensions into the copied source tree and smoke-imports Qlib. This
-avoids invoking `setuptools-scm` metadata generation altogether.
-The canonical code Git SHA and provider/source SHA are unchanged.
+```bash
+modal run audit/csi1000_layered_search_modal.py \
+  --stage l1-b --run-id L1B_REPLACE_WITH_FIXED_RUN_ID \
+  --max-workers 2 --batch-limit 8 \
+  --p0-summary /path/to/complete/p0/summaries/p0/stage_p0_summary.json \
+  --reuse-summary /path/to/complete/l1a/summaries/l1-a/stage_l1-a_summary.json \
+  --reuse-prefix 'csi1000_layered_search/PROTOCOL/OLD_RUN/l1-a/OLD_CODE_SHA12' \
+  --equivalence-ref 'REAL_REVIEWED_EQUIVALENCE_REFERENCE'
+```
 
-Do not waste cycles on wheel packaging tests (P0 never creates one).
-Run the existing short local pytest once and check the Modal CLI. Then,
-with the **same** persisted ledger, a refreshed P90 estimate and the
-operator's approval, run the actual **four-cell P0** in the attached
-foreground (initial maximum two workers) and collect the real results.
-Only genuine remote replay verifies the image. If the build fails again,
-save its exact traceback and App ID; do not trigger an automatic
-unbounded retry. The existing P0 $2 budget remains the software
-contract unless separately reviewed.
+When these workers succeed without abnormal memory pressure, OOM, repeated
+builds or oversized queue delays, use **4 workers** with **16–32 new cells**
+per batch. At 4 workers the nominal replay allocation is **8 vCPU/16 GiB**
+total; at 8 workers, **16 vCPU/32 GiB**. Eight is the absolute software cap,
+**not** the default; increase only with evidence of stable actual load and
+usefulness. Reduce batch size if your OpenCode tool timeout may expire before
+all waves finalize. **Never use `modal run --detach`, `nohup`, shell `&`
+or untracked background processes.**
 
-## After a P0 run, before L1
+The runner resumes only previously SHA-verified completed new cells, never
+replays the 32 old overlap cells, and refuses mixed output SHA. The first smoke
+cell is part of the 112, **not an additional 113th calculation**. Normal
+intermediate results are `INCOMPLETE_BATCH`; the final cumulative result
+must be **144/144, 32 reused / 112 computed**, independently verifiable with
+`selection.screen_l1('l1-b', ...)` and its 71 challenger configurations.
 
-1. Retain actual Modal App ID, true exit status, UTC timestamps, both server and CLI logs, failures/retries and billed charges.
-2. Download the **complete** research output prefix preserving its directory structure, including frozen_source_11x5.json, cells/, source_manifest_final.json, SHA256SUMS.txt and summaries/p0/stage_p0_summary.json. Keep original private signals/provider off public GitHub.
-3. Demand 4/4 genuine Baseline/Winner × phase0/10 controls, both legacy and F1-corrected reference, full daily NAV/fee/order artifacts, distinct paper accounts and valid source hashes. Failures are STOP_P0, not PASS.
-4. Book the actual bill (failed attempts included) via:
-~~~bash
-python audit/csi1000_layered_search_core.py --book-actual --ledger /path/outside/repo/cost_ledger.json --layer p0 --run-id ACTUAL_ID --app-id REAL_APP_ID --spent-usd REAL_BILLED_USD --elapsed-hours REAL_HOURS --billing-report /path/to/saved_bill.json
-~~~
-5. Only then review L1-A (32 cells) budget/timeout. Pass the complete downloaded P0 summary and signed evidence bundle to the guarded L1-A CLI. New Layer 2/3 cloud fits and Layer 4 final runs remain separately gated.
+Keep a lightweight run record: SHA, run ID, App ID, batch size, worker count,
+actual elapsed time, exit code, completed/blocked counts, container OOM/timeout
+and original errors, plus a readily available cost overview if unusually high.
+**Do not pause between healthy batches for P90 estimates, billing snapshots,
+manual ledger booking or fresh budget approval.** Stop if the same fault
+recurs, a source SHA changes, a finished cell would be recomputed, builds
+repeat unexpectedly or observed spend becomes unexpectedly large. Review
+the cause before continuing; no infinite retries.
 
-## Interpretation
+## 4. Historical incident (P0, already resolved)
 
-Historic 2025–2026 returns were consumed already and do not represent new OOS evidence. L1 never fits. Changing label horizon or retrain frequency requires new real fits with matured labels and purge. L4 needs all five predefined phases, relative Baseline advantages and full risk/cost gates. No automatic switch of the canonical production Winner or website/paper release.
+The previous P0 image builds hit setuptools-scm / version metadata issues.
+The corrected Modal image does **not** install pyqlib from its project root:
+it copies sources, sets a temporary image-only `qlib/_version.py`, compiles
+the `rolling` and `expanding` Cython modules from `/tmp`, and smoke-imports
+Qlib. Both original failed App records and their historical charges should
+remain intact. Do not rerun P0 or L1-A just to test image packaging.
+
+## 5. Decision boundary
+
+Passing the two-phase L1-B screen is not sufficient evidence for production
+promotion. No L1-C if fewer than two distinct qualifying configurations;
+no change to canonical production Winner or website/paper release by this PR.
