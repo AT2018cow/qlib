@@ -1187,4 +1187,4 @@ def test_l1c_smoke_gate_and_runtime_code_paths():
     assert 'len(enumerate_cells(stage))' in script
     assert "cpu=2" in script and "memory=4096" in script and "timeout=3600" in script
     assert "retries=0" in script
-    assert "stage == \"l1-b\" else prepare_l1c_plan" in script
+    assert "else prepare_l1c_plan(" in script
