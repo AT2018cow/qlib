@@ -2,13 +2,13 @@
 
 Real frozen-signal replay via :mod:`audit.csi1000_layered_search_replay`:
 read-only source volume, separate research volume, per-cell SHA resume with
-atomic publish and fail-closed source/evidence gates. L1-B uses a smoke-first
+atomic publish and fail-closed source/evidence gates. L1-B/L1-C use a smoke-first
 execution policy without mandatory cost quotes or per-batch ledger booking.
-Zero training for p0/l1-a/l1-b: frozen Stage-B signals are replayed under
+Zero training for p0/l1-a/l1-b/l1-c: frozen Stage-B signals are replayed under
 different (TopK, DropN) combos only. L1-A requires a verified P0 summary;
-L1-B additionally requires a verified L1-A summary plus an explicit
-equivalence ref, and reuses its 32 overlap cells only after byte-level
-re-verification (never by cell_key alone).
+L1-B reuses 32 verified L1-A cells; L1-C reuses all 144 verified L1-B
+cells only after their two-phase screen independently passes. Both require
+reviewed cross-code replay equivalence and byte-level SHA verification.
 
 Foreground rule: when launched through OpenCode, NEVER pass ``--detach`` to
 ``modal run``. Keep the launcher attached with a tool timeout longer than the
@@ -694,9 +694,10 @@ if _HAS_MODAL:
         verified P0 cells. L1-B additionally needs ``--reuse-summary`` (a
         verified 32/32 L1-A export), ``--reuse-prefix`` (its research prefix)
         and ``--equivalence-ref`` (the reviewer-approved equivalence decision).
-        For L1-B run ``--smoke --max-workers 1 --batch-limit 1`` first;
-        after verified smoke use 2–4 workers and bounded batches (8 maximum).
-        The L1-B path ignores legacy cost-quote and budget-ledger flags.
+        For L1-B/C run ``--smoke --max-workers 1 --batch-limit 1`` first;
+        after verified smoke start with 2 workers and 8 cells; successful
+        batches may grow to 4 workers and 16–32 cells. Both stages skip
+        legacy quote/ledger paperwork while retaining strict evidence gates.
         """
         sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
         if subprocess.check_output(["git", "status", "--porcelain"], text=True).strip():
@@ -882,36 +883,36 @@ def _write_inflight_ledger(path: Path, stage: str, run_id: str, outcomes: List[D
 def build_cli() -> argparse.ArgumentParser:
     """CLI contract (real --help; mirrors the Modal entrypoint parameters)."""
     p = argparse.ArgumentParser(
-        description="PR-S1 Modal runner: P0 controls + L1-A/L1-B portfolio screens (zero-fit, read-only source).",
+        description="P0 + L1-A/B/C portfolio replay runner (zero-fit, read-only source).",
         epilog="OpenCode foreground rule: run attached without --detach; set the tool timeout beyond worst-case wall time.",
     )
     p.add_argument(
-        "--stage", default="p0", help="p0 | l1-a | l1-b | inventory | dry-run (l1-c/l2/l3/l4 need later PRs)."
+        "--stage", default="p0", help="p0 | l1-a | l1-b | l1-c | inventory | dry-run (l2/l3/l4 need later PRs)."
     )
     p.add_argument("--run-id", default="", help="Pre-registered run id [A-Za-z0-9][A-Za-z0-9_-]{3,63}.")
     p.add_argument("--max-workers", type=int, default=2, help="Parallel workers, 1..8 (PR-S0 cap).")
     p.add_argument(
         "--batch-limit", type=int, default=0, help="Max NEW compute cells this batch; 0 means all remaining."
     )
-    p.add_argument("--estimated-total-usd", type=float, default=-1.0, help="Legacy P0/L1-A only; ignored for L1-B.")
+    p.add_argument("--estimated-total-usd", type=float, default=-1.0, help="Legacy P0/L1-A only; ignored for L1-B/C.")
     p.add_argument("--resume-from-manifest", default="", help="Existing source_manifest.json for hash-checked resume.")
     p.add_argument(
         "--ledger",
         default="~/.local/state/qlib-csi1000-layered/cost_ledger.json",
-        help="Legacy P0/L1-A only; not read or written by L1-B.",
+        help="Legacy P0/L1-A only; not read or written by L1-B/C.",
     )
-    p.add_argument("--p0-summary", default="", help="Downloaded stage_p0_summary.json; required for --stage l1-a/l1-b.")
-    p.add_argument("--reuse-summary", default="", help="Downloaded stage_l1-a_summary.json; required for --stage l1-b.")
+    p.add_argument("--p0-summary", default="", help="Downloaded stage_p0_summary.json; required for --stage l1-a/l1-b/l1-c.")
+    p.add_argument("--reuse-summary", default="", help="Full signed L1-A summary for L1-B or L1-B summary for L1-C.")
     p.add_argument(
-        "--reuse-prefix", default="", help="Research prefix of the reuse source export; required for --stage l1-b."
+        "--reuse-prefix", default="", help="Source research prefix of L1-A (L1-B) or L1-B (L1-C) export."
     )
     p.add_argument(
         "--equivalence-ref",
         default="",
-        help="Reviewer-approved equivalence decision for cross-code reuse; required for --stage l1-b.",
+        help="Reviewed equivalence decision for cross-code L1-B/C reuse.",
     )
-    p.add_argument("--cost-quote", default="", help="Legacy P0/L1-A only; not required or read for L1-B.")
-    p.add_argument("--smoke", action="store_true", help="L1-B first-run gate: exactly 1 new replay cell with 1 worker.")
+    p.add_argument("--cost-quote", default="", help="Legacy P0/L1-A only; not required or read for L1-B/C.")
+    p.add_argument("--smoke", action="store_true", help="L1-B/C first-run gate: 1 new replay cell with 1 worker.")
     p.add_argument("--dry-run", action="store_true", help="Local validation only; no Modal dispatch.")
     p.add_argument("--inventory", action="store_true", help="Print frozen enumeration and exit without dispatch.")
     return p
@@ -1222,6 +1223,9 @@ def main(argv: List[str] | None = None) -> int:
                     "l1-a": len(enumerate_cells("l1-a")),
                     "l1-b": len(enumerate_cells("l1-b")),
                     "l1-b-new": 112,
+                    "l1-c": len(enumerate_cells("l1-c")),
+                    "l1-c-reused-from-l1-b": 144,
+                    "l1-c-new": 120,
                     "layer_caps": LAYER_CAPS_USD,
                 },
                 indent=2,
