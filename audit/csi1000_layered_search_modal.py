@@ -765,7 +765,12 @@ if _HAS_MODAL:
                 completed_new=completed_new,
                 smoke_passed=completed_state["smoke_passed"],
             )
-        cells = select_pending_batch(planned, completed, batch_limit)
+        # An interrupted smoke can leave one verified new cell without its
+        # final smoke_pass.json. Never select a second new cell on retry.
+        if stage == "l1-b" and smoke and completed_new == 1:
+            cells = []
+        else:
+            cells = select_pending_batch(planned, completed, batch_limit)
         # Recovery after a completed cell but interrupted finalizer: verify
         # and sign the existing smoke result WITHOUT paying to recompute it.
         smoke_recover = stage == "l1-b" and smoke and not cells and completed_new == 1
