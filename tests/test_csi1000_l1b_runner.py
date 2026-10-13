@@ -1076,19 +1076,36 @@ def test_l1c_reconcile_pass_requires_exact_144_attestations():
     by_key = {r["cell_key"]: r for r in rows}
     att = [
         {
-            "cell_key": key, "prior_run_id": "l1b-old", "prior_code_sha": "a" * 40,
-            "output_sha256": by_key[key]["output_sha256"], "source_sha256": by_key[key]["source_sha256"],
-            "quote_sha256": QUOTE, "engine": core.PROTOCOL_VERSION,
-            "equivalence": "REVIEWED_EQUIVALENT:reviewed", "verified_utc": "2026-10-13T00:00:00Z",
+            "cell_key": key,
+            "prior_run_id": "l1b-old",
+            "prior_code_sha": "a" * 40,
+            "output_sha256": by_key[key]["output_sha256"],
+            "source_sha256": by_key[key]["source_sha256"],
+            "quote_sha256": QUOTE,
+            "engine": core.PROTOCOL_VERSION,
+            "equivalence": "REVIEWED_EQUIVALENT:reviewed",
+            "verified_utc": "2026-10-13T00:00:00Z",
         }
         for key in sorted(overlap)
     ]
     summary = {
-        "stage": "l1-c", "protocol": core.PROTOCOL_VERSION, "run_id": "l1c-new", "code_sha": "b" * 40,
-        "expected": 264, "completed": 264, "blocked": 0, "remaining": 0, "status": "PASS",
-        "verified_cells": rows, "blocked_cells": [], "reuse_attestations": att,
-        "reused": 144, "computed_new": 120, "training_performed": False,
-        "promotion_authorized": False, "source_volume_read_only": True,
+        "stage": "l1-c",
+        "protocol": core.PROTOCOL_VERSION,
+        "run_id": "l1c-new",
+        "code_sha": "b" * 40,
+        "expected": 264,
+        "completed": 264,
+        "blocked": 0,
+        "remaining": 0,
+        "status": "PASS",
+        "verified_cells": rows,
+        "blocked_cells": [],
+        "reuse_attestations": att,
+        "reused": 144,
+        "computed_new": 120,
+        "training_performed": False,
+        "promotion_authorized": False,
+        "source_volume_read_only": True,
     }
     assert rec.check_stage_summary(summary)["attestations"] == 144
     with pytest.raises(ValueError, match="144-cell"):
@@ -1096,9 +1113,14 @@ def test_l1c_reconcile_pass_requires_exact_144_attestations():
     with pytest.raises(ValueError, match="120"):
         rec.check_stage_summary({**summary, "computed_new": 119})
     with pytest.raises(ValueError, match="differs from cell"):
-        rec.check_stage_summary({**summary, "reuse_attestations": [{**att[0], "source_sha256": "0" * 64}] + att[1:]})
+        rec.check_stage_summary(
+            {**summary, "reuse_attestations": [{**att[0], "source_sha256": "0" * 64}] + att[1:]}
+        )
     partial = {
-        **summary, "status": "INCOMPLETE_BATCH", "completed": 145, "remaining": 119,
+        **summary,
+        "status": "INCOMPLETE_BATCH",
+        "completed": 145,
+        "remaining": 119,
         "verified_cells": [r for r in rows if r["cell_key"] in overlap]
         + [next(r for r in rows if r["cell_key"] not in overlap)],
         "computed_new": 1,
@@ -1129,8 +1151,18 @@ def test_l1c_source_prefix_and_equivalence_are_fail_closed(tmp_path, monkeypatch
         _l1c_dispatch(p0, l1b, reuse_prefix="../bad")
     with pytest.raises(ValueError, match="resume-from-manifest"):
         runner.validate_for_dispatch(
-            "l1-c", "l1c-new", 2, 8, -1, "some.json", "/nonexistent/ledger", str(p0),
-            str(l1b), "reviewed-replay", correct, "b" * 40,
+            "l1-c",
+            "l1c-new",
+            2,
+            8,
+            -1,
+            "some.json",
+            "/nonexistent/ledger",
+            str(p0),
+            str(l1b),
+            "reviewed-replay",
+            correct,
+            "b" * 40,
         )
 
 
