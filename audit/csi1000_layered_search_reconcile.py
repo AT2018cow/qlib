@@ -100,10 +100,7 @@ def check_stage_summary(summary: Dict[str, Any]) -> Dict[str, Any]:
     require(completed + blocked + remaining == expected, "summary counters inconsistent")
     status = summary.get("status")
     if status == "PASS":
-        require(
-            blocked == 0 and remaining == 0 and completed == expected,
-            "PASS requires all expected cells",
-        )
+        require(blocked == 0 and remaining == 0 and completed == expected, "PASS requires all expected cells")
     elif status == "INCOMPLETE_BATCH":
         require(blocked == 0 and remaining > 0, "incomplete batch counters invalid")
     elif status == "BLOCKED":
@@ -150,14 +147,8 @@ def check_stage_summary(summary: Dict[str, Any]) -> Dict[str, Any]:
             record = by_key.get(attestation["cell_key"])
             require(record is not None, "l1-b attestation references absent verified cell")
             for field in ("source_sha256", "output_sha256", "quote_sha256"):
-                require(
-                    attestation[field] == record.get(field),
-                    f"l1-b attestation {field} differs from cell",
-                )
-            require(
-                attestation["engine"] == record.get("engine"),
-                "l1-b attestation engine differs from cell",
-            )
+                require(attestation[field] == record.get(field), f"l1-b attestation {field} differs from cell")
+            require(attestation["engine"] == record.get("engine"), "l1-b attestation engine differs from cell")
         if status == "PASS":
             require(
                 set(keys) == set(roster) and completed == 144 and blocked == 0 and remaining == 0,
