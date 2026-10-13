@@ -123,20 +123,11 @@ if _HAS_MODAL:
     image = (
         modal.Image.debian_slim(python_version="3.11")
         .apt_install("build-essential")
-        .env({
-            "PYTHONPATH": "/root/qlib:/root",
-            "MLFLOW_ALLOW_FILE_STORE": "true",
-            # pyproject.toml declares project.name=pyqlib and a dynamic SCM
-            # version. Modal excludes .git, so setuptools-scm/vcs-versioning
-            # cannot infer it. Only the image package version is synthetic;
-            # the executed source is still identified by the full Git SHA.
-            # Both accepted prefixes support today's packaging backends.
-            "SETUPTOOLS_SCM_PRETEND_VERSION_FOR_PYQLIB": "0.0.0",
-            "VCS_VERSIONING_PRETEND_VERSION_FOR_PYQLIB": "0.0.0",
-        })
-        # Match the known working Stage-A replay image (same Python/Qlib source).
-        # Importing source-tree qlib needs both the pyqlib install (to generate
-        # qlib/_version.py without .git) and in-place Cython .so extensions.
+        .env({"PYTHONPATH": "/root/qlib:/root", "MLFLOW_ALLOW_FILE_STORE": "true"})
+        # P0 replays frozen signals directly from the copied source tree.
+        # Do NOT pip-install this dynamic-SCM package: Modal omits .git, and
+        # modern setuptools-scm/vcs-versioning cannot infer its version.
+        # An image-only _version.py avoids SCM metadata processing entirely.
         .pip_install(
             "numpy==1.26.4", "pandas==2.2.3", "pyarrow==17.0.0",
             "lightgbm==4.7.0", "cython", "setuptools-scm", "pyyaml",
@@ -155,9 +146,12 @@ if _HAS_MODAL:
             ),
         )
         .run_commands(
-            "cd /root/qlib && pip install . --no-build-isolation --no-deps",
-            "cd /root/qlib && python -c \"from setuptools import setup, Extension; from Cython.Build import cythonize; import numpy; extensions = [Extension('qlib.data._libs.rolling', ['qlib/data/_libs/rolling.pyx'], language='c++', include_dirs=[numpy.get_include()]), Extension('qlib.data._libs.expanding', ['qlib/data/_libs/expanding.pyx'], language='c++', include_dirs=[numpy.get_include()])]; setup(ext_modules=cythonize(extensions, language_level='3'), script_args=['build_ext', '--inplace'])\"",
-            "cd /tmp && python -c 'import qlib; from qlib.data._libs import rolling, expanding; from importlib.metadata import version; assert version(\"pyqlib\") == \"0.0.0\" and qlib.__version__ == \"0.0.0\"'",
+            # Image-only metadata; not a production package version.
+            "printf 'version = \"0.0.0\"\\\\n' > /root/qlib/qlib/_version.py",
+            # Build from /tmp, *outside* pyqlib's pyproject.toml/SCM root.
+            # Extension outputs still land in the PYTHONPATH source tree.
+            "cd /tmp && python -c \"from setuptools import setup, Extension; from Cython.Build import cythonize; import numpy; root='/root/qlib'; extensions=[Extension('qlib.data._libs.rolling', [root+'/qlib/data/_libs/rolling.pyx'], language='c++', include_dirs=[numpy.get_include()]), Extension('qlib.data._libs.expanding', [root+'/qlib/data/_libs/expanding.pyx'], language='c++', include_dirs=[numpy.get_include()])]; setup(name='qlib-image-cython-only', version='0.0.0', ext_modules=cythonize(extensions, language_level=3), script_args=['build_ext', '--build-lib', root, '--build-temp', '/tmp/qlib-image-build'])\"",
+            "cd /tmp && python -c \"import qlib; from qlib.data._libs import rolling, expanding; assert qlib.__version__ == '0.0.0'\"",
         )
     )
     app = modal.App("qlib-csi1000-layered-search-pr-s0", image=image)
