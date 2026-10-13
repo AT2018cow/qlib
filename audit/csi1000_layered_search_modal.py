@@ -681,7 +681,10 @@ if _HAS_MODAL:
             planned = sorted(enumerate_cells(stage), key=lambda c: c["cell_key"])
         completed = set(inventory_completed_remote.remote(prefix, stage))
         cells = select_pending_batch(planned, completed, batch_limit)
-        if not cells:
+        # Recovery: if a prior run published all 112 new cells but failed
+        # before finalization, re-verify and finalize WITHOUT replaying them.
+        finalize_only = stage == "l1-b" and not cells and len(completed) == len(enumerate_cells("l1-b"))
+        if not cells and not finalize_only:
             raise ValueError("STOP: no unexecuted cells in this batch; request the existing verified summary")
         print(
             json.dumps(
@@ -700,7 +703,10 @@ if _HAS_MODAL:
             ),
             flush=True,
         )
-        outcomes = list(replay_cell_remote.with_options(max_containers=max_workers).map(build_jobs(cells, prefix)))
+        outcomes = (
+            [] if finalize_only
+            else list(replay_cell_remote.with_options(max_containers=max_workers).map(build_jobs(cells, prefix)))
+        )
         summary = finalize_remote.remote(prefix, stage, outcomes, sha, run_id, attestations=attestations)
         _write_inflight_ledger(
             Path(ledger).expanduser().parent / TRIAL_LEDGER_NAME,
