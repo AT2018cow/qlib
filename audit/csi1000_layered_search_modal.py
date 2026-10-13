@@ -147,7 +147,7 @@ if _HAS_MODAL:
         )
         .run_commands(
             # Image-only metadata; not a production package version.
-            "printf 'version = \"0.0.0\"\\\\n' > /root/qlib/qlib/_version.py",
+            "printf 'version = \"0.0.0\"\\n' > /root/qlib/qlib/_version.py",
             # Build from /tmp, *outside* pyqlib's pyproject.toml/SCM root.
             # Extension outputs still land in the PYTHONPATH source tree.
             "cd /tmp && python -c \"from setuptools import setup, Extension; from Cython.Build import cythonize; import numpy; root='/root/qlib'; extensions=[Extension('qlib.data._libs.rolling', [root+'/qlib/data/_libs/rolling.pyx'], language='c++', include_dirs=[numpy.get_include()]), Extension('qlib.data._libs.expanding', [root+'/qlib/data/_libs/expanding.pyx'], language='c++', include_dirs=[numpy.get_include()])]; setup(name='qlib-image-cython-only', version='0.0.0', ext_modules=cythonize(extensions, language_level=3), script_args=['build_ext', '--build-lib', root, '--build-temp', '/tmp/qlib-image-build'])\"",
