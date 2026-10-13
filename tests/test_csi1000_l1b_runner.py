@@ -817,3 +817,11 @@ def test_l1b_incomplete_batch_and_attestation_linkage_are_audited():
         rec.check_stage_summary({**incomplete, "reuse_attestations": bad_attest})
     with pytest.raises(ValueError, match="duplicate verified"):
         rec.check_stage_summary({**incomplete, "verified_cells": records[:-1] + [records[0]]})
+
+
+def test_finalize_only_path_does_not_replay():
+    """All-complete recovery must still publish without recomputing a cell."""
+    text = Path("audit/csi1000_layered_search_modal.py").read_text(encoding="utf-8")
+    entrypoint = text.split("def run_search(", 1)[1].split("\ndef _write_inflight_ledger(", 1)[0]
+    assert 'stage == "l1-b" and not cells and len(completed) == len(enumerate_cells("l1-b"))' in entrypoint
+    assert "[]\n            if finalize_only\n            else list(" in entrypoint
