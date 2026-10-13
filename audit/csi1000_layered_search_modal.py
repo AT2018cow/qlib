@@ -629,9 +629,7 @@ if _HAS_MODAL:
         prefix = result_prefix(run_id, stage, sha)
         # Quote only the bounded NEW work in this batch; do not charge the
         # 32 reused cells or quote all 112 when --batch-limit is smaller.
-        estimate_n = (
-            min(len(cells), batch_limit) if stage == "l1-b" and batch_limit else len(cells)
-        )
+        estimate_n = min(len(cells), batch_limit) if stage == "l1-b" and batch_limit else len(cells)
         check_operator_cost_quote(cost_quote, float(estimated_total_usd), estimate_n)
         ledger_obj = BudgetLedger.load(ledger)
         gate = ledger_obj.preflight("p0" if stage == "p0" else "l1", float(estimated_total_usd))
@@ -683,9 +681,7 @@ if _HAS_MODAL:
         cells = select_pending_batch(planned, completed, batch_limit)
         # Recovery: if a prior run published all 112 new cells but failed
         # before finalization, re-verify and finalize WITHOUT replaying them.
-        finalize_only = (
-            stage == "l1-b" and not cells and len(completed) == len(enumerate_cells("l1-b"))
-        )
+        finalize_only = stage == "l1-b" and not cells and len(completed) == len(enumerate_cells("l1-b"))
         if not cells and not finalize_only:
             raise ValueError("STOP: no unexecuted cells in this batch; request the existing verified summary")
         print(
@@ -708,15 +704,9 @@ if _HAS_MODAL:
         outcomes = (
             []
             if finalize_only
-            else list(
-                replay_cell_remote.with_options(max_containers=max_workers).map(
-                    build_jobs(cells, prefix)
-                )
-            )
+            else list(replay_cell_remote.with_options(max_containers=max_workers).map(build_jobs(cells, prefix)))
         )
-        summary = finalize_remote.remote(
-            prefix, stage, outcomes, sha, run_id, attestations=attestations
-        )
+        summary = finalize_remote.remote(prefix, stage, outcomes, sha, run_id, attestations=attestations)
         _write_inflight_ledger(
             Path(ledger).expanduser().parent / TRIAL_LEDGER_NAME,
             stage,
