@@ -29,7 +29,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install offline dependencies
-        run: python -m pip install 'pytest>=8,<10' 'black==25.1.0' pyflakes
+        run: python -m pip install 'pytest>=8,<10' 'black==25.1.0' pyflakes modal
       - name: Format only the new L2 files on this isolated branch
         if: github.event_name == 'push' && github.ref == 'refs/heads/research/csi1000-l2-fastlane-20261014'
         run: |
@@ -43,6 +43,12 @@ jobs:
           fi
       - name: Python syntax
         run: python -m py_compile audit/csi1000_l2_fastlane.py audit/csi1000_l2_execution.py audit/csi1000_l2_modal.py
+      - name: Modal SDK import and CLI help (no cloud dispatch)
+        env:
+          PYTHONPATH: .
+        run: |
+          python -c 'import audit.csi1000_l2_modal as x; assert x.app is not None'
+          modal run audit/csi1000_l2_modal.py --help
       - name: Offline negative controls
         env:
           PYTHONPATH: .
