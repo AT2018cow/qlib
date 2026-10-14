@@ -399,6 +399,16 @@ if modal is not None:
                 phase = next(p for p in phases if p["candidate_id"] == cid and
                              p["phase"] == rec["phase"])
                 return pd.read_parquet(root / "jobs" / job_id(phase) / "report.parquet")
+            for r, reference in zip(trials, baseline):
+                challenger_frame = loader(r)
+                baseline_spec = specs[r["phase"]]
+                base_frame = pd.read_parquet(
+                    base_root / baseline_spec["cell_key"] / "fixed_report.parquet"
+                )
+                require(challenger_frame.index.equals(base_frame.index), "STOP_L2_PAIRED_DATES")
+                require(challenger_frame["bench"].equals(base_frame["bench"]), "STOP_L2_PAIRED_BENCH")
+                require(r["provider_snapshot_sha256"] == meta["source_snapshot_sha256"],
+                        "STOP_L2_PAIRED_PROVIDER")
             chal, base, ratio = paired_rows(trials, baseline, loader)
             passed, detail = coarse_pass(chal, base)
             ranked.append({"candidate_id": cid, "topk": 20, "dropn": 2,
