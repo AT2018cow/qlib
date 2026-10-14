@@ -1,5 +1,42 @@
 # 53 — CSI1000 有预算上限的分层历史策略搜索合同（2026-10-12）
 
+## 2026-10-14 L2 fast-lane operator amendment (execution requires separate reviewed runner)
+
+After L1-C closed 264/264 with a distinct audited decision, the user requests
+shorter L2 execution handoffs: one genuine training smoke and then maximum
+safe progress through a single foreground auto-coordinator. This is an
+**administrative execution policy**, not a relaxation of the L2 experimental
+search space, source/fit identity gates, USD 12 L2 hard spend ceiling, 320
+all-attempt fit cap, USD 30 global cap or the need for a new training-runner
+PR and independent tests. Hard STOP on unavailable current billing/spend data
+or insufficient reserve still applies; actual usage and fit receipts remain
+mandatory. Repeated manual P90 worksheets, human batch-by-batch approvals
+and legacy ledger reservations are **not** mandatory for healthy auto-waves
+within those caps. Automatic waves must account for cost and new fits,
+including failures and retries, using the single-run immutable log.
+
+Freeze L2 seed=20261012 and the four diverse unused Stage-A models plus
+four bounded new proposals **before training**; 16 short-fold fits across the
+four new proposals, and only 0–2 qualified new proposals enter long
+evaluation alongside the four existing Stage-A models. All L2 long
+evaluation is true retrain at phases 0/10 with fixed Top20/Drop2 and the
+frozen 424-session F1 execution account, at most 6 configs, 12 lineages and
+320 total new fits. One smoke invocation must exercise *both* a new proposal
+short fold and a long rolling train cell; after verified smoke the operator
+can launch a single foreground bounded auto-coordinator that processes
+short folds, shortlist, long fits and result verification with monotonic
+checkpointing and no repeated approval. No unchecked detached sessions or
+concurrent coordinators, and cap any run to the proven attached timeout.
+The automatic workflow must STOP on any reproducibility, as-of, fee, quota,
+OOM, artifact SHA, leakage, training-count or billing conflict rather than
+pretending a partial experiment is complete. No production Winner update,
+and L4 awaits independent full-roster approval.
+
+See [runbook 56](56-csi1000-l2-fastlane-execution-20261014.md) and
+`audit/csi1000_l2_fastlane.py` for the **plan-only** geometry and caps.
+Neither constitutes a real Modal fit runner nor authorizes immediate paid
+execution. The original §4 exploration and §6 final gates still apply.
+
 ## 2026-10-13 L1-C runner implementation addendum (review required)
 
 L1-B reached 144/144 independently reconciled cells, including 32 L1-A

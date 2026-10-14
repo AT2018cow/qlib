@@ -1,0 +1,43 @@
+name: L2 fast-lane offline gates
+
+on:
+  push:
+    branches:
+      - research/csi1000-l2-fastlane-20261014
+    paths:
+      - 'audit/csi1000_l2_*.py'
+      - 'tests/test_csi1000_l2_*.py'
+      - 'docs/experiments/56-csi1000-l2-fastlane-execution-20261014.md'
+      - '.github/workflows/csi1000-l2-fastlane.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install offline dependencies
+        run: python -m pip install 'pytest>=8,<10' 'black==25.1.0' pyflakes modal
+      - name: Python syntax
+        run: python -m py_compile audit/csi1000_l2_fastlane.py audit/csi1000_l2_execution.py audit/csi1000_l2_modal.py
+      - name: Modal SDK import and CLI help (no cloud dispatch)
+        env:
+          PYTHONPATH: .
+        run: |
+          python -c 'import audit.csi1000_l2_modal as x; assert x.app is not None'
+          modal run audit/csi1000_l2_modal.py --help
+      - name: Offline negative controls
+        env:
+          PYTHONPATH: .
+        run: python -m pytest -q tests/test_csi1000_l2_fastlane.py tests/test_csi1000_l2_execution.py tests/test_csi1000_layered_search_selection.py
+      - name: Black 120 (show actionable diff)
+        run: python -m black -l 120 --check --diff audit/csi1000_l2_fastlane.py audit/csi1000_l2_execution.py audit/csi1000_l2_modal.py tests/test_csi1000_l2_fastlane.py tests/test_csi1000_l2_execution.py
+      - name: Pyflakes
+        run: python -m pyflakes audit/csi1000_l2_fastlane.py audit/csi1000_l2_execution.py audit/csi1000_l2_modal.py tests/test_csi1000_l2_fastlane.py tests/test_csi1000_l2_execution.py
