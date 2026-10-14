@@ -169,22 +169,26 @@ if modal is not None:
         require(bool(codes), "STOP_L2_QUOTE: empty static union")
         research.reload()
         from audit.csi1000_layered_search_core import BASELINE_CANDIDATE, enumerate_cells
-        p0_cells = {r["phase"]: r for r in enumerate_cells("p0")
-                    if r["candidate_id"] == BASELINE_CANDIDATE}
+
+        p0_cells = {r["phase"]: r for r in enumerate_cells("p0") if r["candidate_id"] == BASELINE_CANDIDATE}
         require(set(p0_cells) == {0, 10}, "STOP_L2_P0_SPECS")
         for phase in (0, 10):
             root = RESULTS / meta["p0_prefix"] / "cells" / p0_cells[phase]["cell_key"]
             require((root / "cell.json").is_file(), "STOP_L2_P0_REMOTE_SOURCE_MISSING")
             row = json.loads((root / "cell.json").read_text(encoding="utf-8"))
-            require(row.get("status") == "PASS" and row.get("phase") == phase and
-                    row.get("quote_sha256") == quote_sha and
-                    row.get("provider_fingerprint") == src["provider_fingerprint"],
-                    "STOP_L2_P0_REMOTE_IDENTITY")
+            require(
+                row.get("status") == "PASS"
+                and row.get("phase") == phase
+                and row.get("quote_sha256") == quote_sha
+                and row.get("provider_fingerprint") == src["provider_fingerprint"],
+                "STOP_L2_P0_REMOTE_IDENTITY",
+            )
             for name, hashed in row.get("artifact_sha256", {}).items():
-                require((root / name).is_file() and sha256_file(root / name) == hashed,
-                        f"STOP_L2_P0_REMOTE_BYTE_SHA: {name}")
-            require(row.get("artifact_sha256", {}).get("fixed_report.parquet"),
-                    "STOP_L2_P0_REMOTE_REPORT_MISSING")
+                require(
+                    (root / name).is_file() and sha256_file(root / name) == hashed,
+                    f"STOP_L2_P0_REMOTE_BYTE_SHA: {name}",
+                )
+            require(row.get("artifact_sha256", {}).get("fixed_report.parquet"), "STOP_L2_P0_REMOTE_REPORT_MISSING")
         return {"source": src, "folds": folds, "calendar": calendar, "long_periods": periods, "quote_sha256": quote_sha}
 
     @app.function(volumes=mounts, cpu=8, memory=16384, timeout=7200, retries=0)
