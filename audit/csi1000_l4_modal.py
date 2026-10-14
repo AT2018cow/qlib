@@ -397,10 +397,29 @@ if modal is not None:
         require(set(stable_sha(j) for j in jobs) ==
                 set(stable_sha(j) for j in _jobs_for_run(meta, manifest)) and len(jobs) == 20,
                 "STOP_L4_JOB_LIST_NOT_FROZEN")
+        from audit.csi1000_layered_search_replay import report_metrics
+        import math
+
         rows = []
         for job in jobs:
             rec = checked_l4_cell(_root(job), job, _identity(job))
             require(rec is not None, "STOP_L4_MISSING_FINAL_REPORT")
+            path = l4_cell_dir(_root(job), job) / "fixed_report.parquet"
+            calculated, diagnostics = report_metrics(pd.read_parquet(path))
+            require(diagnostics["max_account_return_delta"] <= 1e-10
+                    and diagnostics["max_cost_rate_delta"] <= 1e-10
+                    and diagnostics["max_value_plus_cash_discrepancy"] <= 0.01,
+                    "STOP_L4_TERMINAL_LEDGER_RECHECK")
+            for name, value in calculated.items():
+                expected = rec["metrics"].get(name)
+                if isinstance(value, (int, float)) and not isinstance(value, bool):
+                    require(isinstance(expected, (int, float))
+                            and math.isfinite(expected)
+                            and math.isclose(float(value), float(expected),
+                                             rel_tol=1e-10, abs_tol=1e-10),
+                            f"STOP_L4_TERMINAL_METRIC_DRIFT_{name}")
+                else:
+                    require(expected == value, f"STOP_L4_TERMINAL_METRIC_DRIFT_{name}")
             rows.append(rec)
         for phase in (0, 10):
             baseline_job = next(j for j in jobs if j["config_sha256"] == BASELINE_CONFIG_SHA
