@@ -6,12 +6,10 @@ The coordinator is always local/attached; there is no --detach path.
 """
 from __future__ import annotations
 
-import hashlib
 import json
 import math
 import subprocess
 from pathlib import Path
-from typing import Any
 
 from audit.csi1000_l2_execution import (
     budget_gate, checked_receipt, choose_new_for_long, job_id, prefix_for,
@@ -132,7 +130,6 @@ if modal is not None:
         """One genuine LightGBM fit, exactly one as-of. No automatic retry."""
         import bisect
         import qlib
-        import pandas as pd
         from qlib.model.base import Model
         from qlib.data.dataset import Dataset
         from qlib.utils import init_instance_by_config
@@ -472,8 +469,9 @@ if modal is not None:
         p0_summary: str = "",
         p0_prefix: str = "",
         max_workers: int = 1,
-        usd_per_fit_reserve: float = 0.01,
+        usd_per_fit_reserve: float = 0.0,
         smoke_actual_usd: float = 0.0,
+        nonfit_reserve_usd: float = 0.5,
     ) -> None:
         """Smoke once; use mode=complete to automatically continue all safe waves."""
         require(mode in ("smoke", "complete"), "STOP_L2_MODE")
@@ -483,6 +481,8 @@ if modal is not None:
         require(usd_per_fit_reserve > 0 and math.isfinite(usd_per_fit_reserve),
                 "STOP_L2_COST_RESERVE_REQUIRED")
         require(0 <= smoke_actual_usd < 12 and math.isfinite(smoke_actual_usd), "STOP_L2_ACTUAL_BILL")
+        require(math.isfinite(nonfit_reserve_usd) and nonfit_reserve_usd >= 0.5,
+                "STOP_L2_NONFIT_COST_RESERVE_REQUIRED")
         require(p0_prefix.startswith("csi1000_layered_search/") and ".." not in p0_prefix and
                 p0_prefix.count("/") >= 4, "STOP_L2_P0_PREFIX")
         sha = _actual_sha()
@@ -528,6 +528,8 @@ if modal is not None:
             return
         marker = get_marker_remote.remote(meta, "smoke_pass")
         require(marker is not None and marker["status"] == "PASS" and
+                marker["smoke_short_job_sha"] == stable_sha(short[0]) and
+                marker["smoke_long_job_sha"] == stable_sha(long_first) and
                 marker["provider_snapshot_sha256"] == inventory["source"]["snapshot_sha256"] and
                 marker["quote_sha256"] == inventory["quote_sha256"], "STOP_L2_SMOKE_NOT_VERIFIED")
         require(all(r is not None for r in receipts_remote.remote([short[0], long_first])),
@@ -535,10 +537,12 @@ if modal is not None:
         # Reserve the maximum 16 short + 6 models x phases0/10 in advance;
         # the actual shortlisted plan can only shrink, not grow.
         from csi1000_stage_b_core import build_phase_jobs
-        max_planned = 16 + 6 * sum(len(build_phase_jobs(calendar, p)) for p in (0, 10))
-        require(max_planned <= 320, "STOP_L2_FIT_CAP_PREPLAN")
-        budget_gate(0, max_planned, 0, usd_per_fit_reserve, smoke_actual_usd)
-        _dispatch_fit(short, meta, max_workers, usd_per_fit_reserve, smoke_actual_usd)
+        base_planned = 16 + 4 * sum(len(build_phase_jobs(calendar, p)) for p in (0, 10))
+        require(base_planned <= 320, "STOP_L2_FIT_CAP_PREPLAN")
+        budget_gate(0, base_planned, 0, usd_per_fit_reserve,
+                    smoke_actual_usd + nonfit_reserve_usd)
+        _dispatch_fit(short, meta, max_workers, usd_per_fit_reserve,
+                      smoke_actual_usd + nonfit_reserve_usd)
         short_rows = receipts_remote.remote(short)
         require(all(r is not None for r in short_rows), "STOP_L2_SHORT_NOT_FULL")
         shortlist = choose_new_for_long(plan, short_rows, stage_a)
@@ -549,7 +553,10 @@ if modal is not None:
         ]
         by_id = {x["candidate_id"]: x for x in candidates}
         long = [_long_job(meta, by_id[j["candidate_id"]], j) for j in roster["jobs"]]
-        _dispatch_fit(long, meta, max_workers, usd_per_fit_reserve, smoke_actual_usd)
+        budget_gate(0, 16 + len(long), 0, usd_per_fit_reserve,
+                    smoke_actual_usd + nonfit_reserve_usd)
+        _dispatch_fit(long, meta, max_workers, usd_per_fit_reserve,
+                      smoke_actual_usd + nonfit_reserve_usd)
         phase_jobs = [_phase_job(meta, candidate, phase, inventory["quote_sha256"])
                       for candidate in candidates for phase in (0, 10)]
         for i in range(0, len(phase_jobs), max_workers):
