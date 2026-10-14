@@ -6,7 +6,6 @@ Every test is local and must not launch a Modal job.
 from __future__ import annotations
 
 import ast
-import json
 from pathlib import Path
 
 import pandas as pd
