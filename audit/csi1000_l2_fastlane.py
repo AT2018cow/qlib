@@ -5,6 +5,7 @@ long-training calendar before an operator launches a separately reviewed
 L2 fit/prediction/replay runner. A plan is NOT a signed result or a training
 authorization. Do not use this module to accept unverified remote receipts.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -50,11 +51,7 @@ def make_fastlane_plan(repo_root: str | Path = ".") -> dict[str, Any]:
     require(selection["stage_a_short_fold_fit_cap"] == 16, "L2 short fold cap drift")
     require(selection["l2_long_fit_cap"] == 320, "L2 long fit cap drift")
     require(selection["allowed_long_validation_challengers"] == 6, "L2 long roster cap drift")
-    short_jobs = [
-        {"candidate_id": cid, "fold_index": fold}
-        for cid in new
-        for fold in SHORT_FOLDS
-    ]
+    short_jobs = [{"candidate_id": cid, "fold_index": fold} for cid in new for fold in SHORT_FOLDS]
     require(len(short_jobs) == L2_NEW_SHORT_FIT_CAP, "L2 needs exactly sixteen short jobs")
     frozen: dict[str, Any] = {
         "protocol": "csi1000_l2_fastlane_plan_v1",
@@ -124,8 +121,10 @@ def make_long_job_roster(
     planned = len(jobs)
     # Short-fold smoke is among the 16, long smoke must be one of these jobs.
     require(planned + L2_NEW_SHORT_FIT_CAP <= L2_FIT_CAP, "STOP_L2_FIT_BUDGET: planned fits exceed 320")
-    require(len({(r["candidate_id"], r["phase"], r["retrain_asof"]) for r in jobs}) == planned,
-            "L2 duplicate long retrain key")
+    require(
+        len({(r["candidate_id"], r["phase"], r["retrain_asof"]) for r in jobs}) == planned,
+        "L2 duplicate long retrain key",
+    )
     return {
         "stage": "l2",
         "plan_sha256": plan["plan_sha256"],

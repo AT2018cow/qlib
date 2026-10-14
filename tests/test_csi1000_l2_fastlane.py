@@ -1,4 +1,5 @@
 """Synthetic fail-closed checks for the L2 zero-Modal fast-lane planning gate."""
+
 from __future__ import annotations
 
 import copy

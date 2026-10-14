@@ -1,4 +1,5 @@
 """Offline L2 receipt, budget and four-fold promotion negative controls."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -10,19 +11,32 @@ from audit.csi1000_layered_search_core import stable_sha
 
 
 def _meta():
-    return {"run_id": "l2_20261014_a1", "code_sha": "a" * 40,
-            "plan_sha256": "b" * 64, "provider_fingerprint": "f" * 64,
-            "source_snapshot_sha256": "e" * 64, "quote_sha256": "d" * 64,
-            "p0_prefix": "csi1000_layered_search/contract/old/p0/123456789abc"}
+    return {
+        "run_id": "l2_20261014_a1",
+        "code_sha": "a" * 40,
+        "plan_sha256": "b" * 64,
+        "provider_fingerprint": "f" * 64,
+        "source_snapshot_sha256": "e" * 64,
+        "quote_sha256": "d" * 64,
+        "p0_prefix": "csi1000_layered_search/contract/old/p0/123456789abc",
+    }
 
 
 def _short_job(fold="fold1"):
-    return {**_meta(), "kind": "short", "candidate_id": "c" * 64, "fold_id": fold,
-            "fold": {"train": ["2016-01-01", "2020-01-01"],
-                     "valid": ["2020-01-31", "2020-11-01"],
-                     "signal": ["2021-01-01", "2021-01-29"],
-                     "execution": ["2021-01-04", "2021-02-01"]},
-            "model_params": {"learning_rate": 0.1}, "model_sha256": "1" * 64}
+    return {
+        **_meta(),
+        "kind": "short",
+        "candidate_id": "c" * 64,
+        "fold_id": fold,
+        "fold": {
+            "train": ["2016-01-01", "2020-01-01"],
+            "valid": ["2020-01-31", "2020-11-01"],
+            "signal": ["2021-01-01", "2021-01-29"],
+            "execution": ["2021-01-04", "2021-02-01"],
+        },
+        "model_params": {"learning_rate": 0.1},
+        "model_sha256": "1" * 64,
+    }
 
 
 def test_l2_run_id_and_prefix_fail_closed():
@@ -38,8 +52,7 @@ def test_l2_job_id_is_unique_and_phase_bounds():
     a = _short_job()
     b = _short_job("fold2")
     assert l2.job_id(a) != l2.job_id(b)
-    long = {**a, "kind": "long", "phase": 0, "retrain_asof": "2025-01-02",
-            "signal_end": "2025-01-29"}
+    long = {**a, "kind": "long", "phase": 0, "retrain_asof": "2025-01-02", "signal_end": "2025-01-29"}
     phase = {**long, "kind": "phase"}
     assert l2.job_id(long) != l2.job_id(phase)
     with pytest.raises(ValueError, match="long phase"):
@@ -51,6 +64,7 @@ def test_l2_job_id_is_unique_and_phase_bounds():
 def test_l2_receipt_requires_exact_bytes_job_and_identity(tmp_path):
     job = _short_job()
     identity = _meta()
+
     class DummyParquet:
         def __init__(self, data):
             self.data = data
@@ -58,12 +72,23 @@ def test_l2_receipt_requires_exact_bytes_job_and_identity(tmp_path):
         def to_parquet(self, path):
             Path(path).write_bytes(self.data)
 
-    content = {"prediction.parquet": DummyParquet(b"prediction"),
-               "checkpoint.txt": "lightgbm-booster",
-               "report.parquet": DummyParquet(b"report"), "decisions.json": [{"orders": []}]}
-    saved = l2.publish_receipt(tmp_path, job, identity, content, {
-        "candidate_id": job["candidate_id"], "fold_id": "fold1", "metrics": {"x": 1.0},
-    })
+    content = {
+        "prediction.parquet": DummyParquet(b"prediction"),
+        "checkpoint.txt": "lightgbm-booster",
+        "report.parquet": DummyParquet(b"report"),
+        "decisions.json": [{"orders": []}],
+    }
+    saved = l2.publish_receipt(
+        tmp_path,
+        job,
+        identity,
+        content,
+        {
+            "candidate_id": job["candidate_id"],
+            "fold_id": "fold1",
+            "metrics": {"x": 1.0},
+        },
+    )
     assert saved["status"] == "PASS"
     assert saved["job_sha256"] == stable_sha(job)
     assert l2.checked_receipt(tmp_path, job, identity) == saved
@@ -118,21 +143,43 @@ def test_l2_four_fold_selection_complete_and_pre_registered(monkeypatch):
         "total_cost_sum": 0.001,
     }
     import csi1000_tuner_core
+
     def summarized(candidate, rows):
         values = [r["relative_excess_cagr"] for r in rows]
-        return {"fold_summary": {"relative_excess_cagr_worst": min(values),
-                                 "relative_excess_cagr_median": sum(values) / 4,
-                                 "strategy_max_drawdown_worst": -0.1}}
+        return {
+            "fold_summary": {
+                "relative_excess_cagr_worst": min(values),
+                "relative_excess_cagr_median": sum(values) / 4,
+                "strategy_max_drawdown_worst": -0.1,
+            }
+        }
+
     monkeypatch.setattr(csi1000_tuner_core, "summarize_candidate", summarized)
     ids = [f"{i:064x}" for i in range(1, 5)]
     plan = {"new_candidates": [{"candidate_id": cid, "model_params": {}} for cid in ids]}
-    source = {"ranked_candidates": [{"candidate": {"is_baseline": True},
-                                    "fold_summary": {"relative_excess_cagr_worst": 0.1,
-                                                     "relative_excess_cagr_median": 0.1,
-                                                     "strategy_max_drawdown_worst": -0.1}}]}
-    rows = [{"candidate_id": cid, "fold_id": f"fold{j}", "status": "PASS",
-             "kind": "short", "metrics": {**base_metrics, "relative_excess_cagr": score}}
-            for cid, score in zip(ids, (0.12, 0.11, 0.10, 0.09)) for j in range(1, 5)]
+    source = {
+        "ranked_candidates": [
+            {
+                "candidate": {"is_baseline": True},
+                "fold_summary": {
+                    "relative_excess_cagr_worst": 0.1,
+                    "relative_excess_cagr_median": 0.1,
+                    "strategy_max_drawdown_worst": -0.1,
+                },
+            }
+        ]
+    }
+    rows = [
+        {
+            "candidate_id": cid,
+            "fold_id": f"fold{j}",
+            "status": "PASS",
+            "kind": "short",
+            "metrics": {**base_metrics, "relative_excess_cagr": score},
+        }
+        for cid, score in zip(ids, (0.12, 0.11, 0.10, 0.09))
+        for j in range(1, 5)
+    ]
     answer = l2.choose_new_for_long(plan, rows, source)
     assert answer["selected_new_candidate_ids"] == ids[:2]
     assert answer["short_count"] == 16

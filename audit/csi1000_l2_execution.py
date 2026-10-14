@@ -3,6 +3,7 @@
 All receipts bind their immutable job specification, concrete model config,
 source identity, actual output bytes and code SHA. Cross-run reuse fails closed.
 """
+
 from __future__ import annotations
 
 import json
@@ -100,8 +101,12 @@ def publish_receipt(
                 path.write_text(json.dumps(obj, sort_keys=True, allow_nan=False) + "\n", encoding="utf-8")
         hashes = {name: sha256_file(tmp / name) for name in sorted(artifacts)}
         record = {
-            "status": "PASS", **identity, "kind": job["kind"],
-            "job_sha256": stable_sha(job), "artifact_sha256": hashes, **details,
+            "status": "PASS",
+            **identity,
+            "kind": job["kind"],
+            "job_sha256": stable_sha(job),
+            "artifact_sha256": hashes,
+            **details,
         }
         (tmp / "receipt.json").write_text(
             json.dumps(record, sort_keys=True, indent=2, allow_nan=False) + "\n", encoding="utf-8"
@@ -149,31 +154,47 @@ def choose_new_for_long(plan: dict, short_receipts: list[dict], stage_a: dict) -
         worst = float(summary["relative_excess_cagr_worst"]) - float(b["relative_excess_cagr_worst"])
         median = float(summary["relative_excess_cagr_median"]) - float(b["relative_excess_cagr_median"])
         mdd = abs(float(summary["strategy_max_drawdown_worst"])) - abs(float(b["strategy_max_drawdown_worst"]))
-        passed = (worst >= 0.005 and median >= 0.005 and mdd <= 0.05)
-        rank = {"candidate_id": cid, "worst_delta": worst, "median_delta": median,
-                "mdd_degradation": mdd, "passed": bool(passed)}
+        passed = worst >= 0.005 and median >= 0.005 and mdd <= 0.05
+        rank = {
+            "candidate_id": cid,
+            "worst_delta": worst,
+            "median_delta": median,
+            "mdd_degradation": mdd,
+            "passed": bool(passed),
+        }
         scores.append(rank)
         if passed:
             qualified.append(rank)
-    qualified.sort(key=lambda x: (-x["worst_delta"], -x["median_delta"],
-                                  x["mdd_degradation"], x["candidate_id"]))
+    qualified.sort(key=lambda x: (-x["worst_delta"], -x["median_delta"], x["mdd_degradation"], x["candidate_id"]))
     selection = [r["candidate_id"] for r in qualified[:2]]
-    return {"status": "SHORT_SCREEN_PASS", "short_count": 16, "eligible": scores,
-            "selected_new_candidate_ids": selection, "selection_sha256": stable_sha(selection)}
+    return {
+        "status": "SHORT_SCREEN_PASS",
+        "short_count": 16,
+        "eligible": scores,
+        "selected_new_candidate_ids": selection,
+        "selection_sha256": stable_sha(selection),
+    }
 
 
-def budget_gate(fits_attempted: int, wave_new_fits: int, spend_estimate: float,
-                reserve_per_fit: float, spent_usd: float, cap: float = L2_MAX_USD) -> None:
+def budget_gate(
+    fits_attempted: int,
+    wave_new_fits: int,
+    spend_estimate: float,
+    reserve_per_fit: float,
+    spent_usd: float,
+    cap: float = L2_MAX_USD,
+) -> None:
     """Conservative reservation check; NEVER calls projected spend 'actual billing'."""
     require(isinstance(fits_attempted, int) and fits_attempted >= 0, "L2 invalid attempted fit count")
     require(isinstance(wave_new_fits, int) and wave_new_fits >= 0, "L2 invalid fit wave size")
     require(fits_attempted + wave_new_fits <= L2_MAX_FITS, "STOP_L2_FIT_CAP")
     nums = (spend_estimate, reserve_per_fit, spent_usd, cap)
-    require(all(isinstance(v, (int, float)) and math.isfinite(v) and v >= 0 for v in nums),
-            "STOP_L2_COST_UNKNOWN")
+    require(all(isinstance(v, (int, float)) and math.isfinite(v) and v >= 0 for v in nums), "STOP_L2_COST_UNKNOWN")
     require(reserve_per_fit > 0 and cap <= L2_MAX_USD, "STOP_L2_COST_UNKNOWN")
-    require(spent_usd + spend_estimate + wave_new_fits * reserve_per_fit <= cap,
-            "STOP_L2_BUDGET: estimate incl unsettled reserve exceeds cap")
+    require(
+        spent_usd + spend_estimate + wave_new_fits * reserve_per_fit <= cap,
+        "STOP_L2_BUDGET: estimate incl unsettled reserve exceeds cap",
+    )
 
 
 def summarise_long(chall_rows: list[dict], baseline_rows: list[dict], reporter) -> dict:
