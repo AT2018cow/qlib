@@ -89,7 +89,12 @@ def check_stage_b_source_coverage(stage_b_result: dict, manifest: dict) -> dict:
         for phase in FINAL_PHASES:
             row = lookup_phase(stage_b_result, candidate, phase)
             require(row["candidate_id"] == candidate and row["phase"] == phase
-                    and row.get("model_config_sha256") == known[candidate],
+                    and row.get("snapshot_token") == stage_b_result["manifest"]["snapshot_token"],
+                    "STOP_L4_FROZEN_PHASE_IDENTITY")
+            chunks = row.get("chunk_predictions", [])
+            require(len(chunks) == row.get("n_retrains") and chunks
+                    and all(ch.get("model_config_sha256") == known[candidate]
+                            and ch.get("prediction_content_sha256") for ch in chunks),
                     "STOP_L4_FROZEN_PHASE_MODEL_MISMATCH")
             for kind in ("signal", "report", "decision"):
                 artifact = row.get(kind + "_artifact") or {}
