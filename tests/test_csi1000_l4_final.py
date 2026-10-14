@@ -145,15 +145,18 @@ def test_l4_partial_and_identity_overrides_blocked(tmp_path):
 
 
 def test_p0_daily_ledger_tolerances_and_date_integrity():
-    f = _frame()
+    f = pd.DataFrame({
+        "account": np.full(424, 1e8), "bench": np.zeros(424),
+        "return": np.zeros(424), "cost": np.zeros(424),
+        "total_cost": np.zeros(424),
+    }, index=pd.bdate_range("2025-01-02", periods=424))
     runner.verify_reference_report(f, f.copy())
     g = f.copy()
-    g.loc[1, "return"] += 1e-5
+    g.iloc[1, g.columns.get_loc("return")] += 1e-5
     with pytest.raises(ValueError, match="STOP_L4_P0"):
         runner.verify_reference_report(g, f)
-    # Valid two rows aren't the real 424-day P0 reference.
     with pytest.raises(ValueError, match="STOP_L4_P0_DAILY_INDEX"):
-        runner.verify_reference_report(f, g)
+        runner.verify_reference_report(f.iloc[:-1], f)
 
 
 def _receipts():
