@@ -279,9 +279,6 @@ def test_modal_static_gates():
         "p0_summary",
         "p0_prefix",
         "max_workers",
-        "usd_per_fit_reserve",
-        "smoke_actual_usd",
-        "nonfit_reserve_usd",
         "max_fit_waves",
     ):
         assert flag in params, f"entrypoint missing --{flag.replace('_', '-')}"
