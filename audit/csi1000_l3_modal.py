@@ -813,7 +813,7 @@ if modal is not None:
             _wave(stage1_jobs, meta, max_workers, remaining_waves)
         except SafePause:
             print("L3_INCOMPLETE_SAFE_PAUSE: verified partial wave receipts; rerun --mode complete", flush=True)
-            return
+            return "INCOMPLETE"
         screened = []
         for variant in STAGE1_VARIANTS:
             for phase in variant["screen_phases"]:
@@ -843,7 +843,7 @@ if modal is not None:
                 _wave(stage2_jobs, meta, max_workers, remaining_waves)
             except SafePause:
                 print("L3_INCOMPLETE_SAFE_PAUSE: verified partial wave receipts; rerun --mode complete", flush=True)
-                return
+                return "INCOMPLETE"
             for variant in STAGE2_VARIANTS:
                 for phase in variant["screen_phases"]:
                     _phase_job_check(meta, anchor, variant, phase, inventory["quote_sha256"])
@@ -856,10 +856,9 @@ if modal is not None:
             freeze_remote.remote(meta, "l3_screen_final", {"stage": "stage1", "variants": screened})
         decision, info = l3_decision(screened)
         freeze_remote.remote(meta, "l3_decision", {"decision": decision, **info})
-        print(
-            f"L3_COMPLETE screened={len(screened)} decision={decision} " f"note=ACTUAL_BILL_RECONCILIATION_REQUIRED",
-            flush=True,
-        )
+        print(f"L3_COMPLETE screened={len(screened)} decision={decision} "
+              f"fit_scope=250 provenance=SHA_CHECKED", flush=True)
+        return "COMPLETE"
 
     def _phase_job_check(meta: dict, anchor: dict, variant: dict, phase: int, quote_sha: str) -> dict:
         job = _phase_job(meta, anchor, variant, phase, quote_sha)
@@ -874,7 +873,7 @@ if modal is not None:
         p0_summary: str = "",
         p0_prefix: str = "",
         max_workers: int = 1,
-         max_fit_waves: int = 0,
+        max_fit_waves: int = 0,
     ) -> None:
         """Smoke once (two first-slice fits, one per stage-1 frequency); complete runs stage-gated waves."""
         import re
@@ -925,10 +924,11 @@ if modal is not None:
         }
         if mode == "smoke":
             require(get_marker_remote.remote(meta, "smoke_pass") is None, "STOP_L3_SMOKE_ALREADY_DONE")
-            # The 125% calibration rule applies to the full run, not the smoke itself.
             _run_l3_smoke(meta, max_workers, anchor)
         else:
-            _run_l3_complete(meta, max_workers, anchor, [max_fit_waves] if max_fit_waves else None)
+            result = _run_l3_complete(meta, max_workers, anchor, [max_fit_waves] if max_fit_waves else None)
+            if result != "COMPLETE":
+                return
         print("L3_DONE", flush=True)
 
     def _provider_from_p0(p0: dict) -> str:
