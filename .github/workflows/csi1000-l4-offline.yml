@@ -42,8 +42,8 @@ jobs:
         env:
           PYTHONPATH: .
         run: |
-          python -m pytest -q tests/test_csi1000_l4_final.py tests/test_csi1000_l4_inventory.py tests/test_csi1000_layered_search_selection.py tests/test_csi1000_l3_runner.py
+          python -m pytest -q tests/test_csi1000_l4_final.py tests/test_csi1000_l4_inventory.py tests/test_csi1000_l4_local_coordinator.py tests/test_csi1000_layered_search_selection.py tests/test_csi1000_l3_runner.py
       - name: Black 120 (read-only)
-        run: python -m black -l 120 --check --diff audit/csi1000_l4_core.py audit/csi1000_l4_modal.py tests/test_csi1000_l4_final.py tests/test_csi1000_l4_inventory.py
+        run: python -m black -l 120 --check --diff audit/csi1000_l4_core.py audit/csi1000_l4_modal.py tests/test_csi1000_l4_final.py tests/test_csi1000_l4_inventory.py tests/test_csi1000_l4_local_coordinator.py
       - name: Pyflakes
-        run: python -m pyflakes audit/csi1000_l4_core.py audit/csi1000_l4_modal.py tests/test_csi1000_l4_final.py tests/test_csi1000_l4_inventory.py
+        run: python -m pyflakes audit/csi1000_l4_core.py audit/csi1000_l4_modal.py tests/test_csi1000_l4_final.py tests/test_csi1000_l4_inventory.py tests/test_csi1000_l4_local_coordinator.py
