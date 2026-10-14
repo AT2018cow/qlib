@@ -707,8 +707,10 @@ if modal is not None:
         )
         if mode == "complete":
             require(smoke_actual_usd > 0, "STOP_L2_SMOKE_ACTUAL_BILL_REQUIRED")
-            require(2 * usd_per_fit_reserve >= 1.25 * smoke_actual_usd,
-                    "STOP_L2_UNDERQUOTED_FIT_RESERVE: require >=125% of average billed smoke fit")
+            require(
+                2 * usd_per_fit_reserve >= 1.25 * smoke_actual_usd,
+                "STOP_L2_UNDERQUOTED_FIT_RESERVE: require >=125% of average billed smoke fit",
+            )
         stage_a = load_json(FROZEN_STAGE_A)
         baseline = json.loads(Path("results/csi1000_stage_b/stage_b_full_51756897fc752304.json").read_text())
         provider = baseline["manifest"]["provider_fingerprint"]
