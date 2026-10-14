@@ -158,6 +158,21 @@ def publish_l4_cell(root: Path, job: dict, identity: dict, artifacts: dict, deta
         raise
 
 
+def verify_inventory_derived_identity(meta: dict, codes: list[str], quote_sha: str, snapshot_sha: str) -> None:
+    """Inventory derives quote/source hashes on first call; strict-match on later calls.
+
+    The coordinator intentionally supplies empty SHA placeholders *before*
+    inventory_remote measures the provider. All subsequent jobs use the
+    measured nonempty identities and must reject drift.
+    """
+    require(bool(codes) and bool(re.fullmatch(r"[a-f0-9]{64}", quote_sha)), "STOP_L4_QUOTE_SHA")
+    require(bool(re.fullmatch(r"[a-f0-9]{64}", snapshot_sha)), "STOP_L4_SOURCE_SNAPSHOT_SHA")
+    expected_quote = meta.get("quote_sha256", "")
+    expected_snapshot = meta.get("source_snapshot_sha256", "")
+    require(expected_quote in ("", quote_sha), "STOP_L4_QUOTE_SHA")
+    require(expected_snapshot in ("", snapshot_sha), "STOP_L4_SOURCE_SNAPSHOT_SHA")
+
+
 def verify_reference_report(current, expected) -> None:
     """Daily P0 baseline equality on actual accounting fields, not headline CAGR."""
     import numpy as np
@@ -308,7 +323,7 @@ if modal is not None:
         require(coverage["source_digest"] == meta["source_digest"], "STOP_L4_SOURCE_MANIFEST_SHA")
         qlib.init(provider_uri=str(SOURCE / "cn_data"), region="cn")
         codes, quote_sha = static_quote_union(MARKET, RESERVED_EXECUTION_START, RESERVED_EXECUTION_END, D)
-        require(quote_sha == meta["quote_sha256"] and codes, "STOP_L4_QUOTE_SHA")
+        verify_inventory_derived_identity(meta, codes, quote_sha, src["source_snapshot_sha256"])
         root = SOURCE / "csi1000_stage_b" / src["snapshot_token"]
         found = []
         for pair in coverage["sources"]:
@@ -625,7 +640,7 @@ if modal is not None:
             "p0_prefix": p0_prefix,
         }
         # Remote inventory independently derives live provider snapshot and quotes.
-        live = inventory_remote.remote({**meta, "quote_sha256": "", "source_snapshot_sha256": ""})
+        live = inventory_remote.remote(meta)  # derive hashes once; later jobs compare strict signed SHA
         require(live["status"] == "PASS" and live["source_model_phases"] == 15, "STOP_L4_15_SOURCE_PREFLIGHT")
         meta["source_snapshot_sha256"] = live["source_snapshot_sha256"]
         meta["quote_sha256"] = live["quote_sha256"]
