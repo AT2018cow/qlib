@@ -63,7 +63,10 @@ if modal is not None:
     mounts = {str(SOURCE): original.with_mount_options(read_only=True), str(RESULTS): research}
 
     def _identity(job: dict) -> dict:
-        return {k: job[k] for k in ("run_id", "code_sha", "plan_sha256", "provider_fingerprint")}
+        return {k: job[k] for k in (
+            "run_id", "code_sha", "plan_sha256", "provider_fingerprint",
+            "source_snapshot_sha256", "quote_sha256", "p0_prefix",
+        )}
 
     def _root(job: dict) -> Path:
         return RESULTS / prefix_for(job["run_id"], job["code_sha"])
@@ -142,7 +145,8 @@ if modal is not None:
         if cached is not None:
             return {**cached, "resumed": True}
         source = _source_checks()
-        require(source["provider_fingerprint"] == identity["provider_fingerprint"], "STOP_L2_SOURCE_DRIFT")
+        require(source["provider_fingerprint"] == identity["provider_fingerprint"] and
+                source["snapshot_sha256"] == identity["source_snapshot_sha256"], "STOP_L2_SOURCE_DRIFT")
         require(job["kind"] in ("short", "long"), "L2 fit supports short/long only")
         config, built = _task(job["model_params"])
         require(built["candidate_id"] == job["candidate_id"], "L2 model ID mismatch")
@@ -244,7 +248,9 @@ if modal is not None:
         already = checked_receipt(root, job, identity)
         if already is not None:
             return {**already, "resumed": True}
-        require(_source_checks()["provider_fingerprint"] == identity["provider_fingerprint"], "STOP_L2_SOURCE_DRIFT")
+        src = _source_checks()
+        require(src["provider_fingerprint"] == identity["provider_fingerprint"] and
+                src["snapshot_sha256"] == identity["source_snapshot_sha256"], "STOP_L2_SOURCE_DRIFT")
         qlib.init(provider_uri=str(SOURCE / "cn_data"), region="cn")
         from csi1000_stage_b_core import build_phase_jobs
 
@@ -255,7 +261,8 @@ if modal is not None:
             sub = {
                 **{k: job[k] for k in ("run_id", "code_sha", "plan_sha256", "provider_fingerprint",
                                      "candidate_id", "model_params", "model_sha256")},
-                "kind": "long", **p,
+                "kind": "long", "source_snapshot_sha256": job["source_snapshot_sha256"],
+                "quote_sha256": job["quote_sha256"], "p0_prefix": job["p0_prefix"], **p,
             }
             rec = checked_receipt(root, sub, identity)
             require(rec is not None, f"STOP_L2_MISSING_LONG_FIT: {p['retrain_asof']}")
@@ -502,6 +509,8 @@ if modal is not None:
         provider = baseline["manifest"]["provider_fingerprint"]
         meta = _meta(run_id, sha, plan, provider)
         inventory = inventory_remote.remote(meta)
+        meta.update({"source_snapshot_sha256": inventory["source"]["snapshot_sha256"],
+                     "quote_sha256": inventory["quote_sha256"], "p0_prefix": p0_prefix})
         folds, calendar = inventory["folds"], inventory["calendar"]
         short = [_short_job(meta, item, fold) for item in plan["new_candidates"] for fold in folds]
         require(len(short) == 16, "STOP_L2_SHORT_ROSTER")
