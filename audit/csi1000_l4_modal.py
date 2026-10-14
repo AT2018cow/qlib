@@ -177,6 +177,24 @@ def verify_reference_report(current, expected) -> None:
         )
 
 
+def checked_inventory_derivation(meta: dict, source: dict, codes: list[str], actual_quote_sha: str) -> dict:
+    """Resolve first-call placeholders before enforcing any pinned source identity.
+
+    Local entrypoint cannot know quote/source SHA before remote inventory reads
+    the frozen provider. Subsequent callers may pin either SHA; a nonempty
+    expectation must match exactly, never be bypassed.
+    """
+    quote = meta.get("quote_sha256", "")
+    snapshot = meta.get("source_snapshot_sha256", "")
+    actual_snapshot = source["source_snapshot_sha256"]
+    valid_sha = lambda value: isinstance(value, str) and re.fullmatch(r"[a-f0-9]{64}", value) is not None
+    require(bool(codes) and valid_sha(actual_quote_sha), "STOP_L4_QUOTE_SHA")
+    require(quote == "" or quote == actual_quote_sha, "STOP_L4_QUOTE_SHA")
+    require(valid_sha(actual_snapshot), "STOP_L4_SOURCE_SNAPSHOT_SHA")
+    require(snapshot == "" or snapshot == actual_snapshot, "STOP_L4_SOURCE_SNAPSHOT_SHA")
+    return {"quote_sha256": actual_quote_sha, "source_snapshot_sha256": actual_snapshot}
+
+
 if modal is not None:
     original = modal.Volume.from_name(SOURCE_VOLUME, create_if_missing=False)
     p0_archive = modal.Volume.from_name(RESEARCH_VOLUME, create_if_missing=False)
@@ -308,7 +326,7 @@ if modal is not None:
         require(coverage["source_digest"] == meta["source_digest"], "STOP_L4_SOURCE_MANIFEST_SHA")
         qlib.init(provider_uri=str(SOURCE / "cn_data"), region="cn")
         codes, quote_sha = static_quote_union(MARKET, RESERVED_EXECUTION_START, RESERVED_EXECUTION_END, D)
-        require(quote_sha == meta["quote_sha256"] and codes, "STOP_L4_QUOTE_SHA")
+        derived = checked_inventory_derivation(meta, src, codes, quote_sha)
         root = SOURCE / "csi1000_stage_b" / src["snapshot_token"]
         found = []
         for pair in coverage["sources"]:
@@ -317,7 +335,7 @@ if modal is not None:
             require(checked["signal_sha256"] == pair["frozen_signal_sha256"], "STOP_L4_SOURCE_SIGNAL_SHA")
             found.append([pair["candidate_id"], pair["phase"], checked["signal_sha256"]])
         p0_archive.reload()
-        verified_meta = {**meta, "quote_sha256": quote_sha, "source_snapshot_sha256": src["source_snapshot_sha256"]}
+        verified_meta = {**meta, **derived}
         for phase in (0, 10):
             ref, _ = _verified_original_p0(phase, verified_meta)
             baseline_source = lookup_phase(frozen, BASELINE_CANDIDATE, phase)["signal_artifact"]["sha256"]
@@ -326,8 +344,7 @@ if modal is not None:
             "status": "PASS",
             "source_model_phases": len(found),
             "source_verified_digest": stable_sha(found),
-            "source_snapshot_sha256": src["source_snapshot_sha256"],
-            "quote_sha256": quote_sha,
+            **derived,
             "no_new_model_fit": True,
         }
 
@@ -625,7 +642,7 @@ if modal is not None:
             "p0_prefix": p0_prefix,
         }
         # Remote inventory independently derives live provider snapshot and quotes.
-        live = inventory_remote.remote({**meta, "quote_sha256": "", "source_snapshot_sha256": ""})
+        live = inventory_remote.remote(meta)
         require(live["status"] == "PASS" and live["source_model_phases"] == 15, "STOP_L4_15_SOURCE_PREFLIGHT")
         meta["source_snapshot_sha256"] = live["source_snapshot_sha256"]
         meta["quote_sha256"] = live["quote_sha256"]
