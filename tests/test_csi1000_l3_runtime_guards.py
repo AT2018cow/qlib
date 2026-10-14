@@ -123,8 +123,8 @@ def test_screened_variant_passes_signed_fields_into_l3_final_decision():
     assert row["layer"] == "l3" and row["coarse_pass"] is True
     assert len(row["config_sha256"]) == 64
     from audit.csi1000_layered_search_selection import freeze_finalists
-    official = {"candidate_id": core.ANCHOR_CANDIDATE, "topk": 20, "dropn": 2,
-                "config_sha256": "a" * 64}
+
+    official = {"candidate_id": core.ANCHOR_CANDIDATE, "topk": 20, "dropn": 2, "config_sha256": "a" * 64}
     frozen = freeze_finalists([row], official)
     assert len(frozen["configurations"]) == 2
     assert frozen["configurations"][1]["config_sha256"] == row["config_sha256"]
@@ -212,8 +212,13 @@ def test_l3_still_checks_scientific_fit_scope_250_without_usd_control():
 def test_stage1_to_conditional_stage2_to_final_markers(monkeypatch, stage1_pass):
     """Actual coordinator path, all remote work replaced with deterministic stubs."""
     dates = list(pd.bdate_range("2016-01-01", "2026-11-01").strftime("%Y-%m-%d"))
-    meta = {"run_id": "l3_test_a1", "code_sha": "a" * 40, "plan_sha256": "b" * 64,
-            "provider_fingerprint": "c" * 64, "p0_prefix": "signed/p0"}
+    meta = {
+        "run_id": "l3_test_a1",
+        "code_sha": "a" * 40,
+        "plan_sha256": "b" * 64,
+        "provider_fingerprint": "c" * 64,
+        "p0_prefix": "signed/p0",
+    }
     anchor = {"candidate_id": core.ANCHOR_CANDIDATE, "model_params": {}}
     calls = {"fit_stage": [], "screens": [], "markers": {}}
 
@@ -221,25 +226,42 @@ def test_stage1_to_conditional_stage2_to_final_markers(monkeypatch, stage1_pass)
         def __init__(self, callback):
             self.remote = callback
 
-    monkeypatch.setattr(runner, "inventory_remote", Remote(
-        lambda _meta: {"calendar": dates, "source": {"snapshot_sha256": "d" * 64},
-                       "quote_sha256": "e" * 64}
-    ))
-    monkeypatch.setattr(runner, "get_marker_remote", Remote(
-        lambda _meta, _key: {"status": "PASS", "provider_snapshot_sha256": "d" * 64,
-                              "quote_sha256": "e" * 64}
-    ))
-    monkeypatch.setattr(runner, "_fit_job", lambda meta, anchor, asof, end, h, f, p: {
-        "label_horizon": h, "retrain_frequency": f, "phase": p,
-        "retrain_asof": asof, "signal_end": end
-    })
-    monkeypatch.setattr(runner, "_phase_job", lambda meta, anchor, variant, phase, quote_sha: {
-        "label_horizon": variant["label_horizon"], "retrain_frequency": variant["retrain_frequency"],
-        "phase": phase, "quote_sha256": quote_sha
-    })
+    monkeypatch.setattr(
+        runner,
+        "inventory_remote",
+        Remote(lambda _meta: {"calendar": dates, "source": {"snapshot_sha256": "d" * 64}, "quote_sha256": "e" * 64}),
+    )
+    monkeypatch.setattr(
+        runner,
+        "get_marker_remote",
+        Remote(lambda _meta, _key: {"status": "PASS", "provider_snapshot_sha256": "d" * 64, "quote_sha256": "e" * 64}),
+    )
+    monkeypatch.setattr(
+        runner,
+        "_fit_job",
+        lambda meta, anchor, asof, end, h, f, p: {
+            "label_horizon": h,
+            "retrain_frequency": f,
+            "phase": p,
+            "retrain_asof": asof,
+            "signal_end": end,
+        },
+    )
+    monkeypatch.setattr(
+        runner,
+        "_phase_job",
+        lambda meta, anchor, variant, phase, quote_sha: {
+            "label_horizon": variant["label_horizon"],
+            "retrain_frequency": variant["retrain_frequency"],
+            "phase": phase,
+            "quote_sha256": quote_sha,
+        },
+    )
+
     def fit_wave(jobs, _meta, workers, waves):
         assert workers == 80
         calls["fit_stage"].append({(j["label_horizon"], j["retrain_frequency"]) for j in jobs})
+
     monkeypatch.setattr(runner, "_wave", fit_wave)
     monkeypatch.setattr(runner, "_phase_job_check", lambda *args: {"status": "PASS"})
 
@@ -248,18 +270,24 @@ def test_stage1_to_conditional_stage2_to_final_markers(monkeypatch, stage1_pass)
         assert prefix == "signed/p0" and quote == "e" * 64
         calls["screens"].append((variant["label_horizon"], variant["retrain_frequency"]))
         eligible = stage1_pass and variant["retrain_frequency"] == 10
-        return {"passed_coarse": eligible, "ordinal_mapping": {
-            "challenger_phases": variant["screen_phases"], "baseline_phases": [0, 10]
-        }, "detail": ({"worst_delta_pp": 1.3, "median_delta_pp": 1.8,
-                       "mdd_degrade_pp": 0.1, "turnover_ratio": 1.1} if eligible else {
-                       "failed": "improvement", "worst_delta_pp": -1.2, "median_delta_pp": -0.3
-        })}
+        return {
+            "passed_coarse": eligible,
+            "ordinal_mapping": {"challenger_phases": variant["screen_phases"], "baseline_phases": [0, 10]},
+            "detail": (
+                {"worst_delta_pp": 1.3, "median_delta_pp": 1.8, "mdd_degrade_pp": 0.1, "turnover_ratio": 1.1}
+                if eligible
+                else {"failed": "improvement", "worst_delta_pp": -1.2, "median_delta_pp": -0.3}
+            ),
+        }
+
     monkeypatch.setattr(runner, "screen_remote", Remote(screen))
+
     def freeze(meta, kind, payload):
         if kind in calls["markers"]:
             assert calls["markers"][kind] == payload, "marker overwritten with divergent content"
         calls["markers"][kind] = payload
         return payload
+
     monkeypatch.setattr(runner, "freeze_remote", Remote(freeze))
 
     assert runner._run_l3_complete(meta, 80, anchor, None) == "COMPLETE"
@@ -275,4 +303,3 @@ def test_stage1_to_conditional_stage2_to_final_markers(monkeypatch, stage1_pass)
     else:
         assert calls["markers"]["l3_decision"]["decision"] == "KEEP_BASELINE_FOR_PRODUCT_SELECTION"
         assert calls["markers"]["l3_screen_final"]["stage"] == "stage1"
-
