@@ -391,7 +391,8 @@ if modal is not None:
             "candidate_id": job["candidate_id"],
             "phase": job["phase"],
             "source_prediction_shas": source_shas,
-            "quote_sha256": quote_sha,
+            # quote_sha256 is already signed by _identity(job); publish_receipt
+            # rejects overriding any identity field even with the same value.
             "model_config_sha256": job["model_sha256"],
             "provider_snapshot_sha256": _source_checks()["snapshot_sha256"],
             "metrics": metrics,
