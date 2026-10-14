@@ -65,7 +65,8 @@ def checked_receipt(root: Path, job: dict[str, Any], identity: dict[str, str]) -
     for key, expected in identity.items():
         require(record.get(key) == expected, f"L2 receipt identity drift: {key}")
     require(record.get("job_sha256") == stable_sha(job), "L2 receipt job spec mismatch")
-    require(record.get("status") == "PASS", "L2 receipt is not PASS")
+    require(record.get("status") == "PASS" and record.get("kind") == job["kind"],
+            "L2 receipt is not a PASS of the requested kind")
     names = ARTIFACTS[job["kind"]]
     hashes = record.get("artifact_sha256")
     require(isinstance(hashes, dict) and set(hashes) == set(names), "L2 receipt artifact manifest incomplete")
@@ -81,6 +82,8 @@ def publish_receipt(
     """Write into a unique temp directory; existing artifacts are never overwritten."""
     dest = receipt_path(root, job)
     require(set(artifacts) == set(ARTIFACTS[job["kind"]]), "L2 wrong artifact list")
+    protected = set(identity) | {"status", "kind", "job_sha256", "artifact_sha256"}
+    require(not protected.intersection(details), "L2 receipt cannot override signed identity fields")
     if dest.exists():
         existing = checked_receipt(root, job, identity)
         require(existing is not None, "L2 existing incomplete receipt")
