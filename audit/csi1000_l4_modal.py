@@ -177,7 +177,6 @@ def verify_reference_report(current, expected) -> None:
         )
 
 
-
 def checked_inventory_derivation(meta: dict, source: dict, codes: list[str], actual_quote_sha: str) -> dict:
     """Resolve first-call placeholders before enforcing any pinned source identity.
 
