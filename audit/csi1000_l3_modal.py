@@ -71,46 +71,65 @@ def l3_receipt_path(root: Path, job: dict) -> Path:
 
 
 def l3_checked_receipt(root: Path, job: dict, identity: dict) -> dict | None:
-    """Return the verified immutable receipt; anything else blocks resume."""
+    """Verify exact receipt job identity and every immutable output byte."""
     directory = l3_receipt_path(root, job)
     if not directory.exists():
         return None
+    require((directory / "receipt.json").is_file(), "STOP_L3_INCOMPLETE_RECEIPT")
     record = json.loads((directory / "receipt.json").read_text(encoding="utf-8"))
     for key, value in identity.items():
         require(record.get(key) == value, f"L3 receipt identity drift: {key}")
     require(record.get("job_id") == l3_job_id(job), "L3 receipt job drift")
-    require(record.get("status") == "PASS", "L3 receipt not a verified PASS")
-    for name in L3_ARTIFACTS[job["kind"]]:
-        require(
-            (directory / name).is_file() and sha256_file(directory / name) == record["artifact_sha256"][name],
-            f"L3 receipt bytes drift: {name}",
-        )
+    require(record.get("job_sha256") == stable_sha(job), "STOP_L3_JOB_SPEC_SHA_DRIFT")
+    require(record.get("status") == "PASS" and record.get("kind") == job["kind"], "L3 receipt kind/PASS drift")
+    names = set(L3_ARTIFACTS[job["kind"]])
+    hashes = record.get("artifact_sha256")
+    require(isinstance(hashes, dict) and set(hashes) == names, "STOP_L3_ARTIFACT_MANIFEST")
+    for name in sorted(names):
+        require((directory / name).is_file() and sha256_file(directory / name) == hashes[name],
+                f"L3 receipt bytes drift: {name}")
     return record
 
 
 def l3_publish_receipt(root: Path, job: dict, identity: dict, artifacts: dict, details: dict) -> dict:
-    """Atomic, non-overwriting fit/phase receipt with real output SHAs."""
-    directory = l3_receipt_path(root, job)
-    require(not directory.exists(), "L3 receipt already exists; refusing overwrite")
-    directory.mkdir(parents=True, exist_ok=False)
+    """Publish to a unique temp directory and atomically rename; never overwrite."""
+    import os
+    import shutil
+
     import pandas as pd
 
-    hashes = {}
-    for name, payload in artifacts.items():
-        require(name in L3_ARTIFACTS[job["kind"]], f"L3 unexpected artifact {name}")
-        target = directory / name
-        if isinstance(payload, str):
-            target.write_text(payload, encoding="utf-8")
-        elif isinstance(payload, list):
-            target.write_text(json.dumps(payload, indent=2, allow_nan=False) + "\n", encoding="utf-8")
-        elif isinstance(payload, pd.DataFrame):
-            payload.to_parquet(target)
-        else:
-            require(False, f"L3 unserializable artifact {name}")
-        hashes[name] = sha256_file(target)
-    record = {"job_id": l3_job_id(job), "status": "PASS", **identity, **details, "artifact_sha256": hashes}
-    (directory / "receipt.json").write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    return record
+    directory = l3_receipt_path(root, job)
+    require(set(artifacts) == set(L3_ARTIFACTS[job["kind"]]), "STOP_L3_ARTIFACTS_INCOMPLETE")
+    protected = set(identity) | {"status", "kind", "job_id", "job_sha256", "artifact_sha256"}
+    require(not (set(details) & protected), "STOP_L3_SIGNED_FIELD_OVERRIDE")
+    require(not directory.exists(), "L3 receipt already exists; refusing overwrite")
+    temporary = directory.parent / (directory.name + ".tmp")
+    require(not temporary.exists(), "STOP_L3_UNFINISHED_TEMP_RECEIPT")
+    temporary.mkdir(parents=True, exist_ok=False)
+    try:
+        hashes = {}
+        for name, payload in artifacts.items():
+            target = temporary / name
+            if isinstance(payload, str):
+                target.write_text(payload, encoding="utf-8")
+            elif isinstance(payload, list):
+                target.write_text(json.dumps(payload, indent=2, allow_nan=False) + "\n", encoding="utf-8")
+            elif isinstance(payload, pd.DataFrame):
+                payload.to_parquet(target)
+            else:
+                require(False, f"L3 unserializable artifact {name}")
+            hashes[name] = sha256_file(target)
+        record = {"job_id": l3_job_id(job), "job_sha256": stable_sha(job),
+                  "status": "PASS", "kind": job["kind"], **identity, **details,
+                  "artifact_sha256": hashes}
+        (temporary / "receipt.json").write_text(json.dumps(record, indent=2, sort_keys=True, allow_nan=False) + "\n",
+                                                 encoding="utf-8")
+        os.replace(temporary, directory)
+        return record
+    except BaseException:
+        if temporary.exists():
+            shutil.rmtree(temporary)
+        raise
 
 
 if modal is not None:
@@ -371,7 +390,7 @@ if modal is not None:
         import pandas as pd
         from qlib.data import D
         from audit.csi1000_layered_search_replay import backtest_signal, report_metrics, static_quote_union
-        from audit.csi1000_l3_core import EXECUTION_END, EXECUTION_START, build_l3_retrain_schedule
+        from audit.csi1000_l3_core import EXECUTION_END, EXECUTION_START, SIGNAL_ANCHOR, build_l3_retrain_schedule
         from csi1000_stage_b_core import MARKET
         from qlib_audit_fixes import read_trading_calendar
 
@@ -419,8 +438,10 @@ if modal is not None:
             source_shas.append(rec["artifact_sha256"]["prediction.parquet"])
         signal = pd.concat(chunks).sort_index()
         require(signal.index.is_unique, "STOP_L3_DUPLICATE_PREDICTION")
+        dates = signal.index.get_level_values(0).astype(str).str[:10]
+        signal = signal[(dates >= SIGNAL_ANCHOR) & (dates < EXECUTION_END)]
         actual_days = sorted({str(v)[:10] for v in signal.index.get_level_values(0).unique()})
-        first = calendar.index(EXECUTION_START)
+        first = calendar.index(SIGNAL_ANCHOR)
         last = calendar.index(EXECUTION_END)
         require(actual_days == calendar[first:last], "STOP_L3_SIGNAL_DAY_COVERAGE")
         codes, quote_sha = static_quote_union(MARKET, EXECUTION_START, EXECUTION_END, D)
