@@ -165,6 +165,23 @@ def training_slice(
     }
 
 
+def trim_l3_signal(signal, calendar: List[str]):
+    """Preserve the preceding signal anchor needed by the T+1 F1 account.
+
+    For every retrain frequency and phase, remove pre-anchor training signals,
+    retain all original SIGNAL_ANCHOR through last day before EXECUTION_END,
+    and require full day coverage. Pure data-frame logic; no Modal involved.
+    """
+    require(signal.index.is_unique, "STOP_L3_DUPLICATE_PREDICTION")
+    dates = signal.index.get_level_values(0).astype(str).str[:10]
+    trimmed = signal[(dates >= SIGNAL_ANCHOR) & (dates < EXECUTION_END)]
+    require(SIGNAL_ANCHOR in calendar and EXECUTION_END in calendar, "STOP_L3_CALENDAR_BOUNDS")
+    expected = calendar[calendar.index(SIGNAL_ANCHOR):calendar.index(EXECUTION_END)]
+    actual = sorted({str(day)[:10] for day in trimmed.index.get_level_values(0).unique()})
+    require(actual == expected, "STOP_L3_SIGNAL_DAY_COVERAGE")
+    return trimmed
+
+
 def estimate_variant_fits(schedule: List[Dict[str, Any]]) -> int:
     """One genuine fit per retraining slice; no sharing across lineages."""
     require(len(schedule) > 0, "empty retraining schedule")
