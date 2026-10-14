@@ -4,6 +4,7 @@ The original Stage-B already produced frozen freq20 phases 0/4/6/10/15
 for all three underlying L4 model IDs. L4 strictly checks those actual
 Stage-B bytes and runs all four distinct F1 portfolios, not new model fits.
 """
+
 from __future__ import annotations
 
 import json
@@ -12,7 +13,11 @@ from pathlib import Path
 from typing import Any
 
 from audit.csi1000_layered_search_core import (
-    BASELINE_CANDIDATE, decide_product, final_verdict, require, stable_sha,
+    BASELINE_CANDIDATE,
+    decide_product,
+    final_verdict,
+    require,
+    stable_sha,
 )
 from audit.csi1000_layered_search_selection import freeze_finalists
 
@@ -36,8 +41,9 @@ def frozen_l4_manifest(repo_root: str | Path = ".") -> dict:
     """Verify registered lineup and the existing selection engine independently."""
     path = Path(repo_root) / FROZEN_MANIFEST_PATH
     raw = json.loads(path.read_text(encoding="utf-8"))
-    require(raw.get("stage") == "l4" and raw.get("status") == "FROZEN_FINALIST_PLAN_NOT_EXECUTED",
-            "STOP_L4_MANIFEST_STAGE")
+    require(
+        raw.get("stage") == "l4" and raw.get("status") == "FROZEN_FINALIST_PLAN_NOT_EXECUTED", "STOP_L4_MANIFEST_STAGE"
+    )
     configs = raw["configurations"]
     require(len(configs) == 4, "STOP_L4_FOUR_CONFIGURATIONS")
     for config in configs:
@@ -51,8 +57,7 @@ def frozen_l4_manifest(repo_root: str | Path = ".") -> dict:
     )
     reproduced = freeze_finalists(configs[1:], configs[0])
     require(reproduced == raw, "STOP_L4_FREEZE_SELECTION_DIVERGED")
-    require(raw["finalist_manifest_sha256"] == FROZEN_MANIFEST_SHA,
-            "STOP_L4_FROZEN_MANIFEST_SHA_CHANGED")
+    require(raw["finalist_manifest_sha256"] == FROZEN_MANIFEST_SHA, "STOP_L4_FROZEN_MANIFEST_SHA_CHANGED")
     require(raw["historic_data"] == "HISTORICALLY_CONSUMED", "STOP_L4_HISTORIC_RESEARCH")
     return raw
 
@@ -60,11 +65,14 @@ def frozen_l4_manifest(repo_root: str | Path = ".") -> dict:
 def l4_cell_specs(manifest: dict) -> list[dict]:
     configs = manifest["configurations"]
     require(manifest["finalist_manifest_sha256"] == FROZEN_MANIFEST_SHA, "STOP_L4_PLAN_IDENTITY")
-    jobs = [{**{k: c[k] for k in ("candidate_id", "topk", "dropn", "config_sha256")},
-             "phase": phase}
-            for c in configs for phase in FINAL_PHASES]
-    require(len(jobs) == 20 and len({(x["config_sha256"], x["phase"]) for x in jobs}) == 20,
-            "STOP_L4_NOT_20_DISTINCT_CELLS")
+    jobs = [
+        {**{k: c[k] for k in ("candidate_id", "topk", "dropn", "config_sha256")}, "phase": phase}
+        for c in configs
+        for phase in FINAL_PHASES
+    ]
+    require(
+        len(jobs) == 20 and len({(x["config_sha256"], x["phase"]) for x in jobs}) == 20, "STOP_L4_NOT_20_DISTINCT_CELLS"
+    )
     return jobs
 
 
@@ -88,24 +96,38 @@ def check_stage_b_source_coverage(stage_b_result: dict, manifest: dict) -> dict:
         require(bool(re.fullmatch(r"[a-f0-9]{64}", known.get(candidate, ""))), "STOP_L4_MODEL_CONFIG_SHA_MISSING")
         for phase in FINAL_PHASES:
             row = lookup_phase(stage_b_result, candidate, phase)
-            require(row["candidate_id"] == candidate and row["phase"] == phase
-                    and row.get("snapshot_token") == stage_b_result["manifest"]["snapshot_token"],
-                    "STOP_L4_FROZEN_PHASE_IDENTITY")
+            require(
+                row["candidate_id"] == candidate
+                and row["phase"] == phase
+                and row.get("snapshot_token") == stage_b_result["manifest"]["snapshot_token"],
+                "STOP_L4_FROZEN_PHASE_IDENTITY",
+            )
             chunks = row.get("chunk_predictions", [])
-            require(len(chunks) == row.get("n_retrains") and chunks
-                    and all(ch.get("model_config_sha256") == known[candidate]
-                            and ch.get("prediction_content_sha256") for ch in chunks),
-                    "STOP_L4_FROZEN_PHASE_MODEL_MISMATCH")
+            require(
+                len(chunks) == row.get("n_retrains")
+                and chunks
+                and all(
+                    ch.get("model_config_sha256") == known[candidate] and ch.get("prediction_content_sha256")
+                    for ch in chunks
+                ),
+                "STOP_L4_FROZEN_PHASE_MODEL_MISMATCH",
+            )
             for kind in ("signal", "report", "decision"):
                 artifact = row.get(kind + "_artifact") or {}
-                require(bool(artifact.get("sha256")) and bool(artifact.get("path")),
-                        f"STOP_L4_SOURCE_POINTER_MISSING_{kind}")
-            observed.append({"candidate_id": candidate, "phase": phase,
-                             "frozen_signal_sha256": row["signal_artifact"]["sha256"],
-                             "frozen_model_config_sha256": known[candidate]})
+                require(
+                    bool(artifact.get("sha256")) and bool(artifact.get("path")),
+                    f"STOP_L4_SOURCE_POINTER_MISSING_{kind}",
+                )
+            observed.append(
+                {
+                    "candidate_id": candidate,
+                    "phase": phase,
+                    "frozen_signal_sha256": row["signal_artifact"]["sha256"],
+                    "frozen_model_config_sha256": known[candidate],
+                }
+            )
     require(len(observed) == 15, "STOP_L4_SOURCE_COUNT")
-    return {"model_count": 3, "source_model_phases": 15, "sources": observed,
-            "source_digest": stable_sha(observed)}
+    return {"model_count": 3, "source_model_phases": 15, "sources": observed, "source_digest": stable_sha(observed)}
 
 
 def l4_decision_from_receipts(manifest: dict, receipts: list[dict], report_loader) -> dict:
@@ -116,21 +138,29 @@ def l4_decision_from_receipts(manifest: dict, receipts: list[dict], report_loade
     are insufficient. No partial finalist is silently dropped.
     """
     from audit.csi1000_layered_search_replay import paired_rows
+
     spec = l4_cell_specs(manifest)
     expected = {(x["config_sha256"], x["phase"]) for x in spec}
     keyed = {}
     for row in receipts:
         key = (row["config_sha256"], row["phase"])
         require(key not in keyed and key in expected, "STOP_L4_DUPLICATE_OR_FOREIGN_CELL")
-        require(row["status"] == "PASS" and row["n_days"] == 424
-                and row["coverage_ok"] is True and row["ledger_ok"] is True
-                and row["data_ok"] is True, "STOP_L4_UNVERIFIED_CELL")
+        require(
+            row["status"] == "PASS"
+            and row["n_days"] == 424
+            and row["coverage_ok"] is True
+            and row["ledger_ok"] is True
+            and row["data_ok"] is True,
+            "STOP_L4_UNVERIFIED_CELL",
+        )
         keyed[key] = row
     require(set(keyed) == expected, "STOP_L4_INCOMPLETE_FIVE_PHASE_FINAL")
     baseline = [keyed[(BASELINE_CONFIG_SHA, p)] for p in FINAL_PHASES]
     for row in baseline:
-        require(row["candidate_id"] == BASELINE_CANDIDATE and row["topk"] == 20 and row["dropn"] == 2,
-                "STOP_L4_BASELINE_NOT_ORIGINAL_CONTROL")
+        require(
+            row["candidate_id"] == BASELINE_CANDIDATE and row["topk"] == 20 and row["dropn"] == 2,
+            "STOP_L4_BASELINE_NOT_ORIGINAL_CONTROL",
+        )
     summaries = []
     inputs = []
     for cfg in manifest["configurations"][1:]:
@@ -139,18 +169,30 @@ def l4_decision_from_receipts(manifest: dict, receipts: list[dict], report_loade
             require(c["phase"] == b["phase"], "STOP_L4_PHASE_MISMATCH")
             cp, bp = report_loader(c), report_loader(b)
             require(cp.index.equals(bp.index) and len(cp) == 424, "STOP_L4_DAILY_INDEX_MISMATCH")
-            require("bench" in cp and "bench" in bp and cp["bench"].equals(bp["bench"]),
-                    "STOP_L4_BENCHMARK_MISMATCH")
+            require("bench" in cp and "bench" in bp and cp["bench"].equals(bp["bench"]), "STOP_L4_BENCHMARK_MISMATCH")
         rows_c, rows_b, ratio = paired_rows(chall, baseline, report_loader)
         verdict, gates = final_verdict(rows_c, rows_b, ratio)
-        summaries.append({"candidate_id": cfg["candidate_id"],
-                          "config_sha256": cfg["config_sha256"], "verdict": verdict, **gates})
-        inputs.append({"config_sha": cfg["config_sha256"], "challenger_phases": rows_c,
-                       "baseline_phases": rows_b, "turnover_ratio": ratio})
+        summaries.append(
+            {"candidate_id": cfg["candidate_id"], "config_sha256": cfg["config_sha256"], "verdict": verdict, **gates}
+        )
+        inputs.append(
+            {
+                "config_sha": cfg["config_sha256"],
+                "challenger_phases": rows_c,
+                "baseline_phases": rows_b,
+                "turnover_ratio": ratio,
+            }
+        )
     decision, detail = decide_product(inputs, baseline_eligible=True)
     require(decision != "STOP_PRODUCT_BLOCKED", "STOP_L4_BASELINE_INELIGIBLE")
-    return {"stage": "l4", "status": "L4_RESEARCH_COMPLETE_NOT_RELEASED",
-            "decision": decision, "decision_detail": detail,
-            "challenger_scoreboard": summaries, "completed_cells": 20,
-            "finalist_manifest_sha256": FROZEN_MANIFEST_SHA,
-            "historic_data": "HISTORICALLY_CONSUMED", "promotion_authorized": False}
+    return {
+        "stage": "l4",
+        "status": "L4_RESEARCH_COMPLETE_NOT_RELEASED",
+        "decision": decision,
+        "decision_detail": detail,
+        "challenger_scoreboard": summaries,
+        "completed_cells": 20,
+        "finalist_manifest_sha256": FROZEN_MANIFEST_SHA,
+        "historic_data": "HISTORICALLY_CONSUMED",
+        "promotion_authorized": False,
+    }

@@ -1,4 +1,5 @@
 """Zero-Modal L4 immutable manifest, frozen-source, receipt and hard-gate tests."""
+
 from __future__ import annotations
 
 import copy
@@ -81,7 +82,9 @@ def _job():
     m = core.frozen_l4_manifest(".")
     spec = core.l4_cell_specs(m)[0]
     return {
-        **spec, "run_id": "l4_20261014_a1", "code_sha": "a" * 40,
+        **spec,
+        "run_id": "l4_20261014_a1",
+        "code_sha": "a" * 40,
         "manifest_sha256": core.FROZEN_MANIFEST_SHA,
         "source_digest": "b" * 64,
         "provider_fingerprint": "c" * 64,
@@ -94,27 +97,50 @@ def _job():
 
 def _identity(job):
     return {
-        k: job[k] for k in (
-            "run_id", "code_sha", "manifest_sha256", "source_digest", "provider_fingerprint",
-            "source_snapshot_sha256", "quote_sha256", "p0_prefix",
+        k: job[k]
+        for k in (
+            "run_id",
+            "code_sha",
+            "manifest_sha256",
+            "source_digest",
+            "provider_fingerprint",
+            "source_snapshot_sha256",
+            "quote_sha256",
+            "p0_prefix",
         )
     }
 
 
 def _frame():
-    return pd.DataFrame({"account": [1e8, 1e8 + 1.0], "bench": [0.1, 0.2],
-                         "return": [0., 1e-8], "cost": [0., 0.0001],
-                         "total_cost": [0., 2.]})
+    return pd.DataFrame(
+        {
+            "account": [1e8, 1e8 + 1.0],
+            "bench": [0.1, 0.2],
+            "return": [0.0, 1e-8],
+            "cost": [0.0, 0.0001],
+            "total_cost": [0.0, 2.0],
+        }
+    )
 
 
 def test_l4_actual_atomic_output_sha_receipts(tmp_path):
     job = _job()
     report = _frame()
-    artifacts = {"fixed_report.parquet": report, "signal.parquet": report[["return"]],
-                 "decisions.json": [{"orders": []}]}
-    rec = runner.publish_l4_cell(tmp_path, job, _identity(job), artifacts, {
-        "metrics": {"strategy_total_return": 0.01}, "n_days": 424,
-    })
+    artifacts = {
+        "fixed_report.parquet": report,
+        "signal.parquet": report[["return"]],
+        "decisions.json": [{"orders": []}],
+    }
+    rec = runner.publish_l4_cell(
+        tmp_path,
+        job,
+        _identity(job),
+        artifacts,
+        {
+            "metrics": {"strategy_total_return": 0.01},
+            "n_days": 424,
+        },
+    )
     assert rec["status"] == "PASS"
     assert rec["job_sha256"] == stable_sha(job)
     assert runner.checked_l4_cell(tmp_path, job, _identity(job)) == rec
@@ -130,8 +156,11 @@ def test_l4_actual_atomic_output_sha_receipts(tmp_path):
 
 def test_l4_partial_and_identity_overrides_blocked(tmp_path):
     job = _job()
-    artifacts = {"fixed_report.parquet": _frame(), "signal.parquet": _frame()[["return"]],
-                 "decisions.json": [{"orders": []}]}
+    artifacts = {
+        "fixed_report.parquet": _frame(),
+        "signal.parquet": _frame()[["return"]],
+        "decisions.json": [{"orders": []}],
+    }
     with pytest.raises(ValueError, match="STOP_L4_SIGNED_FIELD_OVERRIDE"):
         runner.publish_l4_cell(tmp_path, job, _identity(job), artifacts, {"quote_sha256": "e" * 64})
     with pytest.raises(ValueError, match="STOP_L4_ARTIFACT_SET"):
@@ -145,11 +174,16 @@ def test_l4_partial_and_identity_overrides_blocked(tmp_path):
 
 
 def test_p0_daily_ledger_tolerances_and_date_integrity():
-    f = pd.DataFrame({
-        "account": np.full(424, 1e8), "bench": np.zeros(424),
-        "return": np.zeros(424), "cost": np.zeros(424),
-        "total_cost": np.zeros(424),
-    }, index=pd.bdate_range("2025-01-02", periods=424))
+    f = pd.DataFrame(
+        {
+            "account": np.full(424, 1e8),
+            "bench": np.zeros(424),
+            "return": np.zeros(424),
+            "cost": np.zeros(424),
+            "total_cost": np.zeros(424),
+        },
+        index=pd.bdate_range("2025-01-02", periods=424),
+    )
     runner.verify_reference_report(f, f.copy())
     g = f.copy()
     g.iloc[1, g.columns.get_loc("return")] += 1e-5
@@ -161,12 +195,19 @@ def test_p0_daily_ledger_tolerances_and_date_integrity():
 
 def _receipts():
     manifest = core.frozen_l4_manifest(".")
-    return [{
-        **x, "status": "PASS", "n_days": 424,
-        "coverage_ok": True, "ledger_ok": True, "data_ok": True,
-        "metrics": {"relative_excess_cagr": 0.1, "strategy_total_return": 0.12,
-                    "strategy_max_drawdown": -0.1}, "mean_turnover": 0.5,
-    } for x in core.l4_cell_specs(manifest)]
+    return [
+        {
+            **x,
+            "status": "PASS",
+            "n_days": 424,
+            "coverage_ok": True,
+            "ledger_ok": True,
+            "data_ok": True,
+            "metrics": {"relative_excess_cagr": 0.1, "strategy_total_return": 0.12, "strategy_max_drawdown": -0.1},
+            "mean_turnover": 0.5,
+        }
+        for x in core.l4_cell_specs(manifest)
+    ]
 
 
 def test_l4_scoreboard_five_phases_or_no_terminal_verdict(monkeypatch):
@@ -177,16 +218,20 @@ def test_l4_scoreboard_five_phases_or_no_terminal_verdict(monkeypatch):
         for c, b in zip(chall, base):
             report_loader(c)
             for arr, row in ((rows_c, c), (rows_b, b)):
-                arr.append({
-                    "phase": row["phase"],
-                    "net_relative_cagr_pp": 2.0 if arr is rows_c else 0.,
-                    "net_total_return": 0.2 if arr is rows_c else 0.1,
-                    "mdd_pp": 8. if arr is rows_c else 10.,
-                    "turnover": 0.5,
-                    "n_days": 424,
-                    "coverage_ok": True, "ledger_ok": True, "data_ok": True,
-                    "plus10bp_advantage_pp": 1.0,
-                })
+                arr.append(
+                    {
+                        "phase": row["phase"],
+                        "net_relative_cagr_pp": 2.0 if arr is rows_c else 0.0,
+                        "net_total_return": 0.2 if arr is rows_c else 0.1,
+                        "mdd_pp": 8.0 if arr is rows_c else 10.0,
+                        "turnover": 0.5,
+                        "n_days": 424,
+                        "coverage_ok": True,
+                        "ledger_ok": True,
+                        "data_ok": True,
+                        "plus10bp_advantage_pp": 1.0,
+                    }
+                )
         return rows_c, rows_b, 1.0
 
     monkeypatch.setattr(replay, "paired_rows", paired)
@@ -194,8 +239,10 @@ def test_l4_scoreboard_five_phases_or_no_terminal_verdict(monkeypatch):
     reports = {}
     for c in core.l4_cell_specs(core.frozen_l4_manifest(".")):
         reports[c["config_sha256"], c["phase"]] = pd.DataFrame({"bench": np.zeros(424)}, index=index)
+
     def load(row):
         return reports[row["config_sha256"], row["phase"]]
+
     rows = _receipts()
     result = core.l4_decision_from_receipts(core.frozen_l4_manifest("."), rows, load)
     assert result["completed_cells"] == 20
@@ -204,9 +251,7 @@ def test_l4_scoreboard_five_phases_or_no_terminal_verdict(monkeypatch):
     assert len(result["challenger_scoreboard"]) == 3
     with pytest.raises(ValueError, match="STOP_L4_INCOMPLETE_FIVE_PHASE_FINAL"):
         core.l4_decision_from_receipts(core.frozen_l4_manifest("."), rows[:-1], load)
-    reports[rows[6]["config_sha256"], rows[6]["phase"]] = pd.DataFrame(
-        {"bench": np.ones(424)}, index=index
-    )
+    reports[rows[6]["config_sha256"], rows[6]["phase"]] = pd.DataFrame({"bench": np.ones(424)}, index=index)
     with pytest.raises(ValueError, match="STOP_L4_BENCHMARK_MISMATCH"):
         core.l4_decision_from_receipts(core.frozen_l4_manifest("."), rows, load)
 
