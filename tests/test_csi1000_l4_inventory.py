@@ -5,6 +5,7 @@ decorated inventory function with synthetic provider and signed Stage-B
 metadata. This specifically catches the deterministic bug missed by old
 cell/manifest-only offline tests.
 """
+
 from __future__ import annotations
 
 import sys
@@ -26,7 +27,9 @@ def test_inventory_quote_and_source_bootstrap_vs_strict_comparison():
     runner.verify_inventory_derived_identity(no_expected, ["000001.SZ"], actual_quote, actual_snapshot)
     runner.verify_inventory_derived_identity(
         {"quote_sha256": actual_quote, "source_snapshot_sha256": actual_snapshot},
-        ["000001.SZ"], actual_quote, actual_snapshot,
+        ["000001.SZ"],
+        actual_quote,
+        actual_snapshot,
     )
     with pytest.raises(ValueError, match="STOP_L4_QUOTE_SHA"):
         runner.verify_inventory_derived_identity(
@@ -61,19 +64,29 @@ def test_actual_inventory_remote_local_bootstrap_and_drift(monkeypatch):
     monkeypatch.setitem(sys.modules, "qlib.data", qlib.data)
     monkeypatch.setattr(runner, "load_frozen_result", lambda root: stage_b)
     monkeypatch.setattr(runner, "frozen_l4_manifest", lambda root: manifest)
-    monkeypatch.setattr(runner, "_source_checks", lambda: {
-        "snapshot_token": real_snapshot_token,
-        "provider_fingerprint": real_provider,
-        "source_snapshot_sha256": snapshot_sha,
-    })
+    monkeypatch.setattr(
+        runner,
+        "_source_checks",
+        lambda: {
+            "snapshot_token": real_snapshot_token,
+            "provider_fingerprint": real_provider,
+            "source_snapshot_sha256": snapshot_sha,
+        },
+    )
     monkeypatch.setattr(runner, "p0_archive", SimpleNamespace(reload=lambda: None))
-    monkeypatch.setattr(runner, "resolve_phase_sources", lambda root, row, candidate, phase: {
-        "signal_sha256": row["signal_artifact"]["sha256"]
-    })
-    monkeypatch.setattr(runner, "_verified_original_p0", lambda phase, meta: (
-        {"signal_sha256": replay.lookup_phase(stage_b, l4.BASELINE_CANDIDATE, phase)
-          ["signal_artifact"]["sha256"]}, Path("/verified-p0-not-read")
-    ))
+    monkeypatch.setattr(
+        runner,
+        "resolve_phase_sources",
+        lambda root, row, candidate, phase: {"signal_sha256": row["signal_artifact"]["sha256"]},
+    )
+    monkeypatch.setattr(
+        runner,
+        "_verified_original_p0",
+        lambda phase, meta: (
+            {"signal_sha256": replay.lookup_phase(stage_b, l4.BASELINE_CANDIDATE, phase)["signal_artifact"]["sha256"]},
+            Path("/verified-p0-not-read"),
+        ),
+    )
     monkeypatch.setattr(replay, "static_quote_union", lambda *a, **kw: (["000001.SZ"], quote_sha))
 
     base = {
@@ -92,9 +105,9 @@ def test_actual_inventory_remote_local_bootstrap_and_drift(monkeypatch):
     assert first["source_snapshot_sha256"] == snapshot_sha
     assert first["no_new_model_fit"] is True
 
-    repeated = runner.inventory_remote.local({
-        **base, "quote_sha256": quote_sha, "source_snapshot_sha256": snapshot_sha
-    })
+    repeated = runner.inventory_remote.local(
+        {**base, "quote_sha256": quote_sha, "source_snapshot_sha256": snapshot_sha}
+    )
     assert repeated == first
 
     with pytest.raises(ValueError, match="STOP_L4_QUOTE_SHA"):
