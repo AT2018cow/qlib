@@ -1,0 +1,607 @@
+{
+  "state_version": 2,
+  "trading_calendar": {
+    "source": "akshare.tool_trade_date_hist_sina",
+    "through": "2026-10-15",
+    "dates": [
+      "2026-10-12",
+      "2026-10-13",
+      "2026-10-14",
+      "2026-10-15"
+    ]
+  },
+  "market": "csi1000",
+  "paper_lineage": "stage_b_winner_canonical",
+  "production_lineage": {
+    "candidate_id": "4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2",
+    "stage_a_rank": 5,
+    "model_params": {
+      "learning_rate": 0.08,
+      "colsample_bytree": 0.8,
+      "lambda_l1": 10.0,
+      "lambda_l2": 400.0,
+      "max_depth": 6,
+      "num_leaves": 63,
+      "min_data_in_leaf": 50
+    },
+    "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+    "profile": "stage_b_winner",
+    "contract_version": "csi1000_stage_b_forward_v1",
+    "stage_b_result_commit": "7a2676397b0f8e6f69c0bffc98d1764647f644ac",
+    "stage_b_snapshot_token": "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1",
+    "stage_b_result_path": "results/csi1000_stage_b/stage_b_full_51756897fc752304.json",
+    "lightgbm_num_threads": 20
+  },
+  "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
+  "signal_data_date": "2026-10-14",
+  "usage_date": "2026-10-15",
+  "execution_report": {
+    "date": "2026-10-14",
+    "signal_date": "2026-10-13",
+    "planned_sell": [
+      "SH600787",
+      "SZ002091"
+    ],
+    "planned_buy": [
+      "SH688403",
+      "SH688433"
+    ],
+    "executed_sell": [
+      {
+        "instrument": "SH600787",
+        "shares": 1821337.7860472165,
+        "price": 2.6305365562438965,
+        "cost": 7186.643441198292
+      },
+      {
+        "instrument": "SZ002091",
+        "shares": 1005952.8578547616,
+        "price": 4.7402472496032715,
+        "cost": 7152.697901514877
+      }
+    ],
+    "blocked_sell": [],
+    "executed_buy": [
+      {
+        "instrument": "SH688403",
+        "shares": 4444857.07392976,
+        "price": 1.0978063344955444,
+        "cost": 2439.7961258437103,
+        "factor": 0.06045188754796982,
+        "physical_shares": 268700
+      },
+      {
+        "instrument": "SH688433",
+        "shares": 2233912.750372231,
+        "price": 2.1824557781219482,
+        "cost": 2437.7078949350844,
+        "factor": 0.03258856013417244,
+        "physical_shares": 72800
+      }
+    ],
+    "blocked_buy": [],
+    "cash": 514656.2,
+    "opening_cash": 729320.19,
+    "opening_positions": {
+      "SH688141": {
+        "shares": 2709516.0187743446
+      },
+      "SH688048": {
+        "shares": 1293277.7207705008
+      },
+      "SH688362": {
+        "shares": 2815247.7050811267
+      },
+      "SH688668": {
+        "shares": 740180.5861981768
+      },
+      "SZ301392": {
+        "shares": 3660775.0404705727
+      },
+      "SH688146": {
+        "shares": 1267611.2529961632
+      },
+      "SH688372": {
+        "shares": 3200373.197976072
+      },
+      "SZ002484": {
+        "shares": 465991.8660279881
+      },
+      "SH688147": {
+        "shares": 1449776.792114978
+      },
+      "SH605376": {
+        "shares": 713141.1061099048
+      },
+      "SH603516": {
+        "shares": 865215.9634327154
+      },
+      "SZ000828": {
+        "shares": 1258109.1052610807
+      },
+      "SH688409": {
+        "shares": 2108130.3357700463
+      },
+      "SH600305": {
+        "shares": 1067693.0083124966
+      },
+      "SH600787": {
+        "shares": 1821337.7860472165
+      },
+      "SH601333": {
+        "shares": 6527069.436421184
+      },
+      "SZ002091": {
+        "shares": 1005952.8578547616
+      },
+      "SH600033": {
+        "shares": 1252635.165274783
+      },
+      "SZ300870": {
+        "shares": 2792143.6490680543
+      },
+      "SH603283": {
+        "shares": 946242.5562872388
+      }
+    },
+    "opening_marks": {
+      "SH600033": {
+        "shares": 1252635.165274783,
+        "price": 3.843906879425049,
+        "reason": "EXCHANGE_OPEN"
+      },
+      "SH600305": {
+        "shares": 1067693.0083124966,
+        "price": 4.4820661544799805,
+        "reason": "EXCHANGE_OPEN"
+      },
+      "SH600787": {
+        "shares": 1821337.7860472165,
+        "price": 2.6305365562438965,
+        "reason": "EXCHANGE_OPEN"
+      },
+      "SH601333": {
+        "shares": 6527069.436421184,
+        "price": 0.7193814516067505,
+        "reason": "EXCHANGE_OPEN"
+      },
+      "SH603283": {
+        "shares": 946242.5562872388,
+        "price": 7.327428817749023,
+        "reason": "EXCHANGE_OPEN"
+      },
+      "SH603516": {
+        "shares": 865215.9634327154,
+        "price": 5.298907279968262,
+        "reason": "EXCHANGE_OPEN"
+      },
+      "SH605376": {
+        "shares": 713141.1061099048,
+        "price": 6.181120872497559,
+        "reason": "EXCHANGE_OPEN"
+      },
+      "SH688048": {
+        "shares": 1293277.7207705008,
+        "price": 3.431218385696411,
+        "reason": "EXCHANGE_OPEN"
+      },
+      "SH688141": {
+        "shares": 2709516.0187743446,
+        "price": 1.629286527633667,
+        "reason": "EXCHANGE_OPEN"
+      },
+      "SH688146": {
+        "shares": 1267611.2529961632,
+        "price": 3.594975471496582,
+        "reason": "EXCHANGE_OPEN"
+      },
+      "SH688147": {
+        "shares": 1449776.792114978,
+        "price": 3.0968217849731445,
+        "reason": "EXCHANGE_OPEN"
+      },
+      "SH688362": {
+        "shares": 2815247.7050811267,
+        "price": 1.6290725469589233,
+        "reason": "EXCHANGE_OPEN"
+      },
+      "SH688372": {
+        "shares": 3200373.197976072,
+        "price": 1.3765228986740112,
+        "reason": "EXCHANGE_OPEN"
+      },
+      "SH688409": {
+        "shares": 2108130.3357700463,
+        "price": 2.2454845905303955,
+        "reason": "EXCHANGE_OPEN"
+      },
+      "SH688668": {
+        "shares": 740180.5861981768,
+        "price": 5.915741920471191,
+        "reason": "EXCHANGE_OPEN"
+      },
+      "SZ000828": {
+        "shares": 1258109.1052610807,
+        "price": 3.821505546569824,
+        "reason": "EXCHANGE_OPEN"
+      },
+      "SZ002091": {
+        "shares": 1005952.8578547616,
+        "price": 4.7402472496032715,
+        "reason": "EXCHANGE_OPEN"
+      },
+      "SZ002484": {
+        "shares": 465991.8660279881,
+        "price": 9.523571014404297,
+        "reason": "EXCHANGE_OPEN"
+      },
+      "SZ300870": {
+        "shares": 2792143.6490680543,
+        "price": 2.5327160358428955,
+        "reason": "EXCHANGE_OPEN"
+      },
+      "SZ301392": {
+        "shares": 3660775.0404705727,
+        "price": 1.28006911277771,
+        "reason": "EXCHANGE_OPEN"
+      }
+    },
+    "halt_evidence": {},
+    "position_marks": {
+      "SH600033": {
+        "shares": 1252635.165274783,
+        "price": 3.8745763301849365,
+        "reason": "EXCHANGE_CLOSE"
+      },
+      "SH600305": {
+        "shares": 1067693.0083124966,
+        "price": 4.560929775238037,
+        "reason": "EXCHANGE_CLOSE"
+      },
+      "SH601333": {
+        "shares": 6527069.436421184,
+        "price": 0.7334410548210144,
+        "reason": "EXCHANGE_CLOSE"
+      },
+      "SH603283": {
+        "shares": 946242.5562872388,
+        "price": 7.126760482788086,
+        "reason": "EXCHANGE_CLOSE"
+      },
+      "SH603516": {
+        "shares": 865215.9634327154,
+        "price": 5.28253173828125,
+        "reason": "EXCHANGE_CLOSE"
+      },
+      "SH605376": {
+        "shares": 713141.1061099048,
+        "price": 6.08793830871582,
+        "reason": "EXCHANGE_CLOSE"
+      },
+      "SH688048": {
+        "shares": 1293277.7207705008,
+        "price": 3.284799098968506,
+        "reason": "EXCHANGE_CLOSE"
+      },
+      "SH688141": {
+        "shares": 2709516.0187743446,
+        "price": 1.590264081954956,
+        "reason": "EXCHANGE_CLOSE"
+      },
+      "SH688146": {
+        "shares": 1267611.2529961632,
+        "price": 3.4298226833343506,
+        "reason": "EXCHANGE_CLOSE"
+      },
+      "SH688147": {
+        "shares": 1449776.792114978,
+        "price": 2.976684808731079,
+        "reason": "EXCHANGE_CLOSE"
+      },
+      "SH688362": {
+        "shares": 2815247.7050811267,
+        "price": 1.5479360818862915,
+        "reason": "EXCHANGE_CLOSE"
+      },
+      "SH688372": {
+        "shares": 3200373.197976072,
+        "price": 1.3160487413406372,
+        "reason": "EXCHANGE_CLOSE"
+      },
+      "SH688403": {
+        "shares": 4444857.07392976,
+        "price": 1.0554900169372559,
+        "reason": "EXCHANGE_CLOSE"
+      },
+      "SH688409": {
+        "shares": 2108130.3357700463,
+        "price": 2.100756883621216,
+        "reason": "EXCHANGE_CLOSE"
+      },
+      "SH688433": {
+        "shares": 2233912.750372231,
+        "price": 2.099029064178467,
+        "reason": "EXCHANGE_CLOSE"
+      },
+      "SH688668": {
+        "shares": 740180.5861981768,
+        "price": 5.701046943664551,
+        "reason": "EXCHANGE_CLOSE"
+      },
+      "SZ000828": {
+        "shares": 1258109.1052610807,
+        "price": 3.8554913997650146,
+        "reason": "EXCHANGE_CLOSE"
+      },
+      "SZ002484": {
+        "shares": 465991.8660279881,
+        "price": 9.172155380249023,
+        "reason": "EXCHANGE_CLOSE"
+      },
+      "SZ300870": {
+        "shares": 2792143.6490680543,
+        "price": 2.4384706020355225,
+        "reason": "EXCHANGE_CLOSE"
+      },
+      "SZ301392": {
+        "shares": 3660775.0404705727,
+        "price": 1.222659945487976,
+        "reason": "EXCHANGE_CLOSE"
+      }
+    },
+    "valuation_verified": true,
+    "portfolio_value_pre_trade_open": 97517531.72,
+    "portfolio_value": 97498314.87,
+    "portfolio_value_close": 94908844.18,
+    "n_positions": 20,
+    "positions": [
+      "SH600033",
+      "SH600305",
+      "SH601333",
+      "SH603283",
+      "SH603516",
+      "SH605376",
+      "SH688048",
+      "SH688141",
+      "SH688146",
+      "SH688147",
+      "SH688362",
+      "SH688372",
+      "SH688403",
+      "SH688409",
+      "SH688433",
+      "SH688668",
+      "SZ000828",
+      "SZ002484",
+      "SZ300870",
+      "SZ301392"
+    ],
+    "cost": 19216.85,
+    "metadata": {
+      "market": "csi1000",
+      "model_fit_asof": "2026-10-13",
+      "train_end": "2025-07-24",
+      "valid_end": "2026-09-04",
+      "topk": 20,
+      "nd": 2,
+      "paper_lineage": "stage_b_winner_canonical",
+      "production_lineage": {
+        "candidate_id": "4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2",
+        "stage_a_rank": 5,
+        "model_params": {
+          "learning_rate": 0.08,
+          "colsample_bytree": 0.8,
+          "lambda_l1": 10.0,
+          "lambda_l2": 400.0,
+          "max_depth": 6,
+          "num_leaves": 63,
+          "min_data_in_leaf": 50
+        },
+        "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+        "profile": "stage_b_winner",
+        "contract_version": "csi1000_stage_b_forward_v1",
+        "stage_b_result_commit": "7a2676397b0f8e6f69c0bffc98d1764647f644ac",
+        "stage_b_snapshot_token": "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1",
+        "stage_b_result_path": "results/csi1000_stage_b/stage_b_full_51756897fc752304.json",
+        "lightgbm_num_threads": 20
+      },
+      "execution_st_policy": "ST_VERIFIED_PREOPEN",
+      "reference_plan_created_at_cst": "2026-10-14T07:01:38.089666+08:00",
+      "execution_st_snapshot": {
+        "date": "2026-10-14",
+        "status": "SOURCE_SNAPSHOT_AVAILABLE",
+        "source": "akshare.stock_zh_a_st_em",
+        "fetched_at_cst": "2026-10-14T07:01:38.089601+08:00",
+        "source_row_count": 406,
+        "st_symbols": []
+      }
+    }
+  },
+  "pending_orders": {
+    "signal_date": "2026-10-14",
+    "execution_date": "2026-10-15",
+    "sell": [
+      "SH600305",
+      "SH601333"
+    ],
+    "buy": [
+      "SH688068",
+      "SH688368"
+    ]
+  },
+  "cash": 514656.2,
+  "n_positions": 20,
+  "positions": {
+    "SH688141": {
+      "shares": 2709516.0187743446,
+      "entry_price": 1.7512810230255127,
+      "last_price": 1.590264081954956,
+      "entry_date": "2026-10-09",
+      "cost_basis": 4747496.54725578,
+      "holding_days": 2
+    },
+    "SH688048": {
+      "shares": 1293277.7207705008,
+      "entry_price": 3.6727609634399414,
+      "last_price": 3.284799098968506,
+      "entry_date": "2026-10-09",
+      "cost_basis": 4752274.877696342,
+      "holding_days": 2
+    },
+    "SH688362": {
+      "shares": 2815247.7050811267,
+      "entry_price": 1.6858408451080322,
+      "last_price": 1.5479360818862915,
+      "entry_date": "2026-10-09",
+      "cost_basis": 4748432.600107576,
+      "holding_days": 2
+    },
+    "SH688668": {
+      "shares": 740180.5861981768,
+      "entry_price": 6.417039394378662,
+      "last_price": 5.701046943664551,
+      "entry_date": "2026-10-09",
+      "cost_basis": 4752142.864578286,
+      "holding_days": 2
+    },
+    "SZ301392": {
+      "shares": 3660775.0404705727,
+      "entry_price": 1.295960545539856,
+      "last_price": 1.222659945487976,
+      "entry_date": "2026-10-09",
+      "cost_basis": 4746592.128556205,
+      "holding_days": 2
+    },
+    "SH688146": {
+      "shares": 1267611.2529961632,
+      "entry_price": 3.738940715789795,
+      "last_price": 3.4298226833343506,
+      "entry_date": "2026-10-09",
+      "cost_basis": 4741893.087283484,
+      "holding_days": 2
+    },
+    "SH688372": {
+      "shares": 3200373.197976072,
+      "entry_price": 1.482661485671997,
+      "last_price": 1.3160487413406372,
+      "entry_date": "2026-10-09",
+      "cost_basis": 4747442.615456251,
+      "holding_days": 2
+    },
+    "SZ002484": {
+      "shares": 465991.8660279881,
+      "entry_price": 10.191312789916992,
+      "last_price": 9.172155380249023,
+      "entry_date": "2026-10-09",
+      "cost_basis": 4751443.398680445,
+      "holding_days": 2
+    },
+    "SH688147": {
+      "shares": 1449776.792114978,
+      "entry_price": 3.2754924297332764,
+      "last_price": 2.976684808731079,
+      "entry_date": "2026-10-09",
+      "cost_basis": 4751107.273829292,
+      "holding_days": 2
+    },
+    "SH605376": {
+      "shares": 713141.1061099048,
+      "entry_price": 6.646790981292725,
+      "last_price": 6.08793830871582,
+      "entry_date": "2026-10-09",
+      "cost_basis": 4742469.922416674,
+      "holding_days": 2
+    },
+    "SH603516": {
+      "shares": 865215.9634327154,
+      "entry_price": 5.485659599304199,
+      "last_price": 5.28253173828125,
+      "entry_date": "2026-10-09",
+      "cost_basis": 4748653.395403544,
+      "holding_days": 2
+    },
+    "SZ000828": {
+      "shares": 1258109.1052610807,
+      "entry_price": 3.7755072116851807,
+      "last_price": 3.8554913997650146,
+      "entry_date": "2026-10-09",
+      "cost_basis": 4752375.0,
+      "holding_days": 2
+    },
+    "SH688409": {
+      "shares": 2108130.3357700463,
+      "entry_price": 2.2488648891448975,
+      "last_price": 2.100756883621216,
+      "entry_date": "2026-10-09",
+      "cost_basis": 4743270.744001429,
+      "holding_days": 2
+    },
+    "SH600305": {
+      "shares": 1067693.0083124966,
+      "entry_price": 4.4486870765686035,
+      "last_price": 4.560929775238037,
+      "entry_date": "2026-10-09",
+      "cost_basis": 4752207.003866369,
+      "holding_days": 2
+    },
+    "SH601333": {
+      "shares": 6527069.436421184,
+      "entry_price": 0.7277109622955322,
+      "last_price": 0.7334410548210144,
+      "entry_date": "2026-10-09",
+      "cost_basis": 4752194.890538091,
+      "holding_days": 2
+    },
+    "SH600033": {
+      "shares": 1252635.165274783,
+      "entry_price": 3.7919363975524902,
+      "last_price": 3.8745763301849365,
+      "entry_date": "2026-10-09",
+      "cost_basis": 4752287.832497659,
+      "holding_days": 2
+    },
+    "SZ300870": {
+      "shares": 2792143.6490680543,
+      "entry_price": 2.449730634689331,
+      "last_price": 2.4384706020355225,
+      "entry_date": "2026-10-13",
+      "cost_basis": 6843419.8334920565,
+      "holding_days": 1
+    },
+    "SH603283": {
+      "shares": 946242.5562872388,
+      "entry_price": 7.238289833068848,
+      "last_price": 7.126760482788086,
+      "entry_date": "2026-10-13",
+      "cost_basis": 6852602.4637283925,
+      "holding_days": 1
+    },
+    "SH688403": {
+      "shares": 4444857.07392976,
+      "entry_price": 1.0978063344955444,
+      "last_price": 1.0554900169372559,
+      "entry_date": "2026-10-14",
+      "cost_basis": 4882032.047813265,
+      "holding_days": 0
+    },
+    "SH688433": {
+      "shares": 2233912.750372231,
+      "entry_price": 2.1824557781219482,
+      "last_price": 2.099029064178467,
+      "entry_date": "2026-10-14",
+      "cost_basis": 4877853.497765104,
+      "holding_days": 0
+    }
+  },
+  "model_fit_asof": "2026-10-13",
+  "training_contract": {
+    "fit_asof": "2026-10-13",
+    "horizon": 20,
+    "train_start": "2016-01-01",
+    "train_end": "2025-07-24",
+    "valid_start": "2025-08-22",
+    "valid_end": "2026-09-04"
+  },
+  "provider_calendar_end": "2026-10-14",
+  "note": "Orders are planned before the execution-day open and settled on a later data refresh using the recorded open. If provider data is stale, the prior pending order remains frozen and no new paper order is invented."
+}
