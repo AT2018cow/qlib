@@ -55,7 +55,7 @@ def test_phase0_signal_preserves_anchor_and_drops_earlier_phase_predictions():
     assert str(cropped.index.get_level_values(0).min())[:10] == core.SIGNAL_ANCHOR
     assert str(cropped.index.get_level_values(0).max())[:10] < core.EXECUTION_END
     with pytest.raises(ValueError, match="STOP_L3_SIGNAL_DAY_COVERAGE"):
-        core.trim_l3_signal(frame.iloc[:-1], calendar)
+        core.trim_l3_signal(frame[frame.index.get_level_values(0) != pd.Timestamp("2026-09-29")], calendar)
     with pytest.raises(ValueError, match="STOP_L3_DUPLICATE_PREDICTION"):
         core.trim_l3_signal(pd.concat([frame, frame.iloc[:1]]), calendar)
 
