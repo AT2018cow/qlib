@@ -258,15 +258,17 @@ if modal is not None:
                     "STOP_L4_SOURCE_SIGNAL_SHA")
             found.append([pair["candidate_id"], pair["phase"], checked["signal_sha256"]])
         p0_archive.reload()
+        verified_meta = {**meta, "quote_sha256": quote_sha,
+                         "source_snapshot_sha256": src["source_snapshot_sha256"]}
         for phase in (0, 10):
-            ref, _ = _verified_original_p0(phase, meta)
+            ref, _ = _verified_original_p0(phase, verified_meta)
             baseline_source = lookup_phase(frozen, BASELINE_CANDIDATE, phase)["signal_artifact"]["sha256"]
             require(ref["signal_sha256"] == baseline_source,
                     "STOP_L4_P0_FROZEN_SIGNAL_DIFFERENT")
         return {"status": "PASS", "source_model_phases": len(found),
                 "source_verified_digest": stable_sha(found),
-                "quote_sha256": quote_sha,
-                "no_new_model_fit": True}
+                "source_snapshot_sha256": src["source_snapshot_sha256"],
+                "quote_sha256": quote_sha, "no_new_model_fit": True}
 
     @app.function(volumes=mounts, cpu=2, memory=4096, timeout=3600, retries=0)
     def replay_remote(job: dict) -> dict:
@@ -425,7 +427,7 @@ if modal is not None:
         result["source_model_phases"] = 15
         result["real_new_model_fits"] = 0
         result["verified_original_p0_phases"] = [0, 10]
-        return freeze_remote.local(meta, "l4_final_decision", result)
+        return result
 
     def _actual_sha() -> str:
         sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
@@ -509,8 +511,7 @@ if modal is not None:
             "manifest_sha256": FROZEN_MANIFEST_SHA,
             "source_digest": coverage["source_digest"],
             "provider_fingerprint": next(iter(fingerprint)),
-            "source_snapshot_sha256": sha256_file(SOURCE / "csi1000_stage_b" / "provider_snapshot.json")
-                if SOURCE.exists() else "",  # resolved remotely below, not trusted locally
+            "source_snapshot_sha256": "",  # computed on remote read-only source
             "quote_sha256": "",
             "p0_prefix": p0_prefix,
         }
@@ -546,6 +547,7 @@ if modal is not None:
         require(result["status"] == "L4_RESEARCH_COMPLETE_NOT_RELEASED"
                 and result["completed_cells"] == 20 and result["real_new_model_fits"] == 0,
                 "STOP_L4_TERMINAL_20_CELL_REVIEW")
+        freeze_remote.remote(meta, "l4_final_decision", result)
         print(f"L4_COMPLETE 20/20 verified replay cells 0 new fits "
               f"decision={result['decision']} promotion_authorized=False", flush=True)
         print("L4_DONE", flush=True)
