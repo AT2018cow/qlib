@@ -547,7 +547,7 @@ if modal is not None:
         return record
 
     @app.function(volumes={str(RESULTS): research}, cpu=2, memory=4096, timeout=1800, retries=0)
-    def screen_remote(meta: dict, variant: dict, p0_prefix: str, expected_quote_sha: str) -> dict:
+    def screen_remote(meta: dict, variant: dict, phase_jobs: list[dict], p0_prefix: str, expected_quote_sha: str) -> dict:
         """Ordinal paired screen of one structural variant against Baseline P0."""
         import pandas as pd
         from audit.csi1000_l3_core import ordinal_remap_for_pairing
@@ -575,32 +575,36 @@ if modal is not None:
                 "STOP_L3_P0_BYTES",
             )
             baseline.append(row)
+        require({j["phase"] for j in phase_jobs} == set(variant["screen_phases"])
+                and len(phase_jobs) == 2, "STOP_L3_PHASE_ROSTER")
         trials = []
-        for phase in variant["screen_phases"]:
-            path = root / "jobs" / f"l3phase/r{variant['label_horizon']}_f{variant['retrain_frequency']}_p{phase:02d}"
-            record = json.loads((path / "receipt.json").read_text(encoding="utf-8"))
-            require(
-                record.get("status") == "PASS"
-                and record.get("phase") == phase
-                and record.get("quote_sha256") == expected_quote_sha
-                and record.get("label_horizon") == variant["label_horizon"]
-                and record.get("retrain_frequency") == variant["retrain_frequency"],
-                "STOP_L3_TRIAL_LINEAGE",
-            )
+        reports = {}
+        for job in phase_jobs:
+            require(job["run_id"] == meta["run_id"] and job["code_sha"] == meta["code_sha"]
+                    and job["plan_sha256"] == meta["plan_sha256"]
+                    and job["quote_sha256"] == expected_quote_sha
+                    and job["label_horizon"] == variant["label_horizon"]
+                    and job["retrain_frequency"] == variant["retrain_frequency"],
+                    "STOP_L3_PHASE_SPEC_IDENTITY")
+            record = l3_checked_receipt(root, job, _identity(job))
+            require(record is not None, "STOP_L3_PHASE_RECEIPT_MISSING")
             trials.append(record)
+            reports[job["phase"]] = pd.read_parquet(l3_receipt_path(root, job) / "report.parquet")
         remapped, mapping = ordinal_remap_for_pairing([{"phase": p} for p in variant["screen_phases"]], baseline)
         require(len(remapped) == len(variant["screen_phases"]), "STOP_L3_ORDINAL_REMAP")
 
         def loader(rec):
-            return pd.read_parquet(
-                root
-                / "jobs"
-                / f"l3phase/r{variant['label_horizon']}_f{variant['retrain_frequency']}_p{rec['phase']:02d}/report.parquet"
-            )
+            return reports[rec["phase"]]
 
         base_cells = []
-        for position, phase in enumerate(sorted(variant["screen_phases"])):
-            source = sorted(baseline, key=lambda r: r["phase"])[position]
+        for phase, source in zip(sorted(variant["screen_phases"]), sorted(baseline, key=lambda r: r["phase"])):
+            base_spec = specs[source["phase"]]
+            base_frame = pd.read_parquet(base_root / base_spec["cell_key"] / "fixed_report.parquet")
+            challenger_frame = reports[phase]
+            require(challenger_frame.index.equals(base_frame.index), "STOP_L3_PAIRED_DATE_ALIGNMENT")
+            require("bench" in challenger_frame and "bench" in base_frame
+                    and challenger_frame["bench"].equals(base_frame["bench"]), "STOP_L3_PAIRED_BENCH_DRIFT")
+            require(len(challenger_frame) == 424, "STOP_L3_PAIRED_424_DAYS")
             base_cells.append({**source, "phase": phase, "_source_phase": source["phase"]})
         chall_rows, base_rows, _turnover_median = paired_rows(trials, base_cells, loader)
         passed, detail = coarse_pass(chall_rows, base_rows, set(variant["screen_phases"]))
