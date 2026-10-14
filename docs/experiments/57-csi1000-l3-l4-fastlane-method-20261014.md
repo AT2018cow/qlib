@@ -12,6 +12,32 @@ The comparison method is **ordinal phase perturbation**, not same integer phase/
 
 There is **no L3 or L4 USD spending gate** and no billing ledger, 125% fit cost quote, per-wave USD reservation or compulsory billing check. The previously published financial limits for L3/L4/global spending are superseded by the 2026-10-14 contract amendment. The **250 attempted fit L3 cap**, including failures, is retained as a frozen trial-scope/data-provenance limit, NOT a financial limit. L4 retains the originally preregistered six-configuration/30 five-phase-cell limit and global scientific fit scope. Production Winner is frozen until a separate release decision.
 
+## Mandatory high-concurrency storage preparation (Volume v2)
+
+For 80 concurrent training containers, **do not** write their fit receipts
+to the previous shared Layered Search research Volume (which can be a v1
+Volume). Current Modal documentation cautions that v1 concurrent writers
+can conflict; v2 is designed for hundreds of writers to **distinct paths**.
+PR #77 mounts the original qlib-csi1000-layered-search at
+/p0-evidence as **read-only**, and all new L3 receipts at /results on an
+independent volume **qlib-csi1000-l3-v2**. The Modal SDK explicitly
+requests version=2 and refuses a version-mismatched existing volume.
+
+Once, before the new L3 smoke, on the SAME Modal workspace/environment
+as the accepted P0 source:
+
+    modal volume list
+    # If absent, create the dedicated v2 volume exactly once:
+    modal volume create --version 2 qlib-csi1000-l3-v2
+    modal volume list --json
+
+Verify the volume type, the workspace/environment, and that the old P0
+source Volume still exists. Do not create a v1 volume under the v2 name
+or copy old P0 into the new write volume. Do not delete the original P0
+research Volume. All concurrent fit jobs publish only to unique
+run/code/phase/as-of paths with full SHA validation; attempts and stage
+markers are written by sequential, single coordinator actions.
+
 ## Modal compute and controls
 
 Start from the already successful L2 CPU-based LightGBM fit container: **8 Modal CPUs and 16384 MiB RAM per fit**, timeout 7200 s, zero retries. No GPU: this workload has no benchmark proving GPUs outperform CPU. L3 permits --max-workers 1 through 80, with a maximum of one fit input per requested container, not 80 fit threads per instance. A request for 80 simultaneous workers can require **640 vCPUs / approximately 1.25 TiB RAM** and may exceed real Modal workspace quota or provider I/O throughput. A 16–32 worker fallback may be faster in practice under quotas. User chooses after 1-worker smoke; the system cannot guarantee 80 resources are granted. Only a **single foreground** dispatcher is allowed; never use --detach, nohup, background shell or concurrent coordinators on the same prefix.
