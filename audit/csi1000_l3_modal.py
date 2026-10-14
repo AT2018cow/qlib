@@ -88,8 +88,10 @@ def l3_checked_receipt(root: Path, job: dict, identity: dict) -> dict | None:
     hashes = record.get("artifact_sha256")
     require(isinstance(hashes, dict) and set(hashes) == names, "STOP_L3_ARTIFACT_MANIFEST")
     for name in sorted(names):
-        require((directory / name).is_file() and sha256_file(directory / name) == hashes[name],
-                f"L3 receipt bytes drift: {name}")
+        require(
+            (directory / name).is_file() and sha256_file(directory / name) == hashes[name],
+            f"L3 receipt bytes drift: {name}",
+        )
     return record
 
 
@@ -121,11 +123,18 @@ def l3_publish_receipt(root: Path, job: dict, identity: dict, artifacts: dict, d
             else:
                 require(False, f"L3 unserializable artifact {name}")
             hashes[name] = sha256_file(target)
-        record = {"job_id": l3_job_id(job), "job_sha256": stable_sha(job),
-                  "status": "PASS", "kind": job["kind"], **identity, **details,
-                  "artifact_sha256": hashes}
-        (temporary / "receipt.json").write_text(json.dumps(record, indent=2, sort_keys=True, allow_nan=False) + "\n",
-                                                 encoding="utf-8")
+        record = {
+            "job_id": l3_job_id(job),
+            "job_sha256": stable_sha(job),
+            "status": "PASS",
+            "kind": job["kind"],
+            **identity,
+            **details,
+            "artifact_sha256": hashes,
+        }
+        (temporary / "receipt.json").write_text(
+            json.dumps(record, indent=2, sort_keys=True, allow_nan=False) + "\n", encoding="utf-8"
+        )
         os.replace(temporary, directory)
         return record
     except BaseException:
@@ -498,12 +507,19 @@ if modal is not None:
         path = root / "attempts.json"
         if path.exists():
             book = json.loads(path.read_text(encoding="utf-8"))
-            require(book["run_id"] == meta["run_id"] and
-                    book["code_sha"] == meta["code_sha"] and
-                    book["plan_sha256"] == meta["plan_sha256"], "STOP_L3_ATTEMPT_IDENTITY")
+            require(
+                book["run_id"] == meta["run_id"]
+                and book["code_sha"] == meta["code_sha"]
+                and book["plan_sha256"] == meta["plan_sha256"],
+                "STOP_L3_ATTEMPT_IDENTITY",
+            )
         else:
-            book = {"run_id": meta["run_id"], "code_sha": meta["code_sha"],
-                    "plan_sha256": meta["plan_sha256"], "attempts": []}
+            book = {
+                "run_id": meta["run_id"],
+                "code_sha": meta["code_sha"],
+                "plan_sha256": meta["plan_sha256"],
+                "attempts": [],
+            }
         previous = set(book["attempts"])
         require(len(previous) == len(book["attempts"]), "STOP_L3_DUPLICATE_ATTEMPT_LEDGER")
         keys = [stable_sha(job) for job in new_jobs]
@@ -541,16 +557,27 @@ if modal is not None:
         if not path.exists():
             return None
         record = json.loads(path.read_text(encoding="utf-8"))
-        require(record.get("run_id") == meta["run_id"] and
-                record.get("code_sha") == meta["code_sha"] and
-                record.get("plan_sha256") == meta["plan_sha256"], "STOP_L3_MARKER_IDENTITY")
+        require(
+            record.get("run_id") == meta["run_id"]
+            and record.get("code_sha") == meta["code_sha"]
+            and record.get("plan_sha256") == meta["plan_sha256"],
+            "STOP_L3_MARKER_IDENTITY",
+        )
         return record
 
-    @app.function(volumes={
-        str(RESULTS): research,
-        str(P0_RESULTS): p0_archive.with_mount_options(read_only=True),
-    }, cpu=2, memory=4096, timeout=1800, retries=0)
-    def screen_remote(meta: dict, variant: dict, phase_jobs: list[dict], p0_prefix: str, expected_quote_sha: str) -> dict:
+    @app.function(
+        volumes={
+            str(RESULTS): research,
+            str(P0_RESULTS): p0_archive.with_mount_options(read_only=True),
+        },
+        cpu=2,
+        memory=4096,
+        timeout=1800,
+        retries=0,
+    )
+    def screen_remote(
+        meta: dict, variant: dict, phase_jobs: list[dict], p0_prefix: str, expected_quote_sha: str
+    ) -> dict:
         """Ordinal paired screen of one structural variant against Baseline P0."""
         import pandas as pd
         from audit.csi1000_l3_core import ordinal_remap_for_pairing
@@ -579,17 +606,22 @@ if modal is not None:
                 "STOP_L3_P0_BYTES",
             )
             baseline.append(row)
-        require({j["phase"] for j in phase_jobs} == set(variant["screen_phases"])
-                and len(phase_jobs) == 2, "STOP_L3_PHASE_ROSTER")
+        require(
+            {j["phase"] for j in phase_jobs} == set(variant["screen_phases"]) and len(phase_jobs) == 2,
+            "STOP_L3_PHASE_ROSTER",
+        )
         trials = []
         reports = {}
         for job in phase_jobs:
-            require(job["run_id"] == meta["run_id"] and job["code_sha"] == meta["code_sha"]
-                    and job["plan_sha256"] == meta["plan_sha256"]
-                    and job["quote_sha256"] == expected_quote_sha
-                    and job["label_horizon"] == variant["label_horizon"]
-                    and job["retrain_frequency"] == variant["retrain_frequency"],
-                    "STOP_L3_PHASE_SPEC_IDENTITY")
+            require(
+                job["run_id"] == meta["run_id"]
+                and job["code_sha"] == meta["code_sha"]
+                and job["plan_sha256"] == meta["plan_sha256"]
+                and job["quote_sha256"] == expected_quote_sha
+                and job["label_horizon"] == variant["label_horizon"]
+                and job["retrain_frequency"] == variant["retrain_frequency"],
+                "STOP_L3_PHASE_SPEC_IDENTITY",
+            )
             record = l3_checked_receipt(root, job, _identity(job))
             require(record is not None, "STOP_L3_PHASE_RECEIPT_MISSING")
             trials.append(record)
@@ -606,8 +638,12 @@ if modal is not None:
             base_frame = pd.read_parquet(base_root / base_spec["cell_key"] / "fixed_report.parquet")
             challenger_frame = reports[phase]
             require(challenger_frame.index.equals(base_frame.index), "STOP_L3_PAIRED_DATE_ALIGNMENT")
-            require("bench" in challenger_frame and "bench" in base_frame
-                    and challenger_frame["bench"].equals(base_frame["bench"]), "STOP_L3_PAIRED_BENCH_DRIFT")
+            require(
+                "bench" in challenger_frame
+                and "bench" in base_frame
+                and challenger_frame["bench"].equals(base_frame["bench"]),
+                "STOP_L3_PAIRED_BENCH_DRIFT",
+            )
             require(len(challenger_frame) == 424, "STOP_L3_PAIRED_424_DAYS")
             base_cells.append({**source, "phase": phase, "_source_phase": source["phase"]})
         chall_rows, base_rows, _turnover_median = paired_rows(trials, base_cells, loader)
@@ -685,7 +721,10 @@ if modal is not None:
         }
 
     def _dispatch_fit(
-        jobs: list[dict], meta: dict, max_workers: int, remaining_waves: list[int] | None = None,
+        jobs: list[dict],
+        meta: dict,
+        max_workers: int,
+        remaining_waves: list[int] | None = None,
     ) -> None:
         """Foreground concurrent map; complete each wave before continuing.
 
@@ -702,18 +741,21 @@ if modal is not None:
             if remaining_waves is not None and remaining_waves[0] == 0:
                 raise SafePause("verified fit-wave limit reached")
             book = attempts_remote.remote(meta, todo)
-            print(f"L3_FIT_WAVE {start // width + 1}: new={len(todo)} "
-                  f"attempted={book['attempt_count']} requested_containers={max_workers}", flush=True)
+            print(
+                f"L3_FIT_WAVE {start // width + 1}: new={len(todo)} "
+                f"attempted={book['attempt_count']} requested_containers={max_workers}",
+                flush=True,
+            )
             results = list(fit_remote.with_options(max_containers=max_workers).map(todo))
-            require(len(results) == len(todo) and all(r.get("status") == "PASS" for r in results),
-                    "STOP_L3_FIT_WAVE_FAILED")
+            require(
+                len(results) == len(todo) and all(r.get("status") == "PASS" for r in results), "STOP_L3_FIT_WAVE_FAILED"
+            )
             verified = receipts_remote.remote(todo)
             require(all(row is not None for row in verified), "STOP_L3_FIT_ARTIFACT_UNVERIFIED")
             if remaining_waves is not None:
                 remaining_waves[0] -= 1
 
-    def _wave(jobs: list[dict], meta: dict, max_workers: int,
-              remaining_waves: list[int] | None) -> None:
+    def _wave(jobs: list[dict], meta: dict, max_workers: int, remaining_waves: list[int] | None) -> None:
         return _dispatch_fit(jobs, meta, max_workers, remaining_waves)
 
     def _run_l3_smoke(meta: dict, max_workers: int, anchor: dict) -> None:
@@ -761,18 +803,31 @@ if modal is not None:
     def _screened_variant(variant: dict, result: dict, anchor: dict) -> dict:
         """Bridge signed remote coarse metrics into the final decision schema."""
         detail = result["detail"]
-        row = {**variant, "candidate_id": anchor["candidate_id"], "topk": 20, "dropn": 2,
-               "passed_coarse": result["passed_coarse"], "detail": detail,
-               "ordinal_mapping": result["ordinal_mapping"]}
+        row = {
+            **variant,
+            "candidate_id": anchor["candidate_id"],
+            "topk": 20,
+            "dropn": 2,
+            "passed_coarse": result["passed_coarse"],
+            "detail": detail,
+            "ordinal_mapping": result["ordinal_mapping"],
+        }
         if row["passed_coarse"]:
             for key in ("worst_delta_pp", "median_delta_pp", "mdd_degrade_pp", "turnover_ratio"):
-                require(key in detail and isinstance(detail[key], (int, float))
-                        and math.isfinite(detail[key]), f"STOP_L3_SCREEN_MISSING_{key}")
+                require(
+                    key in detail and isinstance(detail[key], (int, float)) and math.isfinite(detail[key]),
+                    f"STOP_L3_SCREEN_MISSING_{key}",
+                )
                 row[key] = detail[key]
-        row["config_sha256"] = stable_sha({"candidate_id": anchor["candidate_id"],
-                                           "topk": 20, "dropn": 2,
-                                           "label_horizon": variant["label_horizon"],
-                                           "retrain_frequency": variant["retrain_frequency"]})
+        row["config_sha256"] = stable_sha(
+            {
+                "candidate_id": anchor["candidate_id"],
+                "topk": 20,
+                "dropn": 2,
+                "label_horizon": variant["label_horizon"],
+                "retrain_frequency": variant["retrain_frequency"],
+            }
+        )
         return row
 
     def _run_l3_complete(meta: dict, max_workers: int, anchor: dict, remaining_waves: list[int] | None) -> None:
@@ -822,8 +877,10 @@ if modal is not None:
         for variant in STAGE1_VARIANTS:
             for phase in variant["screen_phases"]:
                 _phase_job_check(meta, anchor, variant, phase, inventory["quote_sha256"])
-            phase_jobs = [_phase_job(meta, anchor, variant, phase, inventory["quote_sha256"])
-                          for phase in variant["screen_phases"]]
+            phase_jobs = [
+                _phase_job(meta, anchor, variant, phase, inventory["quote_sha256"])
+                for phase in variant["screen_phases"]
+            ]
             result = screen_remote.remote(meta, variant, phase_jobs, meta["p0_prefix"], inventory["quote_sha256"])
             screened.append(_screened_variant(variant, result, anchor))
         freeze_remote.remote(meta, "l3_screen_stage1", {"stage": "stage1", "variants": screened})
@@ -851,8 +908,10 @@ if modal is not None:
             for variant in STAGE2_VARIANTS:
                 for phase in variant["screen_phases"]:
                     _phase_job_check(meta, anchor, variant, phase, inventory["quote_sha256"])
-                phase_jobs = [_phase_job(meta, anchor, variant, phase, inventory["quote_sha256"])
-                              for phase in variant["screen_phases"]]
+                phase_jobs = [
+                    _phase_job(meta, anchor, variant, phase, inventory["quote_sha256"])
+                    for phase in variant["screen_phases"]
+                ]
                 result = screen_remote.remote(meta, variant, phase_jobs, meta["p0_prefix"], inventory["quote_sha256"])
                 screened.append(_screened_variant(variant, result, anchor))
             freeze_remote.remote(meta, "l3_screen_final", {"stage": "stage1+stage2", "variants": screened})
@@ -860,8 +919,10 @@ if modal is not None:
             freeze_remote.remote(meta, "l3_screen_final", {"stage": "stage1", "variants": screened})
         decision, info = l3_decision(screened)
         freeze_remote.remote(meta, "l3_decision", {"decision": decision, **info})
-        print(f"L3_COMPLETE screened={len(screened)} decision={decision} "
-              f"fit_scope=250 provenance=SHA_CHECKED", flush=True)
+        print(
+            f"L3_COMPLETE screened={len(screened)} decision={decision} " f"fit_scope=250 provenance=SHA_CHECKED",
+            flush=True,
+        )
         return "COMPLETE"
 
     def _phase_job_check(meta: dict, anchor: dict, variant: dict, phase: int, quote_sha: str) -> dict:

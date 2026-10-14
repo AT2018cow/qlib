@@ -2,6 +2,7 @@
 
 Every test is local and must not launch a Modal job.
 """
+
 from __future__ import annotations
 
 import ast
@@ -38,13 +39,23 @@ def sample_job():
 
 
 def identity(job):
-    return {k: job[k] for k in ("run_id", "code_sha", "plan_sha256", "provider_fingerprint",
-                                 "source_snapshot_sha256", "quote_sha256", "p0_prefix")}
+    return {
+        k: job[k]
+        for k in (
+            "run_id",
+            "code_sha",
+            "plan_sha256",
+            "provider_fingerprint",
+            "source_snapshot_sha256",
+            "quote_sha256",
+            "p0_prefix",
+        )
+    }
 
 
 def test_phase0_signal_preserves_anchor_and_drops_earlier_phase_predictions():
     calendar = list(pd.bdate_range("2024-10-01", "2026-11-01").strftime("%Y-%m-%d"))
-    expected = calendar[calendar.index(core.SIGNAL_ANCHOR):calendar.index(core.EXECUTION_END)]
+    expected = calendar[calendar.index(core.SIGNAL_ANCHOR) : calendar.index(core.EXECUTION_END)]
     dates = list(pd.bdate_range("2024-12-01", "2026-09-30"))
     frame = pd.DataFrame(
         {"score": range(len(dates))},
@@ -102,10 +113,12 @@ def test_receipt_rejects_partial_manifest_overwrite_and_temp(tmp_path):
 def test_screened_variant_passes_signed_fields_into_l3_final_decision():
     anchor = {"candidate_id": core.ANCHOR_CANDIDATE}
     variant = core.STAGE1_VARIANTS[0]
-    detail = {"worst_delta_pp": 1.2, "median_delta_pp": 2.3,
-              "mdd_degrade_pp": 0.4, "turnover_ratio": 1.1}
-    result = {"passed_coarse": True, "detail": detail,
-              "ordinal_mapping": {"challenger_phases": [0, 5], "baseline_phases": [0, 10]}}
+    detail = {"worst_delta_pp": 1.2, "median_delta_pp": 2.3, "mdd_degrade_pp": 0.4, "turnover_ratio": 1.1}
+    result = {
+        "passed_coarse": True,
+        "detail": detail,
+        "ordinal_mapping": {"challenger_phases": [0, 5], "baseline_phases": [0, 10]},
+    }
     row = runner._screened_variant(variant, result, anchor)
     assert row["worst_delta_pp"] == 1.2
     assert len(row["config_sha256"]) == 64
@@ -126,22 +139,27 @@ def test_actual_dispatch_waves_enforce_limit_and_verify_resume(monkeypatch):
     completed = {}
     attempts = []
     waves = []
+
     class Receipts:
         def remote(self, jobs):
             return [completed.get(job["i"]) for job in jobs]
+
     class Attempts:
         def remote(self, meta, jobs):
             attempts.extend(job["i"] for job in jobs)
             return {"attempt_count": len(attempts)}
+
     class Fit:
         def with_options(self, *, max_containers):
             assert max_containers == 80
             return self
+
         def map(self, jobs):
             waves.append(len(jobs))
             for job in jobs:
                 completed[job["i"]] = {"status": "PASS"}
                 yield completed[job["i"]]
+
     monkeypatch.setattr(runner, "receipts_remote", Receipts())
     monkeypatch.setattr(runner, "attempts_remote", Attempts())
     monkeypatch.setattr(runner, "fit_remote", Fit())

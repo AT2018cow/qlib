@@ -176,7 +176,7 @@ def trim_l3_signal(signal, calendar: List[str]):
     dates = signal.index.get_level_values(0).astype(str).str[:10]
     trimmed = signal[(dates >= SIGNAL_ANCHOR) & (dates < EXECUTION_END)]
     require(SIGNAL_ANCHOR in calendar and EXECUTION_END in calendar, "STOP_L3_CALENDAR_BOUNDS")
-    expected = calendar[calendar.index(SIGNAL_ANCHOR):calendar.index(EXECUTION_END)]
+    expected = calendar[calendar.index(SIGNAL_ANCHOR) : calendar.index(EXECUTION_END)]
     actual = sorted({str(day)[:10] for day in trimmed.index.get_level_values(0).unique()})
     require(actual == expected, "STOP_L3_SIGNAL_DAY_COVERAGE")
     return trimmed
