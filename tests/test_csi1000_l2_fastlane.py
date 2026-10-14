@@ -61,8 +61,6 @@ def test_l2_frozen_proposal_integrity_fail_closed(monkeypatch, which):
 
 
 def test_l2_long_roster_includes_smoke_and_total_cap(monkeypatch):
-    from csi1000_stage_b_core import build_phase_jobs  # noqa: F401
-
     monkeypatch.setattr(l2, "stage_a_proposals", lambda root, seed: _dummy_plan())
     plan = l2.make_fastlane_plan(".")
     import csi1000_stage_b_core
