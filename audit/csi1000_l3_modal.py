@@ -430,7 +430,9 @@ if modal is not None:
                 "source_snapshot_sha256": job["source_snapshot_sha256"],
                 "quote_sha256": job["quote_sha256"],
                 "p0_prefix": job["p0_prefix"],
-                **p,
+                "phase": p["phase"],
+                "retrain_asof": p["retrain_asof"],
+                "signal_end": p["signal_end"],
             }
             rec = l3_checked_receipt(root, sub, identity)
             require(rec is not None, f"STOP_L3_MISSING_STRUCTURAL_FIT: {p['retrain_asof']}")
@@ -485,48 +487,42 @@ if modal is not None:
         return [l3_checked_receipt(_root(j), j, _identity(j)) for j in jobs]
 
     @app.function(volumes={str(RESULTS): research}, cpu=1, memory=1024, timeout=600, retries=0)
-    def attempts_remote(meta: dict, new_jobs: list[dict], max_fits: int, reserve: float, spent: float) -> dict:
-        """Precommit attempted-fit claims BEFORE dispatch, including failed attempts."""
-        from audit.csi1000_l2_execution import budget_gate
+    def attempts_remote(meta: dict, new_jobs: list[dict]) -> dict:
+        """Record all actual attempted fits before dispatch; scope maximum is 250.
 
+        This is immutable experiment provenance, NOT a spend or budget ledger.
+        """
         research.reload()
         root = _root(meta)
         root.mkdir(parents=True, exist_ok=True)
         path = root / "attempts.json"
         if path.exists():
             book = json.loads(path.read_text(encoding="utf-8"))
-            require(
-                book["code_sha"] == meta["code_sha"] and book["plan_sha256"] == meta["plan_sha256"],
-                "STOP_L3_ATTEMPT_IDENTITY",
-            )
+            require(book["run_id"] == meta["run_id"] and
+                    book["code_sha"] == meta["code_sha"] and
+                    book["plan_sha256"] == meta["plan_sha256"], "STOP_L3_ATTEMPT_IDENTITY")
         else:
-            book = {
-                "run_id": meta["run_id"],
-                "code_sha": meta["code_sha"],
-                "plan_sha256": meta["plan_sha256"],
-                "attempts": [],
-                "reserved_usd": 0.0,
-            }
+            book = {"run_id": meta["run_id"], "code_sha": meta["code_sha"],
+                    "plan_sha256": meta["plan_sha256"], "attempts": []}
         previous = set(book["attempts"])
-        keys = [stable_sha(j) for j in new_jobs]
-        require(len(keys) == len(set(keys)), "STOP_L3_DUPLICATE_DISPATCH")
-        require(not any(k in previous for k in keys), "STOP_L3_REPEAT_FIT: previous attempt already charged")
-        require(max_fits <= 250, "STOP_L3_FIT_CAP")
-        budget_gate(len(previous), len(keys), float(book["reserved_usd"]), reserve, spent, cap=6.0)
+        require(len(previous) == len(book["attempts"]), "STOP_L3_DUPLICATE_ATTEMPT_LEDGER")
+        keys = [stable_sha(job) for job in new_jobs]
+        require(len(set(keys)) == len(keys), "STOP_L3_DUPLICATE_DISPATCH")
+        require(not (set(keys) & previous), "STOP_L3_REPEAT_FIT: attempted fit without durable receipt")
+        require(len(previous) + len(keys) <= 250, "STOP_L3_FIT_SCOPE_250")
         book["attempts"].extend(keys)
-        book["reserved_usd"] += reserve * len(keys)
         tmp = path.with_suffix(".tmp")
         require(not tmp.exists(), "STOP_L3_UNFINISHED_ATTEMPT_LEDGER")
         tmp.write_text(json.dumps(book, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         tmp.replace(path)
         research.commit()
-        return {"attempt_count": len(book["attempts"]), "reserved_usd": book["reserved_usd"]}
+        return {"attempt_count": len(book["attempts"])}
 
     @app.function(volumes={str(RESULTS): research}, cpu=1, memory=1024, timeout=600, retries=0)
     def freeze_remote(meta: dict, kind: str, obj: dict) -> dict:
         """Non-overwriting, plan-SHA-bound smoke/screen/terminal record."""
         research.reload()
-        require(kind in ("smoke_pass", "l3_screen", "l3_decision"), "STOP_L3_ILLEGAL_MARKER")
+        require(kind in ("smoke_pass", "l3_screen_stage1", "l3_screen_final", "l3_decision"), "STOP_L3_ILLEGAL_MARKER")
         root = _root(meta)
         root.mkdir(parents=True, exist_ok=True)
         path = root / (kind + ".json")
@@ -544,7 +540,11 @@ if modal is not None:
         path = _root(meta) / (kind + ".json")
         if not path.exists():
             return None
-        return json.loads(path.read_text(encoding="utf-8"))
+        record = json.loads(path.read_text(encoding="utf-8"))
+        require(record.get("run_id") == meta["run_id"] and
+                record.get("code_sha") == meta["code_sha"] and
+                record.get("plan_sha256") == meta["plan_sha256"], "STOP_L3_MARKER_IDENTITY")
+        return record
 
     @app.function(volumes={str(RESULTS): research}, cpu=2, memory=4096, timeout=1800, retries=0)
     def screen_remote(meta: dict, variant: dict, p0_prefix: str, expected_quote_sha: str) -> dict:
