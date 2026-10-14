@@ -9,15 +9,10 @@ on:
       - 'tests/test_csi1000_l2_*.py'
       - 'docs/experiments/56-csi1000-l2-fastlane-execution-20261014.md'
       - '.github/workflows/csi1000-l2-fastlane.yml'
-  pull_request:
-    paths:
-      - 'audit/csi1000_l2_*.py'
-      - 'tests/test_csi1000_l2_*.py'
-      - '.github/workflows/csi1000-l2-fastlane.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   offline:
@@ -30,17 +25,6 @@ jobs:
           python-version: '3.11'
       - name: Install offline dependencies
         run: python -m pip install 'pytest>=8,<10' 'black==25.1.0' pyflakes modal
-      - name: Format only the new L2 files on this isolated branch
-        if: github.event_name == 'push' && github.ref == 'refs/heads/research/csi1000-l2-fastlane-20261014'
-        run: |
-          python -m black -l 120 audit/csi1000_l2_fastlane.py audit/csi1000_l2_execution.py audit/csi1000_l2_modal.py tests/test_csi1000_l2_fastlane.py tests/test_csi1000_l2_execution.py
-          if ! git diff --quiet -- audit/csi1000_l2_fastlane.py audit/csi1000_l2_execution.py audit/csi1000_l2_modal.py tests/test_csi1000_l2_fastlane.py tests/test_csi1000_l2_execution.py; then
-            git config user.name 'l2-offline-gate-bot'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add audit/csi1000_l2_fastlane.py audit/csi1000_l2_execution.py audit/csi1000_l2_modal.py tests/test_csi1000_l2_fastlane.py tests/test_csi1000_l2_execution.py
-            git commit -m 'style(l2): apply Black 120 to isolated L2 files'
-            git push origin HEAD:refs/heads/research/csi1000-l2-fastlane-20261014
-          fi
       - name: Python syntax
         run: python -m py_compile audit/csi1000_l2_fastlane.py audit/csi1000_l2_execution.py audit/csi1000_l2_modal.py
       - name: Modal SDK import and CLI help (no cloud dispatch)
