@@ -145,6 +145,9 @@ git status --porcelain
 git rev-parse HEAD
 ~~~
 
+The offline CI also checks importing the real Modal SDK and displaying
+its actual CLI help without dispatching a remote job.
+
 The P0 export root must contain summaries/p0/stage_p0_summary.json and
 the full signed cell artifacts. Compute the original P0 prefix from that
 summary's real run_id and code_sha, not the L1-C prefix. Freeze plan SHA,
@@ -193,6 +196,22 @@ modal run audit/csi1000_l2_modal.py \
   --nonfit-reserve-usd 0.5 \
   2>&1 | tee /tmp/csi1000-l2-complete.log
 ~~~
+
+In complete mode, the USD-per-fit reserve must be at least **125%** of
+(smoke App's actual bill / 2), and higher if other measured Stage-A/B
+fit durations or current live rates warrant. If this makes the USD12 L2
+ceiling impossible, report STOP_L2_BUDGET rather than reducing a
+qualified candidate list after observing it.
+
+For tool sessions too short to safely cover the entire run, add
+--max-fit-waves N (positive integer) to **complete**; each wave contains
+at most four genuine training jobs. The runner then returns
+L2_INCOMPLETE_SAFE_PAUSE only **after** a verified wave, exit 0, and the
+operator can issue the exact same complete command with the same
+run ID, SHA, P0 reference and current billing calibration. This is
+operational slicing, not repeated human approval. Do not set this flag
+on the smoke call. Without --max-fit-waves, the coordinator aims to
+complete all safe work in one attached invocation.
 
 This same single foreground coordinator:
 
