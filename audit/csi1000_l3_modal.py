@@ -36,6 +36,8 @@ except ImportError:
 
 SOURCE = Path("/source")
 RESULTS = Path("/results")
+P0_RESULTS = Path("/p0-evidence")
+L3_VOLUME_V2 = "qlib-csi1000-l3-v2"
 REPO = Path("/root/qlib")
 
 L3_ARTIFACTS = {
@@ -134,7 +136,8 @@ def l3_publish_receipt(root: Path, job: dict, identity: dict, artifacts: dict, d
 
 if modal is not None:
     original = modal.Volume.from_name(SOURCE_VOLUME, create_if_missing=False)
-    research = modal.Volume.from_name(RESEARCH_VOLUME, create_if_missing=False)
+    p0_archive = modal.Volume.from_name(RESEARCH_VOLUME, create_if_missing=False)
+    research = modal.Volume.from_name(L3_VOLUME_V2, create_if_missing=False)
     image = (
         modal.Image.debian_slim(python_version="3.11")
         .apt_install("build-essential")
@@ -179,7 +182,11 @@ if modal is not None:
         )
     )
     app = modal.App("qlib-csi1000-l3-structural", image=image)
-    mounts = {str(SOURCE): original.with_mount_options(read_only=True), str(RESULTS): research}
+    mounts = {
+        str(SOURCE): original.with_mount_options(read_only=True),
+        str(P0_RESULTS): p0_archive.with_mount_options(read_only=True),
+        str(RESULTS): research,
+    }
 
     def _identity(job: dict) -> dict:
         return {
@@ -267,13 +274,13 @@ if modal is not None:
         require(total <= 250, "STOP_L3_FIT_CAP_PREPLAN")
         codes, quote_sha = static_quote_union(MARKET, RESERVED_EXECUTION_START, RESERVED_EXECUTION_END, D)
         require(bool(codes), "STOP_L3_QUOTE: empty static union")
-        research.reload()
+        p0_archive.reload()
         from audit.csi1000_layered_search_core import BASELINE_CANDIDATE, enumerate_cells
 
         p0_cells = {r["phase"]: r for r in enumerate_cells("p0") if r["candidate_id"] == BASELINE_CANDIDATE}
         require(set(p0_cells) == {0, 10}, "STOP_L3_P0_SPECS")
         for phase in (0, 10):
-            root = RESULTS / meta["p0_prefix"] / "cells" / p0_cells[phase]["cell_key"]
+            root = P0_RESULTS / meta["p0_prefix"] / "cells" / p0_cells[phase]["cell_key"]
             require((root / "cell.json").is_file(), "STOP_L3_P0_REMOTE_SOURCE_MISSING")
             row = json.loads((root / "cell.json").read_text(encoding="utf-8"))
             require(
@@ -539,7 +546,10 @@ if modal is not None:
                 record.get("plan_sha256") == meta["plan_sha256"], "STOP_L3_MARKER_IDENTITY")
         return record
 
-    @app.function(volumes={str(RESULTS): research}, cpu=2, memory=4096, timeout=1800, retries=0)
+    @app.function(volumes={
+        str(RESULTS): research,
+        str(P0_RESULTS): p0_archive.with_mount_options(read_only=True),
+    }, cpu=2, memory=4096, timeout=1800, retries=0)
     def screen_remote(meta: dict, variant: dict, phase_jobs: list[dict], p0_prefix: str, expected_quote_sha: str) -> dict:
         """Ordinal paired screen of one structural variant against Baseline P0."""
         import pandas as pd
@@ -551,7 +561,8 @@ if modal is not None:
         root = _root(meta)
         specs = {s["phase"]: s for s in enumerate_cells("p0") if s["candidate_id"] == BASELINE_CANDIDATE}
         require(set(specs) == {0, 10}, "STOP_L3_P0_BASELINE")
-        base_root = RESULTS / p0_prefix / "cells"
+        p0_archive.reload()
+        base_root = P0_RESULTS / p0_prefix / "cells"
         baseline = []
         for phase in (0, 10):
             dest = base_root / specs[phase]["cell_key"]
