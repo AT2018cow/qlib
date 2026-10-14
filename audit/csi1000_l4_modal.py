@@ -552,8 +552,13 @@ if modal is not None:
         require(re.fullmatch(r"[a-f0-9]{40}", sha) is not None, "STOP_L4_INVALID_HEAD")
         return sha
 
-    def _jobs_for_run(meta: dict, manifest: dict) -> list[dict]:
-        frozen = load_frozen_result(REPO)
+    def _jobs_for_run(meta: dict, manifest: dict, repo_root: str | Path = REPO) -> list[dict]:
+        """Resolve frozen metadata from the caller's own filesystem context.
+
+        Remote final_remote uses the image's /root/qlib default; the local
+        Modal CLI coordinator must pass its checked-out repository root.
+        """
+        frozen = load_frozen_result(repo_root)
         result = []
         for cell in l4_cell_specs(manifest):
             stage_b = lookup_phase(frozen, cell["candidate_id"], cell["phase"])
@@ -644,7 +649,7 @@ if modal is not None:
         require(live["status"] == "PASS" and live["source_model_phases"] == 15, "STOP_L4_15_SOURCE_PREFLIGHT")
         meta["source_snapshot_sha256"] = live["source_snapshot_sha256"]
         meta["quote_sha256"] = live["quote_sha256"]
-        jobs = _jobs_for_run(meta, manifest)
+        jobs = _jobs_for_run(meta, manifest, Path.cwd())
         baseline0 = next(j for j in jobs if j["config_sha256"] == BASELINE_CONFIG_SHA and j["phase"] == 0)
         champion0 = next(j for j in jobs if j["config_sha256"] != BASELINE_CONFIG_SHA and j["phase"] == 0)
         if mode == "smoke":
