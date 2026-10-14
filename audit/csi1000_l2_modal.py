@@ -550,6 +550,9 @@ if modal is not None:
                     "topk": 20,
                     "dropn": 2,
                     "passed_coarse": passed,
+                    "coarse_pass": passed,
+                    "layer": "l2",
+                    "config_sha256": stable_sha({"candidate_id": cid, "topk": 20, "dropn": 2}),
                     **detail,
                     "turnover_ratio": ratio,
                 }
