@@ -205,3 +205,74 @@ def test_l3_still_checks_scientific_fit_scope_250_without_usd_control():
     assert core.check_l3_fit_scope(251, 250) == "STOP_EXPERIMENT_SCOPE"
     assert core.check_l3_fit_scope(250, 251) == "STOP_EXPERIMENT_SCOPE"
     assert "cost_ceiling_usd" not in core.make_l3_plan()
+
+
+@pytest.mark.skipif(runner.modal is None, reason="Modal SDK optional on offline-only machines")
+@pytest.mark.parametrize("stage1_pass", [False, True])
+def test_stage1_to_conditional_stage2_to_final_markers(monkeypatch, stage1_pass):
+    """Actual coordinator path, all remote work replaced with deterministic stubs."""
+    dates = list(pd.bdate_range("2016-01-01", "2026-11-01").strftime("%Y-%m-%d"))
+    meta = {"run_id": "l3_test_a1", "code_sha": "a" * 40, "plan_sha256": "b" * 64,
+            "provider_fingerprint": "c" * 64, "p0_prefix": "signed/p0"}
+    anchor = {"candidate_id": core.ANCHOR_CANDIDATE, "model_params": {}}
+    calls = {"fit_stage": [], "screens": [], "markers": {}}
+
+    class Remote:
+        def __init__(self, callback):
+            self.remote = callback
+
+    monkeypatch.setattr(runner, "inventory_remote", Remote(
+        lambda _meta: {"calendar": dates, "source": {"snapshot_sha256": "d" * 64},
+                       "quote_sha256": "e" * 64}
+    ))
+    monkeypatch.setattr(runner, "get_marker_remote", Remote(
+        lambda _meta, _key: {"status": "PASS", "provider_snapshot_sha256": "d" * 64,
+                              "quote_sha256": "e" * 64}
+    ))
+    monkeypatch.setattr(runner, "_fit_job", lambda meta, anchor, asof, end, h, f, p: {
+        "label_horizon": h, "retrain_frequency": f, "phase": p,
+        "retrain_asof": asof, "signal_end": end
+    })
+    monkeypatch.setattr(runner, "_phase_job", lambda meta, anchor, variant, phase, quote_sha: {
+        "label_horizon": variant["label_horizon"], "retrain_frequency": variant["retrain_frequency"],
+        "phase": phase, "quote_sha256": quote_sha
+    })
+    def fit_wave(jobs, _meta, workers, waves):
+        assert workers == 80
+        calls["fit_stage"].append({(j["label_horizon"], j["retrain_frequency"]) for j in jobs})
+    monkeypatch.setattr(runner, "_wave", fit_wave)
+    monkeypatch.setattr(runner, "_phase_job_check", lambda *args: {"status": "PASS"})
+
+    def screen(meta, variant, jobs, prefix, quote):
+        assert len(jobs) == 2
+        assert prefix == "signed/p0" and quote == "e" * 64
+        calls["screens"].append((variant["label_horizon"], variant["retrain_frequency"]))
+        eligible = stage1_pass and variant["retrain_frequency"] == 10
+        return {"passed_coarse": eligible, "ordinal_mapping": {
+            "challenger_phases": variant["screen_phases"], "baseline_phases": [0, 10]
+        }, "detail": ({"worst_delta_pp": 1.3, "median_delta_pp": 1.8,
+                       "mdd_degrade_pp": 0.1, "turnover_ratio": 1.1} if eligible else {
+                       "failed": "improvement", "worst_delta_pp": -1.2, "median_delta_pp": -0.3
+        })}
+    monkeypatch.setattr(runner, "screen_remote", Remote(screen))
+    def freeze(meta, kind, payload):
+        if kind in calls["markers"]:
+            assert calls["markers"][kind] == payload, "marker overwritten with divergent content"
+        calls["markers"][kind] = payload
+        return payload
+    monkeypatch.setattr(runner, "freeze_remote", Remote(freeze))
+
+    assert runner._run_l3_complete(meta, 80, anchor, None) == "COMPLETE"
+    assert "l3_screen_stage1" in calls["markers"]
+    assert "l3_screen_final" in calls["markers"]
+    assert "l3_decision" in calls["markers"]
+    assert len(calls["fit_stage"]) == (2 if stage1_pass else 1)
+    assert len(calls["screens"]) == (4 if stage1_pass else 2)
+    if stage1_pass:
+        assert calls["markers"]["l3_decision"]["decision"] == "PROPOSE_STRUCTURE"
+        assert calls["markers"]["l3_screen_final"]["stage"] == "stage1+stage2"
+        assert calls["markers"]["l3_decision"]["winner"]["layer"] == "l3"
+    else:
+        assert calls["markers"]["l3_decision"]["decision"] == "KEEP_BASELINE_FOR_PRODUCT_SELECTION"
+        assert calls["markers"]["l3_screen_final"]["stage"] == "stage1"
+
