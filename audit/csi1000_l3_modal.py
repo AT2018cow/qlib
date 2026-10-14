@@ -390,7 +390,7 @@ if modal is not None:
         import pandas as pd
         from qlib.data import D
         from audit.csi1000_layered_search_replay import backtest_signal, report_metrics, static_quote_union
-        from audit.csi1000_l3_core import EXECUTION_END, EXECUTION_START, SIGNAL_ANCHOR, build_l3_retrain_schedule
+        from audit.csi1000_l3_core import EXECUTION_END, EXECUTION_START, build_l3_retrain_schedule, trim_l3_signal
         from csi1000_stage_b_core import MARKET
         from qlib_audit_fixes import read_trading_calendar
 
@@ -438,14 +438,7 @@ if modal is not None:
             require(rec is not None, f"STOP_L3_MISSING_STRUCTURAL_FIT: {p['retrain_asof']}")
             chunks.append(pd.read_parquet(root / "jobs" / l3_job_id(sub) / "prediction.parquet")["score"])
             source_shas.append(rec["artifact_sha256"]["prediction.parquet"])
-        signal = pd.concat(chunks).sort_index()
-        require(signal.index.is_unique, "STOP_L3_DUPLICATE_PREDICTION")
-        dates = signal.index.get_level_values(0).astype(str).str[:10]
-        signal = signal[(dates >= SIGNAL_ANCHOR) & (dates < EXECUTION_END)]
-        actual_days = sorted({str(v)[:10] for v in signal.index.get_level_values(0).unique()})
-        first = calendar.index(SIGNAL_ANCHOR)
-        last = calendar.index(EXECUTION_END)
-        require(actual_days == calendar[first:last], "STOP_L3_SIGNAL_DAY_COVERAGE")
+        signal = trim_l3_signal(pd.concat(chunks).sort_index(), calendar)
         codes, quote_sha = static_quote_union(MARKET, EXECUTION_START, EXECUTION_END, D)
         require(quote_sha == job["quote_sha256"], "STOP_L3_QUOTE_SHA_DRIFT")
         report, decisions = backtest_signal(signal, 20, 2, codes, EXECUTION_START, EXECUTION_END)
