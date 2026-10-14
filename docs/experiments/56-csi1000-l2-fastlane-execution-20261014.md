@@ -10,7 +10,7 @@ space, research separation and all pre-registered product gates.
 ## Frozen inputs and permitted candidate scope
 
 - Use \`python -m audit.csi1000_l2_fastlane --repo-root . --output <new-plan-path>\`
-  or \`python audit/csi1000_l2_fastlane.py ...\` **only for a PLAN**, never as a
+  **only for a PLAN**, never as a
   training runner. It delegates to the already-implemented
   \`stage_a_proposals(".")\`, which checks the original Stage-A 80 and Stage-B
   11 identities. Freeze seed **20261012**, source file SHA256 and plan SHA256
