@@ -5,13 +5,11 @@ source identity, actual output bytes and code SHA. Cross-run reuse fails closed.
 """
 from __future__ import annotations
 
-import hashlib
 import json
 import math
 import os
 import re
 import shutil
-import statistics
 from pathlib import Path
 from typing import Any
 
