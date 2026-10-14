@@ -282,12 +282,18 @@ def test_l4_inventory_initial_blank_quote_and_snapshot_are_derived():
     assert meta == {"quote_sha256": "", "source_snapshot_sha256": ""}
     assert runner.checked_inventory_derivation({**meta, **resolved}, source, ["000001.SZ"], "a" * 64) == resolved
     # Both identities may also arrive one-at-a-time; only the nonblank value is pinned.
-    assert runner.checked_inventory_derivation(
-        {"quote_sha256": "a" * 64, "source_snapshot_sha256": ""}, source, ["000001.SZ"], "a" * 64
-    ) == resolved
-    assert runner.checked_inventory_derivation(
-        {"quote_sha256": "", "source_snapshot_sha256": "b" * 64}, source, ["000001.SZ"], "a" * 64
-    ) == resolved
+    assert (
+        runner.checked_inventory_derivation(
+            {"quote_sha256": "a" * 64, "source_snapshot_sha256": ""}, source, ["000001.SZ"], "a" * 64
+        )
+        == resolved
+    )
+    assert (
+        runner.checked_inventory_derivation(
+            {"quote_sha256": "", "source_snapshot_sha256": "b" * 64}, source, ["000001.SZ"], "a" * 64
+        )
+        == resolved
+    )
 
 
 @pytest.mark.parametrize(
@@ -307,7 +313,9 @@ def test_l4_inventory_derivation_mismatch_and_invalid_remote_proof_stops(
     with pytest.raises(ValueError, match=reason):
         runner.checked_inventory_derivation(
             {"quote_sha256": expected_quote, "source_snapshot_sha256": expected_source},
-            {"source_snapshot_sha256": observed_source}, codes, observed_quote
+            {"source_snapshot_sha256": observed_source},
+            codes,
+            observed_quote,
         )
 
 
@@ -317,8 +325,7 @@ def test_actual_remote_inventory_calls_derived_sha_guard_before_p0_check():
 
     tree = ast.parse(Path("audit/csi1000_l4_modal.py").read_text(encoding="utf-8"))
     inventory = next(
-        node for node in ast.walk(tree)
-        if isinstance(node, ast.FunctionDef) and node.name == "inventory_remote"
+        node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef) and node.name == "inventory_remote"
     )
     calls = [
         (node.lineno, node.func.id)
@@ -329,5 +336,5 @@ def test_actual_remote_inventory_calls_derived_sha_guard_before_p0_check():
     source_p0 = [line for line, name in calls if name == "_verified_original_p0"]
     assert len(derived) == 1 and len(source_p0) == 1 and derived[0] < source_p0[0]
     runner_source = Path("audit/csi1000_l4_modal.py").read_text(encoding="utf-8")
-    assert 'live = inventory_remote.remote(meta)' in runner_source
+    assert "live = inventory_remote.remote(meta)" in runner_source
     assert 'quote_sha == meta["quote_sha256"]' not in runner_source
