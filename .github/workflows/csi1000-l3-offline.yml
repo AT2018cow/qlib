@@ -1,0 +1,50 @@
+name: L3 structural runner offline review
+
+on:
+  pull_request:
+    paths:
+      - 'audit/csi1000_l3_*.py'
+      - 'audit/csi1000_layered_search_core.py'
+      - 'tests/test_csi1000_l3_*.py'
+      - 'docs/experiments/57-csi1000-l3-l4-fastlane-method-20261014.md'
+      - '.github/workflows/csi1000-l3-offline.yml'
+  push:
+    branches:
+      - research/csi1000-l3-runner-20261014
+    paths:
+      - 'audit/csi1000_l3_*.py'
+      - 'tests/test_csi1000_l3_*.py'
+      - '.github/workflows/csi1000-l3-offline.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install offline dependencies (no Modal cloud execution)
+        run: python -m pip install pytest black==25.1.0 pyflakes modal numpy pandas pyarrow
+      - name: Compile L3
+        run: python -m py_compile audit/csi1000_l3_core.py audit/csi1000_l3_modal.py audit/csi1000_layered_search_core.py
+      - name: Actual Modal SDK CLI help (no remote call)
+        env:
+          PYTHONPATH: .
+        run: |
+          python -c 'import audit.csi1000_l3_modal as x; assert x.app is not None'
+          modal run audit/csi1000_l3_modal.py --help
+      - name: Regression suites
+        env:
+          PYTHONPATH: .
+        run: |
+          python -m pytest -q tests/test_csi1000_l3_runner.py tests/test_csi1000_l3_runtime_guards.py tests/test_csi1000_layered_search_selection.py tests/test_csi1000_l2_execution.py
+      - name: Black 120
+        run: python -m black -l 120 --check --diff audit/csi1000_l3_core.py audit/csi1000_l3_modal.py tests/test_csi1000_l3_runner.py tests/test_csi1000_l3_runtime_guards.py
+      - name: Pyflakes
+        run: python -m pyflakes audit/csi1000_l3_core.py audit/csi1000_l3_modal.py tests/test_csi1000_l3_runner.py tests/test_csi1000_l3_runtime_guards.py
