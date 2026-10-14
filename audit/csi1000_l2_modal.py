@@ -21,7 +21,7 @@ from audit.csi1000_l2_fastlane import make_fastlane_plan, make_long_job_roster
 from audit.csi1000_layered_search_core import (
     RESEARCH_VOLUME, SOURCE_VOLUME, require, sha256_file, stable_sha,
 )
-from audit.csi1000_layered_search_modal import _require_signed_export
+from audit.csi1000_layered_search_core import enumerate_cells, require_p0_pass, verify_export_cells
 from audit.csi1000_layered_search_selection import FROZEN_STAGE_A, load_json
 
 try:
@@ -185,7 +185,6 @@ if modal is not None:
         model.fit(dataset)  # the ONLY new fit call for this job
         prediction = model.predict(dataset, segment="test")
         require(not prediction.empty, "STOP_L2_EMPTY_PREDICTION")
-        lo, hi = prediction.index.get_level_values(0)
         observed = [str(prediction.index.get_level_values(0).min())[:10],
                     str(prediction.index.get_level_values(0).max())[:10]]
         expected = job["fold"]["signal"] if job["kind"] == "short" else [job["retrain_asof"], job["signal_end"]]
@@ -482,8 +481,14 @@ if modal is not None:
         sha = _actual_sha()
         prefix_for(run_id, sha)
         plan = make_fastlane_plan(".")
-        p0 = _require_signed_export(p0_summary, "p0", "STOP_L2_P0")
-        # A source-code-specific P0 prefix points to the exact audited export.
+        from audit.csi1000_layered_search_reconcile import verify_sha256sums
+        p0_path = Path(p0_summary).resolve()
+        p0 = json.loads(p0_path.read_text(encoding="utf-8"))
+        require_p0_pass(p0, p0.get("verified_cells"))
+        export_root = p0_path.parents[2]
+        verify_sha256sums(export_root)
+        verify_export_cells(export_root, {c["cell_key"] for c in enumerate_cells("p0")},
+                            "P0", {r["cell_key"]: r for r in p0["verified_cells"]})
         require(p0["status"] == "PASS", "STOP_L2_P0")
         stage_a = load_json(FROZEN_STAGE_A)
         baseline = json.loads(Path("results/csi1000_stage_b/stage_b_full_51756897fc752304.json").read_text())
