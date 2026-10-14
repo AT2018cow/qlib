@@ -2,7 +2,7 @@
 
 NO model fitting is performed by importing this module or by --help. Source
 Volume is mounted read-only and artifacts go to an independent research Volume.
-The coordinator is always local/attached; there is no --detach path.
+The coordinator is always local and attached; it never runs in the background.
 """
 from __future__ import annotations
 
