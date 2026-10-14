@@ -202,6 +202,7 @@ def test_runner_has_no_unreviewed_second_app_or_fit_retries():
     assert "modal deploy" not in source
     assert "--detach" not in source
 
+
 def test_l2_phase_metadata_cannot_override_signed_quote_identity(tmp_path):
     """Regression: phase Remote used to re-add quote_sha256 in details.
 
@@ -240,6 +241,4 @@ def test_l2_phase_metadata_cannot_override_signed_quote_identity(tmp_path):
     assert good["quote_sha256"] == _meta()["quote_sha256"]
     assert l2.checked_receipt(tmp_path, job, _meta()) == good
     with pytest.raises(ValueError, match="cannot override signed identity"):
-        l2.publish_receipt(tmp_path / "bad", job, _meta(), artifacts, {
-            "quote_sha256": _meta()["quote_sha256"]
-        })
+        l2.publish_receipt(tmp_path / "bad", job, _meta(), artifacts, {"quote_sha256": _meta()["quote_sha256"]})
