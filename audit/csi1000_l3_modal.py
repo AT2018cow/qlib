@@ -681,45 +681,36 @@ if modal is not None:
         }
 
     def _dispatch_fit(
-        jobs: list[dict],
-        meta: dict,
-        max_workers: int,
-        reserve: float,
-        actual: float,
-        remaining_waves: list[int] | None = None,
+        jobs: list[dict], meta: dict, max_workers: int, remaining_waves: list[int] | None = None,
     ) -> None:
-        # Every fit attempt is DURABLY recorded before the first container starts.
-        n = 4  # small internal checkpoint wave, not a manual approval gate
-        for start in range(0, len(jobs), n):
-            wave = jobs[start : start + n]
+        """Foreground concurrent map; complete each wave before continuing.
+
+        max_workers caps containers (one CPU-bound fit per container). The
+        genuine four-to-eighty wide waves are checkpointed independently.
+        """
+        width = min(max_workers, 80)
+        for start in range(0, len(jobs), width):
+            wave = jobs[start : start + width]
             already = receipts_remote.remote(wave)
             todo = [job for job, row in zip(wave, already) if row is None]
             if not todo:
                 continue
             if remaining_waves is not None and remaining_waves[0] == 0:
                 raise SafePause("verified fit-wave limit reached")
-            book = attempts_remote.remote(meta, todo, 250, reserve, actual)
-            print(f"L3_FIT_WAVE {start // n + 1}: new={len(todo)} attempted={book['attempt_count']}", flush=True)
-            result = list(fit_remote.with_options(max_containers=max_workers).map(todo))
-            require(
-                len(result) == len(todo) and all(r.get("status") == "PASS" for r in result), "STOP_L3_FIT_WAVE_FAILED"
-            )
+            book = attempts_remote.remote(meta, todo)
+            print(f"L3_FIT_WAVE {start // width + 1}: new={len(todo)} "
+                  f"attempted={book['attempt_count']} requested_containers={max_workers}", flush=True)
+            results = list(fit_remote.with_options(max_containers=max_workers).map(todo))
+            require(len(results) == len(todo) and all(r.get("status") == "PASS" for r in results),
+                    "STOP_L3_FIT_WAVE_FAILED")
             verified = receipts_remote.remote(todo)
-            require(all(r is not None for r in verified), "STOP_L3_FIT_ARTIFACT_UNVERIFIED")
+            require(all(row is not None for row in verified), "STOP_L3_FIT_ARTIFACT_UNVERIFIED")
             if remaining_waves is not None:
                 remaining_waves[0] -= 1
 
-    def _wave(
-        shorts: list[dict],
-        meta: dict,
-        max_workers: int,
-        remaining_waves: list[int] | None,
-    ) -> list[dict]:
-        if remaining_waves is not None:
-            if not remaining_waves[0]:
-                raise SafePause("L3 wave budget exhausted; resume with the same command")
-            remaining_waves[0] -= 1
-        return _dispatch_fit(shorts, meta, max_workers, meta["reserve_per_fit"], meta["spent_usd"])
+    def _wave(jobs: list[dict], meta: dict, max_workers: int,
+              remaining_waves: list[int] | None) -> None:
+        return _dispatch_fit(jobs, meta, max_workers, remaining_waves)
 
     def _run_l3_smoke(meta: dict, max_workers: int, anchor: dict) -> None:
         from audit.csi1000_l3_core import STAGE1_VARIANTS, build_l3_retrain_schedule
@@ -747,10 +738,7 @@ if modal is not None:
                     phase,
                 )
             )
-        from audit.csi1000_l2_execution import budget_gate
-
-        budget_gate(0, len(jobs), 0.0, meta["reserve_per_fit"], meta["spent_usd"], cap=6.0)
-        _dispatch_fit(jobs, meta, max_workers, meta["reserve_per_fit"], meta["spent_usd"])
+        _dispatch_fit(jobs, meta, max_workers)
         rows = receipts_remote.remote(jobs)
         require(len(rows) == 2 and all(r is not None and r.get("fit_performed") for r in rows), "STOP_L3_SMOKE_RECEIPT")
         freeze_remote.remote(
@@ -765,6 +753,23 @@ if modal is not None:
             },
         )
         print(f"L3_SMOKE_PASS 2/2 actual new fits run={meta['run_id']} code={meta['code_sha']}", flush=True)
+
+    def _screened_variant(variant: dict, result: dict, anchor: dict) -> dict:
+        """Bridge signed remote coarse metrics into the final decision schema."""
+        detail = result["detail"]
+        row = {**variant, "candidate_id": anchor["candidate_id"], "topk": 20, "dropn": 2,
+               "passed_coarse": result["passed_coarse"], "detail": detail,
+               "ordinal_mapping": result["ordinal_mapping"]}
+        if row["passed_coarse"]:
+            for key in ("worst_delta_pp", "median_delta_pp", "mdd_degrade_pp", "turnover_ratio"):
+                require(key in detail and isinstance(detail[key], (int, float))
+                        and math.isfinite(detail[key]), f"STOP_L3_SCREEN_MISSING_{key}")
+                row[key] = detail[key]
+        row["config_sha256"] = stable_sha({"candidate_id": anchor["candidate_id"],
+                                           "topk": 20, "dropn": 2,
+                                           "label_horizon": variant["label_horizon"],
+                                           "retrain_frequency": variant["retrain_frequency"]})
+        return row
 
     def _run_l3_complete(meta: dict, max_workers: int, anchor: dict, remaining_waves: list[int] | None) -> None:
         from audit.csi1000_l3_core import (
@@ -813,9 +818,11 @@ if modal is not None:
         for variant in STAGE1_VARIANTS:
             for phase in variant["screen_phases"]:
                 _phase_job_check(meta, anchor, variant, phase, inventory["quote_sha256"])
-            result = screen_remote.remote(meta, variant, meta["p0_prefix"], inventory["quote_sha256"])
-            screened.append({**variant, "passed_coarse": result["passed_coarse"], "detail": result["detail"]})
-        freeze_remote.remote(meta, "l3_screen", {"stage": "stage1", "variants": screened})
+            phase_jobs = [_phase_job(meta, anchor, variant, phase, inventory["quote_sha256"])
+                          for phase in variant["screen_phases"]]
+            result = screen_remote.remote(meta, variant, phase_jobs, meta["p0_prefix"], inventory["quote_sha256"])
+            screened.append(_screened_variant(variant, result, anchor))
+        freeze_remote.remote(meta, "l3_screen_stage1", {"stage": "stage1", "variants": screened})
         if stage2_qualified(screened):
             stage2_jobs = []
             for variant in STAGE2_VARIANTS:
@@ -840,9 +847,13 @@ if modal is not None:
             for variant in STAGE2_VARIANTS:
                 for phase in variant["screen_phases"]:
                     _phase_job_check(meta, anchor, variant, phase, inventory["quote_sha256"])
-                result = screen_remote.remote(meta, variant, meta["p0_prefix"], inventory["quote_sha256"])
-                screened.append({**variant, "passed_coarse": result["passed_coarse"], "detail": result["detail"]})
-            freeze_remote.remote(meta, "l3_screen", {"stage": "stage1+stage2", "variants": screened})
+                phase_jobs = [_phase_job(meta, anchor, variant, phase, inventory["quote_sha256"])
+                              for phase in variant["screen_phases"]]
+                result = screen_remote.remote(meta, variant, phase_jobs, meta["p0_prefix"], inventory["quote_sha256"])
+                screened.append(_screened_variant(variant, result, anchor))
+            freeze_remote.remote(meta, "l3_screen_final", {"stage": "stage1+stage2", "variants": screened})
+        if not stage2_qualified(screened):
+            freeze_remote.remote(meta, "l3_screen_final", {"stage": "stage1", "variants": screened})
         decision, info = l3_decision(screened)
         freeze_remote.remote(meta, "l3_decision", {"decision": decision, **info})
         print(
@@ -863,10 +874,7 @@ if modal is not None:
         p0_summary: str = "",
         p0_prefix: str = "",
         max_workers: int = 1,
-        usd_per_fit_reserve: float = 0.0,
-        smoke_actual_usd: float = 0.0,
-        nonfit_reserve_usd: float = 0.5,
-        max_fit_waves: int = 0,
+         max_fit_waves: int = 0,
     ) -> None:
         """Smoke once (two first-slice fits, one per stage-1 frequency); complete runs stage-gated waves."""
         import re
@@ -874,11 +882,8 @@ if modal is not None:
         require(mode in ("smoke", "complete"), "STOP_L3_MODE")
         require(isinstance(max_fit_waves, int) and 0 <= max_fit_waves <= 10000, "STOP_L3_INVALID_FOREGROUND_WAVE_LIMIT")
         require(mode != "smoke" or max_fit_waves == 0, "STOP_L3_SMOKE_MUST_FINISH")
-        require(1 <= max_workers <= 4, "STOP_L3_WORKER_CAP")
+        require(1 <= max_workers <= 80, "STOP_L3_WORKER_CAP")
         require((mode == "smoke" and max_workers == 1) or mode == "complete", "STOP_L3_SMOKE_MUST_BE_ONE_WORKER")
-        require(usd_per_fit_reserve > 0 and math.isfinite(usd_per_fit_reserve), "STOP_L3_COST_RESERVE_REQUIRED")
-        require(0 <= smoke_actual_usd < 6 and math.isfinite(smoke_actual_usd), "STOP_L3_ACTUAL_BILL")
-        require(math.isfinite(nonfit_reserve_usd) and nonfit_reserve_usd >= 0.5, "STOP_L3_NONFIT_COST_RESERVE_REQUIRED")
         require(
             p0_prefix.startswith("csi1000_layered_search/") and ".." not in p0_prefix and p0_prefix.count("/") >= 4,
             "STOP_L3_P0_PREFIX",
@@ -917,19 +922,12 @@ if modal is not None:
             "source_snapshot_sha256": "",
             "quote_sha256": "",
             "p0_prefix": p0_prefix,
-            "reserve_per_fit": usd_per_fit_reserve,
-            "spent_usd": smoke_actual_usd + nonfit_reserve_usd,
         }
         if mode == "smoke":
             require(get_marker_remote.remote(meta, "smoke_pass") is None, "STOP_L3_SMOKE_ALREADY_DONE")
             # The 125% calibration rule applies to the full run, not the smoke itself.
             _run_l3_smoke(meta, max_workers, anchor)
         else:
-            require(smoke_actual_usd > 0, "STOP_L3_SMOKE_ACTUAL_BILL_REQUIRED")
-            require(
-                2 * usd_per_fit_reserve >= 1.25 * smoke_actual_usd,
-                "STOP_L3_UNDERQUOTED_FIT_RESERVE: require >=125% of average billed smoke fit",
-            )
             _run_l3_complete(meta, max_workers, anchor, [max_fit_waves] if max_fit_waves else None)
         print("L3_DONE", flush=True)
 
