@@ -1,3 +1,36 @@
+## 2026-10-14 user-authorized L3/L4 fast-lane financial policy amendment
+
+**Supersedes only financial spend/quote/ledger gates in contract 53 for L3
+and L4.** The user explicitly removes runtime USD budget control and asks
+for a rough *single pre-launch estimate* and maximum 80 worker containers.
+No L3/L4 runner should demand per-fit cost reservation, 125% smoke
+calibration, actual-bill parameter, billing API polling, P90 sheet or stop
+running due solely to a USD amount. The previous L3 USD6, L4 USD4 and
+global USD30 **financial** ceilings do not gate L3/L4 dispatch under this
+new research authorization. Past P0/L1/L2 bills remain historical facts;
+no pre-existing ledgers are erased or relabeled. Track optional approximate
+actual cost in operator's terminal report, not inside fit/replay dispatch.
+
+**Research scope and provenance are not financial constraints** and remain
+mandatory: L3 two stage-1 frequency variants, stage-2 label variants only
+after valid stage-1 coarse PASS, one frozen Baseline anchor, at most 250
+real fit attempts (including failed fits), at most one structural nominee,
+all PIT/maturity/purge/phase/424-day/F1/source/quote/candidate SHA gates,
+no duplicate paid attempt on unverified resume. L4 is at most six frozen
+configurations, five phases per config and global 1200-fit experiment scope,
+no product Winner promotion absent separately reviewed decision/release PR.
+Do not change those limits to increase search after seeing outcomes.
+
+Modal resources: original L2 measured real LightGBM 8 CPU / 16384 MiB
+per fit successfully. Use that tested CPU-only profile as a starting point
+and permit 1–80 *parallel fit containers*, not 80 concurrent inputs inside
+one LightGBM fit process. At 80 containers the instantaneous request is
+up to 640 CPUs and 1.25 TiB memory; the platform may cap, queue or
+reject it. Use a smaller number if quota/provider I/O bottleneck requires.
+There is no claim that 80 is optimal or available absent a measured test.
+One foreground dispatcher, no detach or overlapping writers; verified
+per-wave pause/resume. See runbook 57 for commands and full experiment gates.
+
 # 53 — CSI1000 有预算上限的分层历史策略搜索合同（2026-10-12）
 
 ## 2026-10-14 L2 fast-lane operator amendment (execution requires separate reviewed runner)
