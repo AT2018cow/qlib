@@ -111,24 +111,130 @@ space, research separation and all pre-registered product gates.
   L4 still needs five full phases and seven product gates. No production
   Winner changes, no website/paper promotion and no automatic L4.
 
-## Current implementational status / exact safe commands
+## Actual implemented runner and operator instructions
 
-Implemented **today**: \`audit/csi1000_l2_fastlane.py\` (read-only planning,
-full 16 short-fold roster and 320-fit preflight) and
-\`tests/test_csi1000_l2_fastlane.py\` (synthetic negative controls).
+Current code: audit/csi1000_l2_execution.py (immutable receipt/budget and
+four-fold shortlist), audit/csi1000_l2_fastlane.py (plan and fit-calendar cap),
+audit/csi1000_l2_modal.py (real LightGBM fit and F1 replay), plus two
+dedicated synthetic-negative-control test files.
 
-**Not yet implemented**: an isolated real-fit L2 Modal runner, short-fold
-qualification parser, run-scoped immutable checkpointing/actual-receipt
-verification, live billing sensor, and a reviewed foreground auto-coordinator.
-Consequently there is **no valid \`modal run --stage l2\` command yet**.
+**No paid L2 smoke before PR #75 independent pytest, Black, pyflakes and
+runtime code review, clean merge, frozen provider/P0 source and cost quote.**
 
-After the runner is implemented and independently reviewed, the operator run
-plan will require just:
-- One genuine short+long smoke with one worker.
-- One \`--resume --through-completion\` foreground invocation with runtime
-  internal waves and fail-closed budget check (actual flag names will come
-  from that new runner's \`--help\` and tests, not this aspirational syntax).
+### Free offline preflight
 
-This document is the approved *workflow intent to review*, not an approval
-to pay or a claim that any new training is done. Do not use L1-C results or
-historically observed return numbers to alter L2 Stage-A proposal formation.
+~~~bash
+set -euo pipefail
+python -m pytest -q \
+  tests/test_csi1000_l2_fastlane.py \
+  tests/test_csi1000_l2_execution.py \
+  tests/test_csi1000_layered_search_selection.py
+python -m black -l 120 --check \
+  audit/csi1000_l2_fastlane.py audit/csi1000_l2_execution.py \
+  audit/csi1000_l2_modal.py \
+  tests/test_csi1000_l2_fastlane.py tests/test_csi1000_l2_execution.py
+python -m pyflakes audit/csi1000_l2_fastlane.py \
+  audit/csi1000_l2_execution.py audit/csi1000_l2_modal.py \
+  tests/test_csi1000_l2_fastlane.py tests/test_csi1000_l2_execution.py
+python -m py_compile audit/csi1000_l2_fastlane.py \
+  audit/csi1000_l2_execution.py audit/csi1000_l2_modal.py
+python -m audit.csi1000_l2_fastlane \
+  --repo-root . --output /tmp/csi1000_l2_frozen_plan.json
+modal run audit/csi1000_l2_modal.py --help
+git status --porcelain
+git rev-parse HEAD
+~~~
+
+The P0 export root must contain summaries/p0/stage_p0_summary.json and
+the full signed cell artifacts. Compute the original P0 prefix from that
+summary's real run_id and code_sha, not the L1-C prefix. Freeze plan SHA,
+Stage-A 80/Stage-B 11 input SHA and exact merged code SHA.
+
+### One actual paid Smoke — two reusable fits
+
+~~~bash
+export L2_RUN_ID=l2_20261014_a1
+export P0_EXPORT=/absolute/path/to/full-signed-p0-export
+export P0_PREFIX='csi1000_layered_search/csi1000_layered_search_v1/<real-P0-run-id>/p0/<P0-code-SHA-first12>'
+# Choose a conservative value using live modal billing rates and
+# known Stage-A/B CPU+RAM seconds. Do not copy this as an empty string.
+export L2_USD_PER_FIT_RESERVE='<conservative-USD-per-fit-attempt>'
+set -o pipefail
+modal run audit/csi1000_l2_modal.py \
+  --mode smoke \
+  --run-id "$L2_RUN_ID" \
+  --p0-summary "$P0_EXPORT/summaries/p0/stage_p0_summary.json" \
+  --p0-prefix "$P0_PREFIX" \
+  --max-workers 1 \
+  --usd-per-fit-reserve "$L2_USD_PER_FIT_RESERVE" \
+  2>&1 | tee /tmp/csi1000-l2-smoke.log
+~~~
+
+Success requires genuine exit 0 and L2_SMOKE_PASS, with one new
+candidate's purged short fold and one existing candidate's first
+phase-0 long retrain, both SHA-verified, durable and counted toward the
+complete roster. Record App ID, exact startup/build/worker health, real
+billing and source/provider fingerprint; STOP on any mismatch or failure.
+
+### One foreground automatic full-run invocation
+
+~~~bash
+# Use actual billed usage from the smoke App, never an assumed price.
+export L2_SMOKE_ACTUAL_USD='<real-smoke-App-bill-in-USD>'
+set -o pipefail
+modal run audit/csi1000_l2_modal.py \
+  --mode complete \
+  --run-id "$L2_RUN_ID" \
+  --p0-summary "$P0_EXPORT/summaries/p0/stage_p0_summary.json" \
+  --p0-prefix "$P0_PREFIX" \
+  --max-workers 4 \
+  --usd-per-fit-reserve "$L2_USD_PER_FIT_RESERVE" \
+  --smoke-actual-usd "$L2_SMOKE_ACTUAL_USD" \
+  --nonfit-reserve-usd 0.5 \
+  2>&1 | tee /tmp/csi1000-l2-complete.log
+~~~
+
+This same single foreground coordinator:
+
+1. Revalidates and reuses the two Smoke fit receipts without retraining.
+2. Completes the remaining 15 new-model short-fold fits, internally in
+   verified waves of at most four, without manual signoffs.
+3. Independently validates the 16/16 full-fold shortlist, freezes a
+   maximum of two new candidates, then computes the true long-training
+   calendar for four existing plus eligible new candidates.
+4. Prechecks actual proposed fit count and conservative reserved spend
+   against 320 new fits (including failures/retries) and USD12 L2 layer
+   ceiling; if either is inadequate, STOP, never silently trim candidates.
+5. Completes all permitted Phase0/10 rolling retrain fit jobs, stores
+   checkpoint/prediction SHA, constructs each 424-day full signal,
+   backtests fixed F1 Top20/Drop2, verifies same-phase P0 NAV/benchmark,
+   and produces the full ranked summary. All successful internal waves
+   continue without additional human authorization.
+
+A successful final log may say L2_COMPLETE but still marks
+bill_is_operator_verified=false. The built-in spending check is a
+*conservative forward reservation* (current operator-supplied per-fit
+cost + at least USD0.50 non-fit overhead), **NOT a live-billing API**.
+After completion, reconcile all Modal charges and all failed attempts
+before independent L2 acceptance. A workspace-level spend cap may be
+configured separately when authorized; do not change existing workspace
+settings without approval.
+
+**Foreground only:** do not use --detach, nohup, shell &, or concurrent
+coordinators. Require the OpenCode frontend timeout to cover the complete
+expected build/queue/fit/replay/audit wall time. If impossible, use the
+fewest feasible additional attached --mode complete invocations at the
+same run/SHA/prefix. Resumption only accepts exact byte-verified job
+receipts; an attempted-but-failed fit is never retried without an explicit
+failure investigation.
+
+### Final L2 evidence review
+
+Require: all 16 new short-fold results, 0–2 independently selected new
+models, all expected real long fit receipts (including 1 from Smoke),
+the two pre-registered phases per candidate, all file SHA,
+source/provider and F1 quote identity, 424-day same-phase P0 pairing,
+0 blocked, actual fit-attempt count and actual paid spend <=USD12.
+Mark all observations HISTORICALLY_CONSUMED. L2 qualifies at most two
+candidates; L3, L4 and any production Winner release need separate
+decisions. No paid activity has been performed by this PR.
