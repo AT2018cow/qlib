@@ -808,6 +808,8 @@ if modal is not None:
             "candidate_id": anchor["candidate_id"],
             "topk": 20,
             "dropn": 2,
+            "layer": "l3",
+            "coarse_pass": result["passed_coarse"],
             "passed_coarse": result["passed_coarse"],
             "detail": detail,
             "ordinal_mapping": result["ordinal_mapping"],
