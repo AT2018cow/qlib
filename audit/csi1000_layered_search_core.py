@@ -1110,7 +1110,10 @@ class BudgetLedger:
 
 
 def _paired_deltas(
-    challenger: List[Dict[str, Any]], baseline: List[Dict[str, Any]], n_expected: int
+    challenger: List[Dict[str, Any]],
+    baseline: List[Dict[str, Any]],
+    n_expected: int,
+    allowed_phases: set | None = None,
 ) -> Tuple[str, Dict[str, Any], List[float]]:
     """Pair challenger vs baseline rows phase-by-phase; all deltas are chall minus base."""
     detail: Dict[str, Any] = {}
@@ -1128,8 +1131,10 @@ def _paired_deltas(
         return "NOT_ELIGIBLE", {**detail, "reason": "duplicate phase in candidate or baseline"}, []
     if set(base_by_phase) != set(chall_by_phase):
         return "NOT_ELIGIBLE", {**detail, "reason": "phase sets differ between legs"}, []
-    if n_expected == 2 and set(base_by_phase) != expected_phases:
-        return "NOT_ELIGIBLE", {**detail, "reason": "wrong pre-registered screen phases"}, []
+    if n_expected == 2:
+        allowed = allowed_phases if allowed_phases is not None else expected_phases
+        if set(base_by_phase) != allowed:
+            return "NOT_ELIGIBLE", {**detail, "reason": "wrong pre-registered screen phases"}, []
     if n_expected == 5 and set(base_by_phase) not in expected_phases:
         return "NOT_ELIGIBLE", {**detail, "reason": "wrong pre-registered final phases"}, []
     for leg in (challenger, baseline):
@@ -1167,13 +1172,19 @@ def _paired_deltas(
     return "OK", {}, deltas
 
 
-def coarse_pass(challenger: List[Dict[str, Any]], baseline: List[Dict[str, Any]]) -> Tuple[bool, Dict[str, Any]]:
+def coarse_pass(
+    challenger: List[Dict[str, Any]], baseline: List[Dict[str, Any]], allowed_phases: set | None = None
+) -> Tuple[bool, Dict[str, Any]]:
     """L1 two-phase coarse screen on paired improvements (never absolute levels).
 
     Both phases need worst and median paired improvement >= +0.5pp, MDD
     degradation <= 5pp and sane turnover. Returns (passed, detail).
+
+    ``allowed_phases`` optionally overrides the default {0, 10} screen set
+    for stages with pre-registered alternative calendars (e.g. L3 freq10
+    uses {0, 5}); callers must pass a frozen set, never a post-hoc one.
     """
-    code, detail, deltas = _paired_deltas(challenger, baseline, 2)
+    code, detail, deltas = _paired_deltas(challenger, baseline, 2, allowed_phases)
     if code != "OK":
         return False, {"screen": "coarse", "gate": code, **detail}
     base_by_phase = {r["phase"]: r for r in baseline}
