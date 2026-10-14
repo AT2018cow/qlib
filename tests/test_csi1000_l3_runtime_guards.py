@@ -120,7 +120,14 @@ def test_screened_variant_passes_signed_fields_into_l3_final_decision():
     }
     row = runner._screened_variant(variant, result, anchor)
     assert row["worst_delta_pp"] == 1.2
+    assert row["layer"] == "l3" and row["coarse_pass"] is True
     assert len(row["config_sha256"]) == 64
+    from audit.csi1000_layered_search_selection import freeze_finalists
+    official = {"candidate_id": core.ANCHOR_CANDIDATE, "topk": 20, "dropn": 2,
+                "config_sha256": "a" * 64}
+    frozen = freeze_finalists([row], official)
+    assert len(frozen["configurations"]) == 2
+    assert frozen["configurations"][1]["config_sha256"] == row["config_sha256"]
     assert core.stage2_qualified([row]) is True
     verdict, out = core.l3_decision([row])
     assert verdict == "PROPOSE_STRUCTURE"
