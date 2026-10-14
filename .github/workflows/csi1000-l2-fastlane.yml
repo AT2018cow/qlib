@@ -9,6 +9,11 @@ on:
       - 'tests/test_csi1000_l2_*.py'
       - 'docs/experiments/56-csi1000-l2-fastlane-execution-20261014.md'
       - '.github/workflows/csi1000-l2-fastlane.yml'
+  pull_request:
+    paths:
+      - 'audit/csi1000_l2_*.py'
+      - 'tests/test_csi1000_l2_*.py'
+      - '.github/workflows/csi1000-l2-fastlane.yml'
   workflow_dispatch:
 
 permissions:

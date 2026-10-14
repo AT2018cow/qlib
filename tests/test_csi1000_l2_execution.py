@@ -201,3 +201,44 @@ def test_runner_has_no_unreviewed_second_app_or_fit_retries():
     assert "model.fit(dataset)" in source
     assert "modal deploy" not in source
     assert "--detach" not in source
+
+
+def test_l2_phase_metadata_cannot_override_signed_quote_identity(tmp_path):
+    """Regression: phase Remote used to re-add quote_sha256 in details.
+
+    Smoke only runs fit_remote, so the conflict appeared after many long fits.
+    Compare the actual AST payload against the signer and exercise the writer.
+    """
+    import ast
+
+    source = Path("audit/csi1000_l2_modal.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    phase_fn = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "phase_remote")
+    details = next(
+        n.value
+        for n in ast.walk(phase_fn)
+        if isinstance(n, ast.Assign)
+        and len(n.targets) == 1
+        and isinstance(n.targets[0], ast.Name)
+        and n.targets[0].id == "details"
+    )
+    assert isinstance(details, ast.Dict)
+    keys = {key.value for key in details.keys if isinstance(key, ast.Constant)}
+    protected = set(_meta()) | {"status", "kind", "job_sha256", "artifact_sha256"}
+    assert not (keys & protected), f"phase details must not re-sign identity fields: {keys & protected}"
+
+    class MockFrame:
+        def to_parquet(self, path):
+            Path(path).write_bytes(b"valid-test-parquet-sha-proxy")
+
+    job = {**_short_job(), "kind": "phase", "phase": 0}
+    artifacts = {
+        "report.parquet": MockFrame(),
+        "decisions.json": [{"orders": []}],
+        "signal.parquet": MockFrame(),
+    }
+    good = l2.publish_receipt(tmp_path, job, _meta(), artifacts, {"candidate_id": job["candidate_id"]})
+    assert good["quote_sha256"] == _meta()["quote_sha256"]
+    assert l2.checked_receipt(tmp_path, job, _meta()) == good
+    with pytest.raises(ValueError, match="cannot override signed identity"):
+        l2.publish_receipt(tmp_path / "bad", job, _meta(), artifacts, {"quote_sha256": _meta()["quote_sha256"]})
