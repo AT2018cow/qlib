@@ -137,7 +137,7 @@ def l3_publish_receipt(root: Path, job: dict, identity: dict, artifacts: dict, d
 if modal is not None:
     original = modal.Volume.from_name(SOURCE_VOLUME, create_if_missing=False)
     p0_archive = modal.Volume.from_name(RESEARCH_VOLUME, create_if_missing=False)
-    research = modal.Volume.from_name(L3_VOLUME_V2, create_if_missing=False)
+    research = modal.Volume.from_name(L3_VOLUME_V2, create_if_missing=False, version=2)
     image = (
         modal.Image.debian_slim(python_version="3.11")
         .apt_install("build-essential")
