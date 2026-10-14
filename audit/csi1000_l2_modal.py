@@ -249,8 +249,12 @@ if modal is not None:
         ]
         expected = job["fold"]["signal"] if job["kind"] == "short" else [job["retrain_asof"], job["signal_end"]]
         require(observed == expected, "STOP_L2_PREDICTION_COVERAGE")
-        require(prediction.index.is_unique and prediction.notna().all() and
-                np.isfinite(prediction.to_numpy(dtype=float)).all(), "STOP_L2_SIGNAL_SCHEMA")
+        require(
+            prediction.index.is_unique
+            and prediction.notna().all()
+            and np.isfinite(prediction.to_numpy(dtype=float)).all(),
+            "STOP_L2_SIGNAL_SCHEMA",
+        )
         booster = getattr(model, "model", None)
         require(booster is not None and hasattr(booster, "model_to_string"), "STOP_L2_NO_TRAINED_BOOSTER")
         checkpoint = booster.model_to_string()
@@ -269,8 +273,10 @@ if modal is not None:
 
             f = job["fold"]
             report, decisions = backtest_signal(prediction, 20, 2, "csi1000", f["execution"][0], f["execution"][1])
-            require(len(report) == 20 and report.index.is_unique and len(decisions) == 20,
-                    "STOP_L2_SHORT_20_SESSION_COVERAGE")
+            require(
+                len(report) == 20 and report.index.is_unique and len(decisions) == 20,
+                "STOP_L2_SHORT_20_SESSION_COVERAGE",
+            )
             metrics = portfolio_performance(report, initial_cash=100_000_000, backtest_start=f["execution"][0])
             col = "turnover" if "turnover" in report.columns else "total_turnover"
             require(col in report and "cost" in report, "STOP_L2_SHORT_METRICS_MISSING")
