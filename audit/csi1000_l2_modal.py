@@ -565,7 +565,13 @@ if modal is not None:
         apply_lgb_reproducibility(cfg)
         return stable_sha(cfg["task"]["model"])
 
-    def _dispatch_fit(jobs: list[dict], meta: dict, max_workers: int, reserve: float, actual: float) -> None:
+    class SafePause(Exception):
+        """Requested graceful foreground pause at a completed wave boundary."""
+
+    def _dispatch_fit(
+        jobs: list[dict], meta: dict, max_workers: int, reserve: float,
+        actual: float, remaining_waves: list[int] | None = None,
+    ) -> None:
         # Every fit attempt is DURABLY recorded before the first container starts.
         n = 4  # small internal checkpoint wave, not a manual approval gate
         for start in range(0, len(jobs), n):
@@ -574,6 +580,8 @@ if modal is not None:
             todo = [job for job, row in zip(wave, already) if row is None]
             if not todo:
                 continue
+            if remaining_waves is not None and remaining_waves[0] == 0:
+                raise SafePause("verified fit-wave limit reached")
             book = attempts_remote.remote(meta, todo, 320, reserve, actual)
             print(f"L2_FIT_WAVE {start // n + 1}: new={len(todo)} attempted={book['attempt_count']}", flush=True)
             result = list(fit_remote.with_options(max_containers=max_workers).map(todo))
@@ -582,6 +590,8 @@ if modal is not None:
             )
             verified = receipts_remote.remote(todo)
             require(all(r is not None for r in verified), "STOP_L2_FIT_ARTIFACT_UNVERIFIED")
+            if remaining_waves is not None:
+                remaining_waves[0] -= 1
 
     def _meta(run_id: str, sha: str, plan: dict, provider: str) -> dict:
         return {"run_id": run_id, "code_sha": sha, "plan_sha256": plan["plan_sha256"], "provider_fingerprint": provider}
@@ -628,9 +638,13 @@ if modal is not None:
         usd_per_fit_reserve: float = 0.0,
         smoke_actual_usd: float = 0.0,
         nonfit_reserve_usd: float = 0.5,
+        max_fit_waves: int = 0,
     ) -> None:
         """Smoke once; use mode=complete to automatically continue all safe waves."""
         require(mode in ("smoke", "complete"), "STOP_L2_MODE")
+        require(isinstance(max_fit_waves, int) and 0 <= max_fit_waves <= 10000,
+                "STOP_L2_INVALID_FOREGROUND_WAVE_LIMIT")
+        require(mode != "smoke" or max_fit_waves == 0, "STOP_L2_SMOKE_MUST_FINISH")
         require(1 <= max_workers <= 4, "STOP_L2_WORKER_CAP")
         require((mode == "smoke" and max_workers == 1) or mode == "complete", "STOP_L2_SMOKE_MUST_BE_ONE_WORKER")
         require(usd_per_fit_reserve > 0 and math.isfinite(usd_per_fit_reserve), "STOP_L2_COST_RESERVE_REQUIRED")
@@ -716,7 +730,13 @@ if modal is not None:
         base_planned = 16 + 4 * sum(len(build_phase_jobs(calendar, p)) for p in (0, 10))
         require(base_planned <= 320, "STOP_L2_FIT_CAP_PREPLAN")
         budget_gate(0, base_planned, 0, usd_per_fit_reserve, smoke_actual_usd + nonfit_reserve_usd)
-        _dispatch_fit(short, meta, max_workers, usd_per_fit_reserve, smoke_actual_usd + nonfit_reserve_usd)
+        remaining_waves = [max_fit_waves] if max_fit_waves else None
+        try:
+            _dispatch_fit(short, meta, max_workers, usd_per_fit_reserve,
+                          smoke_actual_usd + nonfit_reserve_usd, remaining_waves)
+        except SafePause:
+            print("L2_INCOMPLETE_SAFE_PAUSE: verified partial wave receipts; rerun --mode complete", flush=True)
+            return
         short_rows = receipts_remote.remote(short)
         require(all(r is not None for r in short_rows), "STOP_L2_SHORT_NOT_FULL")
         shortlist = choose_new_for_long(plan, short_rows, stage_a)
@@ -728,7 +748,12 @@ if modal is not None:
         by_id = {x["candidate_id"]: x for x in candidates}
         long = [_long_job(meta, by_id[j["candidate_id"]], j) for j in roster["jobs"]]
         budget_gate(0, 16 + len(long), 0, usd_per_fit_reserve, smoke_actual_usd + nonfit_reserve_usd)
-        _dispatch_fit(long, meta, max_workers, usd_per_fit_reserve, smoke_actual_usd + nonfit_reserve_usd)
+        try:
+            _dispatch_fit(long, meta, max_workers, usd_per_fit_reserve,
+                          smoke_actual_usd + nonfit_reserve_usd, remaining_waves)
+        except SafePause:
+            print("L2_INCOMPLETE_SAFE_PAUSE: verified partial wave receipts; rerun --mode complete", flush=True)
+            return
         phase_jobs = [
             _phase_job(meta, candidate, phase, inventory["quote_sha256"])
             for candidate in candidates
