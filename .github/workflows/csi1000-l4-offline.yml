@@ -1,0 +1,49 @@
+name: L4 frozen five-phase offline gates
+
+on:
+  pull_request:
+    paths:
+      - 'audit/csi1000_l4_*.py'
+      - 'tests/test_csi1000_l4_*.py'
+      - 'docs/experiments/58-csi1000-l4-*'
+      - '.github/workflows/csi1000-l4-offline.yml'
+  push:
+    branches:
+      - research/csi1000-l4-frozen-five-phase-20261014
+    paths:
+      - 'audit/csi1000_l4_*.py'
+      - 'tests/test_csi1000_l4_*.py'
+      - '.github/workflows/csi1000-l4-offline.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install local only dependencies
+        run: python -m pip install pytest 'black==25.1.0' pyflakes modal pandas numpy pyarrow
+      - name: Compile L4 (zero remote calls)
+        run: python -m py_compile audit/csi1000_l4_core.py audit/csi1000_l4_modal.py
+      - name: Real Modal SDK and CLI help (no billed work)
+        env:
+          PYTHONPATH: .
+        run: |
+          python -c 'import audit.csi1000_l4_modal as runner; assert runner.app is not None'
+          modal run audit/csi1000_l4_modal.py --help
+      - name: Frozen plan, SHA tamper and product-gate regressions
+        env:
+          PYTHONPATH: .
+        run: |
+          python -m pytest -q tests/test_csi1000_l4_final.py tests/test_csi1000_layered_search_selection.py tests/test_csi1000_l3_runner.py
+      - name: Black 120 (read-only)
+        run: python -m black -l 120 --check --diff audit/csi1000_l4_core.py audit/csi1000_l4_modal.py tests/test_csi1000_l4_final.py
+      - name: Pyflakes
+        run: python -m pyflakes audit/csi1000_l4_core.py audit/csi1000_l4_modal.py tests/test_csi1000_l4_final.py

@@ -1,0 +1,54 @@
+{
+  "stage": "l4",
+  "status": "FROZEN_FINALIST_PLAN_NOT_EXECUTED",
+  "max_configs": 6,
+  "max_cells": 30,
+  "configurations": [
+    {
+      "candidate_id": "23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785",
+      "topk": 20,
+      "dropn": 2,
+      "config_sha256": "e7d1fab6c5e8309c54bbc34bd7741151421eb67ce447579a61d8cfe72d548191",
+      "layer": "p0",
+      "coarse_pass": true
+    },
+    {
+      "candidate_id": "c98856b460aba687640d422e85a82a545bf5b6ca932e906a180699e0f6cad19b",
+      "topk": 10,
+      "dropn": 1,
+      "layer": "l1",
+      "coarse_pass": true,
+      "worst_delta_pp": 21.63,
+      "median_delta_pp": 22.74,
+      "mdd_degrade_pp": -3.85,
+      "turnover_ratio": 0.996,
+      "config_sha256": "1ca6fae56e8c4e40c73b1a45866825930aecba36ec529544a50da5408c93d317"
+    },
+    {
+      "candidate_id": "23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785",
+      "topk": 10,
+      "dropn": 1,
+      "layer": "l1",
+      "coarse_pass": true,
+      "worst_delta_pp": 10.44,
+      "median_delta_pp": 16.12,
+      "mdd_degrade_pp": -4.32,
+      "turnover_ratio": 1.002,
+      "config_sha256": "95ae81ba885dad4e6eb31838e0bbea55d9281807289efe9ce150cbc12edc74b6"
+    },
+    {
+      "candidate_id": "a419047ab97ec0273ebe67791b6e225e824b2764f5932d73651efd89add5a677",
+      "topk": 10,
+      "dropn": 1,
+      "layer": "l1",
+      "coarse_pass": true,
+      "worst_delta_pp": 7.85,
+      "median_delta_pp": 9.97,
+      "mdd_degrade_pp": -0.55,
+      "turnover_ratio": 0.995,
+      "config_sha256": "3ddff2cd6138f0adf003ff6d899a496ed2393ba26dddccc6ce7af274532535e0"
+    }
+  ],
+  "finalist_manifest_sha256": "b6bd3b3d687d017fb6586d68e88ab71691c2225eb4545e853560a776c9cae1c8",
+  "historic_data": "HISTORICALLY_CONSUMED"
+}
