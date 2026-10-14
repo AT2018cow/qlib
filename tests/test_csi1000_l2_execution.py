@@ -1,8 +1,6 @@
 """Offline L2 receipt, budget and four-fold promotion negative controls."""
 from __future__ import annotations
 
-import copy
-import json
 from pathlib import Path
 
 import pytest
