@@ -157,18 +157,19 @@ def test_variant_fit_math_within_cap():
         for p in v["screen_phases"]
     )
     assert 0 < stage1 < 250 and 0 < stage2 < 250 and stage1 + stage2 + 2 <= 250
-    assert l3.check_l3_budgets(stage1 + stage2 + 2, 0, 0.0) == "OK_CONTINUE"
-    assert l3.check_l3_budgets(251, 0, 0.0) == "STOP_BUDGET"
-    assert l3.check_l3_budgets(0, 251, 0.0) == "STOP_BUDGET"
-    assert l3.check_l3_budgets(0, 0, 6.01) == "STOP_BUDGET"
-    assert l3.check_l3_budgets(0, 0, float("nan")) == "STOP_COST_UNKNOWN"
+    assert l3.check_l3_fit_scope(stage1 + stage2 + 2, 0) == "OK_CONTINUE"
+    assert l3.check_l3_fit_scope(251, 0) == "STOP_EXPERIMENT_SCOPE"
+    assert l3.check_l3_fit_scope(0, 251) == "STOP_EXPERIMENT_SCOPE"
+    assert l3.check_l3_fit_scope(0, 0) == "OK_CONTINUE"
+    with pytest.raises(ValueError):
+        l3.check_l3_fit_scope(0, -1)
 
 
 def test_plan_frozen_and_deterministic():
     first, second = l3.make_l3_plan(), l3.make_l3_plan()
     assert first == second
     assert first["status"] == "PLAN_ONLY_NOT_EXECUTED"
-    assert first["fit_cap_including_retries"] == 250 and first["cost_ceiling_usd"] == 6.0
+    assert first["fit_cap_including_retries"] == 250 and "cost_ceiling_usd" not in first
     assert first["max_advance"] == 1
     assert [v["screen_phases"] for v in first["stage1_variants"]] == [[0, 5], [0, 20]]
     assert l3.variant_key(first["stage1_variants"][0], 5).startswith("l3_r20_f10_p05")
