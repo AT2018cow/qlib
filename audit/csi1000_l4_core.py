@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Any
 
 from audit.csi1000_layered_search_core import (
     BASELINE_CANDIDATE,
