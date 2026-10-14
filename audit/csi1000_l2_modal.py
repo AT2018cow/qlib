@@ -569,8 +569,12 @@ if modal is not None:
         """Requested graceful foreground pause at a completed wave boundary."""
 
     def _dispatch_fit(
-        jobs: list[dict], meta: dict, max_workers: int, reserve: float,
-        actual: float, remaining_waves: list[int] | None = None,
+        jobs: list[dict],
+        meta: dict,
+        max_workers: int,
+        reserve: float,
+        actual: float,
+        remaining_waves: list[int] | None = None,
     ) -> None:
         # Every fit attempt is DURABLY recorded before the first container starts.
         n = 4  # small internal checkpoint wave, not a manual approval gate
@@ -642,8 +646,7 @@ if modal is not None:
     ) -> None:
         """Smoke once; use mode=complete to automatically continue all safe waves."""
         require(mode in ("smoke", "complete"), "STOP_L2_MODE")
-        require(isinstance(max_fit_waves, int) and 0 <= max_fit_waves <= 10000,
-                "STOP_L2_INVALID_FOREGROUND_WAVE_LIMIT")
+        require(isinstance(max_fit_waves, int) and 0 <= max_fit_waves <= 10000, "STOP_L2_INVALID_FOREGROUND_WAVE_LIMIT")
         require(mode != "smoke" or max_fit_waves == 0, "STOP_L2_SMOKE_MUST_FINISH")
         require(1 <= max_workers <= 4, "STOP_L2_WORKER_CAP")
         require((mode == "smoke" and max_workers == 1) or mode == "complete", "STOP_L2_SMOKE_MUST_BE_ONE_WORKER")
@@ -732,8 +735,9 @@ if modal is not None:
         budget_gate(0, base_planned, 0, usd_per_fit_reserve, smoke_actual_usd + nonfit_reserve_usd)
         remaining_waves = [max_fit_waves] if max_fit_waves else None
         try:
-            _dispatch_fit(short, meta, max_workers, usd_per_fit_reserve,
-                          smoke_actual_usd + nonfit_reserve_usd, remaining_waves)
+            _dispatch_fit(
+                short, meta, max_workers, usd_per_fit_reserve, smoke_actual_usd + nonfit_reserve_usd, remaining_waves
+            )
         except SafePause:
             print("L2_INCOMPLETE_SAFE_PAUSE: verified partial wave receipts; rerun --mode complete", flush=True)
             return
@@ -749,8 +753,9 @@ if modal is not None:
         long = [_long_job(meta, by_id[j["candidate_id"]], j) for j in roster["jobs"]]
         budget_gate(0, 16 + len(long), 0, usd_per_fit_reserve, smoke_actual_usd + nonfit_reserve_usd)
         try:
-            _dispatch_fit(long, meta, max_workers, usd_per_fit_reserve,
-                          smoke_actual_usd + nonfit_reserve_usd, remaining_waves)
+            _dispatch_fit(
+                long, meta, max_workers, usd_per_fit_reserve, smoke_actual_usd + nonfit_reserve_usd, remaining_waves
+            )
         except SafePause:
             print("L2_INCOMPLETE_SAFE_PAUSE: verified partial wave receipts; rerun --mode complete", flush=True)
             return
