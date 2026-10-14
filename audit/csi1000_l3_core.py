@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
@@ -83,7 +82,6 @@ FINALS_PHASES = {10: [0, 2, 3, 5, 7], 20: [0, 4, 6, 10, 15], 40: [0, 8, 12, 20, 
 
 # Budgets (contract 53 section 2, L3 sub-cap).
 L3_FIT_CAP = 250
-L3_USD_CAP = 6.0
 L3_MAX_ADVANCE = 1
 L3_WORKER_CAP = 4
 
@@ -203,7 +201,6 @@ def make_l3_plan() -> Dict[str, Any]:
         "fees_bp": {"buy": FEE_BUY_BP, "sell": FEE_SELL_BP, "min_cny": FEE_MIN_CNY},
         "initial_cash_cny": INITIAL_CASH_CNY,
         "fit_cap_including_retries": L3_FIT_CAP,
-        "cost_ceiling_usd": L3_USD_CAP,
         "max_advance": L3_MAX_ADVANCE,
         "historic_data": "HISTORICALLY_CONSUMED",
     }
@@ -261,17 +258,16 @@ def l3_decision(screened: List[Dict[str, Any]]) -> Tuple[str, Dict[str, Any]]:
     return "PROPOSE_STRUCTURE", {"winner": ordered[0], "n_pass": len(passed), "dropped": [v for v in ordered[1:]]}
 
 
-def check_l3_budgets(fits_planned: int, fits_used: int, spend_usd: float) -> str:
-    """Fail-closed L3 budget gate: 250 fits and USD 6.0 are hard stops."""
-    for value, name in ((fits_planned, "planned fits"), (fits_used, "used fits")):
-        require(isinstance(value, int) and value >= 0, f"{name} invalid")
-    if not isinstance(spend_usd, (int, float)) or not math.isfinite(spend_usd):
-        return "STOP_COST_UNKNOWN"
-    require(spend_usd >= 0, "spend invalid")
-    if fits_used > L3_FIT_CAP or fits_planned > L3_FIT_CAP:
-        return "STOP_BUDGET"
-    if spend_usd > L3_USD_CAP + 1e-9:
-        return "STOP_BUDGET"
+def check_l3_fit_scope(fits_planned: int, fits_attempted: int) -> str:
+    """Keep the frozen 250-fit experimental search space, not a financial budget.
+
+    Count failed/retried fits to protect trial provenance; there is no USD
+    reservation, spending threshold, quotation or billing requirement.
+    """
+    for value, name in ((fits_planned, "planned fits"), (fits_attempted, "attempted fits")):
+        require(type(value) is int and value >= 0, f"{name} invalid")
+    if fits_planned > L3_FIT_CAP or fits_attempted > L3_FIT_CAP:
+        return "STOP_EXPERIMENT_SCOPE"
     return "OK_CONTINUE"
 
 
@@ -307,7 +303,6 @@ def main(argv: List[str] | None = None) -> int:
                     "protocol": plan["protocol"],
                     "variants": plan["stage1_variants"] + plan["stage2_variants"],
                     "fit_cap": plan["fit_cap_including_retries"],
-                    "cost_cap": plan["cost_ceiling_usd"],
                 },
                 indent=2,
             )
@@ -316,8 +311,8 @@ def main(argv: List[str] | None = None) -> int:
     if args.dry_run:
         plan = make_l3_plan()
         assert plan["status"] == "PLAN_ONLY_NOT_EXECUTED"
-        assert check_l3_budgets(196, 0, 0.0) == "OK_CONTINUE"
-        assert check_l3_budgets(251, 0, 0.0) == "STOP_BUDGET"
+        assert check_l3_fit_scope(196, 0) == "OK_CONTINUE"
+        assert check_l3_fit_scope(251, 0) == "STOP_EXPERIMENT_SCOPE"
         print("DRY_RUN_OK")
         return 0
     build_cli().print_help()
