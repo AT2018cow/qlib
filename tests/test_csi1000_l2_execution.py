@@ -51,9 +51,16 @@ def test_l2_job_id_is_unique_and_phase_bounds():
 def test_l2_receipt_requires_exact_bytes_job_and_identity(tmp_path):
     job = _short_job()
     identity = _meta()
-    content = {"prediction.parquet": b"prediction",
+    class DummyParquet:
+        def __init__(self, data):
+            self.data = data
+
+        def to_parquet(self, path):
+            Path(path).write_bytes(self.data)
+
+    content = {"prediction.parquet": DummyParquet(b"prediction"),
                "checkpoint.txt": "lightgbm-booster",
-               "report.parquet": b"report", "decisions.json": [{"orders": []}]}
+               "report.parquet": DummyParquet(b"report"), "decisions.json": [{"orders": []}]}
     saved = l2.publish_receipt(tmp_path, job, identity, content, {
         "candidate_id": job["candidate_id"], "fold_id": "fold1", "metrics": {"x": 1.0},
     })
