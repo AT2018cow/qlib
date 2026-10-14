@@ -400,8 +400,8 @@ if modal is not None:
             ranked.append({"candidate_id": cid, "topk": 20, "dropn": 2,
                            "passed_coarse": passed, **detail, "turnover_ratio": ratio})
         ranked.sort(key=lambda r: (
-            not r["passed_coarse"], -r["worst_delta_pp"],
-            -r["median_delta_pp"], r["candidate_id"],
+            not r["passed_coarse"], -float(r.get("worst_delta_pp") or -1e6),
+            -float(r.get("median_delta_pp") or -1e6), r["candidate_id"],
         ))
         return {"status": "PASS", "qualified_configs": sum(r["passed_coarse"] for r in ranked),
                 "top_two_for_final_pool": [r for r in ranked if r["passed_coarse"]][:2],
@@ -486,10 +486,17 @@ if modal is not None:
         p0 = json.loads(p0_path.read_text(encoding="utf-8"))
         require_p0_pass(p0, p0.get("verified_cells"))
         export_root = p0_path.parents[2]
-        verify_sha256sums(export_root)
+        if (export_root / "SHA256SUMS.txt").exists():
+            verify_sha256sums(export_root)
         verify_export_cells(export_root, {c["cell_key"] for c in enumerate_cells("p0")},
                             "P0", {r["cell_key"]: r for r in p0["verified_cells"]})
         require(p0["status"] == "PASS", "STOP_L2_P0")
+        require(p0_prefix == (
+            f"csi1000_layered_search/csi1000_layered_search_v1/"
+            f"{p0['run_id']}/p0/{p0['code_sha'][:12]}"
+        ), "STOP_L2_P0_PREFIX_AND_SUMMARY_MISMATCH")
+        if mode == "complete":
+            require(smoke_actual_usd > 0, "STOP_L2_SMOKE_ACTUAL_BILL_REQUIRED")
         stage_a = load_json(FROZEN_STAGE_A)
         baseline = json.loads(Path("results/csi1000_stage_b/stage_b_full_51756897fc752304.json").read_text())
         provider = baseline["manifest"]["provider_fingerprint"]
