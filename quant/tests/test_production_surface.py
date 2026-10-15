@@ -39,11 +39,10 @@ def test_chinext_hidden_from_public_signal_ui():
 
 def test_methodology_marks_chinext_production_paused():
     page = (ROOT / "quant" / "website" / "methodology.html").read_text()
-    assert "研究线 · 创业板" in page
-    assert "production paused" in page
-    assert "每日 production 更新与网页展示已暂停" in page
-    assert "Stage-B winner · frozen" in page
-    assert "Audit Closure" in page
+    assert "研究支线 · 创业板" in page
+    assert "创业板 · 暂停更新" in page
+    assert "每日更新与网页展示已暂停" in page
+    assert "定型主策略 · 参数已锁定" in page
 
 
 def test_historical_chinext_files_are_not_deleted_by_runtime():
@@ -59,16 +58,16 @@ def test_methodology_tracks_current_frozen_stage_b_contract():
     for marker in (
         "2025-01-02",
         "2026-09-30",
-        "PASS_RESEARCH_ACCOUNTING_ONLY",
-        "不因 closure 后的事后排名变化重新调参或换模型",
+        "研究账本口径",
+        "不因事后局部行情波动回溯修改参数或重选模型",
         "2026-09-18",
         "2026-10-12",
-        "metadata sidecar",
-        "PIT=1000",
+        "2026-10-15",
+        "1000 只成分股",
         "ST / 停牌",
-        "治理与公开边界",
+        "自动化数据校验与免责声明",
     ):
-        assert marker in page, f"methodology missing current Stage-B marker: {marker}"
+        assert marker in page, f"methodology missing current marker: {marker}"
 
 
 def test_public_site_uses_shared_stylesheet():
@@ -99,11 +98,12 @@ def test_forward_performance_panel_is_forward_only_from_20261012():
     styles = (ROOT / "quant" / "website" / "styles.css").read_text()
     assert "csi1000_forward_performance.json" in app
     assert "2026-10-12" in app
-    assert "模型累计收益" in app
+    assert "策略累计收益" in app
     assert "performance-panel" in app
     assert ".performance-chart" in styles
     assert "2026-10-12" in methodology
-    assert "不会把此前回测或历史 paper 收益回填" in methodology
+    assert "2026-10-15" in methodology
+    assert "历史回测收益拼接或回填" in methodology
 
 
 def test_pages_builds_forward_performance_artifact():
@@ -121,7 +121,7 @@ def test_missing_history_metadata_is_not_fabricated():
     assert "_mvp_metadata.json" in app
     assert "evaluateMvpContract" in app
     assert "MVP metadata sidecar missing" in app
-    assert "不会把 winner 标识单独解释为“已核验”" in app
+    assert "不会把旧版本标识单独解释为“已核验”" in app
     assert "paper.paper_lineage === 'stage_b_winner_canonical'" in app
 
 
@@ -129,10 +129,10 @@ def test_dashboard_exposes_forward_mvp_contract_without_tradeability_claim():
     app = (ROOT / "quant" / "website" / "app.js").read_text()
     styles = (ROOT / "quant" / "website" / "styles.css").read_text()
     for marker in (
-        "MVP publication contract · PASS",
-        "PIT / 标签",
-        "Paper / 风险",
-        "Label20 PASS",
+        "每日数据校验 · 已通过",
+        "成分股与样本校验",
+        "特殊状态与停牌核验",
+        "防泄漏校验通过",
         "停牌待执行后确认",
         "risk.tradeability_certified !== false",
     ):
@@ -154,8 +154,18 @@ def test_pages_deployment_packages_stylesheet():
 
 def test_public_methodology_does_not_expose_internal_audit_identifiers():
     page = (ROOT / "quant" / "website" / "methodology.html").read_text()
+    index = (ROOT / "quant" / "website" / "index.html").read_text()
     forbidden = (
         "stage_b_winner_canonical",
+        "Stage-A",
+        "Stage-B",
+        "F1–F6",
+        "L1–L4",
+        "c98856b4",
+        "PASS_RESEARCH_ACCOUNTING_ONLY",
+        "Audit Closure",
+        "confirmation tail",
+        "metadata sidecar",
         "Winner candidate ID",
         "Model config SHA256",
         "Stage-B runtime snapshot",
@@ -165,6 +175,7 @@ def test_public_methodology_does_not_expose_internal_audit_identifiers():
     )
     for marker in forbidden:
         assert marker not in page, f"public methodology exposes internal marker: {marker}"
+        assert marker not in index, f"public index exposes internal marker: {marker}"
 
 
 def test_current_handoff_is_present_and_indexed():
@@ -229,11 +240,11 @@ def test_favicon_is_valid_svg_and_published_on_both_pages():
 def test_st_free_reference_return_is_explicit_not_certified():
     app = (ROOT / "quant" / "website" / "app.js").read_text()
     method = (ROOT / "quant" / "website" / "methodology.html").read_text()
-    for phrase in ("模型累计收益 · Paper 参考", "ST未纳入模拟",
+    for phrase in ("策略累计收益 · 模拟盘参考", "ST未纳入模拟",
                    "参考模拟收益 · 不考虑 ST",
                    "ST 接口正常则纳入 ST 快照", "ST_IGNORED_REFERENCE_ONLY"):
         assert phrase in app, f"site missing reference-only disclosure: {phrase}"
-    assert "接口连接故障时" in method
+    assert "ST 数据接口出现网络故障时" in method
     assert "研究型参考收益" in method
 
 

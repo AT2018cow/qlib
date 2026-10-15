@@ -146,7 +146,7 @@ def inspect_viewport(browser, base_url, width: int):
     page.goto(base_url + "/index.html", wait_until="domcontentloaded")
     page.locator("#signal-rows tr").first.wait_for(state="attached", timeout=20000)
     assert page.locator("#signal-rows tr").count() == 20
-    page.wait_for_function("document.getElementById('stat-lineage')?.textContent === 'Stage-B winner'")
+    page.wait_for_function("document.getElementById('stat-lineage')?.textContent === '定型优选策略'")
     assert len(signals_requests) == 7, signals_requests
     assert all(status == 200 for _, status in statuses), statuses
     assert not any("code_name_map.csv" in url for url in signals_requests)
@@ -166,7 +166,7 @@ def inspect_viewport(browser, base_url, width: int):
     assert (actual["cards"] == "grid") == (width <= 860), actual
     assert not errors, errors
     assert page.locator("#forward-return").inner_text() == "待开始"
-    assert page.locator("#stat-lineage").inner_text() == "Stage-B winner"
+    assert page.locator("#stat-lineage").inner_text() == "定型优选策略"
     assert page.locator("#ranking-date").inner_text() == page.locator("#stat-date").inner_text()
     # These must be actual visible labels, not title-only tooltips on touchscreens.
     ranking = page.locator("#ranking")
@@ -212,7 +212,7 @@ def inspect_viewport(browser, base_url, width: int):
     if width in (390, 320):
         page.screenshot(path=str(OUT / f"dashboard-fixture-historical-{width}.png"), full_page=True)
     page.locator(".date-btn").first.click()
-    page.wait_for_function("document.getElementById('stat-lineage')?.textContent === 'Stage-B winner'")
+    page.wait_for_function("document.getElementById('stat-lineage')?.textContent === '定型优选策略'")
     assert len(signals_requests) == after_history, "previously loaded context should be cached"
     page.close()
     return {
@@ -250,7 +250,7 @@ def main():
                 page.locator("#signal-rows tr").first.wait_for(state="attached")
                 assert page.locator("#stat-lineage").inner_text() == "核验中"
                 assert "走势加载中" in page.locator(".stock-card").first.locator(".spark").inner_text()
-                page.wait_for_function("document.getElementById('stat-lineage')?.textContent === 'Stage-B winner'")
+                page.wait_for_function("document.getElementById('stat-lineage')?.textContent === '定型优选策略'")
                 assert page.locator(".stock-card").first.locator(".sparkline-svg").is_visible()
                 page.close()
                 print("PASS delayed chart: Top20 visible before lineage/chart response")

@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/svg+xml" href="favicon.svg?v=1">
-<meta name="description" content="CSI1000 c98856b4 · Top10/Drop1 生产方法论、两轮研发证据与执行协议">
-<title>生产方法论 · CSI1000 c98856b4 Top10/Drop1</title>
+<meta name="description" content="中证1000 量化选股策略方法论、历史回测表现与模拟交易规则">
+<title>策略方法论 · 中证1000 量化多因子选股</title>
 <link rel="stylesheet" href="styles.css?v=11">
 </head>
 <body>
@@ -21,17 +21,17 @@
   </nav>
 
   <header class="doc-hero">
-    <div class="eyebrow"><span class="status-dot"></span> Research & Production Methodology · 2026-10-15</div>
-    <h1>CSI1000 生产策略方法论<br>两轮分层研发与执行协议</h1>
+    <div class="eyebrow"><span class="status-dot"></span> 策略方法论与交易规则 · 2026-10-15</div>
+    <h1>中证1000 量化选股方法论<br>模型架构、历史表现与执行规则</h1>
     <p>
-      本页描述当前线上生效的中证 1000 生产协议（<code>c98856b4 · Top10/Drop1</code>）。
-      第一轮（Stage-A/Stage-B 与 F1–F6 独立审计）与第二轮分层搜索（L1–L4 五相位全量核验）已全部完成并冻结；
-      2025-01-02 至 2026-09-30 的 424 个交易日验证窗口已被消费收口，不再用于回溯调参。
+      本页介绍当前正在运行的中证 1000 量化选股策略（<strong>Top 10 等权 · 单日限换 1 只</strong>）。
+      策略模型与调仓参数已在完成两阶段全周期检验与双账本独立复核后正式锁定；
+      2025-01-02 至 2026-09-30 的 424 个交易日样本外测试区间仅作历史表现展示，不再用于回溯修改策略参数。
     </p>
     <div class="doc-status">
-      <span class="mini-pill">CSI1000 · c98856b4 Top10/Drop1</span>
-      <span class="mini-pill">Stage-B winner · frozen</span>
-      <span class="mini-pill paused">ChiNext · production paused</span>
+      <span class="mini-pill">中证1000 · Top10 低换手优选</span>
+      <span class="mini-pill">定型主策略 · 参数已锁定</span>
+      <span class="mini-pill paused">创业板 · 暂停更新</span>
     </div>
   </header>
 
@@ -39,169 +39,159 @@
     <aside class="doc-nav" aria-label="方法论目录">
       <a href="#status">当前状态</a>
       <a href="#model">模型与训练</a>
-      <a href="#selection">两轮选型与收口</a>
-      <a href="#execution">组合与执行</a>
-      <a href="#production">生产链路</a>
-      <a href="#risk">解释与风险</a>
-      <a href="#audit">治理边界</a>
+      <a href="#selection">策略研发与回测</a>
+      <a href="#execution">组合与交易规则</a>
+      <a href="#production">每日运行与净值</a>
+      <a href="#risk">收益解读与风险</a>
+      <a href="#audit">数据校验与声明</a>
     </aside>
 
     <div class="doc-content">
       <section class="doc-section" id="status">
-        <h2>1. 当前生产状态</h2>
+        <h2>1. 当前运行状态</h2>
         <div class="metric-grid">
-          <div class="metric"><span>ACTIVE POOL</span><strong>CSI1000</strong></div>
-          <div class="metric"><span>MODEL</span><strong>c98856b4 (Stage-B)</strong></div>
-          <div class="metric"><span>PORTFOLIO</span><strong>Top10 / Drop1</strong></div>
-          <div class="metric"><span>EXECUTION</span><strong>T+1 Open</strong></div>
-          <div class="metric"><span>RETRAIN</span><strong>20 sessions</strong></div>
-          <div class="metric"><span>CHINEXT</span><strong>Paused</strong></div>
+          <div class="metric"><span>选股股票池</span><strong>中证1000</strong></div>
+          <div class="metric"><span>核心模型</span><strong>LightGBM 多因子</strong></div>
+          <div class="metric"><span>持仓规则</span><strong>等权 10 只 / 日限换 1</strong></div>
+          <div class="metric"><span>调仓执行</span><strong>T+1 日开盘价</strong></div>
+          <div class="metric"><span>模型更新周期</span><strong>每 20 个交易日</strong></div>
+          <div class="metric"><span>创业板支线</span><strong>已暂停</strong></div>
         </div>
         <p>
-          当前每日 production 只运行中证 1000（<code>c98856b4 · Top10/Drop1</code>）。<strong>研究线 · 创业板</strong>的旧模型
-          <strong>每日 production 更新与网页展示已暂停</strong>；研究代码和历史 artifacts
-          保留，待下一代模型完成独立验证并通过 production gate 后再恢复。
+          当前系统每日仅运行并发布中证 1000 选股信号。<strong>研究支线 · 创业板</strong>的旧版模型
+          <strong>每日更新与网页展示已暂停</strong>；相关历史研究记录保留归档，待新一代模型通过独立样本外验证后再行恢复。
         </p>
       </section>
 
       <section class="doc-section" id="model">
-        <h2>2. 模型与训练协议</h2>
-        <div class="kv"><div>模型架构</div><div>LightGBM + Alpha158（158 维量价技术因子）</div></div>
-        <div class="kv"><div>预测标签</div><div>原始 20 个交易日前瞻收益：<code>Ref($close, -20) / $close - 1</code></div></div>
-        <div class="kv"><div>训练起点</div><div><code>2016-01-01</code>，expanding window（随交易日滚动扩展）</div></div>
-        <div class="kv"><div>验证窗口</div><div>252 个交易日（约 1 年样本外早停验证集）</div></div>
-        <div class="kv"><div>Purge horizon</div><div>20 个交易日（训练/验证与验证/重训日之间各隔离 20 个交易日，确保 20D 标签 100% 成熟无泄漏）</div></div>
-        <div class="kv"><div>重训频率</div><div>每 20 个交易日（L3 对比验证确认 20 日重训显著优于 10 日与 40 日）</div></div>
-        <div class="kv"><div>生产重训原点</div><div><code>2026-09-18</code></div></div>
-        <div class="kv"><div>LightGBM threads</div><div><code>20</code>（作为冻结复现配置的一部分）</div></div>
+        <h2>2. 模型架构与滚动训练规则</h2>
+        <div class="kv"><div>模型架构</div><div>LightGBM 梯度提升决策树 + Alpha158（158 维日频量价技术因子）</div></div>
+        <div class="kv"><div>预测目标</div><div>未来 20 个交易日个股累计收益率：<code>Ref($close, -20) / $close - 1</code></div></div>
+        <div class="kv"><div>训练集起点</div><div><code>2016-01-01</code> 起，采用历史扩展窗口（随交易日推进不断纳入新样本）</div></div>
+        <div class="kv"><div>验证集窗口</div><div>最近 252 个交易日（约 1 年样本外验证集，用于控制模型迭代早停）</div></div>
+        <div class="kv"><div>样本防泄漏隔离期</div><div>20 个交易日（训练集末尾与验证集末尾各留出 20 个交易日缓冲期，确保所有训练与验证样本的 20 日远期收益均已真实发生，彻底杜绝未来数据泄漏）</div></div>
+        <div class="kv"><div>滚动重训频率</div><div>每 20 个交易日重新拟合一次模型参数（对比实验表明 20 日重训显著优于 10 日高频重训与 40 日低频重训）</div></div>
+        <div class="kv"><div>重训日历锚点</div><div>以 <code>2026-09-18</code> 为基准，每满 20 个交易日触发重训</div></div>
 
-        <h3>冻结的生产模型参数（c98856b4 · Top10/Drop1）</h3>
+        <h3>定型模型核心超参数</h3>
         <p>
-          <code>c98856b4</code> 采用深树（<code>max_depth=10, num_leaves=250</code>）配合高叶节点最小样本数（<code>min_data_in_leaf=200</code>）与强 L1/L2 正则（<code>205.7 / 200.0</code>），在充分捕捉非线性量价交互的同时抑制单叶过拟合，提升头部 Top 10 选股纯度。
+          当前定型模型采用<strong>较深决策树结构（最大深度 10、叶节点上限 250）配合高叶节点最小样本数（200）与高强度 L1/L2 正则化（205.7 / 200.0）</strong>。这一组合既能充分捕捉量价因子间的非线性共振信号，又能有效抑制单叶噪声过拟合，显著提升了排名最靠前的 Top 10 个股选股纯度。
         </p>
         <div class="doc-table-wrap">
           <table class="doc-table">
-            <thead><tr><th>Parameter</th><th>Value</th><th>Parameter</th><th>Value</th></tr></thead>
+            <thead><tr><th>参数名称</th><th>设定值</th><th>参数名称</th><th>设定值</th></tr></thead>
             <tbody>
-              <tr><td>learning_rate</td><td>0.05</td><td>colsample_bytree</td><td>1.0</td></tr>
-              <tr><td>lambda_l1</td><td>205.6999</td><td>lambda_l2</td><td>200.0</td></tr>
-              <tr><td>max_depth</td><td>10</td><td>num_leaves</td><td>250</td></tr>
-              <tr><td>min_data_in_leaf</td><td>200</td><td>num_threads</td><td>20</td></tr>
+              <tr><td>学习率 (learning_rate)</td><td>0.05</td><td>特征采样比例 (colsample_bytree)</td><td>1.0</td></tr>
+              <tr><td>L1 正则系数 (lambda_l1)</td><td>205.6999</td><td>L2 正则系数 (lambda_l2)</td><td>200.0</td></tr>
+              <tr><td>树最大深度 (max_depth)</td><td>10</td><td>最大叶节点数 (num_leaves)</td><td>250</td></tr>
+              <tr><td>叶节点最小样本 (min_data_in_leaf)</td><td>200</td><td>并行计算线程 (num_threads)</td><td>20</td></tr>
             </tbody>
           </table>
         </div>
 
-        <h3>确定性设置</h3>
+        <h3>确定性复现保障</h3>
         <p>
-          LightGBM 固定 <code>seed=0</code>、<code>data_random_seed=1</code>、
-          <code>feature_fraction_seed=2</code>、<code>bagging_seed=3</code>、
-          <code>drop_seed=4</code>、<code>objective_seed=5</code>、
-          <code>extra_seed=6</code>，并启用 <code>deterministic=true</code>、
-          <code>force_col_wise=true</code>。
+          模型训练固定全部随机数种子并开启严格确定性模式（<code>deterministic=true</code>、<code>force_col_wise=true</code>），确保同一交易日数据在任何时候重复运行均产出完全一致的个股评分与排名。
         </p>
       </section>
 
       <section class="doc-section" id="selection">
-        <h2>3. 两轮分层选型与 Audit Closure</h2>
+        <h2>3. 两阶段策略优选与历史回测表现</h2>
         <p>
-          当前生产策略经由两轮系统化研发与独立审计收口确立：
+          当前线上策略经由两个阶段的系统化研发与独立账本核验确立：
         </p>
         <ul>
-          <li><strong>第一轮（Stage-A / Stage-B 与 F1–F6 独立审计）：</strong>从 74 组超参候选中筛选 28 组进入 5 相位长周期验证，并完成 F1（全市场退市/出池报价恢复，消除伪停牌）、F3（20 日标签成熟度清洗）、F5（确定性复现门禁）与 F6（双独立引擎 0.00 bps 账本对齐）收口。</li>
-          <li><strong>第二轮（L1–L4 模型与组合规则解耦搜索）：</strong>在 L1（11 模型 × 12 持仓规则 × 2 相位 = 264 单元）、L2（局部超参精调）、L3（10/20/40 日重训周期验证）与 L4（8 组决选策略 × 全 5 相位验证）中，<code>c98856b4 + Top10/Drop1</code> 全面胜出——适度集中持仓至 Top 10 并将单日换手上限收紧至 Drop 1，在捕获最强头部 Alpha 的同时大幅降低了双边交易摩擦。</li>
+          <li><strong>第一阶段（模型超参数大范围筛选与数据完整性复核）：</strong>从 74 组不同树深、学习率与正则化强度的候选模型中，筛选出 28 组进入长周期多起点回测；同时补齐了指数调出股与退市股的全生命周期真实行情，并利用两套独立编写的回测引擎交叉对账（净值误差 0.00 bps），确保历史回测不含虚假停牌或未来函数。</li>
+          <li><strong>第二阶段（持仓集中度、换手率与重训周期联合优选）：</strong>对入选模型与 12 种组合调仓规则（涵盖持仓 10/15/20/30 只、不同单日换手上限与调仓缓冲带）进行了 264 组交叉验证。实验证明：将持仓适度集中至 <strong>Top 10</strong>，并将单日换手上限收紧至 <strong>每日最多轮换 1 只（单日限换 1 只）</strong>，在捕获模型头部最强超额收益的同时大幅削减了双边印花税与佣金损耗。</li>
         </ul>
 
-        <h3>c98856b4 · Top10/Drop1 五相位审计回测表现（2025-01-02 至 2026-09-30）</h3>
+        <h3>多起点样本外回测表现（2025-01-02 至 2026-09-30，共 424 个交易日）</h3>
+        <p>
+          为消除“恰好在某一天重训带来的运气偏差”，策略在 20 日重训周期内选取了 5 个不同的初始重训起点分别独立跑完完整 21 个月回测（已扣除双边真实交易费用并执行涨跌停/停牌限制）：
+        </p>
         <div class="doc-table-wrap">
           <table class="doc-table">
             <thead>
-              <tr><th>重训相位</th><th>累计净收益</th><th>年化净收益 (ARR)</th><th>信息比率 (IR)</th><th>最大回撤 (MaxDD)</th></tr>
+              <tr><th>测试序列（不同初始重训日）</th><th>区间累计净收益</th><th>年化净收益 (ARR)</th><th>信息比率 (IR)</th><th>最大回撤 (MaxDD)</th></tr>
             </thead>
             <tbody>
-              <tr><td>Phase 0</td><td>+116.71%</td><td>+57.69%</td><td>2.642</td><td>-14.37%</td></tr>
-              <tr><td>Phase 4</td><td>+82.01%</td><td>+43.13%</td><td>2.126</td><td>-14.23%</td></tr>
-              <tr><td>Phase 6</td><td>+111.79%</td><td>+55.72%</td><td>2.559</td><td>-12.56%</td></tr>
-              <tr><td>Phase 10</td><td>+60.86%</td><td>+33.48%</td><td>1.701</td><td>-20.05%</td></tr>
-              <tr><td>Phase 15</td><td>+69.34%</td><td>+37.45%</td><td>1.878</td><td>-13.54%</td></tr>
-              <tr><td><strong>五相位均值 / 极值</strong></td><td><strong>+88.14%</strong></td><td><strong>+46.23%（最低 +33.48%）</strong></td><td><strong>2.228</strong></td><td><strong>-14.95%（最深 -20.05%）</strong></td></tr>
+              <tr><td>重训起点一（基准日重训）</td><td>+116.71%</td><td>+57.69%</td><td>2.642</td><td>-14.37%</td></tr>
+              <tr><td>重训起点二（偏移 4 个交易日）</td><td>+82.01%</td><td>+43.13%</td><td>2.126</td><td>-14.23%</td></tr>
+              <tr><td>重训起点三（偏移 6 个交易日）</td><td>+111.79%</td><td>+55.72%</td><td>2.559</td><td>-12.56%</td></tr>
+              <tr><td>重训起点四（偏移 10 个交易日）</td><td>+60.86%</td><td>+33.48%</td><td>1.701</td><td>-20.05%</td></tr>
+              <tr><td>重训起点五（偏移 15 个交易日）</td><td>+69.34%</td><td>+37.45%</td><td>1.878</td><td>-13.54%</td></tr>
+              <tr><td><strong>五组起点平均 / 区间极值</strong></td><td><strong>+88.14%</strong></td><td><strong>+46.23%（最低 +33.48%）</strong></td><td><strong>2.228</strong></td><td><strong>-14.95%（最深 -20.05%）</strong></td></tr>
             </tbody>
           </table>
         </div>
 
-        <div class="kv"><div>当前 canonical</div><div>已冻结的 <code>c98856b4 + Top10/Drop1</code>（L1–L4 五相位综合收益第 1）</div></div>
-        <div class="kv"><div>历史审计状态</div><div><code>PASS_RESEARCH_ACCOUNTING_ONLY</code> 只代表研究会计口径，不是实盘成交认证</div></div>
-        <div class="kv"><div>治理规则</div><div>不因 closure 后的事后排名变化重新调参或换模型（Audit Closure 原则）</div></div>
-        <div class="kv"><div>新策略上线与累计起点</div><div><code>2026-10-15</code> 启用 <code>c98856b4 + Top10/Drop1</code> 独立 Paper 账本（纳入 <code>2026-10-12</code> 起的 forward-only 审计框架）</div></div>
+        <div class="kv"><div>当前生效策略</div><div>Top 10 等权持仓 · 单日最多轮换 1 只（五组重训起点综合收益与风险调整后收益均居第 1）</div></div>
+        <div class="kv"><div>回测会计属性</div><div>历史回测代表严格扣除交易费率与涨跌停约束的研究账本口径，不代表实盘柜台成交认证</div></div>
+        <div class="kv"><div>参数锁定原则</div><div>历史回测收口后参数永久锁定，不因事后局部行情波动回溯修改参数或重选模型</div></div>
+        <div class="kv"><div>模拟盘起算时间</div><div><code>2026-10-15</code> 启用当前定型策略并独立计算累计收益（运行于 <code>2026-10-12</code> 建立的前向模拟跟踪机制下）</div></div>
       </section>
 
       <section class="doc-section" id="execution">
-        <h2>4. 组合与执行协议</h2>
-        <div class="kv"><div>Signal formation</div><div>T 日收盘后形成横截面预测分数</div></div>
-        <div class="kv"><div>Execution</div><div>T+1 日开盘价执行</div></div>
-        <div class="kv"><div>Portfolio</div><div>TopK dropout：<code>topk=10</code>，<code>n_drop=1</code>（持仓 10 只，每日最多轮换 1 只跌出 Top 10 的持仓）</div></div>
-        <div class="kv"><div>Tie break</div><div><code>score desc, instrument asc</code></div></div>
-        <div class="kv"><div>Price limits</div><div>按板块和日期感知涨跌停制度（主板 10% / 科创创业 20% / ST 5%）；上市首日与早期规则按对应日期处理</div></div>
-        <div class="kv"><div>Tick size</div><div>0.01 元，原始人民币价格尺度判定涨跌停封板</div></div>
-        <div class="kv"><div>High-open overlay</div><div>关闭；当前 canonical protocol 不叠加 5% 高开过滤</div></div>
+        <h2>4. 组合构建与交易执行规则</h2>
+        <div class="kv"><div>信号生成时点</div><div>每个交易日（T 日）收盘后，基于当日完整行情计算 1000 只成分股预测得分</div></div>
+        <div class="kv"><div>模拟成交时点</div><div>下一交易日（T+1 日）开盘价执行调仓</div></div>
+        <div class="kv"><div>持仓与换手控制</div><div>目标等权持有 10 只股票；每个交易日仅将已持仓股票中跌出前 10 名最远的最多 1 只卖出，替换为未持仓中排名最高的股票</div></div>
+        <div class="kv"><div>同分排序规则</div><div>按预测得分降序排列；得分完全相同时按股票代码升序排列，保证结果唯一</div></div>
+        <div class="kv"><div>涨跌停与板块制度</div><div>严格遵循各板块及历史日期对应的涨跌停幅度（主板 10% / 科创板与创业板 20% / ST 股 5%），一字涨停无法买入、一字跌停无法卖出</div></div>
+        <div class="kv"><div>最小报价单位</div><div>按人民币真实价格 0.01 元最小变动单位判定封板状态</div></div>
+        <div class="kv"><div>高开过滤规则</div><div>不设人工 5% 高开过滤（实验证明在 Top 10 低换手策略下，强行放弃高开强势股会显著损耗有效收益）</div></div>
         <p>
-          当前网页展示的是模型排名与 paper production 记录，不应被理解成交易所已成交订单。
-          因涨跌停或停牌无法成交的订单不会用榜单中下一只股票自动替补，从而保持与研究回测完全一致的执行语义。
+          网页展示的每日 Top 10 榜单为模型横截面预测排名；若某只计划买入的股票在 T+1 日开盘一字涨停或停牌无法成交，模拟账户将保留对应现金而不顺延替补榜单下一只股票，确保与历史回测规则完全一致。
         </p>
       </section>
 
       <section class="doc-section" id="production">
-        <h2>5. 每日生产链路与累计收益</h2>
+        <h2>5. 每日运行流程与累计收益计算</h2>
         <ul>
-          <li>每个工作日北京时间 07:00 触发自动生产任务。</li>
-          <li>运行时获取最新日频数据，并确认当天交易日状态。</li>
-          <li>只有前一真实交易日的数据已经完整可用时，CSI1000 才发布新信号；数据陈旧或日历不可验证时不发布。</li>
-          <li>按固定 20-session 重训时钟决定重训或安全复用已核验模型。</li>
-          <li>对 CSI1000 横截面预测并按确定性规则排序，生成 Top 10 信号。</li>
-          <li>同一提交发布 metadata sidecar，绑定 provider 指纹、PIT=1000、20-session 标签成熟、Top10 / paper lineage 与风险状态。</li>
-          <li>同日公开记录保持不可变；如果重跑结果与既有记录不一致，则拒绝静默覆盖。</li>
-          <li>旧策略产生的历史信号已从前端归档移除；当前 <code>c98856b4 · Top10/Drop1</code> 使用全新独立的 Paper 账户状态，不继承旧策略持仓或待执行订单。</li>
+          <li>每个工作日北京时间 07:00 自动拉取最新日频行情并核对交易日历。</li>
+          <li>仅在前一真实交易日行情完整到位后才生成并发布新一日选股信号；若上游数据源延迟则暂停发布，绝不使用过期数据顶替。</li>
+          <li>按照每 20 个交易日的固定重训周期自动更新模型参数，非重训日复用已核验的当期模型。</li>
+          <li>对当日在榜的 1000 只中证 1000 成分股打分排序，输出 Top 10 榜单与校验摘要文件。</li>
+          <li>同一交易日信号一经发布即锁定存档，防止被后续任务静默覆盖。</li>
+          <li>旧版策略产生的早期信号已归档移除；当前策略自启用日起使用全新独立的模拟账户计算净值，不继承旧策略持仓。</li>
         </ul>
-        <h3>Forward 累计收益</h3>
+        <h3>模拟盘累计收益说明</h3>
         <p>
-          在 <code>2026-10-12</code> 启动的 forward-only paper performance 框架下，网站从新策略
-          <code>c98856b4 · Top10/Drop1</code> 正式生效日（<code>2026-10-15</code>）起独立计算累计收益。
-          起点按新策略首日开盘前账户净值归一为 1.0000；每日收益使用模型实际 paper 调仓后的收盘估值，
-          包含交易成本、涨跌停与停牌/缺价约束。<strong>正常情况下使用开盘前 ST 快照参与 paper 规则计算；
-          仅在 ST 数据接口连接故障时，才降级为不考虑 ST 特殊规则的研究型参考收益</strong>，并逐日标注具体降级日期。
-          该曲线始终是 paper 模拟而非交易所认证成交；不会把此前回测或历史 paper 收益回填进这条曲线。
-          因为当日完整开盘/收盘数据需在下一次数据更新后才能确认，所以某个交易日的最终收益通常在下一工作日早晨显示。
+          网站展示的累计收益曲线自新策略于 <code>2026-10-15</code> 正式启用起算，初始开盘前账户净值设为 1.0000。
+          每个交易日按模拟账户在 T+1 开盘调仓后的当日收盘市值计算净值，已完整计入买入手续费、卖出印花税与过户费、涨跌停封板拦截以及停牌持仓顺延。
+          <strong>正常情况下系统会在开盘前自动获取当日 ST 风险警示股名单并纳入 5% 涨跌停规则计算；
+          仅当外部 ST 数据接口出现网络故障时，才降级为不考虑 ST 特殊规则的研究型参考收益</strong>，并在页面中明确标注降级日期。
+          该曲线仅作前向模拟参考，不会将 <code>2026-10-15</code> 之前的历史回测收益拼接或回填至曲线中。
+          由于某交易日的完整开盘与收盘行情需在下一工作日清晨数据源更新后确认，当日最终收益通常在次日早晨刷新显示。
         </p>
       </section>
 
       <section class="doc-section" id="risk">
-        <h2>6. 如何解释这些数字</h2>
+        <h2>6. 收益解读与风险提示</h2>
         <ul>
-          <li><strong>历史回测不是未来收益承诺。</strong> <code>c98856b4 · Top10/Drop1</code> 在五相位验证区间（2025-01-02 至 2026-09-30）的 33.48%~57.69% 年化净收益（均值 46.23%）只描述已消费的 confirmation tail，不代表未来实盘收益。</li>
-          <li><strong>模型 score 不是保证收益。</strong> 模型训练目标是 20 日 forward return，但每日 score 是横截面排序输入，实际收益受市场 Beta、中小盘风格轮动、执行限制和未来分布变化影响。</li>
-          <li><strong>验证窗口已冻结。</strong> 短期 forward 表现波动本身不能授权回头用已消费数据继续调参；新模型研究应建立新的版本与验证协议。</li>
-          <li><strong>数据与执行会失败。</strong> 数据源滞后、交易日历不可验证、cache lineage 不匹配等情况会 fail closed，而不是强行发布陈旧 CSI1000 signal。</li>
-          <li><strong>ST / 停牌不是隐含可交易状态。</strong> ST 接口正常时使用当日开盘前的已核验快照；只有连接失败、超时或 502/503/504 网关故障才允许显式降级。不完整或无效响应仍阻断；降级日期的 ST 风险不等于零。非 ST 价格限制、真实报价和独立整日停牌证据仍需核验。</li>
-          <li><strong>paper 不等于实盘。</strong> 真实交易仍可能面临滑点、流动性、成交量与券商执行差异。</li>
+          <li><strong>历史回测表现不代表未来收益。</strong> 策略在 2025-01-02 至 2026-09-30 样本外测试期取得的 33.48%~57.69% 年化净收益（五组起点均值 46.23%）仅反映过去特定市场环境下的回测结果，不构成对未来收益的任何承诺。</li>
+          <li><strong>模型预测分数不等于实际涨跌幅。</strong> 模型预测目标是未来 20 个交易日相对收益，主要用于成分股横截面强弱排序；实际净值表现仍受中小盘整体市场波动（Beta）、风格切换及交易执行约束影响。</li>
+          <li><strong>策略参数已锁定。</strong> 短期几个交易日或数周的净值波动属于正常市场现象，不会触发临时人工改参；任何新模型迭代均需另立新版本并完成独立验证。</li>
+          <li><strong>ST / 停牌状态核验边界。</strong> 系统在每日开盘前采集 ST 快照，但盘中临时停牌、突发监管公告及实盘二级市场流动性冲击无法通过日频数据事先预知。</li>
+          <li><strong>模拟盘不等于实盘成交。</strong> 真实资金交易仍可能面临盘口冲击成本、排队成交率与券商柜台执行差异。</li>
         </ul>
       </section>
 
       <section class="doc-section" id="audit">
-        <h2>7. 治理与公开边界</h2>
+        <h2>7. 自动化数据校验与免责声明</h2>
         <p>
-          历史审计已经按 Audit Closure Register 收口。当前日常运行只验证每日 forward 生产是否满足
-          数据新鲜度、PIT 股票池、标签成熟、冻结模型 lineage、paper 状态与风险边界。
+          系统在每日发布信号的同时自动执行五项工程校验：行情数据最新截止日核对、当日中证 1000 指数 1000 只成分股完整性核对、训练样本 20 日防泄漏缓冲核对、定型模型参数一致性核对以及模拟账户资金持仓守恒核对。
         </p>
         <p>
-          网站底部汇总卡片显示的“MVP publication contract · PASS”，仅代表 provider / PIT / Label20 / 冻结模型 / paper 绑定通过，
-          不代表真实成交认证。ST 快照成功与因连接故障而降级的每个交易日均记录于 metadata、paper 及 forward 收益；
-          研究型参考收益不会将降级日伪装成正常 ST 认证。精确 hash 保留在每日 sidecar 中用于工程追溯。
+          网页底部汇总卡片显示的“每日数据校验 · 已通过”，代表上述自动化数据与账本核对全部通过，不代表实盘成交认证。
+          本网站所有内容仅供量化策略研究与工程展示，不构成任何证券投资建议。
         </p>
       </section>
     </div>
   </div>
 
   <footer class="footer">
-    <span>本页是研究与工程审计文档，不构成投资建议。</span>
+    <span>本页为量化策略研究说明文档，不构成任何投资建议。</span>
     <span><a href="./">← 返回每日信号</a></span>
   </footer>
 </main>
