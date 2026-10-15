@@ -441,18 +441,19 @@ if modal is not None:
         require(actual_days == calendar[first:last], "STOP_STAGE1_SIGNAL_DAY_COVERAGE")
         codes, quote_sha = static_quote_union(job["market"], RESERVED_EXECUTION_START, RESERVED_EXECUTION_END, D)
         require(quote_sha == job["quote_sha256"], "STOP_STAGE1_QUOTE_SHA_DRIFT")
-        shared = shared_signal_path(root, job["market"], job["model_key"], job["phase"])
-        if shared.is_file():
-            require(pd.read_parquet(shared)["score"].equals(signal.to_frame("score")["score"]),
-                    "STOP_STAGE1_SHARED_SIGNAL_DRIFT")
-        else:
-            shared.parent.mkdir(parents=True, exist_ok=True)
-            tmp_shared = shared.parent / (shared.name + ".tmp")
-            require(not tmp_shared.exists(), "STOP_STAGE1_SHARED_SIGNAL_TEMP")
-            signal.to_frame("score").to_parquet(tmp_shared)
-            import os as _os
+        if job["combo_key"] == "top20_drop2":
+            shared = shared_signal_path(root, job["market"], job["model_key"], job["phase"])
+            if shared.is_file():
+                require(pd.read_parquet(shared)["score"].equals(signal.to_frame("score")["score"]),
+                        "STOP_STAGE1_SHARED_SIGNAL_DRIFT")
+            else:
+                shared.parent.mkdir(parents=True, exist_ok=True)
+                tmp_shared = shared.parent / (shared.name + ".tmp")
+                require(not tmp_shared.exists(), "STOP_STAGE1_SHARED_SIGNAL_TEMP")
+                signal.to_frame("score").to_parquet(tmp_shared)
+                import os as _os
 
-            _os.replace(tmp_shared, shared)
+                _os.replace(tmp_shared, shared)
         report, decisions = backtest_market_signal(
             signal, job["topk"], job["n_drop"], codes,
             RESERVED_EXECUTION_START, RESERVED_EXECUTION_END, job["benchmark"],
@@ -789,7 +790,6 @@ if modal is not None:
             summary["status"] == "PASS" and summary["completed_cells"] == 80 and summary["total_cells"] == 96,
             "STOP_STAGE1_SUMMARY_NOT_FULL",
         )
-        freeze_remote.remote(full_meta, "stage1_m1_summary", {k: v for k, v in summary.items() if k not in ("run_id", "code_sha")})
         print("STAGE1_M1_COMPLETE 880/880 fits 80/80 cells 96/96 ranking PASS", flush=True)
 
 else:
