@@ -93,7 +93,7 @@ def test_dashboard_dark_theme_and_responsive_layout():
     assert ".table-wrap { display: none; }" in styles
     assert ".mobile-cards { display: grid;" in styles
     assert ".doc-grid { grid-template-columns: 1fr;" in styles
-    assert 'src="app.js?v=31"' in index
+    assert 'src="app.js?v=32"' in index
 
 
 def test_forward_performance_panel_is_forward_only_from_20261012():
@@ -273,9 +273,12 @@ def test_centered_boot_loader_and_consolidated_bottom_governance_card():
     for metric in ("+52.45%", "1.757", "1.464", "-20.50%", "+49.04%"):
         assert metric in method, f"methodology missing 5-phase metric: {metric}"
 
-    # Pool switcher supports CSI1000, CSI500, and CSI300
+    # Pool switcher supports CSI1000, CSI500, and CSI300, defaults to CSI300 and persists selection
     for pool in ("csi1000", "csi500", "csi300", "中证1000", "中证500", "沪深300"):
         assert pool in app
+    assert "return POOLS.csi300;" in app
+    assert "localStorage.getItem(POOL_STORAGE_KEY)" in app
+    assert "localStorage.setItem(POOL_STORAGE_KEY, poolKey)" in app
     assert ".pool-switcher {" in styles
 
 

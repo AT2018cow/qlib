@@ -35,7 +35,27 @@ const POOLS = {
 };
 
 const POOL_ORDER = ['csi300', 'csi500', 'csi1000'];
-let currentPool = POOLS.csi1000;
+const POOL_STORAGE_KEY = 'qlib_signal_pool';
+
+function getSavedPool() {
+  try {
+    const saved = typeof window !== 'undefined' && window.localStorage
+      ? window.localStorage.getItem(POOL_STORAGE_KEY)
+      : null;
+    if (saved && POOLS[saved]) return POOLS[saved];
+  } catch (_) {}
+  return POOLS.csi300;
+}
+
+function savePool(poolKey) {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(POOL_STORAGE_KEY, poolKey);
+    }
+  } catch (_) {}
+}
+
+let currentPool = getSavedPool();
 
 const PRODUCTION = {
   pool: '中证1000 / 中证500 / 沪深300',
@@ -808,6 +828,7 @@ async function main() {
     const nextPool = POOLS[poolKey];
     if (!nextPool || nextPool.key === currentPool.key) return;
     currentPool = nextPool;
+    savePool(nextPool.key);
     document.querySelectorAll('.pool-btn').forEach(btn => {
       const active = btn.dataset.pool === nextPool.key;
       btn.classList.toggle('current', active);

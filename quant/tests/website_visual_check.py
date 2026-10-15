@@ -62,62 +62,64 @@ def make_fixture(root: Path):
             writer.writerow([code[2:], ("测试样例股票" if i == 0 else "示例名称") + str(i + 1)])
     for offset, selected in enumerate((days[-1], days[-2])):
         key = selected.isoformat()
-        with (signals / (key + "_top20_lgb158.csv")).open("w", newline="") as file:
-            writer = csv.writer(file)
-            writer.writerow(["rank", "instrument", "score"])
-            for i, code in enumerate(codes):
-                writer.writerow([i + 1, code, round(0.15 - i * 0.004, 6)])
-        (signals / (key + "_chart.json")).write_text(json.dumps(chart))
-        paper = {
-            "signal_data_date": days[-2 - offset].isoformat(),
-            "model_fit_asof": days[-2 - offset].isoformat(),
-        }
-        if offset == 0:
-            lineage = {
-                "profile": "stage_b_winner",
-                "candidate_id": "a" * 64,
-                "model_config_sha256": "b" * 64,
+        for mkt, sfx, pit_cnt in (("csi1000", "", 1000), ("csi500", "_csi500", 500), ("csi300", "_csi300", 300)):
+            with (signals / f"{key}_top20_lgb158{sfx}.csv").open("w", newline="") as file:
+                writer = csv.writer(file)
+                writer.writerow(["rank", "instrument", "score"])
+                for i, code in enumerate(codes):
+                    writer.writerow([i + 1, code, round(0.15 - i * 0.004, 6)])
+            (signals / f"{key}_chart{sfx}.json").write_text(json.dumps(chart))
+            paper = {
+                "market": mkt,
+                "signal_data_date": days[-2 - offset].isoformat(),
+                "model_fit_asof": days[-2 - offset].isoformat(),
             }
-            paper.update({
-                "paper_lineage": "stage_b_winner_canonical",
-                "production_lineage": lineage,
-                "usage_date": key,
-            })
-            metadata = {
-                "contract_version": "csi1000_mvp_daily_v1",
-                "market": "csi1000",
-                "publication": {
-                    "status": "PASS",
-                    "signal_data_date": paper["signal_data_date"],
+            if offset == 0:
+                lineage = {
+                    "profile": "stage_b_winner",
+                    "candidate_id": "a" * 64,
+                    "model_config_sha256": "b" * 64,
+                }
+                paper.update({
+                    "paper_lineage": "stage_b_winner_canonical",
+                    "production_lineage": lineage,
                     "usage_date": key,
-                },
-                "provider": {"calendar_end": paper["signal_data_date"]},
-                "pit_universe": {
-                    "status": "PASS",
-                    "asof": paper["signal_data_date"],
-                    "member_count": 1000,
-                },
-                "label_maturity": {
-                    "status": "PASS",
-                    "horizon_sessions": 20,
-                    "signal_data_date": paper["signal_data_date"],
-                },
-                "production_lineage": lineage,
-                "signal_lineage": {"display_top20_instruments": codes},
-                "risk": {
-                    "tradeability_certified": False,
-                    "st": {
-                        "status": "SOURCE_SNAPSHOT_AVAILABLE",
-                        "top20_st": [],
-                        "top20_st_count": 0,
+                })
+                metadata = {
+                    "contract_version": "csi1000_mvp_daily_v1",
+                    "market": mkt,
+                    "publication": {
+                        "status": "PASS",
+                        "signal_data_date": paper["signal_data_date"],
+                        "usage_date": key,
                     },
-                    "usage_day_suspension": {
-                        "status": "NOT_INDEPENDENTLY_VERIFIED_PREOPEN",
+                    "provider": {"calendar_end": paper["signal_data_date"]},
+                    "pit_universe": {
+                        "status": "PASS",
+                        "asof": paper["signal_data_date"],
+                        "member_count": pit_cnt,
                     },
-                },
-            }
-            (signals / (key + "_mvp_metadata.json")).write_text(json.dumps(metadata))
-        (signals / (key + "_paper_portfolio.json")).write_text(json.dumps(paper))
+                    "label_maturity": {
+                        "status": "PASS",
+                        "horizon_sessions": 20,
+                        "signal_data_date": paper["signal_data_date"],
+                    },
+                    "production_lineage": lineage,
+                    "signal_lineage": {"display_top20_instruments": codes},
+                    "risk": {
+                        "tradeability_certified": False,
+                        "st": {
+                            "status": "SOURCE_SNAPSHOT_AVAILABLE",
+                            "top20_st": [],
+                            "top20_st_count": 0,
+                        },
+                        "usage_day_suspension": {
+                            "status": "NOT_INDEPENDENTLY_VERIFIED_PREOPEN",
+                        },
+                    },
+                }
+                (signals / f"{key}_mvp_metadata{sfx}.json").write_text(json.dumps(metadata))
+            (signals / f"{key}_paper_portfolio{sfx}.json").write_text(json.dumps(paper))
     waiting = {
         "start_date": "2026-10-12",
         "status": "awaiting_first_valuation",
@@ -125,13 +127,15 @@ def make_fixture(root: Path):
         "cumulative_return": None,
         "points": [],
     }
-    performance_path = signals / "csi1000_forward_performance.json"
-    performance_path.write_text(json.dumps(waiting))
-    subprocess.run([
-        sys.executable, str(ROOT / "quant" / "website" / "build_index.py"),
-        "--signals", str(signals),
-        "--output", str(signals / "available_dates.json"),
-    ], check=True, capture_output=True, text=True)
+    for mkt, sfx in (("csi1000", ""), ("csi500", "_csi500"), ("csi300", "_csi300")):
+        (signals / f"{mkt}_forward_performance.json").write_text(json.dumps(waiting))
+        subprocess.run([
+            sys.executable, str(ROOT / "quant" / "website" / "build_index.py"),
+            "--signals", str(signals),
+            "--market", mkt,
+            "--output", str(signals / f"available_dates{sfx}.json"),
+        ], check=True, capture_output=True, text=True)
+    performance_path = signals / "csi300_forward_performance.json"
     return performance_path
 
 
@@ -287,7 +291,7 @@ def main():
                     page.screenshot(path=str(OUT / f"methodology-{width}.png"), full_page=True)
                     page.close()
                 # Missing index is explicit and does not fan out to weekday probes.
-                (root / "signals" / "available_dates.json").unlink()
+                (root / "signals" / "available_dates_csi300.json").unlink()
                 page = browser.new_page(viewport={"width": 390, "height": 844})
                 requests = []
                 page.on("request", lambda request: requests.append(request.url) if "/signals/" in request.url else None)
