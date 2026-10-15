@@ -561,11 +561,14 @@ if modal is not None:
         """Immutable marker, no modification after verification."""
         require(key in ("smoke_pass", "stage0_p0_summary"), "STOP_STAGE0_MARKER_KIND")
         research.reload()
+        require(
+            bool(re.fullmatch(r"[a-f0-9]{40}", meta.get("code_sha") or "")), "STOP_STAGE0_MARKER_IDENTITY"
+        )
         root = RESULTS / prefix_for(meta["run_id"], meta["code_sha"])
         root.mkdir(parents=True, exist_ok=True)
         path = root / (key + ".json")
         data = {"run_id": meta["run_id"], "code_sha": meta["code_sha"], **payload}
-        require(not (set(_identity(meta)) & set(payload)), "STOP_STAGE0_MARKER_IDENTITY_OVERRIDE")
+        require("run_id" not in payload and "code_sha" not in payload, "STOP_STAGE0_MARKER_IDENTITY_OVERRIDE")
         if path.exists():
             require(json.loads(path.read_text(encoding="utf-8")) == data, "STOP_STAGE0_MARKER_CONFLICT")
         else:
@@ -724,7 +727,9 @@ if modal is not None:
         require(
             summary["status"] == "PASS" and summary["completed_cells"] == 16, "STOP_STAGE0_SUMMARY_NOT_FULL"
         )
-        freeze_remote.remote(full_meta, "stage0_p0_summary", summary)
+        freeze_remote.remote(
+            full_meta, "stage0_p0_summary", {k: v for k, v in summary.items() if k not in ("run_id", "code_sha")}
+        )
         print("STAGE0_P0_COMPLETE 176/176 fits 16/16 cells PASS", flush=True)
 
 else:
