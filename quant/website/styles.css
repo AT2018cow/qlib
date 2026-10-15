@@ -937,7 +937,7 @@ body { background: #0c121b; }
 }
 .governance-meta-grid {
   display: grid;
-  grid-template-columns: minmax(170px, 0.75fr) minmax(200px, 0.95fr) minmax(0, 1.5fr);
+  grid-template-columns: minmax(220px, 0.85fr) minmax(0, 1.65fr);
   gap: 12px;
   margin-bottom: 16px;
 }

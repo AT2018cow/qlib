@@ -39,9 +39,13 @@ def test_chinext_hidden_from_public_signal_ui():
 
 def test_methodology_marks_chinext_production_paused():
     page = (ROOT / "quant" / "website" / "methodology.html").read_text()
-    assert "研究支线 · 创业板" in page
-    assert "创业板 · 暂停更新" in page
-    assert "每日更新与网页展示已暂停" in page
+    app = (ROOT / "quant" / "website" / "app.js").read_text()
+    assert "研究支线 · 创业板" not in page
+    assert "创业板旧模型" not in page
+    assert "创业板旧模型" not in app
+    assert "双账本" not in page
+    assert "双账本" not in app
+    assert "T+1 开盘前生成 → T+1 开盘调仓" in app
     assert "定型主策略 · 参数已锁定" in page
 
 
@@ -64,7 +68,7 @@ def test_methodology_tracks_current_frozen_stage_b_contract():
         "2026-10-12",
         "2026-10-15",
         "1000 只成分股",
-        "ST / 停牌",
+        "涨跌停与 ST 规则",
         "自动化数据校验与免责声明",
     ):
         assert marker in page, f"methodology missing current marker: {marker}"
@@ -131,7 +135,6 @@ def test_dashboard_exposes_forward_mvp_contract_without_tradeability_claim():
     for marker in (
         "每日数据校验 · 已通过",
         "成分股与样本校验",
-        "特殊状态与停牌核验",
         "防泄漏校验通过",
         "停牌待执行后确认",
         "risk.tradeability_certified !== false",
@@ -240,11 +243,11 @@ def test_favicon_is_valid_svg_and_published_on_both_pages():
 def test_st_free_reference_return_is_explicit_not_certified():
     app = (ROOT / "quant" / "website" / "app.js").read_text()
     method = (ROOT / "quant" / "website" / "methodology.html").read_text()
-    for phrase in ("策略累计收益 · 模拟盘参考", "ST未纳入模拟",
-                   "参考模拟收益 · 不考虑 ST",
-                   "ST 接口正常则纳入 ST 快照", "ST_IGNORED_REFERENCE_ONLY"):
+    for phrase in ("策略累计收益 · 模拟盘参考",
+                   "开盘前自动核验 ST 快照（仅当外部接口连接故障时降级为不考虑 ST 的参考计算）",
+                   "ST_IGNORED_REFERENCE_ONLY"):
         assert phrase in app, f"site missing reference-only disclosure: {phrase}"
-    assert "ST 数据接口出现网络故障时" in method
+    assert "外部接口连接故障时降级为不考虑 ST" in method
     assert "研究型参考收益" in method
 
 
@@ -263,8 +266,8 @@ def test_centered_boot_loader_and_consolidated_bottom_governance_card():
     # Governance & ST disclosures consolidated at the bottom after #performance
     assert app.index('id="ranking"') < app.index('id="performance"') < app.index('id="governance-notes"')
     assert app.index('id="performance"') < app.index('id="stat-pit"')
-    assert app.index('id="performance"') < app.index('id="stat-risk"')
     assert app.index('id="performance"') < app.index('id="mvp-health"')
+    assert 'id="stat-risk"' not in app
 
     # Methodology includes 5-phase audited metrics for c98856b4 Top10/Drop1
     for metric in ("+46.23%", "2.228", "-14.95%", "+33.48%", "-20.05%"):

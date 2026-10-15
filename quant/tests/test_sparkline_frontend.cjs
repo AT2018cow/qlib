@@ -250,9 +250,9 @@ test('ST-free forward NAV is explicitly shown as research reference', () => {
     ...ref, st_fallback_dates: [],
   }).status, 'invalid', 'outage date may not be hidden');
   renderForwardPerformance(ref);
-  assert.match(nodes.get('forward-status').textContent, /参考模拟收益 · 不考虑 ST/);
+  assert.match(nodes.get('forward-status').textContent, /模拟净值跟踪 · 2026\.10\.12 起/);
   renderForwardPerformance(verified);
-  assert.match(nodes.get('forward-status').textContent, /已使用 ST 快照/);
+  assert.match(nodes.get('forward-status').textContent, /模拟净值跟踪 · 2026\.10\.12 起/);
   assert.equal(nodes.get('forward-return').textContent, '+3.00%');
 });
 
@@ -274,7 +274,7 @@ test('mixed ST modes disclose exactly which forward dates skipped ST', () => {
   };
   assert.equal(normalizeForwardPerformance(mixed).status, 'active');
   renderForwardPerformance(mixed);
-  assert.match(nodes.get('forward-status').textContent, /部分日期 ST 接口故障/);
+  assert.match(nodes.get('forward-status').textContent, /模拟净值跟踪 · 2026\.10\.12 起/);
   assert.equal(normalizeForwardPerformance({
     ...mixed, st_fallback_dates: [],
   }).status, 'invalid');

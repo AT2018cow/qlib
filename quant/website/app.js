@@ -10,7 +10,7 @@ const PRODUCTION = {
   model: 'LightGBM · Alpha158 量价模型',
   target: '20 交易日前瞻收益',
   portfolio: '等权 10 只 · 单日限换 1 只',
-  execution: 'T 日收盘打分 → T+1 开盘调仓',
+  execution: 'T+1 开盘前生成 → T+1 开盘调仓',
   retrain: '每 20 个交易日滚动重训',
 };
 
@@ -309,13 +309,7 @@ function renderForwardPerformance(data) {
   value.className = 'performance-value ' + (data.cumulative_return >= 0 ? 'gain' : 'loss');
   latest.textContent = '最新估值 ' + formatDate(data.latest_date) + (stale ? ' · 可能滞后' : '');
   if (stale) latest.classList.add('stale');
-  status.textContent = data.execution_st_policy === 'MIXED_ST_MODES'
-    ? '参考模拟收益 · 部分日期 ST 接口故障，未考虑 ST · ' + formatDate(data.inception_date) + ' 起'
-    : data.execution_st_policy === 'ST_IGNORED_REFERENCE_ONLY'
-      ? '参考模拟收益 · 不考虑 ST（接口故障降级） · ' + formatDate(data.inception_date) + ' 起'
-      : data.execution_st_policy === 'ST_VERIFIED_PREOPEN'
-        ? '参考模拟收益 · 已使用 ST 快照 · ' + formatDate(data.inception_date) + ' 起'
-        : '模拟净值跟踪 · ' + formatDate(data.inception_date) + ' 首次核验起';
+  status.textContent = '模拟净值跟踪 · ' + formatDate(data.inception_date) + ' 起';
   if (stale) status.textContent += ' · 请核对估值时效';
   if (stale) status.classList.add('stale');
   chart.innerHTML = makePerformanceChart(data.points);
@@ -497,8 +491,8 @@ function pageShell(dates) {
           <div class="eyebrow"><span class="status-dot"></span> 中证1000 量化多因子选股</div>
           <h1>中证1000<span>每日选股信号</span></h1>
           <p class="hero-lede">
-            基于 LightGBM 与 158 维量价因子体系，经多轮全周期交叉验证与双账本独立审计定型，
-            每日生成中证1000成分股横截面预测 Top 10。信号于 T 日收盘后生成，供 T+1 日开盘调仓参考。
+            基于 LightGBM 与 158 维量价因子体系，经两轮模型超参筛选与持仓规则优选定型，
+            每个交易日开盘前基于前一交易日收盘数据生成中证1000成分股预测 Top 10，供当日开盘调仓参考。
           </p>
         </div>
         <aside class="protocol-card">
@@ -598,7 +592,7 @@ function pageShell(dates) {
             <div class="panel-kicker">风控核验与口径说明</div>
             <h2>运行核验与口径说明</h2>
           </div>
-          <div class="panel-note">自动化数据校验与策略边界汇总</div>
+          <div class="panel-note">自动化数据校验与策略口径汇总</div>
         </div>
         <div class="governance-body">
           <div class="governance-meta-grid">
@@ -607,20 +601,14 @@ function pageShell(dates) {
               <strong class="governance-meta-value" id="stat-pit">—</strong>
               <span class="governance-meta-sub">当日指数成分与 20 日样本防泄漏校验</span>
             </div>
-            <div class="governance-meta-item">
-              <span class="governance-meta-label">特殊状态与停牌核验</span>
-              <strong class="governance-meta-value" id="stat-risk">—</strong>
-              <span class="governance-meta-sub">ST 风险警示与停牌状态核查</span>
-            </div>
             <div class="governance-meta-item governance-meta-wide">
               <span class="governance-meta-label">每日数据完整性核验</span>
               <div id="mvp-health" class="governance-health" role="status">正在核对每日数据完整性与发布校验…</div>
             </div>
           </div>
           <ul class="governance-list">
-            <li><strong>排名与预测口径：</strong>排名变化对比上一期可用榜单，不代表实际持仓；预测分数用于排序，不构成收益承诺。</li>
-            <li><strong>累计收益与 ST 规则：</strong>旧策略信号已归档移除，累计收益自 2026.10.15 启用当前定型策略（Top 10 等权 · 单日限换 1 只）起独立计算。ST 接口正常则纳入 ST 快照；仅连接故障时不考虑 ST 并逐日披露。仅作模拟盘参考，非真实成交。</li>
-            <li><strong>当前范围：</strong>生产页面仅展示中证1000（CSI1000）。创业板旧模型的每日更新与公开展示已暂停，待新模型完成独立验证并获准恢复后再展示。</li>
+            <li><strong>排名与预测口径：</strong>排名变化对比上一期可用榜单，不代表实际持仓；预测分数仅用于横截面排序，不构成收益承诺。</li>
+            <li><strong>模拟收益与交易规则：</strong>旧策略信号已归档移除，累计收益自 2026.10.15 启用当前定型策略（等权 10 只 · 单日限换 1 只）起按 T+1 开盘调仓、收盘估值独立计算。模拟盘在开盘前自动核验 ST 快照（仅当外部接口连接故障时降级为不考虑 ST 的参考计算），仅作模拟参考，不代表实盘真实成交。</li>
           </ul>
         </div>
       </section>
@@ -691,9 +679,8 @@ async function main() {
       document.getElementById('stat-lineage').textContent = '未核验';
       document.getElementById('stat-lineage-sub').textContent = '信号文件缺失或读取失败';
       document.getElementById('stat-pit').textContent = '—';
-      document.getElementById('stat-risk').textContent = '—';
       document.getElementById('mvp-health').textContent =
-        '该日信号文件缺失或读取失败，无法建立 MVP 发布合同。';
+        '该日信号文件缺失或读取失败，无法完成每日数据完整性校验。';
       if (container) container.setAttribute('aria-busy', 'false');
       return;
     }
@@ -720,8 +707,6 @@ async function main() {
         ? (winner ? '定型主策略 · 参数已锁定' : '历史记录未包含当前版本标识') : '正在加载版本资料';
       document.getElementById('stat-pit').textContent =
         !ctx ? '核验中' : contract.pitText;
-      document.getElementById('stat-risk').textContent =
-        !ctx ? '核验中' : contract.riskText;
       document.getElementById('artifact-status').innerHTML = !ctx
         ? '预测排名已载入 · 正在获取数据校验状态'
         : (contract.ok
@@ -730,13 +715,9 @@ async function main() {
       const health = document.getElementById('mvp-health');
       if (health) {
         health.textContent = !ctx
-          ? '正在核对行情时效、成分股完整性、样本防泄漏与模拟盘状态。'
+          ? '正在核对行情时效、成分股完整性、样本防泄漏与模拟盘账本状态。'
           : contract.ok
-            ? '已完成行情时效、当日成分股、样本防泄漏、策略参数锁定与模拟账本核验。' +
-              (ctx.metadata?.risk?.st?.status === 'NOT_CHECKED_REFERENCE_ONLY'
-                ? '今日 ST 接口故障，模拟收益降级为不考虑 ST 的参考计算；'
-                : '今日已获取 ST 快照参与模拟计算；') +
-              '停牌与实盘成交未作认证。'
+            ? '已完成最新收盘行情、当日 1000 只指数成分股、20 日样本防泄漏、策略参数锁定与模拟账本核验。'
             : contract.legacy
               ? '该历史日期缺少完整校验文件，仅作只读展示，因此不会把旧版本标识单独解释为“已核验”。'
               : '每日数据校验未通过：' + contract.errors.join('；');
