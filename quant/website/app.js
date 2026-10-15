@@ -5,14 +5,14 @@ const CSV_BASE = 'signals';
 const DATE_INDEX_URL = CSV_BASE + '/available_dates.json';
 
 const POOLS = {
-  csi1000: {
-    key: 'csi1000',
-    label: '中证1000',
-    code: '000852',
-    expectedPitCount: 1000,
-    indexUrl: DATE_INDEX_URL,
-    forwardUrl: CSV_BASE + '/csi1000_forward_performance.json',
-    suffix: '',
+  csi300: {
+    key: 'csi300',
+    label: '沪深300',
+    code: '000300',
+    expectedPitCount: 300,
+    indexUrl: CSV_BASE + '/available_dates_csi300.json',
+    forwardUrl: CSV_BASE + '/csi300_forward_performance.json',
+    suffix: '_csi300',
   },
   csi500: {
     key: 'csi500',
@@ -23,17 +23,18 @@ const POOLS = {
     forwardUrl: CSV_BASE + '/csi500_forward_performance.json',
     suffix: '_csi500',
   },
-  csi300: {
-    key: 'csi300',
-    label: '沪深300',
-    code: '000300',
-    expectedPitCount: 300,
-    indexUrl: CSV_BASE + '/available_dates_csi300.json',
-    forwardUrl: CSV_BASE + '/csi300_forward_performance.json',
-    suffix: '_csi300',
+  csi1000: {
+    key: 'csi1000',
+    label: '中证1000',
+    code: '000852',
+    expectedPitCount: 1000,
+    indexUrl: DATE_INDEX_URL,
+    forwardUrl: CSV_BASE + '/csi1000_forward_performance.json',
+    suffix: '',
   },
 };
 
+const POOL_ORDER = ['csi300', 'csi500', 'csi1000'];
 let currentPool = POOLS.csi1000;
 
 const PRODUCTION = {
@@ -511,7 +512,8 @@ function renderHistoryButtons(dates) {
 
 function pageShell(dates) {
   const history = renderHistoryButtons(dates);
-  const poolTabs = Object.values(POOLS).map(p => {
+  const poolTabs = POOL_ORDER.map(key => {
+    const p = POOLS[key];
     const active = p.key === currentPool.key;
     return `<button class="pool-btn${active ? ' current' : ''}" role="tab" aria-selected="${active}" data-pool="${p.key}">${p.label} <span>${p.code}</span></button>`;
   }).join('');
