@@ -61,4 +61,6 @@ spike_rdagent.py
 
 # Persistent local backup of large raw signals, models, and decisions
 quant/local_backup/
+.worktrees/
+
 
