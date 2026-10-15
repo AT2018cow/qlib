@@ -25,8 +25,26 @@ import subprocess
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-_REPO = Path(__file__).resolve().parents[4]
+def _find_repo_root() -> Path:
+    """Locate the repo root in both layouts.
+
+    Local ``modal run``: deep path ``<root>/quant/code/research/csi300_csi500/``.
+    Remote container: Modal flattens the entrypoint to ``/root/*.py`` while
+    the repo tree lives in the image at ``/root/qlib``.
+    """
+    here = Path(__file__).resolve()
+    for candidate in (here.parent, *here.parents):
+        if (candidate / "qlib" / "__init__.py").is_file() and (candidate / "quant" / "code").is_dir():
+            return candidate
+    fallback = Path("/root/qlib")
+    if (fallback / "qlib" / "__init__.py").is_file():
+        return fallback
+    raise ValueError("STAGE0_P0_NOREPO: cannot locate repository root")
+
+
+_REPO = _find_repo_root()
+if str(_REPO / "quant" / "code" / "research" / "csi300_csi500") not in sys.path:
+    sys.path.insert(0, str(_REPO / "quant" / "code" / "research" / "csi300_csi500"))
 for _entry in (
     str(_REPO),
     str(_REPO / "quant" / "code"),
@@ -170,18 +188,20 @@ if modal is not None:
         }
 
     def _source_checks() -> dict:
-        from audit.csi1000_layered_search_replay import load_frozen_result
-
-        frozen = load_frozen_result(REPO)["manifest"]
+        # NOTE: the image excludes quant/data (trap 1), so the frozen Stage-B
+        # JSON is unreadable remotely. Gate directly against the frozen
+        # EXPECTED_* constants (identical values, plan section 2.1).
         snap = SOURCE / "csi1000_stage_b" / "provider_snapshot.json"
         require(snap.is_file(), "STOP_STAGE0_SOURCE: provider snapshot missing")
         row = json.loads(snap.read_text(encoding="utf-8"))
-        for key in ("snapshot_token", "provider_fingerprint"):
-            require(row[key] == frozen[key], f"STOP_STAGE0_SOURCE: {key} differs from Stage-B")
         require(
-            row["provider_fingerprint"] == EXPECTED_PROVIDER_FINGERPRINT, "STOP_STAGE0_SOURCE: fingerprint drift"
+            row.get("provider_fingerprint") == EXPECTED_PROVIDER_FINGERPRINT,
+            "STOP_STAGE0_SOURCE: fingerprint differs from frozen Stage-B",
         )
-        require(row["snapshot_token"] == EXPECTED_SNAPSHOT_TOKEN, "STOP_STAGE0_SOURCE: snapshot token drift")
+        require(
+            row.get("snapshot_token") == EXPECTED_SNAPSHOT_TOKEN,
+            "STOP_STAGE0_SOURCE: snapshot token differs from frozen Stage-B",
+        )
         return {
             "provider_fingerprint": row["provider_fingerprint"],
             "snapshot_token": row["snapshot_token"],
@@ -571,7 +591,7 @@ if modal is not None:
         return record
 
     def _actual_sha() -> str:
-        repo = Path(__file__).resolve().parents[4]
+        repo = _find_repo_root()
         sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True, cwd=str(repo)).strip()
         require(
             not subprocess.check_output(["git", "status", "--porcelain"], text=True, cwd=str(repo)).strip(),

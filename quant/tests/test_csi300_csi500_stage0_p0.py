@@ -306,3 +306,8 @@ def test_stage0_modal_traps_static():
     assert "STAGE0_P0_COMPLETE 176/176 fits 16/16 cells PASS" in src
     assert "RESEARCH_VOLUME" in src
     assert "version=2" in src
+    # Flat remote layout (/root/*.py) must not break path discovery;
+    # excluded quant/data must never be read remotely.
+    assert "parents[4]" not in src
+    assert "_find_repo_root" in src
+    assert "load_frozen_result" not in src
