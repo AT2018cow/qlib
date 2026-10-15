@@ -111,15 +111,16 @@
         <div class="doc-table-wrap">
           <table class="doc-table">
             <thead>
-              <tr><th>测试序列（不同初始重训日）</th><th>区间累计净收益</th><th>年化净收益 (ARR)</th><th>信息比率 (IR)</th><th>最大回撤 (MaxDD)</th></tr>
+              <tr><th>测试序列（不同初始重训日）</th><th>区间累计净收益</th><th>年化净收益 (CAGR)</th><th>夏普比率 (Sharpe)</th><th>超额信息比率 (IR)</th><th>最大回撤 (MaxDD)</th></tr>
             </thead>
             <tbody>
-              <tr><td>重训起点一（基准日重训）</td><td>+116.71%</td><td>+57.69%</td><td>2.642</td><td>-14.37%</td></tr>
-              <tr><td>重训起点二（偏移 4 个交易日）</td><td>+82.01%</td><td>+43.13%</td><td>2.126</td><td>-14.23%</td></tr>
-              <tr><td>重训起点三（偏移 6 个交易日）</td><td>+111.79%</td><td>+55.72%</td><td>2.559</td><td>-12.56%</td></tr>
-              <tr><td>重训起点四（偏移 10 个交易日）</td><td>+60.86%</td><td>+33.48%</td><td>1.701</td><td>-20.05%</td></tr>
-              <tr><td>重训起点五（偏移 15 个交易日）</td><td>+69.34%</td><td>+37.45%</td><td>1.878</td><td>-13.54%</td></tr>
-              <tr><td><strong>五组起点平均 / 区间极值</strong></td><td><strong>+88.14%</strong></td><td><strong>+46.23%（最低 +33.48%）</strong></td><td><strong>2.228</strong></td><td><strong>-14.95%（最深 -20.05%）</strong></td></tr>
+              <tr><td>重训起点一（基准日重训）</td><td>+108.38%</td><td>+52.45%</td><td>1.757</td><td>1.464</td><td>-20.50%</td></tr>
+              <tr><td>重训起点二（偏移 4 个交易日）</td><td>+69.20%</td><td>+35.26%</td><td>1.325</td><td>0.919</td><td>-20.63%</td></tr>
+              <tr><td>重训起点三（偏移 6 个交易日）</td><td>+67.41%</td><td>+34.44%</td><td>1.322</td><td>0.845</td><td>-21.84%</td></tr>
+              <tr><td>重训起点四（偏移 10 个交易日）</td><td>+130.12%</td><td>+61.38%</td><td>1.973</td><td>1.693</td><td>-18.70%</td></tr>
+              <tr><td>重训起点五（偏移 15 个交易日）</td><td>+130.90%</td><td>+61.70%</td><td>2.086</td><td>1.816</td><td>-10.75%</td></tr>
+              <tr><td><strong>五组起点中位数</strong></td><td><strong>+108.38%</strong></td><td><strong>+52.45%</strong></td><td><strong>1.757</strong></td><td><strong>1.464</strong></td><td><strong>-20.50%</strong></td></tr>
+              <tr><td><strong>五组起点均值</strong></td><td><strong>+101.20%</strong></td><td><strong>+49.04%</strong></td><td><strong>1.693</strong></td><td><strong>1.347</strong></td><td><strong>-18.48%</strong></td></tr>
             </tbody>
           </table>
         </div>
@@ -166,7 +167,7 @@
       <section class="doc-section" id="risk">
         <h2>6. 收益解读与风险提示</h2>
         <ul>
-          <li><strong>历史回测表现不代表未来收益。</strong> 策略在 2025-01-02 至 2026-09-30 样本外测试期取得的 33.48%~57.69% 年化净收益（五组起点均值 46.23%）仅反映过去特定市场环境下的回测结果，不构成对未来收益的任何承诺。</li>
+          <li><strong>历史回测表现不代表未来收益。</strong> 策略在 2025-01-02 至 2026-09-30 样本外测试期取得的 34.44%~61.70% 年化净收益（五组起点中位数 52.45%、均值 49.04%）仅反映过去特定市场环境下的回测结果，不构成对未来收益的任何承诺。</li>
           <li><strong>模型预测分数不等于实际涨跌幅。</strong> 模型预测目标是未来 20 个交易日相对收益，主要用于成分股横截面强弱排序；实际净值表现仍受中小盘整体市场波动（Beta）、风格切换及交易执行约束影响。</li>
           <li><strong>策略参数已锁定。</strong> 短期几个交易日或数周的净值波动属于正常市场现象，不会触发临时人工改参；任何新模型迭代均需另立新版本并完成独立验证。</li>
           <li><strong>模拟盘不等于实盘成交。</strong> 日频数据无法事先预知盘中临时停牌或突发公告，真实资金交易仍可能面临盘口冲击成本、排队成交率与券商柜台执行差异。</li>

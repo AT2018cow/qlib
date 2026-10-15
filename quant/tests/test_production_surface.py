@@ -270,7 +270,7 @@ def test_centered_boot_loader_and_consolidated_bottom_governance_card():
     assert 'id="stat-risk"' not in app
 
     # Methodology includes 5-phase audited metrics for c98856b4 Top10/Drop1
-    for metric in ("+46.23%", "2.228", "-14.95%", "+33.48%", "-20.05%"):
+    for metric in ("+52.45%", "1.757", "1.464", "-20.50%", "+49.04%"):
         assert metric in method, f"methodology missing 5-phase metric: {metric}"
 
     # Pool switcher supports CSI1000, CSI500, and CSI300
