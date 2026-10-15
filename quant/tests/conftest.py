@@ -13,6 +13,7 @@ SEARCH_PATHS = [
     QUANT_DIR / "code" / "execution",
     QUANT_DIR / "code" / "research" / "stage_ab",
     QUANT_DIR / "code" / "research" / "layered_search",
+    QUANT_DIR / "code" / "research" / "csi300_csi500",
     QUANT_DIR / "code" / "research" / "pre_tuner",
     QUANT_DIR / "code" / "audit",
     QUANT_DIR / "code" / "ops",
