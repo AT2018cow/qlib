@@ -1,0 +1,63 @@
+{
+  "window": "2026-01-01~2026-09-11",
+  "market": "star",
+  "bench": "SZ399997",
+  "limit_th": 0.195,
+  "note": "粗筛：差异<3pp视为噪声；只记 top3 候选；终审以批次C滚动为准",
+  "universe": {
+    "n_days": 169,
+    "n_instruments": 618
+  },
+  "topk_nd_grid": {
+    "top10_nd1": {
+      "excess_with_cost_annual": -0.749,
+      "ir": -3.333,
+      "max_drawdown": -0.5695
+    },
+    "top10_nd2": {
+      "excess_with_cost_annual": -0.5226,
+      "ir": -2.331,
+      "max_drawdown": -0.4631
+    },
+    "top10_nd3": {
+      "excess_with_cost_annual": -0.4101,
+      "ir": -1.81,
+      "max_drawdown": -0.4209
+    },
+    "top20_nd1": {
+      "excess_with_cost_annual": -0.083,
+      "ir": -0.427,
+      "max_drawdown": -0.1696
+    },
+    "top20_nd2": {
+      "excess_with_cost_annual": -0.2545,
+      "ir": -1.286,
+      "max_drawdown": -0.299
+    },
+    "top20_nd3": {
+      "excess_with_cost_annual": -0.265,
+      "ir": -1.427,
+      "max_drawdown": -0.2886
+    },
+    "top50_nd1": {
+      "excess_with_cost_annual": -0.0349,
+      "ir": -0.299,
+      "max_drawdown": -0.1494
+    },
+    "top50_nd2": {
+      "excess_with_cost_annual": 0.0719,
+      "ir": 0.508,
+      "max_drawdown": -0.0843
+    },
+    "top50_nd3": {
+      "excess_with_cost_annual": -0.0542,
+      "ir": -0.355,
+      "max_drawdown": -0.1641
+    }
+  },
+  "top3": [
+    "top50_nd2",
+    "top50_nd1",
+    "top50_nd3"
+  ]
+}

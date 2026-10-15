@@ -1,0 +1,27 @@
+{
+  "freq_experiment_source_sha256": "90544a7de171b2fcb8b6a18893a5b5cbf62c54be06cc1d9bb17141a0f41e20db",
+  "lgb_repro_params": {
+    "bagging_seed": 3,
+    "data_random_seed": 1,
+    "deterministic": true,
+    "drop_seed": 4,
+    "extra_seed": 6,
+    "feature_fraction_seed": 2,
+    "force_col_wise": true,
+    "objective_seed": 5,
+    "seed": 0
+  },
+  "manifest_version": "freq_repro_v1",
+  "market": "csi1000",
+  "model_config_sha256": "198a17ebd3ef271ad41393b688169afd0ae88f5f9989f500c30bfde9a6811df5",
+  "provider_cutoff": "2026-09-30",
+  "provider_fingerprint": "cd2e68f571c6bd19fbb2b79089e891bb1c43b96ab1fcdb4d2b2a9b1fdd9ce5d5",
+  "runtime": {
+    "lightgbm": "4.7.0",
+    "numpy": "1.26.4",
+    "pandas": "2.2.3",
+    "pyqlib": "0.9.8.dev32",
+    "python": "3.11.12"
+  },
+  "snapshot_token": "57b2c7752dbb4b92366fab104575c0fd5cf8fbf8b7b1b37a8e111daafa7acbd7"
+}

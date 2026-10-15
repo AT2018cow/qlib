@@ -1,0 +1,20 @@
+{
+  "artifact_sha256": {
+    "checkpoint.txt": "ba2a39e5c3fff0b7eec40e8aada6f8fcf046e5c6b55b4f803c6ddfdf8048b7a0",
+    "prediction.parquet": "69986308357fd0fb04d82ba3be068e3b1b6424e8022ca175374638df38d04630"
+  },
+  "best_iteration": 25,
+  "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+  "code_sha": "b359c19e9d2cd570d5da4ac81aa01899cc6eed6f",
+  "fit_performed": true,
+  "job_sha256": "99112f7459a6382a1e19cc9b706f6c8cdf5c4e6b0150bb2b5ba590458a964196",
+  "kind": "long",
+  "model_config_sha256": "6a98694bef541b5f0cd8963ae42a3f10d28146e421825b3131b50a5f8cdd5cf5",
+  "p0_prefix": "csi1000_layered_search/csi1000_layered_search_v1/p0_20261013_c1/p0/cffb9cd56d52",
+  "plan_sha256": "b8f33802eb19ea516025235b2558f13351ee582e41f21350ce1690cfb9893b5a",
+  "provider_fingerprint": "cd2e68f571c6bd19fbb2b79089e891bb1c43b96ab1fcdb4d2b2a9b1fdd9ce5d5",
+  "quote_sha256": "7d27c49ee7dcb2f4620c9a3aae7c620a1ecdc4890a18fc46b74cfcd468cec405",
+  "run_id": "l2_20261014_b1",
+  "source_snapshot_sha256": "1d693911db026f0828ab9922617e19c7a3cde7211320a5b69be8ea26077c7b88",
+  "status": "PASS"
+}
