@@ -273,3 +273,9 @@ def test_centered_boot_loader_and_consolidated_bottom_governance_card():
     for metric in ("+46.23%", "2.228", "-14.95%", "+33.48%", "-20.05%"):
         assert metric in method, f"methodology missing 5-phase metric: {metric}"
 
+    # Pool switcher supports CSI1000, CSI500, and CSI300
+    for pool in ("csi1000", "csi500", "csi300", "中证1000", "中证500", "沪深300"):
+        assert pool in app
+    assert ".pool-switcher {" in styles
+
+

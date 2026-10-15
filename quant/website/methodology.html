@@ -22,14 +22,14 @@
 
   <header class="doc-hero">
     <div class="eyebrow"><span class="status-dot"></span> 策略方法论与交易规则 · 2026-10-15</div>
-    <h1>中证1000 量化选股方法论<br>模型架构、历史表现与执行规则</h1>
+    <h1>A股宽基量化选股方法论<br>模型架构、历史表现与执行规则</h1>
     <p>
-      本页介绍当前运行的中证 1000 量化选股策略（<strong>等权 10 只 · 单日限换 1 只</strong>）。
+      本页介绍当前运行的三大主流宽基指数量化选股策略（覆盖 <strong>中证1000、中证500、沪深300</strong>，现阶段统一采用在中证1000上定型的 <strong>等权 10 只 · 单日限换 1 只</strong> 策略框架）。
       策略模型与调仓参数已在完成两轮超参数筛选、持仓规则对比及多起点样本外回测验证后正式锁定；
       2025-01-02 至 2026-09-30 的 424 个交易日样本外测试区间仅作历史表现展示，不再用于回溯修改策略参数。
     </p>
     <div class="doc-status">
-      <span class="mini-pill">中证1000 · Top10 低换手优选</span>
+      <span class="mini-pill">中证1000 · 中证500 · 沪深300</span>
       <span class="mini-pill">定型主策略 · 参数已锁定</span>
       <span class="mini-pill">T+1 开盘调仓 · 20 日滚动重训</span>
     </div>
@@ -50,7 +50,7 @@
       <section class="doc-section" id="status">
         <h2>1. 策略核心概览</h2>
         <div class="metric-grid">
-          <div class="metric"><span>选股股票池</span><strong>中证1000</strong></div>
+          <div class="metric"><span>覆盖股票池</span><strong>中证1000 / 500 / 沪深300</strong></div>
           <div class="metric"><span>核心模型</span><strong>LightGBM 多因子</strong></div>
           <div class="metric"><span>持仓规则</span><strong>等权 10 只 / 日限换 1</strong></div>
           <div class="metric"><span>信号与执行</span><strong>开盘前发布 / 开盘调仓</strong></div>
@@ -58,7 +58,7 @@
           <div class="metric"><span>样本防泄漏</span><strong>20 交易日隔离期</strong></div>
         </div>
         <p>
-          策略聚焦中证 1000 指数成分股，在每个交易日开盘前基于前一交易日完整收盘行情，对当日在榜的 1000 只成分股进行横截面预测打分，精选排名前 10 的个股构建组合，并通过“每日最多轮换 1 只”的低换手规则控制交易成本。
+          系统每日同时对 <strong>中证 1000（1000只成分股）、中证 500（500只成分股）、沪深 300（300只成分股）</strong> 三大宽基指数各自独立训练模型、独立生成 Top 10 选股榜单并独立核算模拟账户累计收益。现阶段三大宽基指数统一采用在中证 1000 上完成全周期验证的定型策略框架，后续将进一步针对沪深 300 与中证 500 开展专项参数优选。
         </p>
       </section>
 

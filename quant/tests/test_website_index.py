@@ -64,3 +64,29 @@ def test_index_fails_closed_without_signals(tmp_path):
     ], capture_output=True, text=True)
     assert result.returncode != 0
     assert not output.exists()
+
+
+def test_index_supports_csi500_and_csi300_pools(tmp_path):
+    with (tmp_path / "code_name_map.csv").open("w", newline="", encoding="utf-8") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(["code", "name"])
+        writer.writerows([["688578", "艾力斯"], ["688521", "芯原股份"]])
+    with (tmp_path / "2026-10-15_top20_lgb158_csi500.csv").open("w", newline="", encoding="utf-8") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(["rank", "instrument", "score"])
+        writer.writerow([1, "SH688578", 0.36])
+    with (tmp_path / "2026-10-15_top20_lgb158_csi300.csv").open("w", newline="", encoding="utf-8") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(["rank", "instrument", "score"])
+        writer.writerow([1, "SH688521", 0.56])
+    assert build_index(tmp_path, market="csi500") == {
+        "version": 1,
+        "dates": ["2026-10-15"],
+        "names": {"688578": "艾力斯"},
+    }
+    assert build_index(tmp_path, market="csi300") == {
+        "version": 1,
+        "dates": ["2026-10-15"],
+        "names": {"688521": "芯原股份"},
+    }
+

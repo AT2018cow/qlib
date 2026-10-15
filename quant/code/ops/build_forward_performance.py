@@ -17,10 +17,20 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--signals", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--market",
+        default="csi1000",
+        choices=("csi1000", "csi500", "csi300"),
+    )
     args = parser.parse_args()
 
+    pattern = (
+        "*_paper_portfolio.json"
+        if args.market == "csi1000"
+        else f"*_paper_portfolio_{args.market}.json"
+    )
     artifacts = []
-    for path in sorted(args.signals.glob("*_paper_portfolio.json")):
+    for path in sorted(args.signals.glob(pattern)):
         try:
             raw = json.loads(path.read_text())
         except (OSError, json.JSONDecodeError) as exc:
@@ -33,7 +43,7 @@ def main() -> None:
             continue
         artifacts.append(raw)
 
-    result = build_forward_performance(artifacts)
+    result = build_forward_performance(artifacts, market=args.market)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
 

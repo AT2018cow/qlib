@@ -120,6 +120,48 @@ h1, h2, h3, p { margin-top: 0; }
   border-radius: 50%;
   background: var(--teal);
 }
+.pool-switcher {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 5px;
+  margin: 0 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface);
+}
+.pool-btn {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 660;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.pool-btn span {
+  color: var(--quiet);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 600;
+}
+.pool-btn:hover {
+  background: #202f42;
+  color: var(--heading);
+}
+.pool-btn.current {
+  background: var(--blue-soft);
+  border-color: #4f77a3;
+  color: var(--blue);
+  font-weight: 740;
+}
+.pool-btn.current span {
+  color: #a9cdfc;
+}
 .hero h1 {
   margin: 0 0 15px;
   color: var(--heading);

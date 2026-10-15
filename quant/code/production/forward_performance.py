@@ -18,7 +18,10 @@ CANONICAL_LINEAGE = "c98856b4_top10_drop1_canonical"
 
 
 def build_forward_performance(
-    artifacts: Iterable[Mapping[str, Any]], *, start_date: str = FORWARD_PERFORMANCE_START
+    artifacts: Iterable[Mapping[str, Any]],
+    *,
+    start_date: str = FORWARD_PERFORMANCE_START,
+    market: str = "csi1000",
 ) -> dict:
     date.fromisoformat(start_date)
     reports = {}
@@ -27,7 +30,7 @@ def build_forward_performance(
     calendar_dates = set()
     reported_st_policies = set()
     for artifact in artifacts:
-        if artifact.get("market") != "csi1000":
+        if artifact.get("market") != market:
             continue
         if artifact.get("paper_lineage") != CANONICAL_LINEAGE:
             continue

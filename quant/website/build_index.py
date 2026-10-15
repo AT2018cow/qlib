@@ -14,10 +14,16 @@ SIGNAL_FILE = re.compile(r"^(\d{4}-\d{2}-\d{2})_top20_lgb158\.csv$")
 VISIBLE_DATES = 24
 
 
-def build_index(signals: Path) -> dict:
+def _signal_suffix(market: str) -> str:
+    return "_top20_lgb158.csv" if market == "csi1000" else f"_top20_lgb158_{market}.csv"
+
+
+def build_index(signals: Path, market: str = "csi1000") -> dict:
+    suffix = _signal_suffix(market)
+    pattern = re.compile(rf"^(\d{{4}}-\d{{2}}-\d{{2}}){re.escape(suffix)}$")
     dates = []
     for entry in signals.iterdir():
-        match = SIGNAL_FILE.fullmatch(entry.name)
+        match = pattern.fullmatch(entry.name)
         if not match or not entry.is_file():
             continue
         try:
@@ -39,7 +45,7 @@ def build_index(signals: Path) -> dict:
 
     names = {}
     for day in dates[:VISIBLE_DATES]:
-        with (signals / (day + "_top20_lgb158.csv")).open(encoding="utf-8-sig", newline="") as stream:
+        with (signals / (day + suffix)).open(encoding="utf-8-sig", newline="") as stream:
             for row in csv.DictReader(stream):
                 instrument = row.get("instrument", "")
                 if re.fullmatch(r"(SH|SZ|BJ)\d{6}", instrument):
@@ -54,13 +60,18 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--signals", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--market",
+        default="csi1000",
+        choices=("csi1000", "csi500", "csi300"),
+    )
     args = parser.parse_args()
-    index = build_index(args.signals)
+    index = build_index(args.signals, market=args.market)
     if not index["dates"]:
-        parser.error("no CSI1000 Top20 signal files found")
+        parser.error(f"no {args.market} Top20 signal files found")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(index, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
-    print(f"Pages CSI1000 index: {len(index['dates'])} dates, {len(index['names'])} names")
+    print(f"Pages {args.market} index: {len(index['dates'])} dates, {len(index['names'])} names")
 
 
 if __name__ == "__main__":

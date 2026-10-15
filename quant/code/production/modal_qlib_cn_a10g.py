@@ -482,8 +482,8 @@ def _load_and_patch_cfg(
     # silently overwrite frozen Stage-B model semantics.  Research callers that
     # omit csi1000_profile retain their historical behavior.
     if csi1000_profile is not None:
-        if market != "csi1000":
-            raise ValueError("csi1000_profile is valid only for market='csi1000'")
+        if market not in ("csi1000", "csi500", "csi300"):
+            raise ValueError("csi1000_profile is valid only for market in ('csi1000', 'csi500', 'csi300')")
         from csi1000_production_config import apply_csi1000_model_profile
 
         cfg["_csi1000_production_manifest"] = apply_csi1000_model_profile(
@@ -3720,15 +3720,21 @@ def daily_standalone(
         )
 
     # ---- 2) 训练终审候选 ----
-    if market == "csi1000":
+    if market in ("csi1000", "csi500", "csi300"):
         from csi1000_production_config import CANONICAL_PAPER_LINEAGE, CANONICAL_PROFILE
 
         csi1000_profile = csi1000_profile or CANONICAL_PROFILE
         if csi1000_profile == CANONICAL_PROFILE and paper_lineage == "canonical":
             paper_lineage = CANONICAL_PAPER_LINEAGE
     elif csi1000_profile is not None:
-        raise ValueError("csi1000_profile is valid only for market='csi1000'")
+        raise ValueError("csi1000_profile is valid only for market in ('csi1000', 'csi500', 'csi300')")
 
+    try:
+        from qlib.workflow import R
+
+        R.end_exp()
+    except Exception:
+        pass
     qlib.init(
         provider_uri=str(data_dir),
         region="cn",
@@ -3754,16 +3760,17 @@ def daily_standalone(
     calendar = read_trading_calendar(data_dir)
     asof = calendar[-1]
     pit_universe = None
-    if market == "csi1000":
+    _expected_pit_counts = {"csi1000": 1000, "csi500": 500, "csi300": 300}
+    if market in _expected_pit_counts:
         from csi1000_mvp_contract import pit_universe_snapshot
 
         pit_universe = pit_universe_snapshot(
-            data_dir / "instruments" / "csi1000.txt",
+            data_dir / "instruments" / f"{market}.txt",
             asof,
-            expected_count=1000,
+            expected_count=_expected_pit_counts[market],
         )
         print(
-            f"[daily] CSI1000 PIT universe PASS: {pit_universe['member_count']} members "
+            f"[daily] {market.upper()} PIT universe PASS: {pit_universe['member_count']} members "
             f"asof={pit_universe['asof']} sha={pit_universe['membership_sha256'][:12]}"
         )
     # Today is a feature/prediction date, NEVER a training/validation label date.
@@ -3813,6 +3820,12 @@ def daily_standalone(
         model_obj = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
         dataset = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
         model_obj.fit(dataset)
+        try:
+            from qlib.workflow import R
+
+            R.end_exp()
+        except Exception:
+            pass
         snapshot = {
             "signature": signature,
             "fit_asof": asof,
@@ -3877,7 +3890,7 @@ def daily_standalone(
         "valid_end": saved["valid"][1],
     }
     label_maturity = None
-    if market == "csi1000":
+    if market in _expected_pit_counts:
         from csi1000_mvp_contract import validate_label_maturity
 
         label_maturity = validate_label_maturity(calendar, training_contract, asof)
@@ -4238,9 +4251,23 @@ def daily_cron():
             csi1000_profile=CANONICAL_PROFILE,
             paper_lineage=CANONICAL_PAPER_LINEAGE,
         )
+        res_csi500 = daily_standalone.remote(
+            topk=CANONICAL_TOPK,
+            nd=CANONICAL_ND,
+            market="csi500",
+            csi1000_profile=CANONICAL_PROFILE,
+            paper_lineage=CANONICAL_PAPER_LINEAGE,
+        )
+        res_csi300 = daily_standalone.remote(
+            topk=CANONICAL_TOPK,
+            nd=CANONICAL_ND,
+            market="csi300",
+            csi1000_profile=CANONICAL_PROFILE,
+            paper_lineage=CANONICAL_PAPER_LINEAGE,
+        )
     except Exception as csi_err:  # pylint: disable=W0703
         raise RuntimeError(
-            "CSI1000 Stage-B winner canonical daily_standalone failed: "
+            "CSI1000/500/300 canonical daily_standalone failed: "
             f"{type(csi_err).__name__}: {str(csi_err)[:300]}"
         ) from csi_err
     data_date = res["date"]
@@ -4277,6 +4304,10 @@ def daily_cron():
     files = {}
     files[f"quant/data/signals/{signal_date}_top20_lgb158.csv"] = res["csv_content"]
     files[f"quant/data/signals/{signal_date}_chart.json"] = res["chart_json"]
+    files[f"quant/data/signals/{signal_date}_top20_lgb158_csi500.csv"] = res_csi500["csv_content"]
+    files[f"quant/data/signals/{signal_date}_chart_csi500.json"] = res_csi500["chart_json"]
+    files[f"quant/data/signals/{signal_date}_top20_lgb158_csi300.csv"] = res_csi300["csv_content"]
+    files[f"quant/data/signals/{signal_date}_chart_csi300.json"] = res_csi300["chart_json"]
     if paper_enabled:
         # Winner-only state: never inherit the pre-promotion baseline account
         # or its pending orders. Public artifact names stay canonical.
@@ -4324,8 +4355,46 @@ def daily_cron():
             paper=paper_proposals["csi1000"]["artifact"],
             risk=risk,
             publication_detail=csi_detail,
+            market="csi1000",
         )
         files[f"quant/data/signals/{signal_date}_mvp_metadata.json"] = dumps_metadata(mvp_metadata)
+
+        for extra_mkt, extra_res in (("csi500", res_csi500), ("csi300", res_csi300)):
+            paper_proposals[extra_mkt] = _apply_paper_portfolio(
+                extra_res,
+                signal_date,
+                topk=CANONICAL_TOPK,
+                nd=CANONICAL_ND,
+                lineage=CANONICAL_PAPER_LINEAGE,
+                verified_calendar=cal,
+            )
+            files[f"quant/data/signals/{signal_date}_paper_portfolio_{extra_mkt}.json"] = (
+                paper_proposals[extra_mkt]["artifact_json"]
+            )
+            extra_risk = {
+                "st": paper_proposals[extra_mkt]["risk_st"],
+                "execution_st_policy": paper_proposals[extra_mkt]["artifact"]["execution_st_policy"],
+                "usage_day_suspension": dict(risk["usage_day_suspension"]),
+                "tradeability_certified": False,
+            }
+            extra_meta = build_mvp_metadata(
+                signal_csv=extra_res["csv_content"],
+                ranking_full=extra_res["ranking_full"],
+                signal_data_date=extra_res["date"],
+                usage_date=signal_date,
+                provider=extra_res["provider_identity"],
+                pit_universe=extra_res["pit_universe"],
+                label_maturity=extra_res["label_maturity"],
+                production_lineage=extra_res["production_lineage"],
+                expected_lineage=profile_manifest(CANONICAL_PROFILE),
+                paper=paper_proposals[extra_mkt]["artifact"],
+                risk=extra_risk,
+                publication_detail=csi_detail,
+                market=extra_mkt,
+            )
+            files[f"quant/data/signals/{signal_date}_mvp_metadata_{extra_mkt}.json"] = (
+                dumps_metadata(extra_meta)
+            )
 
     def _persist_paper_states():
         if not paper_proposals:

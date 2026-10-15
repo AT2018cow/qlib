@@ -22,7 +22,9 @@ MVP_CONTRACT_VERSION = "csi1000_mvp_daily_v1"
 # Explicit execution assumption, separate from the frozen model/candidate identity.
 REFERENCE_ST_POLICY = "ST_IGNORED_REFERENCE_ONLY"
 VERIFIED_ST_POLICY = "ST_VERIFIED_PREOPEN"
+EXPECTED_POOL_COUNTS = {"csi1000": 1000, "csi500": 500, "csi300": 300}
 _SYMBOL = re.compile(r"^(SH|SZ|BJ)\d{6}$")
+_HIST_SYMBOL = re.compile(r"^(SH|SZ|BJ)[A-Z0-9]{6}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _REQUIRED_LINEAGE = (
     "candidate_id",
@@ -158,13 +160,19 @@ def pit_universe_snapshot(
         if len(parts) != 3:
             raise ValueError(f"malformed CSI1000 instrument row {line_no}")
         symbol = parts[0].strip().upper()
-        if not _SYMBOL.fullmatch(symbol):
-            raise ValueError(f"invalid CSI1000 symbol on row {line_no}: {symbol!r}")
         start = _iso_day(parts[1].strip()[:10], f"row {line_no} start")
         end = _iso_day(parts[2].strip()[:10], f"row {line_no} end")
         if start > end:
             raise ValueError(f"reversed CSI1000 span on row {line_no}")
-        if start <= asof <= end:
+        is_active = start <= asof <= end
+        # Active members must strictly match ^(SH|SZ|BJ)\d{6}$; inactive legacy rows
+        # in csi300.txt (e.g. 2005 SHT00018) may contain alphanumeric tickers.
+        if is_active or expected_count == 1000:
+            if not _SYMBOL.fullmatch(symbol):
+                raise ValueError(f"invalid CSI1000 symbol on row {line_no}: {symbol!r}")
+        elif not _HIST_SYMBOL.fullmatch(symbol):
+            raise ValueError(f"invalid historical symbol on row {line_no}: {symbol!r}")
+        if is_active:
             # Multiple disjoint historical spans are valid, overlapping active
             # spans for the same instrument are not.
             if symbol in active_rows:
@@ -331,11 +339,12 @@ def summarize_paper_state(
     signal_data_date: str,
     usage_date: str,
     expected_lineage: dict,
+    market: str = "csi1000",
 ) -> dict:
     if not isinstance(paper, dict):
         raise ValueError("paper artifact missing")
-    if paper.get("market") != "csi1000":
-        raise ValueError("paper market is not csi1000")
+    if paper.get("market") != market:
+        raise ValueError(f"paper market is not {market}")
     if paper.get("paper_lineage") not in (
         "stage_b_winner_canonical",
         "c98856b4_top10_drop1_canonical",
@@ -395,8 +404,11 @@ def build_mvp_metadata(
     paper: dict,
     risk: dict,
     publication_detail: str,
+    market: str = "csi1000",
 ) -> dict:
     """Build the immutable sidecar emitted with each canonical daily signal."""
+    if market not in EXPECTED_POOL_COUNTS:
+        raise ValueError(f"unsupported MVP market: {market}")
     signal_data_date = _iso_day(signal_data_date, "signal_data_date")
     usage_date = _iso_day(usage_date, "usage_date")
     if signal_data_date >= usage_date:
@@ -423,6 +435,7 @@ def build_mvp_metadata(
         signal_data_date=signal_data_date,
         usage_date=usage_date,
         expected_lineage=expected_lineage,
+        market=market,
     )
 
     if not isinstance(ranking_full, list) or len(ranking_full) < 20:
@@ -488,7 +501,7 @@ def build_mvp_metadata(
     public_pit = {k: v for k, v in pit_universe.items() if k != "active_members"}
     return {
         "contract_version": MVP_CONTRACT_VERSION,
-        "market": "csi1000",
+        "market": market,
         "publication": {
             "status": "PASS",
             "signal_data_date": signal_data_date,

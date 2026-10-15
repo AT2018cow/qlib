@@ -4,8 +4,40 @@
 const CSV_BASE = 'signals';
 const DATE_INDEX_URL = CSV_BASE + '/available_dates.json';
 
+const POOLS = {
+  csi1000: {
+    key: 'csi1000',
+    label: '中证1000',
+    code: '000852',
+    expectedPitCount: 1000,
+    indexUrl: DATE_INDEX_URL,
+    forwardUrl: CSV_BASE + '/csi1000_forward_performance.json',
+    suffix: '',
+  },
+  csi500: {
+    key: 'csi500',
+    label: '中证500',
+    code: '000905',
+    expectedPitCount: 500,
+    indexUrl: CSV_BASE + '/available_dates_csi500.json',
+    forwardUrl: CSV_BASE + '/csi500_forward_performance.json',
+    suffix: '_csi500',
+  },
+  csi300: {
+    key: 'csi300',
+    label: '沪深300',
+    code: '000300',
+    expectedPitCount: 300,
+    indexUrl: CSV_BASE + '/available_dates_csi300.json',
+    forwardUrl: CSV_BASE + '/csi300_forward_performance.json',
+    suffix: '_csi300',
+  },
+};
+
+let currentPool = POOLS.csi1000;
+
 const PRODUCTION = {
-  pool: '中证1000',
+  pool: '中证1000 / 中证500 / 沪深300',
   profile: 'Top10 低换手优选',
   model: 'LightGBM · Alpha158 量价模型',
   target: '20 交易日前瞻收益',
@@ -129,9 +161,9 @@ function makeSparkline(values, w = 128, h = 34) {
   return `<svg class="sparkline-svg" viewBox="0 0 ${w} ${h}" aria-hidden="true">${paths}</svg>`;
 }
 
-async function loadAvailableDates() {
+async function loadAvailableDates(pool = currentPool) {
   // Pages publishes actual dates; never probe nonexistent calendar weekdays.
-  const manifest = parseJSONLoose(await fetchText(DATE_INDEX_URL, true));
+  const manifest = parseJSONLoose(await fetchText(pool.indexUrl, true));
   if (!manifest || manifest.version !== 1 || !Array.isArray(manifest.dates) ||
       !manifest.dates.length || manifest.dates.length > 25 ||
       !manifest.names || typeof manifest.names !== 'object' || Array.isArray(manifest.names) ||
@@ -143,11 +175,12 @@ async function loadAvailableDates() {
   return { dates: manifest.dates.map(date => ({ date })), nameMap: manifest.names };
 }
 
-async function loadDateContext(date, fresh = false) {
+async function loadDateContext(date, fresh = false, pool = currentPool) {
+  const sfx = pool.suffix;
   const [chartText, paperText, metadataText] = await Promise.all([
-    fetchText(CSV_BASE + '/' + date + '_chart.json', fresh),
-    fetchText(CSV_BASE + '/' + date + '_paper_portfolio.json', fresh),
-    fetchText(CSV_BASE + '/' + date + '_mvp_metadata.json', fresh),
+    fetchText(CSV_BASE + '/' + date + (sfx ? '_chart' + sfx + '.json' : '_chart.json'), fresh),
+    fetchText(CSV_BASE + '/' + date + (sfx ? '_paper_portfolio' + sfx + '.json' : '_paper_portfolio.json'), fresh),
+    fetchText(CSV_BASE + '/' + date + (sfx ? '_mvp_metadata' + sfx + '.json' : '_mvp_metadata.json'), fresh),
   ]);
   return {
     chart: parseJSONLoose(chartText),
@@ -226,8 +259,8 @@ function isPossiblyStale(latestDate, now = new Date()) {
   return Number.isFinite(latest) && today - latest > 7 * 86400000;
 }
 
-async function loadForwardPerformance() {
-  const text = await fetchText(CSV_BASE + '/csi1000_forward_performance.json', true);
+async function loadForwardPerformance(pool = currentPool) {
+  const text = await fetchText(pool.forwardUrl, true);
   if (text === null) return { status: 'unavailable' };
   return normalizeForwardPerformance(parseJSONLoose(text));
 }
@@ -329,7 +362,7 @@ function isWinnerCanonical(paper) {
 
 const MVP_CONTRACT_VERSION = 'csi1000_mvp_daily_v1';
 
-function evaluateMvpContract(metadata, paper, date, rows) {
+function evaluateMvpContract(metadata, paper, date, rows, pool = currentPool) {
   if (!metadata) {
     return {
       ok: false,
@@ -346,9 +379,11 @@ function evaluateMvpContract(metadata, paper, date, rows) {
   const pit = metadata.pit_universe;
   const label = metadata.label_maturity;
   const risk = metadata.risk;
+  const expectedMarket = pool?.key || 'csi1000';
+  const expectedPitCount = pool?.expectedPitCount || 1000;
 
   if (metadata.contract_version !== MVP_CONTRACT_VERSION) errors.push('contract version mismatch');
-  if (metadata.market !== 'csi1000') errors.push('market mismatch');
+  if (metadata.market !== expectedMarket) errors.push('market mismatch');
   if (metadata.publication?.status !== 'PASS' || metadata.publication?.usage_date !== date) {
     errors.push('publication gate not bound to selected date');
   }
@@ -366,7 +401,7 @@ function evaluateMvpContract(metadata, paper, date, rows) {
   if (metadata.provider?.calendar_end !== metadata.publication?.signal_data_date) {
     errors.push('provider freshness evidence mismatch');
   }
-  if (pit?.status !== 'PASS' || pit?.member_count !== 1000 ||
+  if (pit?.status !== 'PASS' || pit?.member_count !== expectedPitCount ||
       pit?.asof !== metadata.publication?.signal_data_date) {
     errors.push('PIT universe gate failed');
   }
@@ -468,10 +503,18 @@ function mobileCards(rows) {
   `).join('');
 }
 
-function pageShell(dates) {
-  const history = dates.slice(0, 24).map((d, i) =>
+function renderHistoryButtons(dates) {
+  return dates.slice(0, 24).map((d, i) =>
     `<button class="date-btn${i === 0 ? ' current' : ''}" aria-pressed="${i === 0}" data-date="${d.date}">${formatDate(d.date)}</button>`
   ).join('');
+}
+
+function pageShell(dates) {
+  const history = renderHistoryButtons(dates);
+  const poolTabs = Object.values(POOLS).map(p => {
+    const active = p.key === currentPool.key;
+    return `<button class="pool-btn${active ? ' current' : ''}" role="tab" aria-selected="${active}" data-pool="${p.key}">${p.label} <span>${p.code}</span></button>`;
+  }).join('');
 
   return `
     <main class="shell">
@@ -488,16 +531,18 @@ function pageShell(dates) {
 
       <section class="hero">
         <div class="hero-copy">
-          <div class="eyebrow"><span class="status-dot"></span> 中证1000 量化多因子选股</div>
-          <h1>中证1000<span>每日选股信号</span></h1>
+          <div class="eyebrow"><span class="status-dot"></span> A股主流宽基量化多因子选股</div>
+          <div class="pool-switcher" role="tablist" aria-label="选择指数股票池">${poolTabs}</div>
+          <h1><span id="hero-pool-name">${currentPool.label}</span><span>每日选股信号</span></h1>
           <p class="hero-lede">
             基于 LightGBM 与 158 维量价因子体系，经两轮模型超参筛选与持仓规则优选定型，
-            每个交易日开盘前基于前一交易日收盘数据生成中证1000成分股预测 Top 10，供当日开盘调仓参考。
+            每个交易日开盘前基于前一交易日收盘数据生成指数成分股预测 Top 10，供当日开盘调仓参考。
           </p>
         </div>
         <aside class="protocol-card">
           <h2>当前策略配置</h2>
           <div class="protocol-list">
+            <div class="protocol-row"><span>股票池</span><strong id="protocol-pool">${currentPool.label} (${currentPool.code})</strong></div>
             <div class="protocol-row"><span>模型</span><strong>${PRODUCTION.model}</strong></div>
             <div class="protocol-row"><span>目标</span><strong>${PRODUCTION.target}</strong></div>
             <div class="protocol-row"><span>组合</span><strong>${PRODUCTION.portfolio}</strong></div>
@@ -632,30 +677,37 @@ async function main() {
     return;
   }
 
-  const { dates, nameMap } = index;
+  let dates = index.dates;
+  let nameMap = index.nameMap;
   app.innerHTML = pageShell(dates);
   forwardPromise.then(renderForwardPerformance);
 
-  // One CSV fetch per date per session, including rank comparisons.
+  const indexCache = new Map([[currentPool.key, Promise.resolve(index)]]);
+  const forwardCache = new Map([[currentPool.key, forwardPromise]]);
+
+  // One CSV fetch per pool+date per session, including rank comparisons.
   const csvCache = new Map();
-  function loadDateRows(date) {
-    if (!csvCache.has(date)) {
-      csvCache.set(date, fetchText(CSV_BASE + '/' + date + '_top20_lgb158.csv',
-        date === dates[0].date).then(parseCSV));
+  function loadDateRows(date, pool = currentPool) {
+    const key = pool.key + ':' + date;
+    if (!csvCache.has(key)) {
+      csvCache.set(key, fetchText(CSV_BASE + '/' + date + '_top20_lgb158' + pool.suffix + '.csv',
+        date === dates[0]?.date).then(parseCSV));
     }
-    return csvCache.get(date);
+    return csvCache.get(key);
   }
 
   const contextCache = new Map();
-  function loadContext(date) {
-    if (!contextCache.has(date)) {
-      contextCache.set(date, loadDateContext(date, date === dates[0].date));
+  function loadContext(date, pool = currentPool) {
+    const key = pool.key + ':' + date;
+    if (!contextCache.has(key)) {
+      contextCache.set(key, loadDateContext(date, date === dates[0]?.date, pool));
     }
-    return contextCache.get(date);
+    return contextCache.get(key);
   }
 
   let latestDateRequest = 0;
   async function renderDate(dateInfo) {
+    const pool = currentPool;
     const request = ++latestDateRequest;
     const container = document.querySelector('.signal-table');
     if (container) container.setAttribute('aria-busy', 'true');
@@ -663,10 +715,10 @@ async function main() {
     document.getElementById('artifact-status').textContent = '正在加载日期记录…';
     const idx = dates.findIndex(d => d.date === dateInfo.date);
     const previousPromise = idx >= 0 && idx + 1 < dates.length
-      ? loadDateRows(dates[idx + 1].date).then(previous => previous.length ? previous : null)
+      ? loadDateRows(dates[idx + 1].date, pool).then(previous => previous.length ? previous : null)
       : Promise.resolve(null);
-    const ctxPromise = loadContext(dateInfo.date);
-    const rows = await loadDateRows(dateInfo.date);
+    const ctxPromise = loadContext(dateInfo.date, pool);
+    const rows = await loadDateRows(dateInfo.date, pool);
     if (request !== latestDateRequest) return;
 
     if (!rows.length) {
@@ -700,7 +752,7 @@ async function main() {
       const lineageLabel = paper?.production_lineage?.profile === 'c98856b4_top10_drop1'
         ? 'Top10 低换手优选'
         : '定型优选策略';
-      const contract = ctx ? evaluateMvpContract(ctx.metadata, paper, dateInfo.date, rows) : null;
+      const contract = ctx ? evaluateMvpContract(ctx.metadata, paper, dateInfo.date, rows, pool) : null;
       document.getElementById('stat-lineage').textContent =
         ctx ? (winner ? lineageLabel : '历史 / 未核验') : '核验中';
       document.getElementById('stat-lineage-sub').textContent = ctx
@@ -717,7 +769,7 @@ async function main() {
         health.textContent = !ctx
           ? '正在核对行情时效、成分股完整性、样本防泄漏与模拟盘账本状态。'
           : contract.ok
-            ? '已完成最新收盘行情、当日 1000 只指数成分股、20 日样本防泄漏、策略参数锁定与模拟账本核验。'
+            ? `已完成最新收盘行情、当日 ${pool.expectedPitCount} 只${pool.label}成分股、20 日样本防泄漏、策略参数锁定与模拟账本核验。`
             : contract.legacy
               ? '该历史日期缺少完整校验文件，仅作只读展示，因此不会把旧版本标识单独解释为“已核验”。'
               : '每日数据校验未通过：' + contract.errors.join('；');
@@ -738,19 +790,64 @@ async function main() {
     if (container) container.setAttribute('aria-busy', 'false');
   }
 
-  document.querySelectorAll('.date-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const d = dates.find(item => item.date === btn.dataset.date);
-      if (d) {
-        // Render first: the MVP health/risk copy can change height between a
-        // current contract and a legacy date. Scrolling before that reflow
-        // makes the final Top20 position drift on tablet/mobile viewports.
-        await renderDate(d);
-        document.getElementById('ranking').scrollIntoView({ behavior: 'auto', block: 'start' });
-      }
+  function bindDateButtons() {
+    document.querySelectorAll('.date-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const d = dates.find(item => item.date === btn.dataset.date);
+        if (d) {
+          await renderDate(d);
+          document.getElementById('ranking').scrollIntoView({ behavior: 'auto', block: 'start' });
+        }
+      });
     });
+  }
+
+  async function switchPool(poolKey) {
+    const nextPool = POOLS[poolKey];
+    if (!nextPool || nextPool.key === currentPool.key) return;
+    currentPool = nextPool;
+    document.querySelectorAll('.pool-btn').forEach(btn => {
+      const active = btn.dataset.pool === nextPool.key;
+      btn.classList.toggle('current', active);
+      btn.setAttribute('aria-selected', String(active));
+    });
+    const heroPool = document.getElementById('hero-pool-name');
+    if (heroPool) heroPool.textContent = nextPool.label;
+    const protoPool = document.getElementById('protocol-pool');
+    if (protoPool) protoPool.textContent = `${nextPool.label} (${nextPool.code})`;
+
+    if (!indexCache.has(nextPool.key)) {
+      indexCache.set(nextPool.key, loadAvailableDates(nextPool));
+    }
+    if (!forwardCache.has(nextPool.key)) {
+      forwardCache.set(nextPool.key, loadForwardPerformance(nextPool));
+    }
+    forwardCache.get(nextPool.key).then(data => {
+      if (currentPool.key === nextPool.key) renderForwardPerformance(data);
+    });
+    const poolIndex = await indexCache.get(nextPool.key);
+    if (currentPool.key !== nextPool.key) return;
+    if (!poolIndex || !poolIndex.dates.length) {
+      document.getElementById('signal-rows').innerHTML = '';
+      document.getElementById('mobile-cards').innerHTML = '';
+      document.getElementById('artifact-status').textContent = '该指数暂无可用信号';
+      return;
+    }
+    dates = poolIndex.dates;
+    nameMap = poolIndex.nameMap;
+    const historyWrap = document.getElementById('history-buttons');
+    if (historyWrap) {
+      historyWrap.innerHTML = renderHistoryButtons(dates);
+      bindDateButtons();
+    }
+    renderDate(dates[0]);
+  }
+
+  document.querySelectorAll('.pool-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchPool(btn.dataset.pool));
   });
 
+  bindDateButtons();
   renderDate(dates[0]);
 }
 

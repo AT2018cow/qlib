@@ -38,9 +38,25 @@ jobs:
           python3 quant/website/build_index.py \
             --signals quant/data/signals \
             --output _site/signals/available_dates.json
+          python3 quant/website/build_index.py \
+            --signals quant/data/signals \
+            --market csi500 \
+            --output _site/signals/available_dates_csi500.json
+          python3 quant/website/build_index.py \
+            --signals quant/data/signals \
+            --market csi300 \
+            --output _site/signals/available_dates_csi300.json
           python3 quant/code/ops/build_forward_performance.py \
             --signals quant/data/signals \
             --output _site/signals/csi1000_forward_performance.json
+          python3 quant/code/ops/build_forward_performance.py \
+            --signals quant/data/signals \
+            --market csi500 \
+            --output _site/signals/csi500_forward_performance.json
+          python3 quant/code/ops/build_forward_performance.py \
+            --signals quant/data/signals \
+            --market csi300 \
+            --output _site/signals/csi300_forward_performance.json
           # Fail the deployment before uploading if a required site asset is missing.
           test -s _site/index.html
           test -s _site/methodology.html
@@ -48,7 +64,11 @@ jobs:
           test -s _site/styles.css
           test -s _site/favicon.svg
           test -s _site/signals/available_dates.json
+          test -s _site/signals/available_dates_csi500.json
+          test -s _site/signals/available_dates_csi300.json
           test -s _site/signals/csi1000_forward_performance.json
+          test -s _site/signals/csi500_forward_performance.json
+          test -s _site/signals/csi300_forward_performance.json
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
