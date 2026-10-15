@@ -31,19 +31,19 @@ jobs:
       - name: Install local only dependencies
         run: python -m pip install pytest 'black==25.1.0' pyflakes modal pandas numpy pyarrow
       - name: Compile L4 (zero remote calls)
-        run: python -m py_compile audit/csi1000_l4_core.py audit/csi1000_l4_modal.py
+        run: python -m py_compile quant/code/research/layered_search/csi1000_l4_core.py quant/code/research/layered_search/csi1000_l4_modal.py
       - name: Real Modal SDK and CLI help (no billed work)
         env:
           PYTHONPATH: .
         run: |
           python -c 'import audit.csi1000_l4_modal as runner; assert runner.app is not None'
-          modal run audit/csi1000_l4_modal.py --help
+          modal run quant/code/research/layered_search/csi1000_l4_modal.py --help
       - name: Frozen plan, SHA tamper and product-gate regressions
         env:
           PYTHONPATH: .
         run: |
-          python -m pytest -q tests/test_csi1000_l4_final.py tests/test_csi1000_l4_inventory.py tests/test_csi1000_l4_local_coordinator.py tests/test_csi1000_layered_search_selection.py tests/test_csi1000_l3_runner.py
+          python -m pytest -q quant/tests/test_csi1000_l4_final.py quant/tests/test_csi1000_l4_inventory.py quant/tests/test_csi1000_l4_local_coordinator.py quant/tests/test_csi1000_layered_search_selection.py quant/tests/test_csi1000_l3_runner.py
       - name: Black 120 (read-only)
-        run: python -m black -l 120 --check --diff audit/csi1000_l4_core.py audit/csi1000_l4_modal.py tests/test_csi1000_l4_final.py tests/test_csi1000_l4_inventory.py tests/test_csi1000_l4_local_coordinator.py
+        run: python -m black -l 120 --check --diff quant/code/research/layered_search/csi1000_l4_core.py quant/code/research/layered_search/csi1000_l4_modal.py quant/tests/test_csi1000_l4_final.py quant/tests/test_csi1000_l4_inventory.py quant/tests/test_csi1000_l4_local_coordinator.py
       - name: Pyflakes
-        run: python -m pyflakes audit/csi1000_l4_core.py audit/csi1000_l4_modal.py tests/test_csi1000_l4_final.py tests/test_csi1000_l4_inventory.py tests/test_csi1000_l4_local_coordinator.py
+        run: python -m pyflakes quant/code/research/layered_search/csi1000_l4_core.py quant/code/research/layered_search/csi1000_l4_modal.py quant/tests/test_csi1000_l4_final.py quant/tests/test_csi1000_l4_inventory.py quant/tests/test_csi1000_l4_local_coordinator.py

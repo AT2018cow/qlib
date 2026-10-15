@@ -4,13 +4,16 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'website/**'
-      - 'tests/website_visual_check.py'
+      - 'quant/website/**'
+      - 'quant/tests/website_visual_check.py'
       - '.github/workflows/website-visual-review.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
+
+env:
+  PYTHONPATH: ".:quant:quant/code:quant/code/production:quant/code/execution:quant/code/research/stage_ab:quant/code/research/layered_search:quant/code/research/pre_tuner:quant/code/audit:quant/code/ops:quant/website"
 
 jobs:
   chromium-visual-review:
@@ -25,7 +28,7 @@ jobs:
           python -m pip install --disable-pip-version-check playwright==1.55.0
           python -m playwright install --with-deps chromium
       - name: Screenshot responsive dashboard and verify geometry
-        run: python tests/website_visual_check.py
+        run: python quant/tests/website_visual_check.py
       - name: Upload browser review screenshots
         if: always()
         uses: actions/upload-artifact@v4

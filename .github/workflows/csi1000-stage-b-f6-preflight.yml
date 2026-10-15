@@ -4,23 +4,26 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - "audit/stage_b_f6_preflight.py"
-      - "tests/test_stage_b_f6_preflight.py"
-      - "results/csi1000_stage_b/audit_reports/**"
-      - "results/csi1000_stage_b/stage_b_full_51756897fc752304.json"
+      - "quant/code/audit/stage_b_f6_preflight.py"
+      - "quant/tests/test_stage_b_f6_preflight.py"
+      - "quant/data/round1_stage_ab/csi1000_stage_b/audit_reports/**"
+      - "quant/data/round1_stage_ab/csi1000_stage_b/stage_b_full_51756897fc752304.json"
       - ".github/workflows/csi1000-stage-b-f6-preflight.yml"
   push:
     branches: ["main", "audit/f6-ten-phase-frozen-input-gates-20261009"]
     paths:
-      - "audit/stage_b_f6_preflight.py"
-      - "tests/test_stage_b_f6_preflight.py"
-      - "results/csi1000_stage_b/audit_reports/**"
-      - "results/csi1000_stage_b/stage_b_full_51756897fc752304.json"
+      - "quant/code/audit/stage_b_f6_preflight.py"
+      - "quant/tests/test_stage_b_f6_preflight.py"
+      - "quant/data/round1_stage_ab/csi1000_stage_b/audit_reports/**"
+      - "quant/data/round1_stage_ab/csi1000_stage_b/stage_b_full_51756897fc752304.json"
       - ".github/workflows/csi1000-stage-b-f6-preflight.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
+
+env:
+  PYTHONPATH: ".:quant:quant/code:quant/code/production:quant/code/execution:quant/code/research/stage_ab:quant/code/research/layered_search:quant/code/research/pre_tuner:quant/code/audit:quant/code/ops:quant/website"
 
 jobs:
   ten-phase-original-inputs:
@@ -32,9 +35,9 @@ jobs:
         with:
           python-version: "3.11"
       - name: Python syntax checks without Qlib/Modal
-        run: python -m py_compile audit/stage_b_f6_preflight.py tests/test_stage_b_f6_preflight.py
+        run: python -m py_compile quant/code/audit/stage_b_f6_preflight.py quant/tests/test_stage_b_f6_preflight.py
       - name: Check 10 immutable source report SHA256 values and fail-closed source gates
-        run: python -m unittest discover -s tests -p "test_stage_b_f6_preflight.py" -v
+        run: python -m unittest discover -s quant/tests -p "test_stage_b_f6_preflight.py" -v
       - name: Produce read-only F6 input evidence inventory
         shell: bash
         run: |

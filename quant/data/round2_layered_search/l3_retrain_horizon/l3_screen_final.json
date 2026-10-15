@@ -1,0 +1,72 @@
+{
+  "code_sha": "49d9022ad2302aa9b706cd835b3a2b8e56c05937",
+  "plan_sha256": "03275e81457c64c3c3ad951bbf6be1c657a8d2a41acc3392f2b8d507b42cb0db",
+  "run_id": "l3_20261014_a1",
+  "stage": "stage1",
+  "variants": [
+    {
+      "candidate_id": "23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785",
+      "coarse_pass": false,
+      "config_sha256": "255437ac7a1b07095dd13824d943bd088badb12598af99cad1cdd419cb9118b2",
+      "detail": {
+        "failed": "improvement",
+        "mdd_degrade_pp": -1.5915314448817561,
+        "median_delta_pp": -0.41875236584297815,
+        "turnover_ratio": 0.9967133038403969,
+        "worst_delta_pp": -5.032887022092103
+      },
+      "dropn": 2,
+      "label_horizon": 20,
+      "layer": "l3",
+      "ordinal_mapping": {
+        "baseline_phases": [
+          0,
+          10
+        ],
+        "challenger_phases": [
+          0,
+          5
+        ]
+      },
+      "passed_coarse": false,
+      "retrain_frequency": 10,
+      "screen_phases": [
+        0,
+        5
+      ],
+      "topk": 20
+    },
+    {
+      "candidate_id": "23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785",
+      "coarse_pass": false,
+      "config_sha256": "4949049547de3457ee9ebcef691cf810e57e4f18f1c6942bde51f2dd5d87cd82",
+      "detail": {
+        "failed": "improvement",
+        "mdd_degrade_pp": 3.726872208556429,
+        "median_delta_pp": -0.37124838549141836,
+        "turnover_ratio": 1.0073809535332572,
+        "worst_delta_pp": -3.1293973398547337
+      },
+      "dropn": 2,
+      "label_horizon": 20,
+      "layer": "l3",
+      "ordinal_mapping": {
+        "baseline_phases": [
+          0,
+          10
+        ],
+        "challenger_phases": [
+          0,
+          20
+        ]
+      },
+      "passed_coarse": false,
+      "retrain_frequency": 40,
+      "screen_phases": [
+        0,
+        20
+      ],
+      "topk": 20
+    }
+  ]
+}

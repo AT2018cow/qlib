@@ -1,0 +1,23 @@
+{
+  "account_return_max_error": 1.1102230246251565e-16,
+  "annual_volatility": 0.24139125201405537,
+  "benchmark_cagr": 0.13186921945696484,
+  "benchmark_max_drawdown": -0.2294457704942343,
+  "benchmark_total_return": 0.24072600816110556,
+  "end": "2026-09-30",
+  "information_ratio": 0.5612783532823965,
+  "mean_daily_active_return": 0.00041472235490588183,
+  "mean_daily_net_return": 0.0010494420955755642,
+  "mean_turnover": 0.20249346745141278,
+  "n_days": 424,
+  "relative_excess_cagr": 0.10659510457010812,
+  "relative_max_drawdown": -0.24002000973045856,
+  "relative_total_return": 0.19288338777426572,
+  "sharpe": 1.034698716971074,
+  "start": "2025-01-02",
+  "strategy_cagr": 0.2525209372646666,
+  "strategy_max_drawdown": -0.20596571755841686,
+  "strategy_total_return": 0.4800414439148608,
+  "total_cost_sum": 0.08540394388234593,
+  "years": 1.7413088564446908
+}

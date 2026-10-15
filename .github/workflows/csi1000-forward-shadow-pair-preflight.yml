@@ -3,10 +3,13 @@ name: CSI1000 prospective shadow pair preflight
 on:
   pull_request:
     paths:
-      - "audit/forward_shadow_pair_preflight.py"
-      - "tests/test_forward_shadow_pair_preflight.py"
+      - "quant/code/audit/forward_shadow_pair_preflight.py"
+      - "quant/tests/test_forward_shadow_pair_preflight.py"
       - ".github/workflows/csi1000-forward-shadow-pair-preflight.yml"
   workflow_dispatch:
+
+env:
+  PYTHONPATH: ".:quant:quant/code:quant/code/production:quant/code/execution:quant/code/research/stage_ab:quant/code/research/layered_search:quant/code/research/pre_tuner:quant/code/audit:quant/code/ops:quant/website"
 
 jobs:
   shadow-pair-negative-controls:
@@ -20,5 +23,5 @@ jobs:
         with:
           python-version: "3.11"
       - run: python -m pip install "pytest>=8,<10"
-      - run: python -m compileall -q audit/forward_shadow_pair_preflight.py tests/test_forward_shadow_pair_preflight.py
-      - run: python -m pytest -q tests/test_forward_shadow_pair_preflight.py
+      - run: python -m compileall -q quant/code/audit/forward_shadow_pair_preflight.py quant/tests/test_forward_shadow_pair_preflight.py
+      - run: python -m pytest -q quant/tests/test_forward_shadow_pair_preflight.py

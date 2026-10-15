@@ -3,43 +3,46 @@ name: CSI1000 MVP publication contract
 on:
   pull_request:
     paths:
-      - 'csi1000_mvp_contract.py'
-      - 'modal_qlib_cn_a10g.py'
-      - 'signal_publication_gate.py'
-      - 'csi1000_production_config.py'
-      - 'paper_portfolio.py'
-      - 'website/**'
-      - 'tests/test_csi1000_mvp_contract.py'
-      - 'tests/test_cron_gate.py'
-      - 'tests/test_website_index.py'
-      - 'tests/test_production_surface.py'
-      - 'tests/website_visual_check.py'
-      - 'docs/experiments/README.md'
-      - 'docs/experiments/42-csi1000-mvp-handoff-after-ledger-pass-20261011.md'
-      - 'docs/experiments/43-csi1000-mvp-daily-publication-contract-20261011.md'
+      - 'quant/code/production/csi1000_mvp_contract.py'
+      - 'quant/code/production/modal_qlib_cn_a10g.py'
+      - 'quant/code/production/signal_publication_gate.py'
+      - 'quant/code/production/csi1000_production_config.py'
+      - 'quant/code/production/paper_portfolio.py'
+      - 'quant/website/**'
+      - 'quant/tests/test_csi1000_mvp_contract.py'
+      - 'quant/tests/test_cron_gate.py'
+      - 'quant/tests/test_website_index.py'
+      - 'quant/tests/test_production_surface.py'
+      - 'quant/tests/website_visual_check.py'
+      - 'quant/docs/README_HISTORICAL_INDEX.md'
+      - 'quant/docs/04-mvp-and-website/42-csi1000-mvp-handoff-after-ledger-pass-20261011.md'
+      - 'quant/docs/04-mvp-and-website/43-csi1000-mvp-daily-publication-contract-20261011.md'
       - '.github/workflows/csi1000-mvp.yml'
   push:
     branches: [main]
     paths:
-      - 'csi1000_mvp_contract.py'
-      - 'modal_qlib_cn_a10g.py'
-      - 'signal_publication_gate.py'
-      - 'csi1000_production_config.py'
-      - 'paper_portfolio.py'
-      - 'website/**'
-      - 'tests/test_csi1000_mvp_contract.py'
-      - 'tests/test_cron_gate.py'
-      - 'tests/test_website_index.py'
-      - 'tests/test_production_surface.py'
-      - 'tests/website_visual_check.py'
-      - 'docs/experiments/README.md'
-      - 'docs/experiments/42-csi1000-mvp-handoff-after-ledger-pass-20261011.md'
-      - 'docs/experiments/43-csi1000-mvp-daily-publication-contract-20261011.md'
+      - 'quant/code/production/csi1000_mvp_contract.py'
+      - 'quant/code/production/modal_qlib_cn_a10g.py'
+      - 'quant/code/production/signal_publication_gate.py'
+      - 'quant/code/production/csi1000_production_config.py'
+      - 'quant/code/production/paper_portfolio.py'
+      - 'quant/website/**'
+      - 'quant/tests/test_csi1000_mvp_contract.py'
+      - 'quant/tests/test_cron_gate.py'
+      - 'quant/tests/test_website_index.py'
+      - 'quant/tests/test_production_surface.py'
+      - 'quant/tests/website_visual_check.py'
+      - 'quant/docs/README_HISTORICAL_INDEX.md'
+      - 'quant/docs/04-mvp-and-website/42-csi1000-mvp-handoff-after-ledger-pass-20261011.md'
+      - 'quant/docs/04-mvp-and-website/43-csi1000-mvp-daily-publication-contract-20261011.md'
       - '.github/workflows/csi1000-mvp.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
+
+env:
+  PYTHONPATH: ".:quant:quant/code:quant/code/production:quant/code/execution:quant/code/research/stage_ab:quant/code/research/layered_search:quant/code/research/pre_tuner:quant/code/audit:quant/code/ops:quant/website"
 
 jobs:
   contract:
@@ -53,12 +56,12 @@ jobs:
         run: python -m pip install pytest
       - name: Static syntax gates
         run: |
-          python -m py_compile csi1000_mvp_contract.py modal_qlib_cn_a10g.py
-          node --check website/app.js
+          python -m py_compile quant/code/production/csi1000_mvp_contract.py quant/code/production/modal_qlib_cn_a10g.py
+          node --check quant/website/app.js
       - name: Run forward-MVP gates
         run: |
           python -m pytest -q \
-            tests/test_csi1000_mvp_contract.py \
-            tests/test_cron_gate.py \
-            tests/test_website_index.py \
-            tests/test_production_surface.py
+            quant/tests/test_csi1000_mvp_contract.py \
+            quant/tests/test_cron_gate.py \
+            quant/tests/test_website_index.py \
+            quant/tests/test_production_surface.py

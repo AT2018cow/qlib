@@ -4,10 +4,10 @@ on:
   push:
     branches: [main]
     paths:
-      - 'results/signals/**'
-      - 'website/**'
-      - 'forward_performance.py'
-      - 'scripts/build_forward_performance.py'
+      - 'quant/data/signals/**'
+      - 'quant/website/**'
+      - 'quant/code/production/forward_performance.py'
+      - 'quant/code/ops/build_forward_performance.py'
   workflow_dispatch:
 
 permissions:
@@ -18,6 +18,9 @@ permissions:
 concurrency:
   group: pages
   cancel-in-progress: true
+
+env:
+  PYTHONPATH: ".:quant:quant/code:quant/code/production:quant/code/execution:quant/code/research/stage_ab:quant/code/research/layered_search:quant/code/research/pre_tuner:quant/code/audit:quant/code/ops:quant/website"
 
 jobs:
   build:
@@ -30,13 +33,13 @@ jobs:
         run: |
           mkdir -p _site/signals
           # Keep all local HTML/JS/CSS dependencies together in Pages artifact.
-          cp website/*.html website/*.js website/*.css website/*.svg _site/
-          cp results/signals/*.csv results/signals/*.json _site/signals/
-          python3 website/build_index.py \
-            --signals results/signals \
+          cp quant/website/*.html quant/website/*.js quant/website/*.css quant/website/*.svg _site/
+          cp quant/data/signals/*.csv quant/data/signals/*.json _site/signals/
+          python3 quant/website/build_index.py \
+            --signals quant/data/signals \
             --output _site/signals/available_dates.json
-          python3 scripts/build_forward_performance.py \
-            --signals results/signals \
+          python3 quant/code/ops/build_forward_performance.py \
+            --signals quant/data/signals \
             --output _site/signals/csi1000_forward_performance.json
           # Fail the deployment before uploading if a required site asset is missing.
           test -s _site/index.html

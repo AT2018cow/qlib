@@ -1,0 +1,1182 @@
+{
+  "all_ranked_trials": [
+    {
+      "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+      "coarse_pass": false,
+      "config_sha256": "cb4bd450dfca0493bd0df5e1ecc6d64717a01fc187ba269527f46b5d903c3748",
+      "dropn": 2,
+      "failed": "improvement",
+      "layer": "l2",
+      "mdd_degrade_pp": -9.066418236482678,
+      "median_delta_pp": -2.8222462149610883,
+      "passed_coarse": false,
+      "topk": 20,
+      "turnover_ratio": 0.997015101741747,
+      "worst_delta_pp": -7.841906376307728
+    },
+    {
+      "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+      "coarse_pass": false,
+      "config_sha256": "6c1ea24fa7884841f5338a88a6d1b0ba5b1e0d0d2c8ed3c2ea2e603fd211b57c",
+      "dropn": 2,
+      "failed": "improvement",
+      "layer": "l2",
+      "mdd_degrade_pp": 1.401812688605208,
+      "median_delta_pp": -4.135797784041362,
+      "passed_coarse": false,
+      "topk": 20,
+      "turnover_ratio": 0.9982216770746163,
+      "worst_delta_pp": -7.872565702126488
+    },
+    {
+      "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+      "coarse_pass": false,
+      "config_sha256": "7c698405dc6c5bdbfe84ca0fec07696b07904870a6791abf86330765af2eee54",
+      "dropn": 2,
+      "failed": "improvement",
+      "layer": "l2",
+      "mdd_degrade_pp": -2.885426222684309,
+      "median_delta_pp": -5.148235573865034,
+      "passed_coarse": false,
+      "topk": 20,
+      "turnover_ratio": 0.997592711972635,
+      "worst_delta_pp": -11.165354785792347
+    },
+    {
+      "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+      "coarse_pass": false,
+      "config_sha256": "297a3165f7199914eb3d917e605526ca3942e80908b8bb644cb3ebf2cfb32172",
+      "dropn": 2,
+      "failed": "improvement",
+      "layer": "l2",
+      "mdd_degrade_pp": 3.2386001749010838,
+      "median_delta_pp": -9.593919458015044,
+      "passed_coarse": false,
+      "topk": 20,
+      "turnover_ratio": 0.9965281235306883,
+      "worst_delta_pp": -11.451825315269026
+    }
+  ],
+  "bill_is_operator_verified": false,
+  "code_sha": "b359c19e9d2cd570d5da4ac81aa01899cc6eed6f",
+  "complete_phase_count": 8,
+  "expected_long_fits": 176,
+  "expected_short": 16,
+  "fit_roster": {
+    "fit_ceiling_including_failures": 320,
+    "fits_before_failures": 192,
+    "job_roster_sha256": "b1ca2a7c4feb9d13f904b98b0f4e5424579363cbdd2453d11ee38e2c4676e101",
+    "jobs": [
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 0,
+        "retrain_asof": "2024-12-31",
+        "signal_end": "2025-02-05"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 0,
+        "retrain_asof": "2025-02-06",
+        "signal_end": "2025-03-05"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 0,
+        "retrain_asof": "2025-03-06",
+        "signal_end": "2025-04-02"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 0,
+        "retrain_asof": "2025-04-03",
+        "signal_end": "2025-05-06"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 0,
+        "retrain_asof": "2025-05-07",
+        "signal_end": "2025-06-04"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 0,
+        "retrain_asof": "2025-06-05",
+        "signal_end": "2025-07-02"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 0,
+        "retrain_asof": "2025-07-03",
+        "signal_end": "2025-07-30"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 0,
+        "retrain_asof": "2025-07-31",
+        "signal_end": "2025-08-27"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 0,
+        "retrain_asof": "2025-08-28",
+        "signal_end": "2025-09-24"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 0,
+        "retrain_asof": "2025-09-25",
+        "signal_end": "2025-10-30"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 0,
+        "retrain_asof": "2025-10-31",
+        "signal_end": "2025-11-27"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 0,
+        "retrain_asof": "2025-11-28",
+        "signal_end": "2025-12-25"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 0,
+        "retrain_asof": "2025-12-26",
+        "signal_end": "2026-01-26"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 0,
+        "retrain_asof": "2026-01-27",
+        "signal_end": "2026-03-03"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 0,
+        "retrain_asof": "2026-03-04",
+        "signal_end": "2026-03-31"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 0,
+        "retrain_asof": "2026-04-01",
+        "signal_end": "2026-04-29"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 0,
+        "retrain_asof": "2026-04-30",
+        "signal_end": "2026-06-01"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 0,
+        "retrain_asof": "2026-06-02",
+        "signal_end": "2026-06-30"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 0,
+        "retrain_asof": "2026-07-01",
+        "signal_end": "2026-07-28"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 0,
+        "retrain_asof": "2026-07-29",
+        "signal_end": "2026-08-25"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 0,
+        "retrain_asof": "2026-08-26",
+        "signal_end": "2026-09-22"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 0,
+        "retrain_asof": "2026-09-23",
+        "signal_end": "2026-09-29"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 10,
+        "retrain_asof": "2024-12-17",
+        "signal_end": "2025-01-14"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 10,
+        "retrain_asof": "2025-01-15",
+        "signal_end": "2025-02-19"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 10,
+        "retrain_asof": "2025-02-20",
+        "signal_end": "2025-03-19"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 10,
+        "retrain_asof": "2025-03-20",
+        "signal_end": "2025-04-17"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 10,
+        "retrain_asof": "2025-04-18",
+        "signal_end": "2025-05-20"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 10,
+        "retrain_asof": "2025-05-21",
+        "signal_end": "2025-06-18"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 10,
+        "retrain_asof": "2025-06-19",
+        "signal_end": "2025-07-16"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 10,
+        "retrain_asof": "2025-07-17",
+        "signal_end": "2025-08-13"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 10,
+        "retrain_asof": "2025-08-14",
+        "signal_end": "2025-09-10"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 10,
+        "retrain_asof": "2025-09-11",
+        "signal_end": "2025-10-16"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 10,
+        "retrain_asof": "2025-10-17",
+        "signal_end": "2025-11-13"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 10,
+        "retrain_asof": "2025-11-14",
+        "signal_end": "2025-12-11"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 10,
+        "retrain_asof": "2025-12-12",
+        "signal_end": "2026-01-12"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 10,
+        "retrain_asof": "2026-01-13",
+        "signal_end": "2026-02-09"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 10,
+        "retrain_asof": "2026-02-10",
+        "signal_end": "2026-03-17"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 10,
+        "retrain_asof": "2026-03-18",
+        "signal_end": "2026-04-15"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 10,
+        "retrain_asof": "2026-04-16",
+        "signal_end": "2026-05-18"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 10,
+        "retrain_asof": "2026-05-19",
+        "signal_end": "2026-06-15"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 10,
+        "retrain_asof": "2026-06-16",
+        "signal_end": "2026-07-14"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 10,
+        "retrain_asof": "2026-07-15",
+        "signal_end": "2026-08-11"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 10,
+        "retrain_asof": "2026-08-12",
+        "signal_end": "2026-09-08"
+      },
+      {
+        "candidate_id": "165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf",
+        "phase": 10,
+        "retrain_asof": "2026-09-09",
+        "signal_end": "2026-09-29"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 0,
+        "retrain_asof": "2024-12-31",
+        "signal_end": "2025-02-05"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 0,
+        "retrain_asof": "2025-02-06",
+        "signal_end": "2025-03-05"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 0,
+        "retrain_asof": "2025-03-06",
+        "signal_end": "2025-04-02"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 0,
+        "retrain_asof": "2025-04-03",
+        "signal_end": "2025-05-06"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 0,
+        "retrain_asof": "2025-05-07",
+        "signal_end": "2025-06-04"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 0,
+        "retrain_asof": "2025-06-05",
+        "signal_end": "2025-07-02"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 0,
+        "retrain_asof": "2025-07-03",
+        "signal_end": "2025-07-30"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 0,
+        "retrain_asof": "2025-07-31",
+        "signal_end": "2025-08-27"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 0,
+        "retrain_asof": "2025-08-28",
+        "signal_end": "2025-09-24"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 0,
+        "retrain_asof": "2025-09-25",
+        "signal_end": "2025-10-30"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 0,
+        "retrain_asof": "2025-10-31",
+        "signal_end": "2025-11-27"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 0,
+        "retrain_asof": "2025-11-28",
+        "signal_end": "2025-12-25"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 0,
+        "retrain_asof": "2025-12-26",
+        "signal_end": "2026-01-26"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 0,
+        "retrain_asof": "2026-01-27",
+        "signal_end": "2026-03-03"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 0,
+        "retrain_asof": "2026-03-04",
+        "signal_end": "2026-03-31"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 0,
+        "retrain_asof": "2026-04-01",
+        "signal_end": "2026-04-29"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 0,
+        "retrain_asof": "2026-04-30",
+        "signal_end": "2026-06-01"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 0,
+        "retrain_asof": "2026-06-02",
+        "signal_end": "2026-06-30"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 0,
+        "retrain_asof": "2026-07-01",
+        "signal_end": "2026-07-28"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 0,
+        "retrain_asof": "2026-07-29",
+        "signal_end": "2026-08-25"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 0,
+        "retrain_asof": "2026-08-26",
+        "signal_end": "2026-09-22"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 0,
+        "retrain_asof": "2026-09-23",
+        "signal_end": "2026-09-29"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 10,
+        "retrain_asof": "2024-12-17",
+        "signal_end": "2025-01-14"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 10,
+        "retrain_asof": "2025-01-15",
+        "signal_end": "2025-02-19"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 10,
+        "retrain_asof": "2025-02-20",
+        "signal_end": "2025-03-19"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 10,
+        "retrain_asof": "2025-03-20",
+        "signal_end": "2025-04-17"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 10,
+        "retrain_asof": "2025-04-18",
+        "signal_end": "2025-05-20"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 10,
+        "retrain_asof": "2025-05-21",
+        "signal_end": "2025-06-18"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 10,
+        "retrain_asof": "2025-06-19",
+        "signal_end": "2025-07-16"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 10,
+        "retrain_asof": "2025-07-17",
+        "signal_end": "2025-08-13"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 10,
+        "retrain_asof": "2025-08-14",
+        "signal_end": "2025-09-10"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 10,
+        "retrain_asof": "2025-09-11",
+        "signal_end": "2025-10-16"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 10,
+        "retrain_asof": "2025-10-17",
+        "signal_end": "2025-11-13"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 10,
+        "retrain_asof": "2025-11-14",
+        "signal_end": "2025-12-11"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 10,
+        "retrain_asof": "2025-12-12",
+        "signal_end": "2026-01-12"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 10,
+        "retrain_asof": "2026-01-13",
+        "signal_end": "2026-02-09"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 10,
+        "retrain_asof": "2026-02-10",
+        "signal_end": "2026-03-17"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 10,
+        "retrain_asof": "2026-03-18",
+        "signal_end": "2026-04-15"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 10,
+        "retrain_asof": "2026-04-16",
+        "signal_end": "2026-05-18"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 10,
+        "retrain_asof": "2026-05-19",
+        "signal_end": "2026-06-15"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 10,
+        "retrain_asof": "2026-06-16",
+        "signal_end": "2026-07-14"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 10,
+        "retrain_asof": "2026-07-15",
+        "signal_end": "2026-08-11"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 10,
+        "retrain_asof": "2026-08-12",
+        "signal_end": "2026-09-08"
+      },
+      {
+        "candidate_id": "33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740",
+        "phase": 10,
+        "retrain_asof": "2026-09-09",
+        "signal_end": "2026-09-29"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 0,
+        "retrain_asof": "2024-12-31",
+        "signal_end": "2025-02-05"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 0,
+        "retrain_asof": "2025-02-06",
+        "signal_end": "2025-03-05"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 0,
+        "retrain_asof": "2025-03-06",
+        "signal_end": "2025-04-02"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 0,
+        "retrain_asof": "2025-04-03",
+        "signal_end": "2025-05-06"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 0,
+        "retrain_asof": "2025-05-07",
+        "signal_end": "2025-06-04"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 0,
+        "retrain_asof": "2025-06-05",
+        "signal_end": "2025-07-02"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 0,
+        "retrain_asof": "2025-07-03",
+        "signal_end": "2025-07-30"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 0,
+        "retrain_asof": "2025-07-31",
+        "signal_end": "2025-08-27"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 0,
+        "retrain_asof": "2025-08-28",
+        "signal_end": "2025-09-24"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 0,
+        "retrain_asof": "2025-09-25",
+        "signal_end": "2025-10-30"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 0,
+        "retrain_asof": "2025-10-31",
+        "signal_end": "2025-11-27"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 0,
+        "retrain_asof": "2025-11-28",
+        "signal_end": "2025-12-25"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 0,
+        "retrain_asof": "2025-12-26",
+        "signal_end": "2026-01-26"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 0,
+        "retrain_asof": "2026-01-27",
+        "signal_end": "2026-03-03"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 0,
+        "retrain_asof": "2026-03-04",
+        "signal_end": "2026-03-31"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 0,
+        "retrain_asof": "2026-04-01",
+        "signal_end": "2026-04-29"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 0,
+        "retrain_asof": "2026-04-30",
+        "signal_end": "2026-06-01"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 0,
+        "retrain_asof": "2026-06-02",
+        "signal_end": "2026-06-30"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 0,
+        "retrain_asof": "2026-07-01",
+        "signal_end": "2026-07-28"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 0,
+        "retrain_asof": "2026-07-29",
+        "signal_end": "2026-08-25"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 0,
+        "retrain_asof": "2026-08-26",
+        "signal_end": "2026-09-22"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 0,
+        "retrain_asof": "2026-09-23",
+        "signal_end": "2026-09-29"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 10,
+        "retrain_asof": "2024-12-17",
+        "signal_end": "2025-01-14"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 10,
+        "retrain_asof": "2025-01-15",
+        "signal_end": "2025-02-19"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 10,
+        "retrain_asof": "2025-02-20",
+        "signal_end": "2025-03-19"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 10,
+        "retrain_asof": "2025-03-20",
+        "signal_end": "2025-04-17"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 10,
+        "retrain_asof": "2025-04-18",
+        "signal_end": "2025-05-20"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 10,
+        "retrain_asof": "2025-05-21",
+        "signal_end": "2025-06-18"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 10,
+        "retrain_asof": "2025-06-19",
+        "signal_end": "2025-07-16"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 10,
+        "retrain_asof": "2025-07-17",
+        "signal_end": "2025-08-13"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 10,
+        "retrain_asof": "2025-08-14",
+        "signal_end": "2025-09-10"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 10,
+        "retrain_asof": "2025-09-11",
+        "signal_end": "2025-10-16"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 10,
+        "retrain_asof": "2025-10-17",
+        "signal_end": "2025-11-13"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 10,
+        "retrain_asof": "2025-11-14",
+        "signal_end": "2025-12-11"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 10,
+        "retrain_asof": "2025-12-12",
+        "signal_end": "2026-01-12"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 10,
+        "retrain_asof": "2026-01-13",
+        "signal_end": "2026-02-09"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 10,
+        "retrain_asof": "2026-02-10",
+        "signal_end": "2026-03-17"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 10,
+        "retrain_asof": "2026-03-18",
+        "signal_end": "2026-04-15"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 10,
+        "retrain_asof": "2026-04-16",
+        "signal_end": "2026-05-18"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 10,
+        "retrain_asof": "2026-05-19",
+        "signal_end": "2026-06-15"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 10,
+        "retrain_asof": "2026-06-16",
+        "signal_end": "2026-07-14"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 10,
+        "retrain_asof": "2026-07-15",
+        "signal_end": "2026-08-11"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 10,
+        "retrain_asof": "2026-08-12",
+        "signal_end": "2026-09-08"
+      },
+      {
+        "candidate_id": "a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b",
+        "phase": 10,
+        "retrain_asof": "2026-09-09",
+        "signal_end": "2026-09-29"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 0,
+        "retrain_asof": "2024-12-31",
+        "signal_end": "2025-02-05"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 0,
+        "retrain_asof": "2025-02-06",
+        "signal_end": "2025-03-05"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 0,
+        "retrain_asof": "2025-03-06",
+        "signal_end": "2025-04-02"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 0,
+        "retrain_asof": "2025-04-03",
+        "signal_end": "2025-05-06"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 0,
+        "retrain_asof": "2025-05-07",
+        "signal_end": "2025-06-04"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 0,
+        "retrain_asof": "2025-06-05",
+        "signal_end": "2025-07-02"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 0,
+        "retrain_asof": "2025-07-03",
+        "signal_end": "2025-07-30"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 0,
+        "retrain_asof": "2025-07-31",
+        "signal_end": "2025-08-27"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 0,
+        "retrain_asof": "2025-08-28",
+        "signal_end": "2025-09-24"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 0,
+        "retrain_asof": "2025-09-25",
+        "signal_end": "2025-10-30"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 0,
+        "retrain_asof": "2025-10-31",
+        "signal_end": "2025-11-27"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 0,
+        "retrain_asof": "2025-11-28",
+        "signal_end": "2025-12-25"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 0,
+        "retrain_asof": "2025-12-26",
+        "signal_end": "2026-01-26"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 0,
+        "retrain_asof": "2026-01-27",
+        "signal_end": "2026-03-03"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 0,
+        "retrain_asof": "2026-03-04",
+        "signal_end": "2026-03-31"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 0,
+        "retrain_asof": "2026-04-01",
+        "signal_end": "2026-04-29"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 0,
+        "retrain_asof": "2026-04-30",
+        "signal_end": "2026-06-01"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 0,
+        "retrain_asof": "2026-06-02",
+        "signal_end": "2026-06-30"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 0,
+        "retrain_asof": "2026-07-01",
+        "signal_end": "2026-07-28"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 0,
+        "retrain_asof": "2026-07-29",
+        "signal_end": "2026-08-25"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 0,
+        "retrain_asof": "2026-08-26",
+        "signal_end": "2026-09-22"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 0,
+        "retrain_asof": "2026-09-23",
+        "signal_end": "2026-09-29"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 10,
+        "retrain_asof": "2024-12-17",
+        "signal_end": "2025-01-14"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 10,
+        "retrain_asof": "2025-01-15",
+        "signal_end": "2025-02-19"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 10,
+        "retrain_asof": "2025-02-20",
+        "signal_end": "2025-03-19"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 10,
+        "retrain_asof": "2025-03-20",
+        "signal_end": "2025-04-17"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 10,
+        "retrain_asof": "2025-04-18",
+        "signal_end": "2025-05-20"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 10,
+        "retrain_asof": "2025-05-21",
+        "signal_end": "2025-06-18"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 10,
+        "retrain_asof": "2025-06-19",
+        "signal_end": "2025-07-16"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 10,
+        "retrain_asof": "2025-07-17",
+        "signal_end": "2025-08-13"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 10,
+        "retrain_asof": "2025-08-14",
+        "signal_end": "2025-09-10"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 10,
+        "retrain_asof": "2025-09-11",
+        "signal_end": "2025-10-16"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 10,
+        "retrain_asof": "2025-10-17",
+        "signal_end": "2025-11-13"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 10,
+        "retrain_asof": "2025-11-14",
+        "signal_end": "2025-12-11"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 10,
+        "retrain_asof": "2025-12-12",
+        "signal_end": "2026-01-12"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 10,
+        "retrain_asof": "2026-01-13",
+        "signal_end": "2026-02-09"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 10,
+        "retrain_asof": "2026-02-10",
+        "signal_end": "2026-03-17"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 10,
+        "retrain_asof": "2026-03-18",
+        "signal_end": "2026-04-15"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 10,
+        "retrain_asof": "2026-04-16",
+        "signal_end": "2026-05-18"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 10,
+        "retrain_asof": "2026-05-19",
+        "signal_end": "2026-06-15"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 10,
+        "retrain_asof": "2026-06-16",
+        "signal_end": "2026-07-14"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 10,
+        "retrain_asof": "2026-07-15",
+        "signal_end": "2026-08-11"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 10,
+        "retrain_asof": "2026-08-12",
+        "signal_end": "2026-09-08"
+      },
+      {
+        "candidate_id": "1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2",
+        "phase": 10,
+        "retrain_asof": "2026-09-09",
+        "signal_end": "2026-09-29"
+      }
+    ],
+    "long_candidate_count": 4,
+    "long_fits_including_smoke": 176,
+    "long_lineage_count": 8,
+    "plan_sha256": "b8f33802eb19ea516025235b2558f13351ee582e41f21350ce1690cfb9893b5a",
+    "portfolio": {
+      "dropn": 2,
+      "topk": 20
+    },
+    "selected_new_candidate_ids": [],
+    "short_fits_including_smoke": 16,
+    "stage": "l2",
+    "status": "JOB_ROSTER_ONLY_NOT_EXECUTED"
+  },
+  "historic_data": "HISTORICALLY_CONSUMED",
+  "plan_sha256": "b8f33802eb19ea516025235b2558f13351ee582e41f21350ce1690cfb9893b5a",
+  "qualified_configs": 0,
+  "run_id": "l2_20261014_b1",
+  "short_screen": {
+    "eligible": [
+      {
+        "candidate_id": "9fcfd8327f51051ed3c8aaa659bc529dd1c82d505a99e5ecd26398feeb59c7f9",
+        "mdd_degradation": 0.0010590000000000044,
+        "median_delta": -0.4766945,
+        "passed": false,
+        "worst_delta": 0.02054399999999998
+      },
+      {
+        "candidate_id": "231ee1ab4e38e0448b875ba84c7d54671b5853766d5e3c804b116552efd879ad",
+        "mdd_degradation": -0.014732999999999996,
+        "median_delta": -0.29188250000000004,
+        "passed": false,
+        "worst_delta": 0.63661
+      },
+      {
+        "candidate_id": "e01070fd3e80580cc375287bb4cb847e1ffd375a8cb013491392adc8914cfe74",
+        "mdd_degradation": 0.0009170000000000011,
+        "median_delta": -0.5795085,
+        "passed": false,
+        "worst_delta": 0.08458099999999999
+      },
+      {
+        "candidate_id": "ccb9b983e0dc6ae38f48c8f409a1bc7fbf17d711a862c1089b2cb6c3df09097b",
+        "mdd_degradation": -0.014258999999999994,
+        "median_delta": -0.477573,
+        "passed": false,
+        "worst_delta": 0.16716599999999998
+      }
+    ],
+    "selected_new_candidate_ids": [],
+    "selection_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "short_count": 16,
+    "status": "SHORT_SCREEN_PASS"
+  },
+  "status": "PASS",
+  "top_two_for_final_pool": []
+}

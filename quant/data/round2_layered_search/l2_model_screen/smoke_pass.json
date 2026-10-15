@@ -1,0 +1,11 @@
+{
+  "code_sha": "b359c19e9d2cd570d5da4ac81aa01899cc6eed6f",
+  "plan_sha256": "b8f33802eb19ea516025235b2558f13351ee582e41f21350ce1690cfb9893b5a",
+  "provider_snapshot_sha256": "1d693911db026f0828ab9922617e19c7a3cde7211320a5b69be8ea26077c7b88",
+  "quote_sha256": "7d27c49ee7dcb2f4620c9a3aae7c620a1ecdc4890a18fc46b74cfcd468cec405",
+  "run_id": "l2_20261014_b1",
+  "smoke_long_job_sha": "18732ad962c063e8fccbc59273474db5d80d3a5988da12c42b56c48f3e3fdcf3",
+  "smoke_short_job_sha": "d38db97a915cff1d5b2576aa5dcf44f01c74043415b93b99bc00471d482a4aeb",
+  "status": "PASS",
+  "two_real_fits": true
+}

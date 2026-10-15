@@ -1,0 +1,13 @@
+{
+  "code_sha": "49d9022ad2302aa9b706cd835b3a2b8e56c05937",
+  "plan_sha256": "03275e81457c64c3c3ad951bbf6be1c657a8d2a41acc3392f2b8d507b42cb0db",
+  "provider_snapshot_sha256": "1d693911db026f0828ab9922617e19c7a3cde7211320a5b69be8ea26077c7b88",
+  "quote_sha256": "7d27c49ee7dcb2f4620c9a3aae7c620a1ecdc4890a18fc46b74cfcd468cec405",
+  "run_id": "l3_20261014_a1",
+  "smoke_job_shas": [
+    "a22492ae633ec10b29a0b761f35e17e3d19b9d0b56ec086a9f3e18e01cba60df",
+    "91881eecbdef77a7bc10f1daf843cb02ad0120e81b395925ce63e7158b080c51"
+  ],
+  "status": "PASS",
+  "two_real_fits": true
+}

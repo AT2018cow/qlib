@@ -4,19 +4,22 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - "audit/run_stage_b_corrected_rerank.py"
-      - "tests/test_stage_b_corrected_rerank.py"
+      - "quant/code/audit/run_stage_b_corrected_rerank.py"
+      - "quant/tests/test_stage_b_corrected_rerank.py"
       - ".github/workflows/csi1000-stage-b-corrected-rerank.yml"
   push:
     branches: ["main", "audit/full-frozen-replay-rerank-20261010"]
     paths:
-      - "audit/run_stage_b_corrected_rerank.py"
-      - "tests/test_stage_b_corrected_rerank.py"
+      - "quant/code/audit/run_stage_b_corrected_rerank.py"
+      - "quant/tests/test_stage_b_corrected_rerank.py"
       - ".github/workflows/csi1000-stage-b-corrected-rerank.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
+
+env:
+  PYTHONPATH: ".:quant:quant/code:quant/code/production:quant/code/execution:quant/code/research/stage_ab:quant/code/research/layered_search:quant/code/research/pre_tuner:quant/code/audit:quant/code/ops:quant/website"
 
 jobs:
   frozen-source-safety:
@@ -30,11 +33,11 @@ jobs:
       - name: Install minimal CPU Parquet dependencies
         run: python -m pip install --disable-pip-version-check --no-input "pandas==2.2.3" "pyarrow==17.0.0"
       - name: Compile batch replay without importing provider
-        run: python -m py_compile audit/run_stage_b_corrected_rerank.py tests/test_stage_b_corrected_rerank.py
+        run: python -m py_compile quant/code/audit/run_stage_b_corrected_rerank.py quant/tests/test_stage_b_corrected_rerank.py
       - name: Verify published ten-report SHA gates
-        run: python -m unittest discover -s tests -p "test_stage_b_f6_preflight.py" -v
+        run: python -m unittest discover -s quant/tests -p "test_stage_b_f6_preflight.py" -v
       - name: "Negative controls: all 55 frozen signal/decision/report pointers and diagnostic ranking"
-        run: python -m unittest discover -s tests -p "test_stage_b_corrected_rerank.py" -v
+        run: python -m unittest discover -s quant/tests -p "test_stage_b_corrected_rerank.py" -v
       - name: Explicit limit of CI result
         run: |
           {

@@ -4,17 +4,20 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - "audit/triage_stage_b_execution.py"
+      - "quant/code/audit/triage_stage_b_execution.py"
       - ".github/workflows/csi1000-stage-b-rapid-triage.yml"
   push:
     branches: ["main", "audit/rapid-ten-phase-execution-triage-20261010"]
     paths:
-      - "audit/triage_stage_b_execution.py"
+      - "quant/code/audit/triage_stage_b_execution.py"
       - ".github/workflows/csi1000-stage-b-rapid-triage.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
+
+env:
+  PYTHONPATH: ".:quant:quant/code:quant/code/production:quant/code/execution:quant/code/research/stage_ab:quant/code/research/layered_search:quant/code/research/pre_tuner:quant/code/audit:quant/code/ops:quant/website"
 
 jobs:
   frozen-trade-blackout-matrix:
@@ -28,7 +31,7 @@ jobs:
       - name: Install only CPU Parquet readers
         run: python -m pip install --disable-pip-version-check --no-input "pandas==2.2.3" "pyarrow==17.0.0"
       - name: Original ten-report SHA and calendar identity
-        run: python -m unittest discover -s tests -p "test_stage_b_f6_preflight.py" -v
+        run: python -m unittest discover -s quant/tests -p "test_stage_b_f6_preflight.py" -v
       - name: Quantify all ten frozen execution blackouts and decision risks
         shell: bash
         run: |
