@@ -4,14 +4,28 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/svg+xml" href="favicon.svg?v=1">
-<meta name="description" content="中证1000 Stage-B winner 每日选股信号与生产状态">
-<title>中证1000每日选股 · Production Signal</title>
+<meta name="description" content="中证1000 c98856b4 · Top10/Drop1 每日选股信号与生产状态">
+<title>中证1000每日选股 · Qlib Signal Lab</title>
 <link rel="stylesheet" href="styles.css?v=11">
 </head>
 <body>
 <div id="app">
-  <div class="shell">
-    <div class="callout">正在加载最新生产信号…</div>
+  <div class="boot-screen" role="status" aria-live="polite">
+    <div class="boot-card">
+      <div class="boot-emblem" aria-hidden="true">
+        <svg class="boot-rings" viewBox="0 0 88 88">
+          <circle class="boot-ring-outer" cx="44" cy="44" r="38" />
+          <circle class="boot-ring-arc" cx="44" cy="44" r="29" />
+        </svg>
+        <span class="boot-mark">Q</span>
+      </div>
+      <div class="boot-kicker">QLIB SIGNAL LAB · CSI1000</div>
+      <div class="boot-title">正在同步最新生产信号</div>
+      <div class="boot-bars" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <div class="boot-sub">加载 c98856b4 · Top10/Drop1 横截面排名与前向净值账本</div>
+    </div>
   </div>
 </div>
 <script src="app.js?v=28"></script>

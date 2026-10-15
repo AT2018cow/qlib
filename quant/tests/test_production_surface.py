@@ -235,3 +235,27 @@ def test_st_free_reference_return_is_explicit_not_certified():
         assert phrase in app, f"site missing reference-only disclosure: {phrase}"
     assert "接口连接故障时" in method
     assert "研究型参考收益" in method
+
+
+def test_centered_boot_loader_and_consolidated_bottom_governance_card():
+    index = (ROOT / "quant" / "website" / "index.html").read_text()
+    app = (ROOT / "quant" / "website" / "app.js").read_text()
+    styles = (ROOT / "quant" / "website" / "styles.css").read_text()
+    method = (ROOT / "quant" / "website" / "methodology.html").read_text()
+
+    # Centered boot loader in index.html + styles.css
+    assert 'class="boot-screen"' in index
+    assert 'class="boot-rings"' in index
+    assert ".boot-screen {" in styles
+    assert "place-items: center;" in styles
+
+    # Governance & ST disclosures consolidated at the bottom after #performance
+    assert app.index('id="ranking"') < app.index('id="performance"') < app.index('id="governance-notes"')
+    assert app.index('id="performance"') < app.index('id="stat-pit"')
+    assert app.index('id="performance"') < app.index('id="stat-risk"')
+    assert app.index('id="performance"') < app.index('id="mvp-health"')
+
+    # Methodology includes 5-phase audited metrics for c98856b4 Top10/Drop1
+    for metric in ("+46.23%", "2.228", "-14.95%", "+33.48%", "-20.05%"):
+        assert metric in method, f"methodology missing 5-phase metric: {metric}"
+

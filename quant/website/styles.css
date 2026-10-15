@@ -810,3 +810,199 @@ body { background: #0c121b; }
   .stock-side .tag { margin-left: 0; }
   .performance-axis { font-size: 10px; }
 }
+
+/* Centered high-end boot loader */
+.boot-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(37, 74, 114, 0.22), transparent 54%),
+    var(--background);
+}
+.boot-card {
+  width: min(420px, 100%);
+  padding: 38px 32px 34px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(25, 37, 52, 0.92), rgba(21, 30, 43, 0.96));
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.38);
+}
+.boot-emblem {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  margin: 0 auto 20px;
+  display: grid;
+  place-items: center;
+}
+.boot-rings {
+  position: absolute;
+  inset: 0;
+  width: 88px;
+  height: 88px;
+  overflow: visible;
+}
+.boot-ring-outer {
+  fill: none;
+  stroke: #2e435c;
+  stroke-width: 1.5;
+  stroke-dasharray: 5 6;
+  transform-origin: 44px 44px;
+  animation: boot-orbit-cw 14s linear infinite;
+}
+.boot-ring-arc {
+  fill: none;
+  stroke: var(--blue);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-dasharray: 56 140;
+  transform-origin: 44px 44px;
+  animation: boot-orbit-ccw 2.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+.boot-mark {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  background: #254a72;
+  border: 1px solid rgba(139, 189, 255, 0.32);
+  color: #f4f7fc;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.boot-kicker {
+  color: var(--blue);
+  font-size: 10px;
+  font-weight: 760;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.boot-title {
+  color: var(--heading);
+  font-size: 18px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  margin-bottom: 16px;
+}
+.boot-bars {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 18px;
+  margin-bottom: 14px;
+}
+.boot-bars span {
+  display: inline-block;
+  width: 3px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--teal);
+  animation: boot-bar-pulse 1.2s ease-in-out infinite;
+}
+.boot-bars span:nth-child(2) { animation-delay: 0.15s; background: var(--blue); }
+.boot-bars span:nth-child(3) { animation-delay: 0.30s; background: var(--amber); }
+.boot-bars span:nth-child(4) { animation-delay: 0.45s; background: var(--blue); }
+.boot-bars span:nth-child(5) { animation-delay: 0.60s; background: var(--teal); }
+.boot-sub {
+  color: var(--quiet);
+  font-size: 12px;
+  line-height: 1.6;
+}
+@keyframes boot-orbit-cw {
+  to { transform: rotate(360deg); }
+}
+@keyframes boot-orbit-ccw {
+  0% { transform: rotate(0deg); stroke: var(--blue); }
+  50% { stroke: var(--teal); }
+  100% { transform: rotate(360deg); stroke: var(--blue); }
+}
+@keyframes boot-bar-pulse {
+  0%, 100% { transform: scaleY(0.55); opacity: 0.45; }
+  50% { transform: scaleY(1.65); opacity: 1; }
+}
+
+/* Consolidated bottom governance & disclosure card */
+.governance-panel {
+  margin-bottom: 26px;
+}
+.governance-body {
+  padding: 20px 25px 22px;
+}
+.governance-meta-grid {
+  display: grid;
+  grid-template-columns: minmax(170px, 0.75fr) minmax(200px, 0.95fr) minmax(0, 1.5fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.governance-meta-item {
+  min-width: 0;
+  padding: 13px 15px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-soft);
+}
+.governance-meta-label {
+  display: block;
+  color: var(--quiet);
+  font-size: 11px;
+  margin-bottom: 5px;
+}
+.governance-meta-value {
+  display: block;
+  color: var(--heading);
+  font-size: 13px;
+  font-weight: 710;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.governance-meta-sub {
+  display: block;
+  margin-top: 4px;
+  color: var(--quiet);
+  font-size: 11px;
+}
+.governance-health {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.governance-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.governance-list li {
+  margin-bottom: 5px;
+}
+.governance-list li:last-child {
+  margin-bottom: 0;
+}
+.governance-list strong {
+  color: var(--text);
+}
+@media (max-width: 860px) {
+  .governance-meta-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .governance-meta-wide {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 700px) {
+  .governance-body {
+    padding: 16px 17px 18px;
+  }
+  .governance-meta-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}

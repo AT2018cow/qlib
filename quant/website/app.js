@@ -242,7 +242,7 @@ function formatReturn(value, digits = 2) {
 function makePerformanceChart(points, w = 760, h = 180) {
   const rows = Array.isArray(points) ? points : [];
   if (!rows.length) {
-    return '<div class="performance-empty">从 2026.10.12 开始记录，首个收盘估值将在下一次数据更新后显示。</div>';
+    return '<div class="performance-empty">从新策略启用（2026.10.15）开始记录，首个收盘估值将在下一交易日数据更新后显示。</div>';
   }
 
   if (rows.some(p => !p || typeof p.cumulative_return !== 'number' || !Number.isFinite(p.cumulative_return))) {
@@ -295,11 +295,11 @@ function renderForwardPerformance(data) {
     const invalid = data?.status === 'invalid';
     value.textContent = unavailable ? '暂不可用' : invalid ? '数据异常' : '待开始';
     latest.textContent = unavailable ? '收益文件加载失败' :
-      invalid ? '估值数据校验未通过' : '尚无收盘估值';
-    status.textContent = 'Forward tracking · 2026.10.12 起';
+      invalid ? '估值数据校验未通过' : '等待首个交易日收盘结算';
+    status.textContent = 'Forward tracking · 2026.10.15 新策略启用起';
     const message = unavailable ? '暂时无法读取累计收益数据，请稍后重试。' :
       invalid ? '累计收益数据不完整或不符合 forward-only 约定，已停止展示。' :
-      '从 2026.10.12 开始记录，首个收盘估值将在下一次数据更新后显示。';
+      '从新策略启用（2026.10.15）开始记录，首个收盘估值将在下一交易日数据更新后显示。';
     chart.innerHTML = '<div class="performance-empty" role="status">' + message + '</div>';
     return;
   }
@@ -494,11 +494,11 @@ function pageShell(dates) {
 
       <section class="hero">
         <div class="hero-copy">
-          <div class="eyebrow"><span class="status-dot"></span> CSI1000 Production</div>
+          <div class="eyebrow"><span class="status-dot"></span> CSI1000 Production · c98856b4</div>
           <h1>中证1000<span>每日选股信号</span></h1>
           <p class="hero-lede">
-            基于已冻结的 Stage-B 模型，每日展示中证1000预测排名。
-            可查询历史榜单、数据截止日与模型版本。信号于 T 日收盘形成，供 T+1 开盘使用。
+            基于两轮分层研发与五相位全量审计冻结的 <strong>c98856b4 · Top10/Drop1</strong> 策略，
+            每日生成中证1000横截面预测 Top 10。信号于 T 日收盘后生成，供 T+1 日开盘调仓使用。
           </p>
         </div>
         <aside class="protocol-card">
@@ -513,42 +513,28 @@ function pageShell(dates) {
         </aside>
       </section>
 
-      <section class="status-grid mvp-grid" aria-label="信号状态">
+      <section class="status-grid" aria-label="信号状态">
         <div class="stat-card">
           <div class="stat-label">榜单日期</div>
           <div class="stat-value" id="stat-date">—</div>
-          <div class="stat-sub">signal usage date</div>
+          <div class="stat-sub">T+1 信号生效日</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">数据截止</div>
           <div class="stat-value" id="stat-data-date">—</div>
-          <div class="stat-sub">signal data date</div>
+          <div class="stat-sub">T 日收盘行情</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">模型拟合日</div>
           <div class="stat-value" id="stat-fit-date">—</div>
-          <div class="stat-sub">model fit as-of</div>
+          <div class="stat-sub">最近重训节点</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">模型谱系</div>
           <div class="stat-value" id="stat-lineage">—</div>
           <div class="stat-sub" id="stat-lineage-sub">版本说明</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">PIT / 标签</div>
-          <div class="stat-value" id="stat-pit">—</div>
-          <div class="stat-sub">当日成分与 20-session maturity</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Paper / 风险</div>
-          <div class="stat-value" id="stat-risk">—</div>
-          <div class="stat-sub">ST / 停牌不等于可成交认证</div>
-        </div>
       </section>
-
-      <div id="mvp-health" class="callout mvp-health" role="status">
-        正在核对每日 MVP 发布合同…
-      </div>
 
       <section class="panel" id="ranking">
         <div class="panel-head">
@@ -559,8 +545,6 @@ function pageShell(dates) {
           <div class="panel-note">
             <div id="ranking-date" class="ranking-date">—</div>
             <div id="artifact-status"></div>
-            <div class="ranking-note">排名变化对比上一期可用榜单，不代表实际持仓</div>
-            <div class="ranking-note">预测分数用于排序，不构成收益承诺</div>
           </div>
         </div>
         <div class="table-wrap">
@@ -580,7 +564,7 @@ function pageShell(dates) {
             <div class="panel-kicker">Archive</div>
             <h2>历史榜单</h2>
           </div>
-          <div class="panel-note">只读存档 · 按日期查看</div>
+          <div class="panel-note">新策略上线以来存档 · 按日期查看</div>
         </div>
         <div class="history-wrap">
           <div id="history-buttons" class="history-buttons">${history}</div>
@@ -592,30 +576,58 @@ function pageShell(dates) {
           <div>
             <div class="panel-kicker">Forward performance</div>
             <h2>模型累计收益 · Paper 参考</h2>
-            <p id="forward-status" class="performance-status">Forward tracking · 2026.10.12 起</p>
+            <p id="forward-status" class="performance-status">Forward tracking · 2026.10.15 新策略启用起</p>
           </div>
           <div class="performance-summary">
             <div id="forward-return" class="performance-value">待开始</div>
-            <div id="forward-latest" class="performance-latest">尚无收盘估值</div>
+            <div id="forward-latest" class="performance-latest">等待首个交易日收盘结算</div>
           </div>
         </div>
         <div id="forward-chart" class="performance-chart">
-          <div class="performance-empty">从 2026.10.12 开始记录，首个收盘估值将在下一次数据更新后显示。</div>
+          <div class="performance-empty">从新策略启用（2026.10.15）开始记录，首个收盘估值将在下一交易日数据更新后显示。</div>
         </div>
         <div class="performance-foot">
-          <span>起点：2026.10.12 开盘前账户价值 = 1.0000</span>
-          <span>ST 接口正常则纳入 ST 快照；仅连接故障时不考虑 ST 并逐日披露。仅研究模拟，非真实成交</span>
+          <span>起点：2026.10.15 新策略启用日开盘前账户净值 = 1.0000</span>
+          <span>T+1 开盘调仓 · 收盘估值结算（含交易成本与涨跌停约束）</span>
         </div>
       </section>
 
-      <div class="callout">
-        <strong>当前范围：</strong>生产页面仅展示 CSI1000。创业板旧模型的每日更新与公开展示已暂停，
-        历史研究结果仍保留；待新模型完成独立验证并获准恢复后再展示。
-      </div>
+      <section class="panel governance-panel" id="governance-notes" aria-label="运行核验与口径说明">
+        <div class="panel-head governance-head">
+          <div>
+            <div class="panel-kicker">Governance & Disclosure</div>
+            <h2>运行核验与口径说明</h2>
+          </div>
+          <div class="panel-note">自动审计状态与策略边界汇总</div>
+        </div>
+        <div class="governance-body">
+          <div class="governance-meta-grid">
+            <div class="governance-meta-item">
+              <span class="governance-meta-label">PIT / 标签</span>
+              <strong class="governance-meta-value" id="stat-pit">—</strong>
+              <span class="governance-meta-sub">当日成分与 20-session maturity</span>
+            </div>
+            <div class="governance-meta-item">
+              <span class="governance-meta-label">Paper / 风险</span>
+              <strong class="governance-meta-value" id="stat-risk">—</strong>
+              <span class="governance-meta-sub">ST 与停牌核验状态</span>
+            </div>
+            <div class="governance-meta-item governance-meta-wide">
+              <span class="governance-meta-label">每日发布合同核验</span>
+              <div id="mvp-health" class="governance-health" role="status">正在核对每日 MVP 发布合同…</div>
+            </div>
+          </div>
+          <ul class="governance-list">
+            <li><strong>排名与预测口径：</strong>排名变化对比上一期可用榜单，不代表实际持仓；预测分数用于排序，不构成收益承诺。</li>
+            <li><strong>累计收益与 ST 规则：</strong>旧策略信号已归档移除，累计收益自 2026.10.15 启用 <code>c98856b4 · Top10/Drop1</code> 起独立计算。ST 接口正常则纳入 ST 快照；仅连接故障时不考虑 ST 并逐日披露。仅研究模拟，非真实成交。</li>
+            <li><strong>当前范围：</strong>生产页面仅展示中证1000（CSI1000）。创业板旧模型的每日更新与公开展示已暂停，待新模型完成独立验证并获准恢复后再展示。</li>
+          </ul>
+        </div>
+      </section>
 
       <footer class="footer">
         <span>仅供研究与工程验证，不构成投资建议。</span>
-        <span><a href="methodology.html">查看完整方法论与 Stage-B 证据 →</a></span>
+        <span><a href="methodology.html">查看完整方法论与两轮研发证据 →</a></span>
       </footer>
     </main>
   `;
