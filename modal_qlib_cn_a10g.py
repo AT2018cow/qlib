@@ -3637,8 +3637,8 @@ CHENDITC_LATEST_URL = "https://github.com/chenditc/investment_data/releases/late
     nonpreemptible=True,  # 每日信号是生产职责：抢占会导致当天无信号；保留可靠性优先语义
 )
 def daily_standalone(
-    topk: int = 20,
-    nd: int = 2,
+    topk: int = 10,
+    nd: int = 1,
     market: str = "csi1000",
     csi1000_profile: str = None,
     paper_lineage: str = "canonical",
@@ -4219,15 +4219,17 @@ def daily_cron():
 
     print(f"[cron] {signal_date} 为交易日——启动 CSI1000 Stage-B winner canonical")
     from csi1000_production_config import (
+        CANONICAL_ND,
         CANONICAL_PAPER_LINEAGE,
         CANONICAL_PROFILE,
+        CANONICAL_TOPK,
         profile_manifest,
     )
 
     try:
         res = daily_standalone.remote(
-            topk=20,
-            nd=2,
+            topk=CANONICAL_TOPK,
+            nd=CANONICAL_ND,
             market="csi1000",
             csi1000_profile=CANONICAL_PROFILE,
             paper_lineage=CANONICAL_PAPER_LINEAGE,
@@ -4277,8 +4279,8 @@ def daily_cron():
         paper_proposals["csi1000"] = _apply_paper_portfolio(
             res,
             signal_date,
-            topk=20,
-            nd=2,
+            topk=CANONICAL_TOPK,
+            nd=CANONICAL_ND,
             lineage=CANONICAL_PAPER_LINEAGE,
             verified_calendar=cal,
         )
@@ -4879,12 +4881,12 @@ def main(
             )
         return
     if best:
-        # 终审固化配置（2026-09-18，见 docs/experiments/05-final-audit.md）：
-        # LGB + Alpha158 + 20日标签 + 2016起 expanding + csi1000 + top20 + nd2（当前生产候选；历史收益须按当前协议解释）
+        # 终审固化配置：
+        # LGB + Alpha158 + 20日标签 + 2016起 expanding + csi1000 + top10 + nd1（当前生产候选 c98856b4_top10_drop1）
         # 注意：--daily 时 topk/nd/market 生效；--best 单独跑完整训练+回测时回测参数同此
         model, recent, long_train, label20 = "lgb158", True, True, True
-        topk, nd, market = 20, 2, (market if market else "csi1000")
-        print(f"[best] 终审固化配置：lgb158 + Alpha158 + 20日标签 + {market} + top20 + nd2")
+        topk, nd, market = 10, 1, (market if market else "csi1000")
+        print(f"[best] 终审固化配置：lgb158 + Alpha158 + 20日标签 + {market} + top10 + nd1")
     if build_fund:
         res = build_fund_factors.remote(market=fund_market, max_stocks=fund_max_stocks)
         print(res)

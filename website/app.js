@@ -6,10 +6,10 @@ const DATE_INDEX_URL = CSV_BASE + '/available_dates.json';
 
 const PRODUCTION = {
   pool: '中证1000',
-  profile: 'Stage-B winner',
-  model: 'LightGBM · Alpha158',
+  profile: 'c98856b4 · Top10/Drop1',
+  model: 'LightGBM · Alpha158 (c98856b4)',
   target: '20 日前瞻收益',
-  portfolio: 'Top20 · Drop 2',
+  portfolio: 'Top10 · Drop 1',
   execution: 'T close → T+1 open',
   retrain: '每 20 个交易日',
 };
@@ -324,9 +324,12 @@ function renderForwardPerformance(data) {
 function isWinnerCanonical(paper) {
   return Boolean(
     paper &&
-    paper.paper_lineage === 'stage_b_winner_canonical' &&
-    paper.production_lineage &&
-    paper.production_lineage.profile === 'stage_b_winner'
+    ((paper.paper_lineage === 'c98856b4_top10_drop1_canonical' &&
+      paper.production_lineage &&
+      paper.production_lineage.profile === 'c98856b4_top10_drop1') ||
+     (paper.paper_lineage === 'stage_b_winner_canonical' &&
+      paper.production_lineage &&
+      paper.production_lineage.profile === 'stage_b_winner'))
   );
 }
 
@@ -359,7 +362,9 @@ function evaluateMvpContract(metadata, paper, date, rows) {
       paper.usage_date !== date) {
     errors.push('paper date lineage mismatch');
   }
-  if (!isWinnerCanonical(paper) || production?.profile !== 'stage_b_winner' ||
+  const expectedCount = production?.profile === 'c98856b4_top10_drop1' ? 10 : 20;
+  if (!isWinnerCanonical(paper) ||
+      (production?.profile !== 'c98856b4_top10_drop1' && production?.profile !== 'stage_b_winner') ||
       production?.candidate_id !== paper?.production_lineage?.candidate_id ||
       production?.model_config_sha256 !== paper?.production_lineage?.model_config_sha256) {
     errors.push('frozen winner lineage mismatch');
@@ -375,7 +380,8 @@ function evaluateMvpContract(metadata, paper, date, rows) {
       label?.signal_data_date !== metadata.publication?.signal_data_date) {
     errors.push('label maturity gate failed');
   }
-  if (!Array.isArray(metaTop20) || metaTop20.length !== 20 ||
+  if (!Array.isArray(metaTop20) || metaTop20.length !== expectedCount ||
+      rows.length !== expectedCount ||
       metaTop20.some((symbol, i) => symbol !== top20[i])) {
     errors.push('display Top20 lineage mismatch');
   }
@@ -548,7 +554,7 @@ function pageShell(dates) {
         <div class="panel-head">
           <div>
             <div class="panel-kicker">Daily ranking</div>
-            <h2>Top 20</h2>
+            <h2 id="ranking-title">Top 10</h2>
           </div>
           <div class="panel-note">
             <div id="ranking-date" class="ranking-date">—</div>
@@ -683,6 +689,8 @@ async function main() {
     function paint(previous, ctx) {
       if (request !== latestDateRequest) return;
       const built = buildRows(rows, nameMap, previous, ctx ? ctx.chart : undefined);
+      const titleEl = document.getElementById('ranking-title');
+      if (titleEl && rows.length) titleEl.textContent = 'Top ' + rows.length;
       document.getElementById('signal-rows').innerHTML = tableRows(built);
       document.getElementById('mobile-cards').innerHTML = mobileCards(built);
       document.getElementById('stat-date').textContent = formatDate(dateInfo.date);
@@ -690,9 +698,12 @@ async function main() {
       document.getElementById('stat-data-date').textContent = formatDate(paper?.signal_data_date || null);
       document.getElementById('stat-fit-date').textContent = formatDate(paper?.model_fit_asof || null);
       const winner = isWinnerCanonical(paper);
+      const lineageLabel = paper?.production_lineage?.profile === 'c98856b4_top10_drop1'
+        ? 'c98856b4 · Top10'
+        : 'Stage-B winner';
       const contract = ctx ? evaluateMvpContract(ctx.metadata, paper, dateInfo.date, rows) : null;
       document.getElementById('stat-lineage').textContent =
-        ctx ? (winner ? 'Stage-B winner' : '历史 / 未核验') : '核验中';
+        ctx ? (winner ? lineageLabel : '历史 / 未核验') : '核验中';
       document.getElementById('stat-lineage-sub').textContent = ctx
         ? (winner ? '冻结 canonical · 不事后重选' : '历史记录未包含当前版本标识') : '正在加载版本资料';
       document.getElementById('stat-pit').textContent =

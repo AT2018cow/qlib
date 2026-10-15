@@ -280,13 +280,14 @@ def validate_label_maturity(
     }
 
 
-def parse_top20_csv(csv_text: str) -> list[dict]:
+def parse_top20_csv(csv_text: str, *, expected_rows: int | None = None) -> list[dict]:
     stream = io.StringIO(csv_text)
     rows = list(csv.DictReader(stream))
     if not rows or list(rows[0]) != ["rank", "instrument", "score"]:
         raise ValueError("Top20 CSV must have rank,instrument,score columns")
-    if len(rows) != 20:
-        raise ValueError(f"CSI1000 MVP requires exactly 20 displayed rows, got {len(rows)}")
+    allowed = (expected_rows,) if expected_rows is not None else (10, 20)
+    if len(rows) not in allowed:
+        raise ValueError(f"CSI1000 MVP requires {allowed} displayed rows, got {len(rows)}")
     parsed = []
     seen = set()
     for expected_rank, row in enumerate(rows, 1):
@@ -319,8 +320,8 @@ def validate_production_lineage(actual: dict, expected: dict) -> dict:
     _validate_sha(actual["candidate_id"], "candidate_id")
     _validate_sha(actual["model_config_sha256"], "model_config_sha256")
     _validate_sha(actual["stage_b_snapshot_token"], "stage_b_snapshot_token")
-    if actual.get("profile") != "stage_b_winner":
-        raise ValueError("canonical CSI1000 MVP profile must remain stage_b_winner")
+    if actual.get("profile") not in ("stage_b_winner", "c98856b4_top10_drop1"):
+        raise ValueError("canonical CSI1000 MVP profile must be a frozen canonical profile")
     return {key: actual[key] for key in _REQUIRED_LINEAGE}
 
 
@@ -335,7 +336,10 @@ def summarize_paper_state(
         raise ValueError("paper artifact missing")
     if paper.get("market") != "csi1000":
         raise ValueError("paper market is not csi1000")
-    if paper.get("paper_lineage") != "stage_b_winner_canonical":
+    if paper.get("paper_lineage") not in (
+        "stage_b_winner_canonical",
+        "c98856b4_top10_drop1_canonical",
+    ):
         raise ValueError("paper lineage is not the canonical winner lineage")
     validate_production_lineage(paper.get("production_lineage"), expected_lineage)
     if paper.get("signal_data_date") != signal_data_date or paper.get("usage_date") != usage_date:
@@ -398,7 +402,7 @@ def build_mvp_metadata(
     if signal_data_date >= usage_date:
         raise ValueError("MVP signal data date must precede usage date")
 
-    top20 = parse_top20_csv(signal_csv)
+    top20 = parse_top20_csv(signal_csv, expected_rows=expected_lineage.get("topk"))
     if pit_universe.get("status") != "PASS" or pit_universe.get("asof") != signal_data_date:
         raise ValueError("PIT universe was not verified at the signal data date")
     members = set(pit_universe.get("active_members") or [])

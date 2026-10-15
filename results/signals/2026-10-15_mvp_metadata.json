@@ -1,28 +1,28 @@
 {
   "contract_version": "csi1000_mvp_daily_v1",
   "label_maturity": {
-    "fit_asof": "2026-10-13",
+    "fit_asof": "2026-10-14",
     "horizon_sessions": 20,
     "signal_data_date": "2026-10-14",
     "status": "PASS",
-    "train_end": "2025-07-24",
-    "train_label_last_observation": "2025-08-21",
+    "train_end": "2025-07-25",
+    "train_label_last_observation": "2025-08-22",
     "train_start": "2016-01-01",
     "train_start_effective": "2016-01-04",
     "train_start_resolution": "FROZEN_HOLIDAY_TO_NEXT_SESSION",
-    "valid_end": "2026-09-04",
-    "valid_label_last_observation": "2026-10-12",
-    "valid_start": "2025-08-22"
+    "valid_end": "2026-09-07",
+    "valid_label_last_observation": "2026-10-13",
+    "valid_start": "2025-08-25"
   },
   "market": "csi1000",
   "paper": {
     "execution_date": "2026-10-15",
     "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
-    "n_positions": 20,
-    "planned_buy_count": 2,
-    "planned_sell_count": 2,
+    "n_positions": 0,
+    "planned_buy_count": 10,
+    "planned_sell_count": 0,
     "prior_execution_blocked_order_count": 0,
-    "prior_execution_report": "present",
+    "prior_execution_report": "none",
     "real_fill_execution": "NOT_CERTIFIED_PAPER_ONLY",
     "return_interpretation": "REFERENCE_ONLY_ST_NOT_MODELED",
     "signal_date": "2026-10-14",
@@ -37,10 +37,10 @@
     "status": "PASS"
   },
   "production_lineage": {
-    "candidate_id": "4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2",
+    "candidate_id": "c98856b460aba687640d422e85a82a545bf5b6ca932e906a180699e0f6cad19b",
     "contract_version": "csi1000_stage_b_forward_v1",
-    "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
-    "profile": "stage_b_winner",
+    "model_config_sha256": "d49e893ad37c821a6a092fb17baf7ee29c9ff71289bbeb1205132e34e3854c50",
+    "profile": "c98856b4_top10_drop1",
     "stage_b_snapshot_token": "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1"
   },
   "provider": {
@@ -83,29 +83,19 @@
     "display_surface": "board_aware_close_limit_filtered_top20",
     "display_top20_instruments": [
       "SZ002484",
-      "SH688141",
-      "SH688048",
       "SH688372",
-      "SH688668",
       "SH688146",
-      "SZ300870",
-      "SH688068",
-      "SH688368",
-      "SH688147",
-      "SH688403",
-      "SH688766",
-      "SH603950",
-      "SH688559",
-      "SH688382",
+      "SH688141",
       "SH688409",
-      "SH688433",
+      "SZ300870",
+      "SH688691",
+      "SH688548",
       "SH688627",
-      "SH688584",
-      "SH600210"
+      "SH688668"
     ],
-    "display_top20_sha256": "9b60be5e238c84b39d301043a323f9af0f1f3cf75065e1ebd97ea6c4f222fbda",
+    "display_top20_sha256": "6427bdd5068fdc8c6afcee006ce9dbbb17aa0e954eaa5497a82ca96f69bbb0ea",
     "paper_planner_source": "pre_display_limit_filter_full_ranking",
     "paper_ranking_count": 999,
-    "paper_ranking_full_sha256": "5e20e7258e28b29574950e1b4f72817aea2c36d2e28d55e86593cd9c357c81c0"
+    "paper_ranking_full_sha256": "1fbb002f86c51fe453469703d59f9630fff74d7e55ca30bfa0a075108a34da1d"
   }
 }

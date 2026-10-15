@@ -23,8 +23,11 @@ MODEL_NUM_THREADS = 20
 
 BASELINE_PROFILE = "baseline_control"
 WINNER_PROFILE = "stage_b_winner"
-CANONICAL_PROFILE = WINNER_PROFILE
-CANONICAL_PAPER_LINEAGE = "stage_b_winner_canonical"
+TOP10_CHAMPION_PROFILE = "c98856b4_top10_drop1"
+CANONICAL_PROFILE = TOP10_CHAMPION_PROFILE
+CANONICAL_PAPER_LINEAGE = "c98856b4_top10_drop1_canonical"
+CANONICAL_TOPK = 10
+CANONICAL_ND = 1
 
 _MODEL_PROFILES = {
     BASELINE_PROFILE: {
@@ -54,6 +57,23 @@ _MODEL_PROFILES = {
             "min_data_in_leaf": 50,
         },
         "model_config_sha256": "0f2cf94d179e7b9982f873588a3afe25fa02991c873954fea11d2db0e025cb88",
+    },
+    TOP10_CHAMPION_PROFILE: {
+        "candidate_id": "c98856b460aba687640d422e85a82a545bf5b6ca932e906a180699e0f6cad19b",
+        "stage_a_rank": 8,
+        "topk": 10,
+        "nd": 1,
+        "model_params": {
+            "learning_rate": 0.05,
+            "colsample_bytree": 1.0,
+            "lambda_l1": 205.6999,
+            "lambda_l2": 200.0,
+            "max_depth": 10,
+            "num_leaves": 250,
+            "min_data_in_leaf": 200,
+        },
+        "model_config_sha256": "d49e893ad37c821a6a092fb17baf7ee29c9ff71289bbeb1205132e34e3854c50",
+        "config_sha256": "1ca6fae56e8c4e40c73b1a45866825930aecba36ec529544a50da5408c93d317",
     },
 }
 

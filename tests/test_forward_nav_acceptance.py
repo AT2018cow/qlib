@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from forward_performance import build_forward_performance
+from forward_performance import CANONICAL_LINEAGE, build_forward_performance
 from paper_halt_evidence import certify_full_session_halts
 from paper_portfolio import PaperPortfolio
 from scripts.accept_forward_nav import acceptance
@@ -29,7 +29,7 @@ def _make_fixture(tmp_path):
                                     strict_valuation=True)
         artifact = {
             "market": "csi1000",
-            "paper_lineage": "stage_b_winner_canonical",
+            "paper_lineage": CANONICAL_LINEAGE,
             "usage_date": day,
             "trading_calendar": {
                 "source": "akshare.tool_trade_date_hist_sina",

@@ -17,20 +17,26 @@ from pathlib import Path
 # Direct-file invocation from the repository's audit/ subdirectory.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from csi1000_production_config import (  # noqa: E402
-    CANONICAL_PAPER_LINEAGE, CANONICAL_PROFILE, profile_manifest,
+    CANONICAL_PAPER_LINEAGE, CANONICAL_PROFILE, WINNER_PROFILE, profile_manifest,
 )
 from signal_publication_gate import _csi1000_canonical_publication_decision  # noqa: E402
+
+_ALLOWED_LINEAGES = {
+    CANONICAL_PROFILE: CANONICAL_PAPER_LINEAGE,
+    WINNER_PROFILE: "stage_b_winner_canonical",
+}
 
 
 def evaluate_paper_artifact(paper, calendar=None):
     errors = []
-    manifest = profile_manifest(CANONICAL_PROFILE)
     lineage = paper.get("production_lineage")
     if not isinstance(lineage, dict):
         lineage = {}
+    prof = lineage.get("profile") if lineage.get("profile") in _ALLOWED_LINEAGES else CANONICAL_PROFILE
+    manifest = profile_manifest(prof)
     expected = {
         "market": "csi1000",
-        "paper_lineage": CANONICAL_PAPER_LINEAGE,
+        "paper_lineage": _ALLOWED_LINEAGES[prof],
     }
     for key, value in expected.items():
         if paper.get(key) != value:

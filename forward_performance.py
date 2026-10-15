@@ -14,7 +14,7 @@ from paper_accounting import verify_ledger
 from csi1000_mvp_contract import REFERENCE_ST_POLICY, VERIFIED_ST_POLICY
 
 FORWARD_PERFORMANCE_START = "2026-10-12"
-CANONICAL_LINEAGE = "stage_b_winner_canonical"
+CANONICAL_LINEAGE = "c98856b4_top10_drop1_canonical"
 
 
 def build_forward_performance(

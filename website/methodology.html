@@ -50,8 +50,8 @@
         <h2>1. 当前生产状态</h2>
         <div class="metric-grid">
           <div class="metric"><span>ACTIVE POOL</span><strong>CSI1000</strong></div>
-          <div class="metric"><span>MODEL</span><strong>Stage-B winner</strong></div>
-          <div class="metric"><span>PORTFOLIO</span><strong>Top20 / Drop2</strong></div>
+          <div class="metric"><span>MODEL</span><strong>c98856b4 (Stage-B)</strong></div>
+          <div class="metric"><span>PORTFOLIO</span><strong>Top10 / Drop1</strong></div>
           <div class="metric"><span>EXECUTION</span><strong>T+1 Open</strong></div>
           <div class="metric"><span>RETRAIN</span><strong>20 sessions</strong></div>
           <div class="metric"><span>CHINEXT</span><strong>Paused</strong></div>
@@ -74,15 +74,15 @@
         <div class="kv"><div>生产重训原点</div><div><code>2026-09-18</code></div></div>
         <div class="kv"><div>LightGBM threads</div><div><code>20</code>（作为冻结复现配置的一部分）</div></div>
 
-        <h3>冻结的 winner 参数</h3>
+        <h3>冻结的生产模型参数（c98856b4 · Top10/Drop1）</h3>
         <div class="doc-table-wrap">
           <table class="doc-table">
             <thead><tr><th>Parameter</th><th>Value</th><th>Parameter</th><th>Value</th></tr></thead>
             <tbody>
-              <tr><td>learning_rate</td><td>0.08</td><td>colsample_bytree</td><td>0.8</td></tr>
-              <tr><td>lambda_l1</td><td>10</td><td>lambda_l2</td><td>400</td></tr>
-              <tr><td>max_depth</td><td>6</td><td>num_leaves</td><td>63</td></tr>
-              <tr><td>min_data_in_leaf</td><td>50</td><td>num_threads</td><td>20</td></tr>
+              <tr><td>learning_rate</td><td>0.05</td><td>colsample_bytree</td><td>1.0</td></tr>
+              <tr><td>lambda_l1</td><td>205.6999</td><td>lambda_l2</td><td>200</td></tr>
+              <tr><td>max_depth</td><td>10</td><td>num_leaves</td><td>250</td></tr>
+              <tr><td>min_data_in_leaf</td><td>200</td><td>num_threads</td><td>20</td></tr>
             </tbody>
           </table>
         </div>
@@ -104,7 +104,7 @@
           2026-10-11 的 Audit Closure Register 正式收口历史审计；严格独立账本收口后的
           事后历史排序不再被用来重新选择候选、修改参数或回头优化已消费区间。
         </p>
-        <div class="kv"><div>当前 canonical</div><div>已冻结的 Stage-B winner（Stage-A rank 5）</div></div>
+        <div class="kv"><div>当前 canonical</div><div>已冻结的 c98856b4 + Top10/Drop1（Stage-A rank 8 / L1-L4 综合收益第 1）</div></div>
         <div class="kv"><div>历史审计状态</div><div><code>PASS_RESEARCH_ACCOUNTING_ONLY</code> 只代表研究会计口径，不是实盘成交认证</div></div>
         <div class="kv"><div>治理规则</div><div>不因 closure 后的事后排名变化重新调参或换模型</div></div>
         <div class="kv"><div>Forward 起点</div><div><code>2026-10-12</code> 起只看新的 paper / 网站 / smoke 证据</div></div>
@@ -119,7 +119,7 @@
         <h2>4. 组合与执行协议</h2>
         <div class="kv"><div>Signal formation</div><div>T 日收盘后形成分数</div></div>
         <div class="kv"><div>Execution</div><div>T+1 日开盘</div></div>
-        <div class="kv"><div>Portfolio</div><div>TopK dropout：<code>topk=20</code>，<code>n_drop=2</code></div></div>
+        <div class="kv"><div>Portfolio</div><div>TopK dropout：<code>topk=10</code>，<code>n_drop=1</code></div></div>
         <div class="kv"><div>Tie break</div><div><code>score desc, instrument asc</code></div></div>
         <div class="kv"><div>Price limits</div><div>按板块和日期感知涨跌停制度；上市早期规则按对应日期处理</div></div>
         <div class="kv"><div>Tick size</div><div>0.01 元，原始人民币价格尺度</div></div>
@@ -137,8 +137,8 @@
           <li>运行时获取最新日频数据，并确认当天交易日状态。</li>
           <li>只有前一真实交易日的数据已经完整可用时，CSI1000 才发布新信号；数据陈旧或日历不可验证时不发布。</li>
           <li>按固定 20-session 重训时钟决定重训或安全复用已核验模型。</li>
-          <li>对 CSI1000 横截面预测并按确定性规则排序，生成 Top20。</li>
-          <li>同一提交发布 metadata sidecar，绑定 provider 指纹、PIT=1000、20-session 标签成熟、Top20 / paper lineage 与风险状态。</li>
+          <li>对 CSI1000 横截面预测并按确定性规则排序，生成 Top10。</li>
+          <li>同一提交发布 metadata sidecar，绑定 provider 指纹、PIT=1000、20-session 标签成熟、Top10 / paper lineage 与风险状态。</li>
           <li>同日公开记录保持不可变；如果重跑结果与既有记录不一致，则拒绝静默覆盖。</li>
           <li>当前 winner 使用独立的新 paper 状态，不继承旧 baseline 的持仓或待执行订单。</li>
         </ul>

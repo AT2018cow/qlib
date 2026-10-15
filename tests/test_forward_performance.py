@@ -1,9 +1,13 @@
 import pytest
 
-from forward_performance import FORWARD_PERFORMANCE_START, build_forward_performance
+from forward_performance import (
+    CANONICAL_LINEAGE,
+    FORWARD_PERFORMANCE_START,
+    build_forward_performance,
+)
 
 
-def _artifact(date, open_value, close_value, lineage="stage_b_winner_canonical", pending=None):
+def _artifact(date, open_value, close_value, lineage=CANONICAL_LINEAGE, pending=None):
     report = {
         "date": date,
         "portfolio_value_pre_trade_open": open_value,
@@ -62,7 +66,7 @@ def test_only_current_winner_lineage_is_public_performance():
 def test_no_report_waits_for_actual_settlement():
     result = build_forward_performance([{
         "market": "csi1000",
-        "paper_lineage": "stage_b_winner_canonical",
+        "paper_lineage": CANONICAL_LINEAGE,
         "pending_orders": {"execution_date": "2026-10-12"},
         "execution_report": None,
     }])

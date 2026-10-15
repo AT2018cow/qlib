@@ -349,3 +349,30 @@ def test_verified_st_snapshot_rejects_wrong_date_source_and_corrupt_symbols():
         broken = dict(snapshot, **{key: value})
         with pytest.raises(ValueError):
             validate_verified_st_snapshot(broken, "2026-10-13")
+
+
+def test_mvp_contract_top10_champion_happy_path(tmp_path):
+    from csi1000_production_config import (
+        CANONICAL_PAPER_LINEAGE,
+        CANONICAL_PROFILE,
+        profile_manifest,
+    )
+
+    kw = _fixture(tmp_path)
+    symbols = _symbols()
+    buf = io.StringIO()
+    writer = csv.writer(buf, lineterminator="\n")
+    writer.writerow(["rank", "instrument", "score"])
+    for rank, symbol in enumerate(symbols[:10], 1):
+        writer.writerow([rank, symbol, 1.0 - rank / 100])
+    kw["signal_csv"] = buf.getvalue()
+    manifest = profile_manifest(CANONICAL_PROFILE)
+    kw["production_lineage"] = manifest
+    kw["expected_lineage"] = dict(manifest)
+    kw["paper"]["paper_lineage"] = CANONICAL_PAPER_LINEAGE
+    kw["paper"]["production_lineage"] = dict(manifest)
+    kw["paper"]["pending_orders"]["buy"] = symbols[:10]
+    meta = build_mvp_metadata(**kw)
+    assert meta["publication"]["status"] == "PASS"
+    assert len(meta["signal_lineage"]["display_top20_instruments"]) == 10
+    assert meta["production_lineage"]["profile"] == "c98856b4_top10_drop1"

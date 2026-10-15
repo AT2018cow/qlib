@@ -3,11 +3,14 @@ from pathlib import Path
 
 from csi1000_production_config import (
     BASELINE_PROFILE,
+    CANONICAL_ND,
     CANONICAL_PAPER_LINEAGE,
     CANONICAL_PROFILE,
+    CANONICAL_TOPK,
     MODEL_NUM_THREADS,
     STAGE_B_RESULT_COMMIT,
     STAGE_B_SNAPSHOT_TOKEN,
+    TOP10_CHAMPION_PROFILE,
     WINNER_PROFILE,
     apply_csi1000_model_profile,
     profile_manifest,
@@ -92,14 +95,35 @@ class CSI1000ProductionConfigTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             profile_manifest("retune_after_seeing_forward")
 
+    def test_top10_champion_profile_reproduces_stage_b_model_hash(self):
+        cfg = _base_cfg()
+        manifest = apply_csi1000_model_profile(cfg, TOP10_CHAMPION_PROFILE)
+        kwargs = cfg["task"]["model"]["kwargs"]
+        self.assertEqual(kwargs["num_threads"], MODEL_NUM_THREADS)
+        self.assertEqual(kwargs["learning_rate"], 0.05)
+        self.assertEqual(kwargs["colsample_bytree"], 1.0)
+        self.assertEqual(kwargs["lambda_l1"], 205.6999)
+        self.assertEqual(kwargs["lambda_l2"], 200.0)
+        self.assertEqual(kwargs["max_depth"], 10)
+        self.assertEqual(kwargs["num_leaves"], 250)
+        self.assertEqual(kwargs["min_data_in_leaf"], 200)
+        self.assertEqual(manifest["topk"], 10)
+        self.assertEqual(manifest["nd"], 1)
+        self.assertEqual(
+            manifest["model_config_sha256"],
+            "d49e893ad37c821a6a092fb17baf7ee29c9ff71289bbeb1205132e34e3854c50",
+        )
+
     def test_production_source_wires_frozen_profiles_without_clock_drift(self):
         root = Path(__file__).resolve().parents[1]
         modal_src = (root / "modal_qlib_cn_a10g.py").read_text()
         live_src = (root / "qlib_live_retrain.py").read_text()
         self.assertIn("CPU_COUNT = 8", modal_src)
         self.assertIn('RETRAIN_ORIGIN = "2026-09-18"', live_src)
-        self.assertEqual(CANONICAL_PROFILE, WINNER_PROFILE)
-        self.assertEqual(CANONICAL_PAPER_LINEAGE, "stage_b_winner_canonical")
+        self.assertEqual(CANONICAL_PROFILE, TOP10_CHAMPION_PROFILE)
+        self.assertEqual(CANONICAL_PAPER_LINEAGE, "c98856b4_top10_drop1_canonical")
+        self.assertEqual(CANONICAL_TOPK, 10)
+        self.assertEqual(CANONICAL_ND, 1)
         self.assertIn("csi1000_profile=CANONICAL_PROFILE", modal_src)
         self.assertIn("lineage=CANONICAL_PAPER_LINEAGE", modal_src)
         self.assertNotIn("csi1000_profile=BASELINE_PROFILE", modal_src)
