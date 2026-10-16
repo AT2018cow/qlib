@@ -510,7 +510,13 @@ def assemble_phase_signal(
     require(not merged.index.duplicated().any(), "STOP_STAGE3_SIGNAL_DUPLICATE_DAY")
     dates = merged.index.get_level_values(0).astype(str).str[:10]
     window = merged.loc[(dates >= str(RESERVED_SIGNAL_ANCHOR)) & (dates < str(RESERVED_EXECUTION_END))]
-    require(len(window) == N_EXECUTION_DAYS, f"STOP_STAGE3_SIGNAL_GAP: {len(window)} rows, need {N_EXECUTION_DAYS}")
+    actual_days = sorted({str(v)[:10] for v in window.index.get_level_values(0).unique()})
+    first = calendar.index(RESERVED_SIGNAL_ANCHOR)
+    last = calendar.index(RESERVED_EXECUTION_END)
+    require(
+        len(actual_days) == N_EXECUTION_DAYS and actual_days == calendar[first:last],
+        f"STOP_STAGE3_SIGNAL_GAP: {len(actual_days)} unique days, need {N_EXECUTION_DAYS}",
+    )
     return {
         "signal": window,
         "source_prediction_shas": source_shas,

@@ -418,8 +418,10 @@ def _fabricate_slice_fits(root: Path, job: dict, drop_day: str | None = None, du
             days = [day for day in days if day != drop_day]
         if dup_day is not None and dup_day in days:
             days = days + [dup_day]
-        index = pd.MultiIndex.from_tuples([(day, "SH600000") for day in days], names=["datetime", "instrument"])
-        frame = pd.DataFrame({"score": [0.01 * index for index in range(len(days))]}, index=index)
+        index = pd.MultiIndex.from_tuples(
+            [(day, inst) for day in days for inst in ("SH600000", "SH600004")], names=["datetime", "instrument"]
+        )
+        frame = pd.DataFrame({"score": [0.01 * idx for idx in range(len(index))]}, index=index)
         row = core.publish_receipt(
             root,
             fit_job,
@@ -446,7 +448,7 @@ def test_stage3_assemble_phase_signal_22_slices(tmp_path):
     ]
     assembled = core.assemble_phase_signal(tmp_path, calendar, fit_jobs, job, _identity(job))
     signal = assembled["signal"]
-    assert len(signal) == 424
+    assert len(signal) == 424 * 2
     assert list(signal.columns) == ["score"]
     assert signal.index.is_unique
     assert assembled["source_prediction_shas"] == shas
@@ -462,7 +464,7 @@ def test_stage3_assemble_phase_signal_22_slices(tmp_path):
     with pytest.raises(ValueError, match="LAYERED_SEARCH_BLOCKED"):
         core.assemble_phase_signal(tmp_path, calendar, fit_jobs, job, _identity(job))
     (missing / "receipt.json").write_bytes(backup)
-    assert len(core.assemble_phase_signal(tmp_path, calendar, fit_jobs, job, _identity(job))["signal"]) == 424
+    assert len(core.assemble_phase_signal(tmp_path, calendar, fit_jobs, job, _identity(job))["signal"]) == 424 * 2
 
 
 def test_stage3_assemble_rejects_gap_and_duplicate(tmp_path):

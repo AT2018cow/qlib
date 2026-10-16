@@ -603,7 +603,7 @@ if modal is not None:
             )
             for raw in build_stage3_fit_jobs(calendar, job["run_id"], job["code_sha"])
         ]
-        assembled = assemble_phase_signal(RESULTS, calendar, fits, job, identity)
+        assembled = assemble_phase_signal(root, calendar, fits, job, identity)
         signal = assembled["signal"]["score"]
         actual_days = sorted({str(v)[:10] for v in signal.index.get_level_values(0).unique()})
         first = calendar.index(RESERVED_SIGNAL_ANCHOR)
@@ -612,7 +612,7 @@ if modal is not None:
         relpath = signal_relpath(job["market"], job["model_key"], int(job["phase"]))
         signal_written = False
         if job["canonical_signal_writer"]:
-            shared = RESULTS / relpath
+            shared = root / relpath
             shared.parent.mkdir(parents=True, exist_ok=True)
             tmp_shared = shared.parent / (shared.name + ".tmp")
             require(not tmp_shared.exists(), "STOP_STAGE3_SHARED_SIGNAL_TEMP")
@@ -775,10 +775,10 @@ if modal is not None:
                     writers = [c for c in group if c["canonical_signal_writer"]]
                     require(len(writers) == 1, f"STOP_STAGE3_GROUP_WRITER_DRIFT: {market}/{model_key}/phase{phase}")
                     require(writers[0]["signal_written"] is True, "STOP_STAGE3_SIGNAL_NOT_WRITTEN")
-                    shared = RESULTS / writers[0]["signal_relpath"]
+                    shared = root / writers[0]["signal_relpath"]
                     require(shared.is_file(), f"STOP_STAGE3_SHARED_SIGNAL_MISSING: {market}/{model_key}")
                     writer_job = cell_job_by_key[(market, model_key, writers[0]["combo_key"], phase)]
-                    assembled = assemble_phase_signal(RESULTS, calendar, fit_jobs, writer_job, _identity(writer_job))
+                    assembled = assemble_phase_signal(root, calendar, fit_jobs, writer_job, _identity(writer_job))
                     require(
                         tuple(assembled["source_prediction_shas"]) == tuple(writers[0]["source_prediction_shas"]),
                         "STOP_STAGE3_GROUP_ASSEMBLY_SHA_DRIFT",
