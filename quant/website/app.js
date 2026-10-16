@@ -369,12 +369,26 @@ function renderForwardPerformance(data) {
   chart.innerHTML = makePerformanceChart(data.points);
 }
 
+const TOP10_PROFILES = new Set([
+  'c98856b4_top10_drop1',
+  'raw10d_c98856b4_top10_drop1',
+  '59b93929_top10_drop1',
+]);
+
+const CANONICAL_PAIR_BY_PROFILE = {
+  c98856b4_top10_drop1: 'c98856b4_top10_drop1_canonical',
+  raw10d_c98856b4_top10_drop1: 'raw10d_c98856b4_top10_drop1_canonical',
+  '59b93929_top10_drop1': '59b93929_top10_drop1_canonical',
+  stage_b_winner: 'stage_b_winner_canonical',
+};
+
 function isWinnerCanonical(paper) {
+  const prof = paper?.production_lineage?.profile;
   return Boolean(
     paper &&
-    ((paper.paper_lineage === 'c98856b4_top10_drop1_canonical' &&
-      paper.production_lineage &&
-      paper.production_lineage.profile === 'c98856b4_top10_drop1') ||
+    ((prof &&
+      CANONICAL_PAIR_BY_PROFILE[prof] &&
+      paper.paper_lineage === CANONICAL_PAIR_BY_PROFILE[prof]) ||
      (paper.paper_lineage === 'stage_b_winner_canonical' &&
       paper.production_lineage &&
       paper.production_lineage.profile === 'stage_b_winner'))
@@ -412,9 +426,9 @@ function evaluateMvpContract(metadata, paper, date, rows, pool = currentPool) {
       paper.usage_date !== date) {
     errors.push('paper date lineage mismatch');
   }
-  const expectedCount = production?.profile === 'c98856b4_top10_drop1' ? 10 : 20;
+  const expectedCount = TOP10_PROFILES.has(production?.profile) ? 10 : 20;
   if (!isWinnerCanonical(paper) ||
-      (production?.profile !== 'c98856b4_top10_drop1' && production?.profile !== 'stage_b_winner') ||
+      !CANONICAL_PAIR_BY_PROFILE[production?.profile] ||
       production?.candidate_id !== paper?.production_lineage?.candidate_id ||
       production?.model_config_sha256 !== paper?.production_lineage?.model_config_sha256) {
     errors.push('frozen winner lineage mismatch');
@@ -426,7 +440,7 @@ function evaluateMvpContract(metadata, paper, date, rows, pool = currentPool) {
       pit?.asof !== metadata.publication?.signal_data_date) {
     errors.push('PIT universe gate failed');
   }
-  if (label?.status !== 'PASS' || label?.horizon_sessions !== 20 ||
+  if (label?.status !== 'PASS' || (label?.horizon_sessions !== 20 && label?.horizon_sessions !== 10) ||
       label?.signal_data_date !== metadata.publication?.signal_data_date) {
     errors.push('label maturity gate failed');
   }
@@ -771,7 +785,7 @@ async function main() {
       document.getElementById('stat-data-date').textContent = formatDate(paper?.signal_data_date || null);
       document.getElementById('stat-fit-date').textContent = formatDate(paper?.model_fit_asof || null);
       const winner = isWinnerCanonical(paper);
-      const lineageLabel = paper?.production_lineage?.profile === 'c98856b4_top10_drop1'
+      const lineageLabel = TOP10_PROFILES.has(paper?.production_lineage?.profile)
         ? 'Top10 低换手优选'
         : '定型优选策略';
       const contract = ctx ? evaluateMvpContract(ctx.metadata, paper, dateInfo.date, rows, pool) : null;
@@ -788,10 +802,11 @@ async function main() {
           : '<span class="status-pill history">历史记录 / 校验信息不完整</span>');
       const health = document.getElementById('mvp-health');
       if (health) {
+        const horizonDays = ctx?.metadata?.label_maturity?.horizon_sessions || 20;
         health.textContent = !ctx
           ? '正在核对行情时效、成分股完整性、样本防泄漏与模拟盘账本状态。'
           : contract.ok
-            ? `已完成最新收盘行情、当日 ${pool.expectedPitCount} 只${pool.label}成分股、20 日样本防泄漏、策略参数锁定与模拟账本核验。`
+            ? `已完成最新收盘行情、当日 ${pool.expectedPitCount} 只${pool.label}成分股、${horizonDays} 日样本防泄漏、策略参数锁定与模拟账本核验。`
             : contract.legacy
               ? '该历史日期缺少完整校验文件，仅作只读展示，因此不会把旧版本标识单独解释为“已核验”。'
               : '每日数据校验未通过：' + contract.errors.join('；');

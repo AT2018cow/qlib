@@ -1,8 +1,11 @@
-# CSI1000 策略选型与历史回测全景手册（Strategy Atlas）
+# 三大宽基指数（CSI300 / CSI500 / CSI1000）策略选型与历史回测全景手册（Strategy Atlas）
 
-> **更新日期**：2026-10-15  
-> **当前线上主力策略**：**`c98856b4 + Top10/Drop1`**（`CANONICAL_PROFILE = "c98856b4_top10_drop1"`）  
-> **配套全量数据库**：[`quant/data/strategy_catalog/`](../../data/strategy_catalog/)  
+> **更新日期**：2026-10-16  
+> **当前线上三大指数专属主力策略**：
+> - **沪深 300 (`csi300`)**：**`59b93929_top10_drop1`**（`m01_59b93929` 20日标签 · 浅树 `leaves=31` + `Top10/Drop1`，五相位中位年化 **`+35.55%`**、Sharpe **`1.455`**、最深回撤 **`-12.92%`**）
+> - **中证 500 (`csi500`)**：**`raw10d_c98856b4_top10_drop1`**（`m10_raw10d_c98856b4` 10日标签 · 深树强正则 + `Top10/Drop1`，五相位中位年化 **`+41.90%`**、Sharpe **`1.669`**、最深回撤 **`-21.95%`**）
+> - **中证 1000 (`csi1000`)**：**`c98856b4_top10_drop1`**（`c98856b4` 20日标签 · 深树强正则 + `Top10/Drop1`，五相位中位年化 **`+52.45%`**、Sharpe **`1.757`**、最深回撤 **`-21.84%`**）
+> **配套全量数据库**：[`quant/data/strategy_catalog/`](../../data/strategy_catalog/) 与 [`quant/data/csi300_csi500_research/`](../../data/csi300_csi500_research/)  
 > **配套原始回测账本**：[`quant/data/round2_layered_search/`](../../data/round2_layered_search/)
 
 ---
