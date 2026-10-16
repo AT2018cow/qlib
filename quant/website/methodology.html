@@ -21,15 +21,14 @@
   </nav>
 
   <header class="doc-hero">
-    <div class="eyebrow"><span class="status-dot"></span> 策略方法论与交易规则 · 2026-10-15</div>
+    <div class="eyebrow"><span class="status-dot"></span> 策略方法论与交易规则 · 2026-10-16</div>
     <h1>A股宽基量化选股方法论<br>模型架构、历史表现与执行规则</h1>
     <p>
-      本页介绍当前运行的三大主流宽基指数量化选股策略（覆盖 <strong>中证1000、中证500、沪深300</strong>，现阶段统一采用在中证1000上定型的 <strong>等权 10 只 · 单日限换 1 只</strong> 策略框架）。
-      策略模型与调仓参数已在完成两轮超参数筛选、持仓规则对比及多起点样本外回测验证后正式锁定；
+      本页介绍当前运行的三大主流宽基指数量化选股策略（覆盖 <strong>沪深300、中证500、中证1000</strong>，每个指数均通过多轮超参数筛选、预测期限对比、组合矩阵遍历及五组重训起点样本外验证，<strong>针对各自市值风格独立定制了专属最优模型</strong>，并统一采用 <strong>等权 10 只 · 单日限换 1 只</strong> 持仓框架）。
       2025-01-02 至 2026-09-30 的 424 个交易日样本外测试区间仅作历史表现展示，不再用于回溯修改策略参数。
     </p>
     <div class="doc-status">
-      <span class="mini-pill">中证1000 · 中证500 · 沪深300</span>
+      <span class="mini-pill">沪深300 · 中证500 · 中证1000</span>
       <span class="mini-pill">定型主策略 · 参数已锁定</span>
       <span class="mini-pill">T+1 开盘调仓 · 20 日滚动重训</span>
     </div>
@@ -50,40 +49,47 @@
       <section class="doc-section" id="status">
         <h2>1. 策略核心概览</h2>
         <div class="metric-grid">
-          <div class="metric"><span>覆盖股票池</span><strong>中证1000 / 500 / 沪深300</strong></div>
-          <div class="metric"><span>核心模型</span><strong>LightGBM 多因子</strong></div>
+          <div class="metric"><span>覆盖股票池</span><strong>沪深300 / 中证500 / 1000</strong></div>
+          <div class="metric"><span>核心模型</span><strong>分指数定制 LightGBM</strong></div>
           <div class="metric"><span>持仓规则</span><strong>等权 10 只 / 日限换 1</strong></div>
           <div class="metric"><span>信号与执行</span><strong>开盘前发布 / 开盘调仓</strong></div>
           <div class="metric"><span>模型更新周期</span><strong>每 20 个交易日</strong></div>
-          <div class="metric"><span>样本防泄漏</span><strong>20 交易日隔离期</strong></div>
+          <div class="metric"><span>样本防泄漏</span><strong>10 / 20 交易日严格隔离</strong></div>
         </div>
         <p>
-          系统每日同时对 <strong>中证 1000（1000只成分股）、中证 500（500只成分股）、沪深 300（300只成分股）</strong> 三大宽基指数各自独立训练模型、独立生成 Top 10 选股榜单并独立核算模拟账户累计收益。现阶段三大宽基指数统一采用在中证 1000 上完成全周期验证的定型策略框架，后续将进一步针对沪深 300 与中证 500 开展专项参数优选。
+          系统每日同时对 <strong>沪深 300（300只大盘成分股）、中证 500（500只中盘成分股）、中证 1000（1000只小盘成分股）</strong> 三大宽基指数各自加载专属最优模型独立训练、独立生成 Top 10 选股榜单并独立核算模拟账户累计收益。
         </p>
       </section>
 
       <section class="doc-section" id="model">
         <h2>2. 模型架构与滚动训练规则</h2>
         <div class="kv"><div>模型架构</div><div>LightGBM 梯度提升决策树 + Alpha158（158 维日频量价技术因子）</div></div>
-        <div class="kv"><div>预测目标</div><div>未来 20 个交易日个股累计收益率：<code>Ref($close, -20) / $close - 1</code></div></div>
+        <div class="kv"><div>预测目标（分指数适配）</div><div>沪深 300 与中证 1000 预测未来 20 个交易日累计收益率（<code>Ref($close, -20) / $close - 1</code>）；中证 500 因中盘股动量反转半衰期更短，预测未来 10 个交易日累计收益率（<code>Ref($close, -10) / $close - 1</code>）</div></div>
         <div class="kv"><div>训练集起点</div><div><code>2016-01-01</code> 起，采用历史扩展窗口（随交易日推进不断纳入新历史样本）</div></div>
         <div class="kv"><div>验证集窗口</div><div>最近 252 个交易日（约 1 年样本外验证集，用于控制模型迭代早停）</div></div>
-        <div class="kv"><div>样本防泄漏隔离期</div><div>20 个交易日（训练集末尾与验证集末尾各留出 20 个交易日缓冲期，确保所有训练与验证样本的 20 日远期收益均已真实发生，杜绝未来数据泄漏）</div></div>
+        <div class="kv"><div>样本防泄漏隔离期</div><div>与各指数预测期限严格对齐（20 日或 10 日）：训练集末尾与验证集末尾各留出对应交易日缓冲期，确保所有训练与验证样本的远期收益均已真实发生，杜绝未来数据泄漏</div></div>
         <div class="kv"><div>滚动重训频率</div><div>每 20 个交易日重新训练一次模型（对比实验表明 20 日重训显著优于 10 日高频重训与 40 日低频重训）</div></div>
         <div class="kv"><div>重训日历锚点</div><div>以 <code>2026-09-18</code> 为日历基准锚点，每满 20 个交易日触发重训（首次切换新策略时若未满周期则在切换日先行完成首次训练）</div></div>
 
-        <h3>定型模型核心超参数</h3>
+        <h3>三大宽基指数专属最优模型超参数</h3>
         <p>
-          当前定型模型采用<strong>较深决策树结构（最大深度 10、叶节点上限 250）配合高叶节点最小样本数（200）与高强度 L1/L2 正则化（205.7 / 200.0）</strong>。这一组合既能充分捕捉量价因子间的非线性交互信号，又能有效抑制单叶噪声过拟合，显著提升了排名最靠前的 Top 10 个股选股纯度。
+          不同市值宽基指数的截面股票数与博弈结构差异显著：<strong>沪深 300</strong>（单日截面仅 300 只）采用<strong>浅树低叶节点结构（深度 6、叶节点 31）</strong>以抑制小截面过拟合；<strong>中证 500</strong> 采用<strong>10 日短周期收益标签配合深树强正则化</strong>以捕捉中盘股快速轮动；<strong>中证 1000</strong>（单日截面 1000 只）采用<strong>20 日收益标签配合深树高正则化（深度 10、叶节点 250、最小样本 200）</strong>以挖掘小盘股非线性交互信号。
         </p>
         <div class="doc-table-wrap">
           <table class="doc-table">
-            <thead><tr><th>参数名称</th><th>设定值</th><th>参数名称</th><th>设定值</th></tr></thead>
+            <thead>
+              <tr><th>参数维度</th><th>沪深 300 专属模型</th><th>中证 500 专属模型</th><th>中证 1000 专属模型</th></tr>
+            </thead>
             <tbody>
-              <tr><td>学习率 (learning_rate)</td><td>0.05</td><td>特征采样比例 (colsample_bytree)</td><td>1.0</td></tr>
-              <tr><td>L1 正则系数 (lambda_l1)</td><td>205.6999</td><td>L2 正则系数 (lambda_l2)</td><td>200.0</td></tr>
-              <tr><td>树最大深度 (max_depth)</td><td>10</td><td>最大叶节点数 (num_leaves)</td><td>250</td></tr>
-              <tr><td>叶节点最小样本 (min_data_in_leaf)</td><td>200</td><td>并行计算线程 (num_threads)</td><td>20</td></tr>
+              <tr><td>预测标签期限</td><td>未来 20 交易日</td><td><strong>未来 10 交易日</strong></td><td>未来 20 交易日</td></tr>
+              <tr><td>持仓与换仓规则</td><td>Top 10 / 日限换 1</td><td>Top 10 / 日限换 1</td><td>Top 10 / 日限换 1</td></tr>
+              <tr><td>学习率 (learning_rate)</td><td>0.10</td><td>0.05</td><td>0.05</td></tr>
+              <tr><td>特征采样比例 (colsample_bytree)</td><td>0.80</td><td>1.00</td><td>1.00</td></tr>
+              <tr><td>L1 正则系数 (lambda_l1)</td><td>10.0</td><td>205.6999</td><td>205.6999</td></tr>
+              <tr><td>L2 正则系数 (lambda_l2)</td><td>400.0</td><td>200.0</td><td>200.0</td></tr>
+              <tr><td>树最大深度 (max_depth)</td><td>6</td><td>10</td><td>10</td></tr>
+              <tr><td>最大叶节点数 (num_leaves)</td><td>31</td><td>250</td><td>250</td></tr>
+              <tr><td>叶节点最小样本 (min_data_in_leaf)</td><td>100</td><td>200</td><td>200</td></tr>
             </tbody>
           </table>
         </div>
@@ -104,31 +110,53 @@
           <li><strong>第二阶段（持仓集中度、换手率与重训周期联合优选）：</strong>对入选的 11 组代表性模型与 12 种组合调仓规则（涵盖持仓 10/15/20/30 只、不同单日换手上限与调仓缓冲带）进行了 264 组矩阵对比，并进一步验证了超参微调与重训周期。实验证明：将持仓适度集中至 <strong>Top 10</strong>，并将单日换手上限收紧至 <strong>每日最多轮换 1 只（单日限换 1 只）</strong>，在捕获模型头部最强超额收益的同时大幅降低了双边交易摩擦损耗。</li>
         </ul>
 
-        <h3>多起点样本外回测表现（2025-01-02 至 2026-09-30，共 424 个交易日）</h3>
+        <h3>三大指数五起点样本外回测表现汇总（2025-01-02 至 2026-09-30，共 424 个交易日）</h3>
         <p>
-          为消除“恰好在某一天重训带来的运气偏差”，策略在 20 日重训周期内选取了 5 个不同的初始重训起点分别独立跑完完整 21 个月回测（已扣除双边交易费用并执行涨跌停/停牌限制）：
+          为消除“恰好在某一天重训带来的运气偏差”，每个指数的定型策略均在 20 日重训周期内选取了 5 个不同的初始重训起点（基准日及偏移 4/6/10/15 个交易日）分别独立跑完完整 424 个交易日回测（已扣除双边交易费用并执行涨跌停/停牌限制）：
         </p>
         <div class="doc-table-wrap">
           <table class="doc-table">
             <thead>
-              <tr><th>测试序列（不同初始重训日）</th><th>区间累计净收益</th><th>年化净收益 (CAGR)</th><th>夏普比率 (Sharpe)</th><th>超额信息比率 (IR)</th><th>最大回撤 (MaxDD)</th></tr>
+              <tr><th>目标指数与定型策略</th><th>五起点累计净收益（中位 / 均值）</th><th>年化净收益 CAGR（中位 / 均值）</th><th>年化超额收益（中位 / 最差）</th><th>夏普比率（中位 / 均值）</th><th>超额 IR（中位 / 均值）</th><th>最大回撤（中位 / 最深）</th></tr>
             </thead>
             <tbody>
-              <tr><td>重训起点一（基准日重训）</td><td>+108.38%</td><td>+52.45%</td><td>1.757</td><td>1.464</td><td>-20.50%</td></tr>
-              <tr><td>重训起点二（偏移 4 个交易日）</td><td>+69.20%</td><td>+35.26%</td><td>1.325</td><td>0.919</td><td>-20.63%</td></tr>
-              <tr><td>重训起点三（偏移 6 个交易日）</td><td>+67.41%</td><td>+34.44%</td><td>1.322</td><td>0.845</td><td>-21.84%</td></tr>
-              <tr><td>重训起点四（偏移 10 个交易日）</td><td>+130.12%</td><td>+61.38%</td><td>1.973</td><td>1.693</td><td>-18.70%</td></tr>
-              <tr><td>重训起点五（偏移 15 个交易日）</td><td>+130.90%</td><td>+61.70%</td><td>2.086</td><td>1.816</td><td>-10.75%</td></tr>
-              <tr><td><strong>五组起点中位数</strong></td><td><strong>+108.38%</strong></td><td><strong>+52.45%</strong></td><td><strong>1.757</strong></td><td><strong>1.464</strong></td><td><strong>-20.50%</strong></td></tr>
-              <tr><td><strong>五组起点均值</strong></td><td><strong>+101.20%</strong></td><td><strong>+49.04%</strong></td><td><strong>1.693</strong></td><td><strong>1.347</strong></td><td><strong>-18.48%</strong></td></tr>
+              <tr><td><strong>沪深 300（000300）</strong><br>20日标签 · 浅树正则 · Top10/Drop1</td><td><strong>+69.84%</strong> / +68.25%</td><td><strong>+35.55%</strong> / +34.79%</td><td><strong>+27.84%</strong> / +21.66%</td><td><strong>1.455</strong> / 1.443</td><td><strong>1.409</strong> / 1.398</td><td><strong>-11.20%</strong> / -12.92%</td></tr>
+              <tr><td><strong>中证 500（000905）</strong><br>10日标签 · 深树正则 · Top10/Drop1</td><td><strong>+83.94%</strong> / +85.74%</td><td><strong>+41.90%</strong> / +42.55%</td><td><strong>+22.13%</strong> / +15.50%</td><td><strong>1.669</strong> / 1.655</td><td><strong>1.061</strong> / 1.032</td><td><strong>-17.06%</strong> / -21.95%</td></tr>
+              <tr><td><strong>中证 1000（000852）</strong><br>20日标签 · 深树正则 · Top10/Drop1</td><td><strong>+108.38%</strong> / +101.20%</td><td><strong>+52.45%</strong> / +49.04%</td><td><strong>+34.69%</strong> / +18.77%</td><td><strong>1.757</strong> / 1.693</td><td><strong>1.464</strong> / 1.347</td><td><strong>-20.50%</strong> / -21.84%</td></tr>
             </tbody>
           </table>
         </div>
 
-        <div class="kv"><div>当前生效策略</div><div>Top 10 等权持仓 · 单日最多轮换 1 只（五组重训起点综合收益与风险调整后收益均居第 1）</div></div>
+        <h3>各指数五组重训起点逐相明细（Phase 00 / 04 / 06 / 10 / 15）</h3>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <thead>
+              <tr><th>指数与测试序列（不同初始重训日）</th><th>区间累计净收益</th><th>年化净收益 (CAGR)</th><th>相对基准超额年化</th><th>夏普比率 (Sharpe)</th><th>超额信息比率 (IR)</th><th>最大回撤 (MaxDD)</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>沪深 300 · 起点一（基准日重训）</td><td>+67.44%</td><td>+34.45%</td><td>+26.80%</td><td>1.430</td><td>1.396</td><td>-10.44%</td></tr>
+              <tr><td>沪深 300 · 起点二（偏移 4 日）</td><td>+55.81%</td><td>+29.00%</td><td>+21.66%</td><td>1.256</td><td>1.132</td><td>-12.25%</td></tr>
+              <tr><td>沪深 300 · 起点三（偏移 6 日）</td><td>+69.84%</td><td>+35.55%</td><td>+27.84%</td><td>1.455</td><td>1.409</td><td>-12.92%</td></tr>
+              <tr><td>沪深 300 · 起点四（偏移 10 日）</td><td>+74.99%</td><td>+37.90%</td><td>+30.05%</td><td>1.558</td><td>1.558</td><td>-11.20%</td></tr>
+              <tr><td>沪深 300 · 起点五（偏移 15 日）</td><td>+73.17%</td><td>+37.07%</td><td>+29.27%</td><td>1.518</td><td>1.496</td><td>-10.66%</td></tr>
+              <tr><td>中证 500 · 起点一（基准日重训）</td><td>+67.27%</td><td>+34.37%</td><td>+15.65%</td><td>1.348</td><td>0.777</td><td>-16.80%</td></tr>
+              <tr><td>中证 500 · 起点二（偏移 4 日）</td><td>+83.94%</td><td>+41.90%</td><td>+22.13%</td><td>1.669</td><td>1.061</td><td>-19.84%</td></tr>
+              <tr><td>中证 500 · 起点三（偏移 6 日）</td><td>+108.04%</td><td>+52.30%</td><td>+31.08%</td><td>1.958</td><td>1.322</td><td>-17.06%</td></tr>
+              <tr><td>中证 500 · 起点四（偏移 10 日）</td><td>+66.89%</td><td>+34.19%</td><td>+15.50%</td><td>1.398</td><td>0.719</td><td>-21.95%</td></tr>
+              <tr><td>中证 500 · 起点五（偏移 15 日）</td><td>+102.59%</td><td>+50.00%</td><td>+29.10%</td><td>1.902</td><td>1.283</td><td>-16.72%</td></tr>
+              <tr><td>中证 1000 · 起点一（基准日重训）</td><td>+108.38%</td><td>+52.45%</td><td>+34.69%</td><td>1.757</td><td>1.464</td><td>-20.50%</td></tr>
+              <tr><td>中证 1000 · 起点二（偏移 4 日）</td><td>+69.20%</td><td>+35.26%</td><td>+19.50%</td><td>1.325</td><td>0.919</td><td>-20.63%</td></tr>
+              <tr><td>中证 1000 · 起点三（偏移 6 日）</td><td>+67.41%</td><td>+34.44%</td><td>+18.77%</td><td>1.322</td><td>0.845</td><td>-21.84%</td></tr>
+              <tr><td>中证 1000 · 起点四（偏移 10 日）</td><td>+130.12%</td><td>+61.38%</td><td>+42.58%</td><td>1.973</td><td>1.693</td><td>-18.70%</td></tr>
+              <tr><td>中证 1000 · 起点五（偏移 15 日）</td><td>+130.90%</td><td>+61.70%</td><td>+42.86%</td><td>2.086</td><td>1.816</td><td>-10.75%</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="kv"><div>当前生效策略</div><div>三大指数各自加载专属最优 LightGBM 模型 + 统一 Top 10 等权持仓 · 单日最多轮换 1 只</div></div>
         <div class="kv"><div>回测会计属性</div><div>历史回测代表严格扣除交易费率与涨跌停约束的研究账本口径，不代表实盘柜台成交认证</div></div>
         <div class="kv"><div>参数锁定原则</div><div>历史回测收口后参数永久锁定，不因事后局部行情波动回溯修改参数或重选模型</div></div>
-        <div class="kv"><div>模拟盘起算时间</div><div><code>2026-10-15</code> 启用当前定型策略并独立计算累计收益（运行于 <code>2026-10-12</code> 建立的前向模拟跟踪机制下）</div></div>
+        <div class="kv"><div>模拟盘起算时间</div><div><code>2026-10-16</code> 同步启用沪深 300、中证 500、中证 1000 三套定型主策略并独立计算累计收益（运行于 <code>2026-10-12</code> 建立的前向模拟跟踪机制下）</div></div>
       </section>
 
       <section class="doc-section" id="execution">

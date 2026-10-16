@@ -15,6 +15,11 @@ from csi1000_mvp_contract import REFERENCE_ST_POLICY, VERIFIED_ST_POLICY
 
 FORWARD_PERFORMANCE_START = "2026-10-12"
 CANONICAL_LINEAGE = "c98856b4_top10_drop1_canonical"
+CANONICAL_LINEAGES = (
+    "c98856b4_top10_drop1_canonical",
+    "raw10d_c98856b4_top10_drop1_canonical",
+    "59b93929_top10_drop1_canonical",
+)
 
 
 def build_forward_performance(
@@ -32,7 +37,7 @@ def build_forward_performance(
     for artifact in artifacts:
         if artifact.get("market") != market:
             continue
-        if artifact.get("paper_lineage") != CANONICAL_LINEAGE:
+        if artifact.get("paper_lineage") not in CANONICAL_LINEAGES:
             continue
         usage_day = artifact.get("usage_date")
         if isinstance(usage_day, str) and usage_day >= start_date:

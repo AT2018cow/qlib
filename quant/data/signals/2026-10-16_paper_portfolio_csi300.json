@@ -1,0 +1,74 @@
+{
+  "state_version": 2,
+  "trading_calendar": {
+    "source": "akshare.tool_trade_date_hist_sina",
+    "through": "2026-10-16",
+    "dates": [
+      "2026-10-12",
+      "2026-10-13",
+      "2026-10-14",
+      "2026-10-15",
+      "2026-10-16"
+    ]
+  },
+  "market": "csi300",
+  "paper_lineage": "59b93929_top10_drop1_canonical",
+  "production_lineage": {
+    "candidate_id": "59b93929bff1e736228d31403a167781aff433d27da1870bcf9fe34e04b6bbb9",
+    "stage_a_rank": 1,
+    "topk": 10,
+    "nd": 1,
+    "label_horizon": 20,
+    "model_params": {
+      "learning_rate": 0.1,
+      "colsample_bytree": 0.8,
+      "lambda_l1": 10.0,
+      "lambda_l2": 400.0,
+      "max_depth": 6,
+      "num_leaves": 31,
+      "min_data_in_leaf": 100
+    },
+    "model_config_sha256": "b97bc44d1c02acb4d85c344d2d570e00ef9ff365228c8a9550fa45393859ae67",
+    "profile": "59b93929_top10_drop1",
+    "contract_version": "csi1000_stage_b_forward_v1",
+    "stage_b_result_commit": "7a2676397b0f8e6f69c0bffc98d1764647f644ac",
+    "stage_b_snapshot_token": "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1",
+    "stage_b_result_path": "quant/data/round1_stage_ab/csi1000_stage_b/stage_b_full_51756897fc752304.json",
+    "lightgbm_num_threads": 20
+  },
+  "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
+  "signal_data_date": "2026-10-15",
+  "usage_date": "2026-10-16",
+  "execution_report": null,
+  "pending_orders": {
+    "signal_date": "2026-10-15",
+    "execution_date": "2026-10-16",
+    "sell": [],
+    "buy": [
+      "SH688521",
+      "SZ002353",
+      "SZ002384",
+      "SH600549",
+      "SZ000988",
+      "SZ000657",
+      "SH603986",
+      "SZ002028",
+      "SZ300308",
+      "SZ000338"
+    ]
+  },
+  "cash": 100000000.0,
+  "n_positions": 0,
+  "positions": {},
+  "model_fit_asof": "2026-10-15",
+  "training_contract": {
+    "fit_asof": "2026-10-15",
+    "horizon": 20,
+    "train_start": "2016-01-01",
+    "train_end": "2025-07-28",
+    "valid_start": "2025-08-26",
+    "valid_end": "2026-09-08"
+  },
+  "provider_calendar_end": "2026-10-15",
+  "note": "Orders are planned before the execution-day open and settled on a later data refresh using the recorded open. If provider data is stale, the prior pending order remains frozen and no new paper order is invented."
+}

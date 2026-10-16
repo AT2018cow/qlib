@@ -2,12 +2,13 @@
   "state_version": 2,
   "trading_calendar": {
     "source": "akshare.tool_trade_date_hist_sina",
-    "through": "2026-10-15",
+    "through": "2026-10-16",
     "dates": [
       "2026-10-12",
       "2026-10-13",
       "2026-10-14",
-      "2026-10-15"
+      "2026-10-15",
+      "2026-10-16"
     ]
   },
   "market": "csi1000",
@@ -17,6 +18,7 @@
     "stage_a_rank": 8,
     "topk": 10,
     "nd": 1,
+    "label_horizon": 20,
     "model_params": {
       "learning_rate": 0.05,
       "colsample_bytree": 1.0,
@@ -32,42 +34,42 @@
     "contract_version": "csi1000_stage_b_forward_v1",
     "stage_b_result_commit": "7a2676397b0f8e6f69c0bffc98d1764647f644ac",
     "stage_b_snapshot_token": "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1",
-    "stage_b_result_path": "results/csi1000_stage_b/stage_b_full_51756897fc752304.json",
+    "stage_b_result_path": "quant/data/round1_stage_ab/csi1000_stage_b/stage_b_full_51756897fc752304.json",
     "lightgbm_num_threads": 20
   },
   "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
-  "signal_data_date": "2026-10-14",
-  "usage_date": "2026-10-15",
+  "signal_data_date": "2026-10-15",
+  "usage_date": "2026-10-16",
   "execution_report": null,
   "pending_orders": {
-    "signal_date": "2026-10-14",
-    "execution_date": "2026-10-15",
+    "signal_date": "2026-10-15",
+    "execution_date": "2026-10-16",
     "sell": [],
     "buy": [
       "SZ002484",
-      "SH688372",
       "SH688146",
-      "SH688141",
-      "SH688409",
-      "SZ300870",
+      "SH688372",
       "SH688691",
+      "SH688403",
       "SH688548",
-      "SH688627",
-      "SH688668"
+      "SZ002364",
+      "SH688503",
+      "SH603005",
+      "SH688141"
     ]
   },
   "cash": 100000000.0,
   "n_positions": 0,
   "positions": {},
-  "model_fit_asof": "2026-10-14",
+  "model_fit_asof": "2026-10-15",
   "training_contract": {
-    "fit_asof": "2026-10-14",
+    "fit_asof": "2026-10-15",
     "horizon": 20,
     "train_start": "2016-01-01",
-    "train_end": "2025-07-25",
-    "valid_start": "2025-08-25",
-    "valid_end": "2026-09-07"
+    "train_end": "2025-07-28",
+    "valid_start": "2025-08-26",
+    "valid_end": "2026-09-08"
   },
-  "provider_calendar_end": "2026-10-14",
+  "provider_calendar_end": "2026-10-15",
   "note": "Orders are planned before the execution-day open and settled on a later data refresh using the recorded open. If provider data is stale, the prior pending order remains frozen and no new paper order is invented."
 }

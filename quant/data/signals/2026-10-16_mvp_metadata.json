@@ -1,22 +1,22 @@
 {
   "contract_version": "csi1000_mvp_daily_v1",
   "label_maturity": {
-    "fit_asof": "2026-10-14",
+    "fit_asof": "2026-10-15",
     "horizon_sessions": 20,
-    "signal_data_date": "2026-10-14",
+    "signal_data_date": "2026-10-15",
     "status": "PASS",
-    "train_end": "2025-07-25",
-    "train_label_last_observation": "2025-08-22",
+    "train_end": "2025-07-28",
+    "train_label_last_observation": "2025-08-25",
     "train_start": "2016-01-01",
     "train_start_effective": "2016-01-04",
     "train_start_resolution": "FROZEN_HOLIDAY_TO_NEXT_SESSION",
-    "valid_end": "2026-09-07",
-    "valid_label_last_observation": "2026-10-13",
-    "valid_start": "2025-08-25"
+    "valid_end": "2026-09-08",
+    "valid_label_last_observation": "2026-10-14",
+    "valid_start": "2025-08-26"
   },
   "market": "csi1000",
   "paper": {
-    "execution_date": "2026-10-15",
+    "execution_date": "2026-10-16",
     "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
     "n_positions": 0,
     "planned_buy_count": 10,
@@ -25,15 +25,15 @@
     "prior_execution_report": "none",
     "real_fill_execution": "NOT_CERTIFIED_PAPER_ONLY",
     "return_interpretation": "REFERENCE_ONLY_ST_NOT_MODELED",
-    "signal_date": "2026-10-14",
+    "signal_date": "2026-10-15",
     "status": "planned"
   },
   "pit_universe": {
-    "asof": "2026-10-14",
+    "asof": "2026-10-15",
     "expected_count": 1000,
     "member_count": 1000,
     "membership_sha256": "8a33eabbd37012dd33ba48ee06a41a9c691a79974daa35202b63d3f4e6031558",
-    "source_sha256": "30605f2e6cb17c1b11f729df86a11b3231adb2e255f135ac2d5ef7615a52acee",
+    "source_sha256": "419d480f60dff53705794c601e12c172f62a6cad8017a8ba9c713db52702398d",
     "status": "PASS"
   },
   "production_lineage": {
@@ -44,23 +44,23 @@
     "stage_b_snapshot_token": "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1"
   },
   "provider": {
-    "archive_sha256": "1d8758125f315eaa0729d8d9ad933ec42cf6a23b96a2ce708862e8515f8a9189",
-    "calendar_end": "2026-10-14",
-    "calendar_sha256": "20f57c2925fa3334e4e574c591137a6b02774e3059b47244dee752d2ffe32433",
+    "archive_sha256": "efb13fc72f6295932413cbfb1814198a4ac6f8c077538d899037b20a23c04ed4",
+    "calendar_end": "2026-10-15",
+    "calendar_sha256": "71895b345b8fd0195407f5c7c2c8a5a860659a30f0e8b8cd1ab5b567203a4376",
     "name": "chenditc",
     "source_url": "https://github.com/chenditc/investment_data/releases/latest/download/qlib_bin.tar.gz"
   },
   "publication": {
-    "canonical_freshness_gate": "CSI1000 Stage-B canonical freshness PASS: 2026-10-14 close -> 2026-10-15 open (lag=0)",
-    "signal_data_date": "2026-10-14",
+    "canonical_freshness_gate": "T-close (2026-10-15) -> T+1-open (2026-10-16) canonical publication",
+    "signal_data_date": "2026-10-15",
     "status": "PASS",
-    "usage_date": "2026-10-15"
+    "usage_date": "2026-10-16"
   },
   "risk": {
     "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
     "st": {
-      "date": "2026-10-15",
-      "detail": "ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+      "date": "2026-10-16",
+      "detail": "ST_SOURCE_UNAVAILABLE",
       "failure_kind": "TRANSPORT",
       "scope": "transport outage; reference paper without ST restrictions",
       "selection_filter_applied": false,
@@ -73,7 +73,7 @@
     "tradeability_certified": false,
     "usage_day_suspension": {
       "note": "Execution-day suspension cannot be certified from the prior close package. Paper settlement waits for the later provider refresh and records blocked orders.",
-      "scope": "2026-10-15",
+      "scope": "2026-10-16",
       "selection_filter_applied": false,
       "status": "NOT_INDEPENDENTLY_VERIFIED_PREOPEN",
       "tradeability_certified": false
@@ -83,19 +83,19 @@
     "display_surface": "board_aware_close_limit_filtered_top20",
     "display_top20_instruments": [
       "SZ002484",
-      "SH688372",
       "SH688146",
-      "SH688141",
-      "SH688409",
-      "SZ300870",
+      "SH688372",
       "SH688691",
+      "SH688403",
       "SH688548",
-      "SH688627",
-      "SH688668"
+      "SZ002364",
+      "SH688503",
+      "SH603005",
+      "SH688141"
     ],
-    "display_top20_sha256": "6427bdd5068fdc8c6afcee006ce9dbbb17aa0e954eaa5497a82ca96f69bbb0ea",
+    "display_top20_sha256": "6e6dd3b32e4f7a987e2ded43767c40b75ea567281d1b92ff468444926a37c6f6",
     "paper_planner_source": "pre_display_limit_filter_full_ranking",
     "paper_ranking_count": 999,
-    "paper_ranking_full_sha256": "1fbb002f86c51fe453469703d59f9630fff74d7e55ca30bfa0a075108a34da1d"
+    "paper_ranking_full_sha256": "a6a942126ff1ed5a52ffdada79e563cf88095c8cc8004f42122d04793d242e31"
   }
 }

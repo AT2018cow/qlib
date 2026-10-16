@@ -224,8 +224,8 @@ def validate_label_maturity(
         raise ValueError(f"training contract missing {missing}")
 
     horizon = int(training["horizon"])
-    if horizon != 20:
-        raise ValueError(f"CSI1000 MVP requires 20-session label horizon, got {horizon}")
+    if horizon not in (10, 20):
+        raise ValueError(f"CSI1000/500/300 MVP requires 10 or 20-session label horizon, got {horizon}")
     days = {k: _iso_day(training[k], k) for k in required if k != "horizon"}
     if not (
         days["train_start"] <= days["train_end"] < days["valid_start"]
@@ -328,7 +328,12 @@ def validate_production_lineage(actual: dict, expected: dict) -> dict:
     _validate_sha(actual["candidate_id"], "candidate_id")
     _validate_sha(actual["model_config_sha256"], "model_config_sha256")
     _validate_sha(actual["stage_b_snapshot_token"], "stage_b_snapshot_token")
-    if actual.get("profile") not in ("stage_b_winner", "c98856b4_top10_drop1"):
+    if actual.get("profile") not in (
+        "stage_b_winner",
+        "c98856b4_top10_drop1",
+        "raw10d_c98856b4_top10_drop1",
+        "59b93929_top10_drop1",
+    ):
         raise ValueError("canonical CSI1000 MVP profile must be a frozen canonical profile")
     return {key: actual[key] for key in _REQUIRED_LINEAGE}
 
@@ -348,6 +353,8 @@ def summarize_paper_state(
     if paper.get("paper_lineage") not in (
         "stage_b_winner_canonical",
         "c98856b4_top10_drop1_canonical",
+        "raw10d_c98856b4_top10_drop1_canonical",
+        "59b93929_top10_drop1_canonical",
     ):
         raise ValueError("paper lineage is not the canonical winner lineage")
     validate_production_lineage(paper.get("production_lineage"), expected_lineage)

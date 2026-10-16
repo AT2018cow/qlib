@@ -24,15 +24,30 @@ MODEL_NUM_THREADS = 20
 BASELINE_PROFILE = "baseline_control"
 WINNER_PROFILE = "stage_b_winner"
 TOP10_CHAMPION_PROFILE = "c98856b4_top10_drop1"
+CSI500_CHAMPION_PROFILE = "raw10d_c98856b4_top10_drop1"
+CSI300_CHAMPION_PROFILE = "59b93929_top10_drop1"
 CANONICAL_PROFILE = TOP10_CHAMPION_PROFILE
 CANONICAL_PAPER_LINEAGE = "c98856b4_top10_drop1_canonical"
 CANONICAL_TOPK = 10
 CANONICAL_ND = 1
 
+CANONICAL_PROFILES_BY_MARKET = {
+    "csi1000": TOP10_CHAMPION_PROFILE,
+    "csi500": CSI500_CHAMPION_PROFILE,
+    "csi300": CSI300_CHAMPION_PROFILE,
+}
+
+CANONICAL_PAPER_LINEAGES_BY_MARKET = {
+    "csi1000": "c98856b4_top10_drop1_canonical",
+    "csi500": "raw10d_c98856b4_top10_drop1_canonical",
+    "csi300": "59b93929_top10_drop1_canonical",
+}
+
 _MODEL_PROFILES = {
     BASELINE_PROFILE: {
         "candidate_id": "23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785",
         "stage_a_rank": 48,
+        "label_horizon": 20,
         "model_params": {
             "learning_rate": 0.1,
             "colsample_bytree": 0.9,
@@ -47,6 +62,7 @@ _MODEL_PROFILES = {
     WINNER_PROFILE: {
         "candidate_id": "4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2",
         "stage_a_rank": 5,
+        "label_horizon": 20,
         "model_params": {
             "learning_rate": 0.08,
             "colsample_bytree": 0.8,
@@ -63,6 +79,7 @@ _MODEL_PROFILES = {
         "stage_a_rank": 8,
         "topk": 10,
         "nd": 1,
+        "label_horizon": 20,
         "model_params": {
             "learning_rate": 0.05,
             "colsample_bytree": 1.0,
@@ -74,6 +91,40 @@ _MODEL_PROFILES = {
         },
         "model_config_sha256": "d49e893ad37c821a6a092fb17baf7ee29c9ff71289bbeb1205132e34e3854c50",
         "config_sha256": "1ca6fae56e8c4e40c73b1a45866825930aecba36ec529544a50da5408c93d317",
+    },
+    CSI500_CHAMPION_PROFILE: {
+        "candidate_id": "99627a9d20842f5ac43874593b71b175cc533fe2f09666a9417a589f35c7eb1f",
+        "stage_a_rank": 8,
+        "topk": 10,
+        "nd": 1,
+        "label_horizon": 10,
+        "model_params": {
+            "learning_rate": 0.05,
+            "colsample_bytree": 1.0,
+            "lambda_l1": 205.6999,
+            "lambda_l2": 200.0,
+            "max_depth": 10,
+            "num_leaves": 250,
+            "min_data_in_leaf": 200,
+        },
+        "model_config_sha256": "d49e893ad37c821a6a092fb17baf7ee29c9ff71289bbeb1205132e34e3854c50",
+    },
+    CSI300_CHAMPION_PROFILE: {
+        "candidate_id": "59b93929bff1e736228d31403a167781aff433d27da1870bcf9fe34e04b6bbb9",
+        "stage_a_rank": 1,
+        "topk": 10,
+        "nd": 1,
+        "label_horizon": 20,
+        "model_params": {
+            "learning_rate": 0.1,
+            "colsample_bytree": 0.8,
+            "lambda_l1": 10.0,
+            "lambda_l2": 400.0,
+            "max_depth": 6,
+            "num_leaves": 31,
+            "min_data_in_leaf": 100,
+        },
+        "model_config_sha256": "b97bc44d1c02acb4d85c344d2d570e00ef9ff365228c8a9550fa45393859ae67",
     },
 }
 
@@ -128,4 +179,8 @@ def apply_csi1000_model_profile(cfg: dict, profile: str) -> dict:
             f"CSI1000 production model config drift for {profile}: "
             f"{actual_sha} != {expected_sha}"
         )
+    horizon = int(manifest.get("label_horizon", 20))
+    dh = cfg.get("task", {}).get("dataset", {}).get("kwargs", {}).get("handler", {}).get("kwargs")
+    if isinstance(dh, dict):
+        dh["label"] = [f"Ref($close, -{horizon})/$close - 1"]
     return manifest

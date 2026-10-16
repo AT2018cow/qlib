@@ -101,7 +101,10 @@ image = (
         copy=True,
         ignore=lambda path: (
             str(path).endswith((".cpp", ".so"))
-            or any(part in str(path) for part in (".venv", "mlruns", "__pycache__"))
+            or any(
+                part in str(path)
+                for part in (".venv", ".worktrees", "mlruns", "__pycache__", "quant/local_backup", "quant/data")
+            )
             or str(path).startswith(".git/")
             or "/.git/" in str(path)
             or str(path) == "modal_qlib_cn_a10g.py"
@@ -3721,11 +3724,16 @@ def daily_standalone(
 
     # ---- 2) 训练终审候选 ----
     if market in ("csi1000", "csi500", "csi300"):
-        from csi1000_production_config import CANONICAL_PAPER_LINEAGE, CANONICAL_PROFILE
+        from csi1000_production_config import (
+            CANONICAL_PAPER_LINEAGE,
+            CANONICAL_PAPER_LINEAGES_BY_MARKET,
+            CANONICAL_PROFILE,
+            CANONICAL_PROFILES_BY_MARKET,
+        )
 
-        csi1000_profile = csi1000_profile or CANONICAL_PROFILE
-        if csi1000_profile == CANONICAL_PROFILE and paper_lineage == "canonical":
-            paper_lineage = CANONICAL_PAPER_LINEAGE
+        csi1000_profile = csi1000_profile or CANONICAL_PROFILES_BY_MARKET.get(market, CANONICAL_PROFILE)
+        if paper_lineage == "canonical":
+            paper_lineage = CANONICAL_PAPER_LINEAGES_BY_MARKET.get(market, CANONICAL_PAPER_LINEAGE)
     elif csi1000_profile is not None:
         raise ValueError("csi1000_profile is valid only for market in ('csi1000', 'csi500', 'csi300')")
 
@@ -3774,9 +3782,10 @@ def daily_standalone(
             f"asof={pit_universe['asof']} sha={pit_universe['membership_sha256'][:12]}"
         )
     # Today is a feature/prediction date, NEVER a training/validation label date.
-    live_split = configure_asof(cfg, calendar, asof, horizon=20)
+    profile_horizon = int((production_lineage or {}).get("label_horizon", 20))
+    live_split = configure_asof(cfg, calendar, asof, horizon=profile_horizon)
     runtime_lineage = _runtime_cache_lineage()
-    signature = cache_signature(cfg, horizon=20, runtime_lineage=runtime_lineage)
+    signature = cache_signature(cfg, horizon=profile_horizon, runtime_lineage=runtime_lineage)
     cache_dir = VOL_ROOT / "live_models"
     cache_dir.mkdir(parents=True, exist_ok=True)
     model_file = cache_dir / f"{signature}.pkl"
@@ -3812,6 +3821,8 @@ def daily_standalone(
     train_now = (
         saved is None
         or data_revision
+        or saved.get("production_lineage") != production_lineage
+        or saved.get("horizon") != profile_horizon
         or (retrain_due_calendar(calendar, asof, interval=RETRAIN_EVERY_SESSIONS)
             and saved["fit_asof"] != asof)
         or should_retrain(calendar, asof, saved["fit_asof"], interval=RETRAIN_EVERY_SESSIONS)
@@ -3829,7 +3840,7 @@ def daily_standalone(
         snapshot = {
             "signature": signature,
             "fit_asof": asof,
-            "horizon": 20,
+            "horizon": profile_horizon,
             "train": list(cfg["task"]["dataset"]["kwargs"]["segments"]["train"]),
             "valid": list(cfg["task"]["dataset"]["kwargs"]["segments"]["valid"]),
             "fit_start": cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["fit_start_time"],
@@ -3858,7 +3869,7 @@ def daily_standalone(
         # the original model's training window. Otherwise daily refitting of
         # feature normalization changes the cached model's input distribution.
         if (
-            saved.get("horizon") != 20
+            saved.get("horizon") != profile_horizon
             or not saved.get("model_sha256")
             or saved.get("fit_end") != saved.get("train", [None, None])[-1]
             or saved.get("runtime_lineage") != runtime_lineage
@@ -4234,11 +4245,13 @@ def daily_cron():
         print(f"[cron] {signal_date} 非 A 股交易日（假日），gate 前移零成本跳过；最近排名见最近一份已发布信号")
         return
 
-    print(f"[cron] {signal_date} 为交易日——启动 CSI1000 Stage-B winner canonical")
+    print(f"[cron] {signal_date} 为交易日——启动 CSI1000/500/300 canonical")
     from csi1000_production_config import (
         CANONICAL_ND,
         CANONICAL_PAPER_LINEAGE,
+        CANONICAL_PAPER_LINEAGES_BY_MARKET,
         CANONICAL_PROFILE,
+        CANONICAL_PROFILES_BY_MARKET,
         CANONICAL_TOPK,
         profile_manifest,
     )
@@ -4255,15 +4268,15 @@ def daily_cron():
             topk=CANONICAL_TOPK,
             nd=CANONICAL_ND,
             market="csi500",
-            csi1000_profile=CANONICAL_PROFILE,
-            paper_lineage=CANONICAL_PAPER_LINEAGE,
+            csi1000_profile=CANONICAL_PROFILES_BY_MARKET["csi500"],
+            paper_lineage=CANONICAL_PAPER_LINEAGES_BY_MARKET["csi500"],
         )
         res_csi300 = daily_standalone.remote(
             topk=CANONICAL_TOPK,
             nd=CANONICAL_ND,
             market="csi300",
-            csi1000_profile=CANONICAL_PROFILE,
-            paper_lineage=CANONICAL_PAPER_LINEAGE,
+            csi1000_profile=CANONICAL_PROFILES_BY_MARKET["csi300"],
+            paper_lineage=CANONICAL_PAPER_LINEAGES_BY_MARKET["csi300"],
         )
     except Exception as csi_err:  # pylint: disable=W0703
         raise RuntimeError(
@@ -4360,12 +4373,14 @@ def daily_cron():
         files[f"quant/data/signals/{signal_date}_mvp_metadata.json"] = dumps_metadata(mvp_metadata)
 
         for extra_mkt, extra_res in (("csi500", res_csi500), ("csi300", res_csi300)):
+            extra_profile = CANONICAL_PROFILES_BY_MARKET[extra_mkt]
+            extra_lineage = CANONICAL_PAPER_LINEAGES_BY_MARKET[extra_mkt]
             paper_proposals[extra_mkt] = _apply_paper_portfolio(
                 extra_res,
                 signal_date,
                 topk=CANONICAL_TOPK,
                 nd=CANONICAL_ND,
-                lineage=CANONICAL_PAPER_LINEAGE,
+                lineage=extra_lineage,
                 verified_calendar=cal,
             )
             files[f"quant/data/signals/{signal_date}_paper_portfolio_{extra_mkt}.json"] = (
@@ -4386,7 +4401,7 @@ def daily_cron():
                 pit_universe=extra_res["pit_universe"],
                 label_maturity=extra_res["label_maturity"],
                 production_lineage=extra_res["production_lineage"],
-                expected_lineage=profile_manifest(CANONICAL_PROFILE),
+                expected_lineage=profile_manifest(extra_profile),
                 paper=paper_proposals[extra_mkt]["artifact"],
                 risk=extra_risk,
                 publication_detail=csi_detail,

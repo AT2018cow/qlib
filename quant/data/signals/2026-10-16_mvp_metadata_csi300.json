@@ -1,22 +1,22 @@
 {
   "contract_version": "csi1000_mvp_daily_v1",
   "label_maturity": {
-    "fit_asof": "2026-10-14",
+    "fit_asof": "2026-10-15",
     "horizon_sessions": 20,
-    "signal_data_date": "2026-10-14",
+    "signal_data_date": "2026-10-15",
     "status": "PASS",
-    "train_end": "2025-07-25",
-    "train_label_last_observation": "2025-08-22",
+    "train_end": "2025-07-28",
+    "train_label_last_observation": "2025-08-25",
     "train_start": "2016-01-01",
     "train_start_effective": "2016-01-04",
     "train_start_resolution": "FROZEN_HOLIDAY_TO_NEXT_SESSION",
-    "valid_end": "2026-09-07",
-    "valid_label_last_observation": "2026-10-13",
-    "valid_start": "2025-08-25"
+    "valid_end": "2026-09-08",
+    "valid_label_last_observation": "2026-10-14",
+    "valid_start": "2025-08-26"
   },
   "market": "csi300",
   "paper": {
-    "execution_date": "2026-10-15",
+    "execution_date": "2026-10-16",
     "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
     "n_positions": 0,
     "planned_buy_count": 10,
@@ -25,42 +25,42 @@
     "prior_execution_report": "none",
     "real_fill_execution": "NOT_CERTIFIED_PAPER_ONLY",
     "return_interpretation": "REFERENCE_ONLY_ST_NOT_MODELED",
-    "signal_date": "2026-10-14",
+    "signal_date": "2026-10-15",
     "status": "planned"
   },
   "pit_universe": {
-    "asof": "2026-10-14",
+    "asof": "2026-10-15",
     "expected_count": 300,
     "member_count": 300,
     "membership_sha256": "1b16c959b279464f5f92aa9e0d76a44c06717ac2883eecd423e0e8f6d2f9b769",
-    "source_sha256": "1e3beec630b2f41bf23bfa78cebbbac34fe2b4979cb859e76517adf42f0e9d01",
+    "source_sha256": "f82aca6fe3fc2cb34e730dcc7c7e524e118f0f7b25b746c18857bea6734c248b",
     "status": "PASS"
   },
   "production_lineage": {
-    "candidate_id": "c98856b460aba687640d422e85a82a545bf5b6ca932e906a180699e0f6cad19b",
+    "candidate_id": "59b93929bff1e736228d31403a167781aff433d27da1870bcf9fe34e04b6bbb9",
     "contract_version": "csi1000_stage_b_forward_v1",
-    "model_config_sha256": "d49e893ad37c821a6a092fb17baf7ee29c9ff71289bbeb1205132e34e3854c50",
-    "profile": "c98856b4_top10_drop1",
+    "model_config_sha256": "b97bc44d1c02acb4d85c344d2d570e00ef9ff365228c8a9550fa45393859ae67",
+    "profile": "59b93929_top10_drop1",
     "stage_b_snapshot_token": "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1"
   },
   "provider": {
-    "archive_sha256": "1d8758125f315eaa0729d8d9ad933ec42cf6a23b96a2ce708862e8515f8a9189",
-    "calendar_end": "2026-10-14",
-    "calendar_sha256": "20f57c2925fa3334e4e574c591137a6b02774e3059b47244dee752d2ffe32433",
+    "archive_sha256": "efb13fc72f6295932413cbfb1814198a4ac6f8c077538d899037b20a23c04ed4",
+    "calendar_end": "2026-10-15",
+    "calendar_sha256": "71895b345b8fd0195407f5c7c2c8a5a860659a30f0e8b8cd1ab5b567203a4376",
     "name": "chenditc",
     "source_url": "https://github.com/chenditc/investment_data/releases/latest/download/qlib_bin.tar.gz"
   },
   "publication": {
-    "canonical_freshness_gate": "CSI1000 Stage-B canonical freshness PASS: 2026-10-14 close -> 2026-10-15 open (lag=0)",
-    "signal_data_date": "2026-10-14",
+    "canonical_freshness_gate": "T-close (2026-10-15) -> T+1-open (2026-10-16) canonical publication",
+    "signal_data_date": "2026-10-15",
     "status": "PASS",
-    "usage_date": "2026-10-15"
+    "usage_date": "2026-10-16"
   },
   "risk": {
     "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
     "st": {
-      "date": "2026-10-15",
-      "detail": "ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+      "date": "2026-10-16",
+      "detail": "ST_SOURCE_UNAVAILABLE",
       "failure_kind": "TRANSPORT",
       "scope": "transport outage; reference paper without ST restrictions",
       "selection_filter_applied": false,
@@ -73,7 +73,7 @@
     "tradeability_certified": false,
     "usage_day_suspension": {
       "note": "Execution-day suspension cannot be certified from the prior close package. Paper settlement waits for the later provider refresh and records blocked orders.",
-      "scope": "2026-10-15",
+      "scope": "2026-10-16",
       "selection_filter_applied": false,
       "status": "NOT_INDEPENDENTLY_VERIFIED_PREOPEN",
       "tradeability_certified": false
@@ -83,19 +83,19 @@
     "display_surface": "board_aware_close_limit_filtered_top20",
     "display_top20_instruments": [
       "SH688521",
-      "SH601138",
-      "SZ300433",
-      "SZ300502",
-      "SZ002475",
-      "SZ300274",
-      "SZ300316",
+      "SZ002353",
+      "SZ002384",
+      "SH600549",
+      "SZ000988",
+      "SZ000657",
+      "SH603986",
+      "SZ002028",
       "SZ300308",
-      "SZ300661",
-      "SH601100"
+      "SZ000338"
     ],
-    "display_top20_sha256": "368f0656c59fefc00d6cfabbd6a5e4fb5d29a44df1f2e6b3a9fd1f1aaab04481",
+    "display_top20_sha256": "8018ba23974ff14777db8057f14a10bfd6307508f18ddda53acc7c3bd04f0934",
     "paper_planner_source": "pre_display_limit_filter_full_ranking",
     "paper_ranking_count": 299,
-    "paper_ranking_full_sha256": "3ca8523ee9cb9e9a670f612dee20db5aad092ffcbf422d95b3faa3c7b4546a90"
+    "paper_ranking_full_sha256": "180406f12c73bb7d446e0ce424597ad59657012a1373a8682838c391ea08f00d"
   }
 }
