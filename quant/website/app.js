@@ -10,6 +10,7 @@ const POOLS = {
     label: '沪深300',
     code: '000300',
     expectedPitCount: 300,
+    horizonDays: 20,
     indexUrl: CSV_BASE + '/available_dates_csi300.json',
     forwardUrl: CSV_BASE + '/csi300_forward_performance.json',
     suffix: '_csi300',
@@ -19,6 +20,7 @@ const POOLS = {
     label: '中证500',
     code: '000905',
     expectedPitCount: 500,
+    horizonDays: 10,
     indexUrl: CSV_BASE + '/available_dates_csi500.json',
     forwardUrl: CSV_BASE + '/csi500_forward_performance.json',
     suffix: '_csi500',
@@ -28,6 +30,7 @@ const POOLS = {
     label: '中证1000',
     code: '000852',
     expectedPitCount: 1000,
+    horizonDays: 20,
     indexUrl: DATE_INDEX_URL,
     forwardUrl: CSV_BASE + '/csi1000_forward_performance.json',
     suffix: '',
@@ -580,7 +583,7 @@ function pageShell(dates) {
           <div class="protocol-list">
             <div class="protocol-row"><span>股票池</span><strong id="protocol-pool">${currentPool.label} (${currentPool.code})</strong></div>
             <div class="protocol-row"><span>模型</span><strong>${PRODUCTION.model}</strong></div>
-            <div class="protocol-row"><span>目标</span><strong>${PRODUCTION.target}</strong></div>
+            <div class="protocol-row"><span>目标</span><strong id="protocol-target">${currentPool.horizonDays} 交易日前瞻收益</strong></div>
             <div class="protocol-row"><span>组合</span><strong>${PRODUCTION.portfolio}</strong></div>
             <div class="protocol-row"><span>执行</span><strong>${PRODUCTION.execution}</strong></div>
             <div class="protocol-row"><span>重训</span><strong>${PRODUCTION.retrain}</strong></div>
@@ -625,7 +628,7 @@ function pageShell(dates) {
         <div class="table-wrap">
           <table class="signal-table">
             <thead>
-              <tr><th>排名</th><th>代码</th><th>名称</th><th>20日预测</th><th>排名变化</th><th>近60日</th></tr>
+              <tr><th>排名</th><th>代码</th><th>名称</th><th id="th-pred-horizon">${currentPool.horizonDays}日预测</th><th>排名变化</th><th>近60日</th></tr>
             </thead>
             <tbody id="signal-rows"></tbody>
           </table>
@@ -651,7 +654,7 @@ function pageShell(dates) {
           <div>
             <div class="panel-kicker">模拟组合表现</div>
             <h2>策略累计收益 · 模拟盘参考</h2>
-            <p id="forward-status" class="performance-status">模拟净值跟踪 · 2026.10.15 新策略上线起</p>
+            <p id="forward-status" class="performance-status">模拟净值跟踪 · 2026.10.16 新策略上线起</p>
           </div>
           <div class="performance-summary">
             <div id="forward-return" class="performance-value">待开始</div>
@@ -659,10 +662,10 @@ function pageShell(dates) {
           </div>
         </div>
         <div id="forward-chart" class="performance-chart">
-          <div class="performance-empty">从新策略启用（2026.10.15）开始记录，首个收盘估值将在下一交易日数据更新后显示。</div>
+          <div class="performance-empty">从新策略启用（2026.10.16）开始记录，首个收盘估值将在下一交易日数据更新后显示。</div>
         </div>
         <div class="performance-foot">
-          <span>起点：2026.10.15 新策略启用日开盘前账户净值 = 1.0000</span>
+          <span>起点：2026.10.16 新策略启用日开盘前账户净值 = 1.0000</span>
           <span>T+1 开盘调仓 · 收盘估值结算（含交易成本与涨跌停约束）</span>
         </div>
       </section>
@@ -680,7 +683,7 @@ function pageShell(dates) {
             <div class="governance-meta-item">
               <span class="governance-meta-label">成分股与样本校验</span>
               <strong class="governance-meta-value" id="stat-pit">—</strong>
-              <span class="governance-meta-sub">当日指数成分与 20 日样本防泄漏校验</span>
+              <span class="governance-meta-sub" id="stat-pit-sub">当日指数成分与 ${currentPool.horizonDays} 日样本防泄漏校验</span>
             </div>
             <div class="governance-meta-item governance-meta-wide">
               <span class="governance-meta-label">每日数据完整性核验</span>
@@ -689,7 +692,7 @@ function pageShell(dates) {
           </div>
           <ul class="governance-list">
             <li><strong>排名与预测口径：</strong>排名变化对比上一期可用榜单，不代表实际持仓；预测分数仅用于横截面排序，不构成收益承诺。</li>
-            <li><strong>模拟收益与交易规则：</strong>旧策略信号已归档移除，累计收益自 2026.10.15 启用当前定型策略（等权 10 只 · 单日限换 1 只）起按 T+1 开盘调仓、收盘估值独立计算。模拟盘在开盘前自动核验 ST 快照（仅当外部接口连接故障时降级为不考虑 ST 的参考计算），仅作模拟参考，不代表实盘真实成交。</li>
+            <li><strong>模拟收益与交易规则：</strong>旧策略信号已归档移除，累计收益自 2026.10.16 启用当前定型策略（等权 10 只 · 单日限换 1 只）起按 T+1 开盘调仓、收盘估值独立计算。模拟盘在开盘前自动核验 ST 快照（仅当外部接口连接故障时降级为不考虑 ST 的参考计算），仅作模拟参考，不代表实盘真实成交。</li>
           </ul>
         </div>
       </section>
@@ -853,6 +856,12 @@ async function main() {
     if (heroPool) heroPool.textContent = nextPool.label;
     const protoPool = document.getElementById('protocol-pool');
     if (protoPool) protoPool.textContent = `${nextPool.label} (${nextPool.code})`;
+    const protoTarget = document.getElementById('protocol-target');
+    if (protoTarget) protoTarget.textContent = `${nextPool.horizonDays} 交易日前瞻收益`;
+    const thPred = document.getElementById('th-pred-horizon');
+    if (thPred) thPred.textContent = `${nextPool.horizonDays}日预测`;
+    const statPitSub = document.getElementById('stat-pit-sub');
+    if (statPitSub) statPitSub.textContent = `当日指数成分与 ${nextPool.horizonDays} 日样本防泄漏校验`;
 
     if (!indexCache.has(nextPool.key)) {
       indexCache.set(nextPool.key, loadAvailableDates(nextPool));

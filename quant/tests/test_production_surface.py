@@ -93,7 +93,7 @@ def test_dashboard_dark_theme_and_responsive_layout():
     assert ".table-wrap { display: none; }" in styles
     assert ".mobile-cards { display: grid;" in styles
     assert ".doc-grid { grid-template-columns: 1fr;" in styles
-    assert 'src="app.js?v=33"' in index
+    assert 'src="app.js?v=34"' in index
 
 
 def test_forward_performance_panel_is_forward_only_from_20261012():
