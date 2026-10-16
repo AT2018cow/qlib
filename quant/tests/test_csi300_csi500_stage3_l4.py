@@ -738,6 +738,9 @@ def test_stage3_renderers_scoreboard_90_and_rankings_18(tmp_path):
 
 
 def test_stage3_modal_imports_all_resolve_in_core():
+    import ast
+    import builtins
+
     src = MODAL_SRC.read_text(encoding="utf-8")
     match = _re.search(r"from stage3_l4_core import \((.*?)\)", src, _re.DOTALL)
     assert match, "core import block missing"
@@ -749,6 +752,32 @@ def test_stage3_modal_imports_all_resolve_in_core():
     assert len(names) > 25
     for name in names:
         assert hasattr(core, name), f"core missing Modal import: {name}"
+    for path in (Path(core.__file__), MODAL_SRC):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        defined = set(dir(builtins)) | {"__file__", "__name__", "__doc__", "__package__"}
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.Import, ast.ImportFrom)):
+                for alias in node.names:
+                    defined.add(alias.asname or alias.name.split(".")[0])
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                defined.add(node.name)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+                for arg in node.args.args + node.args.kwonlyargs:
+                    defined.add(arg.arg)
+                if node.args.vararg:
+                    defined.add(node.args.vararg.arg)
+                if node.args.kwarg:
+                    defined.add(node.args.kwarg.arg)
+            elif isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Param)):
+                defined.add(node.id)
+            elif isinstance(node, ast.ExceptHandler) and node.name:
+                defined.add(node.name)
+        missing = {
+            node.id
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load) and node.id not in defined
+        }
+        assert not missing, f"undefined names in {path.name}: {missing}"
 
 
 def test_stage3_modal_traps_static():
