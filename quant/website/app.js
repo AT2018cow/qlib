@@ -71,7 +71,7 @@ const PRODUCTION = {
 };
 
 const qlibCode = inst => inst.replace(/^(SH|SZ|BJ)/, '');
-const sinaUrl = inst => `https://finance.sina.com.cn/realstock/company/${inst.toLowerCase()}/nc.shtml`;
+const thsUrl = inst => `https://stockpage.10jqka.com.cn/${qlibCode(inst)}/`;
 
 async function fetchText(url, fresh = false) {
   try {
@@ -507,7 +507,7 @@ function buildRows(rows, nameMap, prev, chartData) {
       spark: chartData === undefined ? sparklineEmpty('loading') :
         (!chartData || !chartData.stocks ? sparklineEmpty('unavailable') :
           makeSparkline(calendarAlignChartValues(chartData.stocks[r.instrument], chartData.dates))),
-      url: sinaUrl(r.instrument),
+      url: thsUrl(r.instrument),
     };
   });
 }
