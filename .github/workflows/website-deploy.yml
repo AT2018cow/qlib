@@ -76,12 +76,6 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: _site
-      - name: Verify Cloudflare credentials
-        if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
-        run: |
-          echo "token length: ${#CLOUDFLARE_API_TOKEN}; account id length: ${#CLOUDFLARE_ACCOUNT_ID}"
-          curl -s https://api.cloudflare.com/client/v4/user/tokens/verify \
-            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" | head -c 400
       - name: Deploy mirror to Cloudflare Pages
         if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
         run: npx --yes wrangler@4 pages deploy _site --project-name=qliba158 --branch=main
