@@ -29,6 +29,8 @@ def test_cron_schedule_registered():
                             "quant/code/production/modal_qlib_cn_a10g.py")).read()
     assert 'schedule=modal.Cron("0 7 * * 1-5", timezone="Asia/Shanghai")' in src, \
         "daily_cron schedule line missing — cron would silently never fire!"
+    assert 'schedule=modal.Cron("45 7 * * 1-5", timezone="Asia/Shanghai")' in src, \
+        "daily_cron_second_chance schedule line missing — backup run would silently never fire!"
     assert "nonpreemptible=True" in src
     assert 'modal.Secret.from_name(_GH_SECRET_NAME := "github-push")' in src
 

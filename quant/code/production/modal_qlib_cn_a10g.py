@@ -3642,6 +3642,7 @@ CHENDITC_LATEST_URL = "https://github.com/chenditc/investment_data/releases/late
     # manual/cron invocations instead of running duplicate heavy containers.
     max_containers=1,
     nonpreemptible=True,  # 每日信号是生产职责：抢占会导致当天无信号；保留可靠性优先语义
+    retries=modal.Retries(max_retries=2, initial_delay=30, backoff_coefficient=2.0, max_delay=60),  # 2 次快速重试（30/60s）自愈瞬时故障，父级重试为后备
 )
 def daily_standalone(
     topk: int = 10,
@@ -4209,6 +4210,7 @@ def _early_gate(cal, signal_date: str) -> str:
     # 空 secret 只过 spec 校验，cron 真实推送仍需 GITHUB_TOKEN（生产部署只在 at2018cow）
     timeout=2 * 3600,
     nonpreemptible=True,  # 调度入口：被抢占则当天任务丢失；自身运行时间短，3x 成本增量极小
+    retries=modal.Retries(max_retries=5, initial_delay=30, backoff_coefficient=2.0, max_delay=60),  # 平台限制单次延迟≤60s：30/60×4 共 5 次覆盖瞬断；重跑幂等
 )
 def daily_cron():
     """云端全自动每日信号：Stage-B winner CSI1000 canonical → GitHub API 提交。
@@ -4507,6 +4509,20 @@ def daily_cron():
             print("[cron] 名称映射无变化，跳过")
     except Exception as e:
         print(f"[cron] ⚠️ 名称映射更新失败（不影响信号推送）: {e}")
+
+
+@app.function(
+    schedule=modal.Cron("45 7 * * 1-5", timezone="Asia/Shanghai"),  # 周一~周五 07:45 幂等补跑
+    timeout=3 * 3600,  # 覆盖 daily_cron 的 2h 上限与其中间重试等待
+    nonpreemptible=True,  # 与 daily_cron 同语义：补跑被抢占会丢当天兜底
+)
+def daily_cron_second_chance():
+    """07:45 幂等二次调度：转发调用 daily_cron。
+
+    同日重跑已于代码层核验为字节级幂等（已发布文件内容一致则保留、纸面状态仅在发布成功后
+    落盘），因此首跑成功时本函数只做校验并立即返回；首跑失败（瞬断/晚启动）时补完成发布。
+    """
+    daily_cron.remote()
 
 
 # ===================== 第六步：重训频率对比实验（freq 5/20/60） =====================
