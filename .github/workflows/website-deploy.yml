@@ -30,7 +30,9 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v4
+      # GitHub Pages publishing is paused until repository variable GITHUB_PAGES_ENABLED is set to true.
       - name: Setup Pages
+        if: ${{ vars.GITHUB_PAGES_ENABLED == 'true' }}
         uses: actions/configure-pages@v5
       - name: Build site
         run: |
@@ -76,6 +78,7 @@ jobs:
           test -s _site/signals/csi500_forward_performance.json
           test -s _site/signals/csi300_forward_performance.json
       - name: Upload artifact
+        if: ${{ vars.GITHUB_PAGES_ENABLED == 'true' }}
         uses: actions/upload-pages-artifact@v3
         with:
           path: _site
@@ -85,6 +88,7 @@ jobs:
 
   deploy:
     needs: build
+    if: ${{ vars.GITHUB_PAGES_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
