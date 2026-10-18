@@ -79,9 +79,14 @@ def validate_archive_members(members) -> list[tarfile.TarInfo]:
     validated = []
     total = 0
     names = []
+    seen = set()
     for member in members:
         if not _is_safe_member_path(member.name):
             raise UnsafeArchiveError(f"unsafe member path: {member.name!r}")
+        normalized = member.name.rstrip("/")
+        if normalized in seen:
+            raise UnsafeArchiveError(f"duplicate member name: {member.name!r}")
+        seen.add(normalized)
         if member.issym() or member.islnk():
             raise UnsafeArchiveError(f"links are not allowed in provider archive: {member.name!r}")
         if not (member.isfile() or member.isdir()):

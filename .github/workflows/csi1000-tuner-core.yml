@@ -82,6 +82,7 @@ jobs:
           quant/tests/test_multi_market_publication.py
           quant/tests/test_publication_journal.py
           quant/tests/test_provider_archive.py
+          quant/tests/test_provider_archive_real.py
           quant/tests/test_name_map_sync.py
           quant/tests/test_lineage_market_binding.py
           quant/tests/test_cli_standalone.py

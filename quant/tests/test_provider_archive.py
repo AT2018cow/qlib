@@ -20,6 +20,10 @@ def write_tar(path, entries):
                 info.type = tarfile.SYMTYPE
                 info.linkname = entry["target"]
                 tf.addfile(info)
+            elif entry.get("type") == "hard":
+                info.type = tarfile.LNKTYPE
+                info.linkname = entry["target"]
+                tf.addfile(info)
             else:
                 data = entry.get("data", b"")
                 info.size = len(data)
@@ -72,6 +76,26 @@ def test_symlink_member_is_rejected(tmp_path):
     write_tar(archive, entries)
     with pytest.raises(UnsafeArchiveError, match="links"):
         safe_extract_provider_archive(archive, tmp_path / "extract")
+
+
+def test_hardlink_member_is_rejected(tmp_path):
+    archive = tmp_path / "evil.tar.gz"
+    entries = valid_entries() + [{"name": "pkg/hard", "type": "hard", "target": "pkg/features/x.bin"}]
+    write_tar(archive, entries)
+    with pytest.raises(UnsafeArchiveError, match="links"):
+        safe_extract_provider_archive(archive, tmp_path / "extract")
+
+
+def test_duplicate_member_names_are_rejected(tmp_path):
+    archive = tmp_path / "evil.tar.gz"
+    entries = valid_entries() + [{"name": "pkg/features/sh600000/close.day.bin", "data": b"OVERWRITE"}]
+    write_tar(archive, entries)
+    with pytest.raises(UnsafeArchiveError, match="duplicate"):
+        safe_extract_provider_archive(archive, tmp_path / "extract")
+    # Two textual variants of one directory path must not both extract.
+    write_tar(archive, valid_entries() + [{"name": "pkg/", "type": "dir"}, {"name": "pkg", "type": "dir"}])
+    with pytest.raises(UnsafeArchiveError, match="duplicate"):
+        safe_extract_provider_archive(archive, tmp_path / "extract2")
 
 
 def test_missing_qlib_structure_is_rejected(tmp_path):

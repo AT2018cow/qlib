@@ -1,4 +1,4 @@
-"""Durable publication journal and cross-task lease for the daily canonical cron (R02).
+"""Durable publication journal for the daily canonical cron (R02).
 
 GitHub publication and Modal Volume state advancement are two independent
 systems.  A crash between ``push_files`` and the paper-state commit can leave
@@ -15,22 +15,27 @@ payloads, verifies any already-published bytes against the recorded hashes and
 idempotently completes the remaining stages.  Any divergence fails closed with
 ``BLOCKED_MANUAL_RECOVERY`` instead of silently rewriting or double-executing.
 
-A short-TTL lease guards the critical section across overlapping schedules
-(daily_cron 07:00 and the 07:45 second chance).  Modal Volumes have no atomic
-compare-and-swap; the lease uses write-then-reread verification with a
-monotonic generation, and every paper-state write is additionally protected by
-prior/post SHA checks, so a fencing failure can never clobber advanced state.
+Serialization contract (no file-based locks)
+--------------------------------------------
+Modal Volumes are not a compare-and-swap medium: read-write-reread on a lease
+file cannot exclude two containers (the first review round rejected that
+approach).  Cross-run serialization is therefore delegated to the Modal
+platform: ``daily_cron`` runs with ``max_containers=1``, so the scheduler and
+the 07:45 second chance (which forwards into ``daily_cron``) queue behind the
+active run and can never overlap.  The journal is the single-writer, crash-
+consistent state machine *inside* that serialized execution; every state write
+is additionally guarded by the recorded prior/post SHA256 (fencing by
+content, not by lease).  If ``max_containers`` is ever changed, scheduled
+publication must be paused until an external lock service is introduced.
 
-The module is stdlib-only and storage-agnostic so CI can fault-inject writes,
-crashes and concurrent holders without Modal.
+The module is stdlib-only and storage-agnostic so CI can fault-inject writes
+and crashes without Modal.
 """
-
 from __future__ import annotations
 
 import hashlib
 import json
 import os
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -40,20 +45,14 @@ STAGE_VOLUME_COMMITTED = "VOLUME_COMMITTED"
 _STAGE_ORDER = (STAGE_PREPARED, STAGE_GITHUB_PUBLISHED, STAGE_VOLUME_COMMITTED)
 
 BASE_DIR = "publication_journal"
-LEASE_NAME = "lease.json"
-DEFAULT_LEASE_TTL_SECONDS = 150
 
 
 class JournalError(RuntimeError):
     """Base journal failure."""
 
 
-class JournalLocked(JournalError):
-    """Another publication run holds the lease."""
-
-
 class JournalCorrupt(JournalError):
-    """Journal/payload divergence; requires manual recovery (fail closed)."""
+    """Journal/payload/state divergence; requires manual recovery (fail closed)."""
 
 
 def _sha256(data: bytes) -> str:
@@ -131,14 +130,17 @@ class PublicationJournal:
             raise JournalCorrupt(f"journal stage unknown: {record.get('stage')!r}")
         return record
 
-    def incomplete_records(self) -> list:
+    def all_records(self) -> list:
         records = []
         for name in self.storage.list(self.base_dir):
             record = self.load(name)
-            if record is not None and record["stage"] != STAGE_VOLUME_COMMITTED:
+            if record is not None:
                 records.append(record)
         records.sort(key=lambda record: record["signal_date"])
         return records
+
+    def incomplete_records(self) -> list:
+        return [record for record in self.all_records() if record["stage"] != STAGE_VOLUME_COMMITTED]
 
     def prepare(
         self,
@@ -242,123 +244,81 @@ class PublicationJournal:
                 continue
             if _sha256(actual) != expected:
                 raise JournalCorrupt(
-                    "BLOCKED_MANUAL_RECOVERY: published artifact differs from frozen journal " f"hash: {path}"
+                    "BLOCKED_MANUAL_RECOVERY: published artifact differs from frozen journal "
+                    f"hash: {path}"
                 )
         return sorted(missing)
 
     def plan_state_writes(self, record: dict, current: dict) -> dict:
-        """Return market -> content to write, or fail closed on divergence.
+        """Return market -> entry to write, or fail closed on divergence.
 
         A state file may only be replaced when it is untouched since the journal
-        was prepared or already carries the frozen post-state bytes.
+        was prepared (its bytes still match ``prior_sha256``) or already carries
+        the frozen post-state bytes.  A file that existed when the journal was
+        prepared (``prior_sha256`` recorded) must NOT disappear silently: that
+        is an unrecoverable ledger loss and fails closed (R02/B04).
         """
         writes = {}
         for market, entry in record["states"].items():
             target = entry["sha256"]
             prior = entry.get("prior_sha256")
             actual = current.get(market)
-            if actual is not None:
-                actual_sha = _sha256(actual)
-                if actual_sha not in (target, prior):
+            if actual is None:
+                if prior is not None:
                     raise JournalCorrupt(
-                        "BLOCKED_MANUAL_RECOVERY: paper state diverged from journal "
-                        f"({market} {entry['path']}); refusing to overwrite"
+                        "BLOCKED_MANUAL_RECOVERY: previously existing paper state file is "
+                        f"missing ({market} {entry['path']}); refusing to recreate it from "
+                        "the frozen post-state"
                     )
-            writes[market] = entry
+                writes[market] = entry
+                continue
+            actual_sha = _sha256(actual)
+            if actual_sha == target:
+                writes[market] = entry
+                continue
+            if prior is not None and actual_sha == prior:
+                writes[market] = entry
+                continue
+            raise JournalCorrupt(
+                "BLOCKED_MANUAL_RECOVERY: paper state diverged from journal "
+                f"({market} {entry['path']}); refusing to overwrite"
+            )
         return writes
+
+    def verify_committed_states(self, record: dict, current: dict) -> None:
+        """Verify Volume states of a VOLUME_COMMITTED record (R02/B05).
+
+        The committed bytes may since have been legitimately advanced by a
+        later serialized run; the chain link is the later record's
+        ``prior_sha256`` (bytes that run read before writing) or its post
+        ``sha256``.  Missing files and non-chained bytes fail closed.
+        """
+        later = [r for r in self.all_records() if r["signal_date"] > record["signal_date"]]
+        for market, entry in record["states"].items():
+            actual = current.get(market)
+            if actual is None:
+                raise JournalCorrupt(
+                    "BLOCKED_MANUAL_RECOVERY: committed paper state file is missing "
+                    f"({market} {entry['path']})"
+                )
+            actual_sha = _sha256(actual)
+            if actual_sha == entry["sha256"]:
+                continue
+            for later_record in later:
+                successor = later_record["states"].get(market)
+                if not successor or successor.get("path") != entry["path"]:
+                    continue
+                if actual_sha in (successor.get("prior_sha256"), successor.get("sha256")):
+                    break
+            else:
+                raise JournalCorrupt(
+                    "BLOCKED_MANUAL_RECOVERY: committed paper state diverged from the "
+                    f"journal chain ({market} {entry['path']})"
+                )
 
     def _write_record(self, record: dict) -> None:
         self.storage.write(
             self._record_path(record["signal_date"]),
             json.dumps(record, ensure_ascii=False, sort_keys=True, indent=2).encode(),
         )
-        self.storage.commit()
-
-
-class PublicationLease:
-    """Best-effort cross-container lease with TTL, wait and generation fencing."""
-
-    def __init__(
-        self,
-        storage,
-        *,
-        name: str = f"{BASE_DIR}/{LEASE_NAME}",
-        ttl_seconds: int = DEFAULT_LEASE_TTL_SECONDS,
-        now_fn=time.time,
-        sleep_fn=time.sleep,
-    ):
-        self.storage = storage
-        self.name = name
-        self.ttl_seconds = ttl_seconds
-        self.now_fn = now_fn
-        self.sleep_fn = sleep_fn
-
-    def _read(self):
-        raw = self.storage.read(self.name)
-        if raw is None:
-            return None
-        try:
-            return json.loads(raw.decode())
-        except ValueError:
-            return None
-
-    def acquire(self, holder: str, wait_seconds: float = 0, poll_seconds: float = 5) -> dict:
-        deadline = self.now_fn() + wait_seconds
-        while True:
-            self.storage.reload()
-            current = self._read()
-            now = self.now_fn()
-            held = (
-                current is not None
-                and current.get("holder")
-                and float(current.get("expires_at", 0)) > now
-                and current.get("holder") != holder
-            )
-            if held:
-                if self.now_fn() < deadline:
-                    self.sleep_fn(min(poll_seconds, max(0.0, deadline - self.now_fn())))
-                    continue
-                raise JournalLocked(
-                    f"publication lease held by {current.get('holder')} " f"until {current.get('expires_at')}"
-                )
-            generation = int(current.get("generation", 0)) + 1 if current else 1
-            payload = {
-                "holder": holder,
-                "generation": generation,
-                "acquired_at": now,
-                "expires_at": now + self.ttl_seconds,
-            }
-            self.storage.write(self.name, json.dumps(payload).encode())
-            self.storage.commit()
-            # Fencing: re-read and confirm our generation survived; Modal
-            # Volumes have no atomic CAS, so a lost race must be detected here.
-            self.storage.reload()
-            check = self._read()
-            if check and check.get("holder") == holder and int(check.get("generation", -1)) == generation:
-                return check
-            if self.now_fn() < deadline:
-                self.sleep_fn(min(poll_seconds, max(0.0, deadline - self.now_fn())))
-                continue
-            raise JournalLocked("publication lease race lost; another run is active")
-
-    def refresh(self, holder: str) -> None:
-        self.storage.reload()
-        current = self._read()
-        if current is None or current.get("holder") != holder:
-            raise JournalLocked(f"publication lease lost by {holder}")
-        current["expires_at"] = self.now_fn() + self.ttl_seconds
-        self.storage.write(self.name, json.dumps(current).encode())
-        self.storage.commit()
-
-    def release(self, holder: str) -> None:
-        current = self._read()
-        if current is None or current.get("holder") != holder:
-            return
-        payload = {
-            "holder": None,
-            "generation": int(current.get("generation", 0)) + 1,
-            "released_at": self.now_fn(),
-            "expires_at": 0,
-        }
-        self.storage.write(self.name, json.dumps(payload).encode())
         self.storage.commit()

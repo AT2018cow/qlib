@@ -4068,9 +4068,6 @@ def _load_latest_to_local():
 #         → 生成 top20 信号 → 经 GitHub API 直接写入仓库（无需 git 二进制/本地机器）
 GITHUB_REPO = "AT2018cow/qlib"
 SIGNAL_BRANCH = "main"
-# R02: overlapping schedules (07:00 cron + 07:45 second chance) serialize on a
-# Volume lease instead of racing; a contended run waits for the active one.
-PUBLICATION_LEASE_WAIT_SECONDS = 600
 
 
 def _cn_trading_calendar():
@@ -4222,6 +4219,10 @@ def _early_gate(cal, signal_date: str) -> str:
     # 空 secret 只过 spec 校验，cron 真实推送仍需 GITHUB_TOKEN（生产部署只在 at2018cow）
     timeout=2 * 3600,
     nonpreemptible=True,  # 调度入口：被抢占则当天任务丢失；自身运行时间短，3x 成本增量极小
+    # ⚠️ R02 序列化契约：max_containers=1 使 Modal 平台串行执行 daily_cron——07:45 补跑转发
+    #    的调用必须排队等待当前运行结束，两个容器永不重叠。严禁提高此值：Volume 没有原子
+    #    CAS，跨容器互斥只能由平台单执行保证；若必须并发，先引入外部锁服务并暂停自动发布。
+    max_containers=1,
     retries=modal.Retries(max_retries=5, initial_delay=30, backoff_coefficient=2.0, max_delay=60),  # 平台限制单次延迟≤60s：30/60×4 共 5 次覆盖瞬断；重跑幂等
 )
 def daily_cron():
@@ -4236,10 +4237,13 @@ def daily_cron():
     发布顺序由 Volume journal 固化（PREPARED → GITHUB_PUBLISHED →
     VOLUME_COMMITTED）：先冻结全部载荷与哈希，再推送 GitHub，最后落盘三池
     状态；任何中断都由后续（补跑/重试/次日）运行按冻结载荷幂等完成。
+    跨运行互斥由装饰器 max_containers=1 的平台单执行保证（本函数内不得引入
+    Volume 文件锁等非原子互斥）；journal 是串行执行内的单写者状态机。
     ChiNext 日更暂时停用；研究函数和历史 artifacts 保留，待新模型重新通过
     production gate 后再显式恢复 scheduled publication。
     需 Modal Secret `github-push`（含 GITHUB_TOKEN，对 fork 仓库 Contents 读写权限的 PAT）。"""
     import os
+    import uuid
     from datetime import datetime
     from zoneinfo import ZoneInfo
 
@@ -4256,14 +4260,15 @@ def daily_cron():
         ) from e
 
     # ---- R02: 先恢复/校验中断的 publication，再决定今天的流程 ----
-    from publication_journal import FilesystemStorage, PublicationJournal, PublicationLease
+    # 平台已以 max_containers=1 串行化本函数（含 07:45 补跑转发的调用），
+    # 因此这里无需、也不允许再加任何跨容器锁；invocation_id 仅作审计标识。
+    from publication_journal import FilesystemStorage, PublicationJournal
 
+    invocation_id = uuid.uuid4().hex
     token = os.environ["GITHUB_TOKEN"]
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
     storage = FilesystemStorage(VOL_ROOT, reload_fn=vol.reload, commit_fn=vol.commit)
     journal = PublicationJournal(storage)
-    lease = PublicationLease(storage)
-    holder = f"daily_cron-{signal_date}-{os.getpid()}"
     try:
         storage.reload()
     except Exception as exc:  # pylint: disable=W0703
@@ -4277,15 +4282,11 @@ def daily_cron():
             f"[cron] 发现未完成 publication {candidate['signal_date']}"
             f"（stage={candidate['stage']}），先按冻结载荷恢复"
         )
-        lease.acquire(holder, wait_seconds=PUBLICATION_LEASE_WAIT_SECONDS)
-        try:
-            record = journal.load(candidate["signal_date"])
-            if record is not None and record["stage"] != "VOLUME_COMMITTED":
-                _complete_journal_publication(record, journal, lease, holder, headers)
-            elif record is not None:
-                _verify_committed_record(record, journal, headers)
-        finally:
-            lease.release(holder)
+        record = journal.load(candidate["signal_date"])
+        if record is not None and record["stage"] != "VOLUME_COMMITTED":
+            _complete_journal_publication(record, journal, headers)
+        elif record is not None:
+            _verify_committed_record(record, journal, headers)
         if candidate["signal_date"] == signal_date:
             _update_code_name_map(headers)
             return
@@ -4483,6 +4484,7 @@ def daily_cron():
             )
 
     # ---- R02 critical section: freeze intent -> publish -> persist ----
+    # Serialized by max_containers=1; no cross-container lock is acquired here.
     import hashlib
 
     state_entries = {}
@@ -4494,18 +4496,14 @@ def daily_cron():
             "prior_sha256": hashlib.sha256(prior).hexdigest() if prior is not None else None,
             "content": proposal["state_json"],
         }
-    lease.acquire(holder, wait_seconds=PUBLICATION_LEASE_WAIT_SECONDS)
-    try:
+    record = journal.load(signal_date)
+    if record is None:
+        journal.prepare(signal_date, invocation_id, files, state_entries)
         record = journal.load(signal_date)
-        if record is None:
-            journal.prepare(signal_date, holder, files, state_entries)
-            record = journal.load(signal_date)
-        if record["stage"] != "VOLUME_COMMITTED":
-            _complete_journal_publication(record, journal, lease, holder, headers)
-        else:
-            _verify_committed_record(record, journal, headers)
-    finally:
-        lease.release(holder)
+    if record["stage"] != "VOLUME_COMMITTED":
+        _complete_journal_publication(record, journal, headers)
+    else:
+        _verify_committed_record(record, journal, headers)
 
     _update_code_name_map(headers)
     print(f"[cron] ✅ {signal_date} 三池 canonical 已按 journal 发布并提交")
@@ -4534,12 +4532,13 @@ def _github_existing_files(paths, headers):
     return result
 
 
-def _complete_journal_publication(record, journal, lease, holder, headers):
+def _complete_journal_publication(record, journal, headers):
     """Idempotently finish PREPARED/GITHUB_PUBLISHED stages from frozen payloads (R02).
 
-    Content is never regenerated here: payloads were hashed and frozen at
-    PREPARED time; already published bytes must match those hashes or the run
-    fails closed with BLOCKED_MANUAL_RECOVERY.
+    Runs inside the platform-serialized daily_cron (max_containers=1); content
+    is never regenerated here: payloads were hashed and frozen at PREPARED
+    time; already published bytes must match those hashes or the run fails
+    closed with BLOCKED_MANUAL_RECOVERY.
     """
     import os
 
@@ -4553,7 +4552,6 @@ def _complete_journal_publication(record, journal, lease, holder, headers):
         f"published={len(files) - len(missing)}/{len(files)}"
     )
     if missing:
-        lease.refresh(holder)
         commit_sha = push_files(
             token=os.environ["GITHUB_TOKEN"],
             repo=GITHUB_REPO,
@@ -4574,7 +4572,6 @@ def _complete_journal_publication(record, journal, lease, holder, headers):
         p = VOL_ROOT / entry["path"]
         current[market] = p.read_bytes() if p.exists() else None
     journal.plan_state_writes(record, current)
-    lease.refresh(holder)
     for market, entry in record["states"].items():
         p = VOL_ROOT / entry["path"]
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -4590,7 +4587,13 @@ def _complete_journal_publication(record, journal, lease, holder, headers):
 
 
 def _verify_committed_record(record, journal, headers):
-    """A VOLUME_COMMITTED record must still match GitHub; repair missing files."""
+    """Verify a VOLUME_COMMITTED record against GitHub AND the Volume states.
+
+    GitHub artifacts must match the frozen hashes (missing files are restored
+    byte-identically from the frozen payloads).  Volume states must match the
+    committed post-state or a legitimate later journal chain link (R02/B05);
+    a missing or diverged account state fails closed.
+    """
     import os
 
     from github_commit import push_files
@@ -4610,6 +4613,11 @@ def _verify_committed_record(record, journal, headers):
             ),
         )
         print(f"[cron] ⚠️ 已恢复 {len(missing)} 个缺失的已发布文件: {record['signal_date']}")
+    current = {}
+    for market, entry in record["states"].items():
+        p = VOL_ROOT / entry["path"]
+        current[market] = p.read_bytes() if p.exists() else None
+    journal.verify_committed_states(record, current)
 
 
 def _update_code_name_map(headers):
@@ -4677,9 +4685,10 @@ def _update_code_name_map(headers):
 def daily_cron_second_chance():
     """07:45 幂等二次调度：转发调用 daily_cron。
 
-    首跑成功后 daily_cron 走 journal 已提交快速路径（校验 GitHub 与冻结哈希一致后
-    立即返回）；首跑中断时由 journal 恢复路径按冻结载荷完成推送与三池状态提交；
-    并发重叠由 Volume 租约串行化，不会重复建仓或改写不可变历史。
+    转发调用由 Modal 平台按 max_containers=1 排队：首跑未结束前本补跑不会启动；
+    首跑成功后 daily_cron 走 journal 已提交快速路径（校验 GitHub 与 Volume 状态
+    一致后立即返回）；首跑中断时按冻结载荷完成推送与三池状态提交。平台单执行
+    保证两次运行不重叠，无需任何跨容器文件锁。
     """
     daily_cron.remote()
 

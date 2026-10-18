@@ -67,6 +67,24 @@ def test_daily_cron_decorator_complete():
     assert "timeout=2 * 3600" in params
 
 
+def test_daily_cron_single_execution_contract():
+    """R02 serialization contract: cross-run mutual exclusion is provided by the
+    Modal platform (`max_containers=1`) because Volumes have no atomic CAS.
+    Removing it would let the 07:00 run and the 07:45 second chance overlap."""
+    params = _decorator_block("daily_cron")
+    assert "max_containers=1" in params, \
+        "max_containers=1 missing — overlapping cron runs could double-publish!"
+    # No wall-clock lease / pseudo-CAS on Volume files may be reintroduced.
+    assert "PublicationLease" not in src
+    assert "expires_at" not in src
+    assert "PUBLICATION_LEASE_WAIT_SECONDS" not in src
+    # Each invocation gets a globally unique id (never a PID, which can repeat).
+    cron = src[src.index("def daily_cron():"):src.index("# ===================== 第六步")]
+    assert "invocation_id = uuid.uuid4().hex" in cron
+    assert "os.getpid()" not in cron
+    assert "max_containers=1 的平台单执行" in cron
+
+
 def test_production_functions_nonpreemptible():
     for fn in ("daily_standalone", "backfill_signals"):
         assert "nonpreemptible=True" in _decorator_block(fn), \

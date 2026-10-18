@@ -114,5 +114,6 @@ def test_daily_cron_validates_all_markets_before_side_effects():
     gate = cron.index("validate_multi_market_publication(")
     assert gate < cron.index("_apply_paper_portfolio(")
     assert gate < cron.index("journal.prepare(")
-    critical = cron.rindex("lease.acquire(holder, wait_seconds=PUBLICATION_LEASE_WAIT_SECONDS)")
-    assert gate < critical
+    # Serialization is a platform property (max_containers=1), pinned separately;
+    # the critical section itself must not acquire any Volume-file lock.
+    assert "lease" not in cron

@@ -125,3 +125,54 @@ def test_forward_series_skips_legacy_lineage_as_not_current():
     }
     result = build_forward_performance([artifact])
     assert result["status"] == "awaiting_first_valuation"
+
+
+PROFILE_BY_MARKET = {
+    "csi1000": CANONICAL_PROFILE,
+    "csi500": "raw10d_c98856b4_top10_drop1",
+    "csi300": "59b93929_top10_drop1",
+}
+
+
+def test_contract_market_lineage_matrix_only_diagonal_accepted():
+    """All nine market x lineage combinations: three diagonal passes, six fail."""
+    for market in PROFILE_BY_MARKET:
+        for lineage_market in PROFILE_BY_MARKET:
+            paper = make_paper(
+                market,
+                CANONICAL_PAPER_LINEAGES_BY_MARKET[lineage_market],
+                PROFILE_BY_MARKET[market],
+            )
+            if market == lineage_market:
+                result = summary(paper, market)
+                assert result["status"] == "planned"
+            else:
+                with pytest.raises(ValueError, match="not canonical for market"):
+                    summary(paper, market)
+
+
+def test_forward_market_lineage_matrix_only_diagonal_accepted():
+    for market in PROFILE_BY_MARKET:
+        good = {
+            "market": market,
+            "paper_lineage": CANONICAL_PAPER_LINEAGES_BY_MARKET[market],
+            "usage_date": "2026-10-16",
+            "trading_calendar": {
+                "source": "akshare.tool_trade_date_hist_sina",
+                "through": "2026-10-16",
+                "dates": ["2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16"],
+            },
+            "execution_report": None,
+        }
+        assert build_forward_performance([good], market=market)["status"] == "awaiting_first_valuation"
+        for lineage_market in PROFILE_BY_MARKET:
+            if lineage_market == market:
+                continue
+            bad = {
+                "market": market,
+                "paper_lineage": CANONICAL_PAPER_LINEAGES_BY_MARKET[lineage_market],
+                "usage_date": "2026-10-16",
+                "execution_report": None,
+            }
+            with pytest.raises(ValueError, match="cross-market paper lineage mismatch"):
+                build_forward_performance([bad], market=market)
