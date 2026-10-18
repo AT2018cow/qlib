@@ -30,7 +30,8 @@ EXPECTED_FUNCTIONS = [
     "tune_driver", "dual_horizon", "p0_diagnostics", "p1_diagnostics",
     "version_check_0911", "version_check_0916", "batch_c_window", "batch_c",
     "p2_rolling", "topk_grid", "batch_a", "batch_b", "daily_standalone",
-    "daily_cron", "daily_cron_second_chance", "freq_window", "freq_driver", "backfill_signals",
+    "daily_cron", "daily_cron_second_chance", "attest_paper_state_bootstrap",
+    "freq_window", "freq_driver", "backfill_signals",
     # Satellite/universe-expansion batch functions (kept in the cron image).
     "verify_universe", "build_star_chn_bench", "batch_a_star_chn", "batch_b_one",
 ]
@@ -65,6 +66,24 @@ def test_daily_cron_decorator_complete():
     assert 'modal.Secret.from_name(_GH_SECRET_NAME := "github-push")' in params
     assert "nonpreemptible=True" in params
     assert "timeout=2 * 3600" in params
+
+
+def test_daily_cron_single_execution_contract():
+    """R02 serialization contract: cross-run mutual exclusion is provided by the
+    Modal platform (`max_containers=1`) because Volumes have no atomic CAS.
+    Removing it would let the 07:00 run and the 07:45 second chance overlap."""
+    params = _decorator_block("daily_cron")
+    assert "max_containers=1" in params, \
+        "max_containers=1 missing — overlapping cron runs could double-publish!"
+    # No wall-clock lease / pseudo-CAS on Volume files may be reintroduced.
+    assert "PublicationLease" not in src
+    assert "expires_at" not in src
+    assert "PUBLICATION_LEASE_WAIT_SECONDS" not in src
+    # Each invocation gets a globally unique id (never a PID, which can repeat).
+    cron = src[src.index("def daily_cron():"):src.index("# ===================== 第六步")]
+    assert "invocation_id = uuid.uuid4().hex" in cron
+    assert "os.getpid()" not in cron
+    assert "max_containers=1 的平台单执行" in cron
 
 
 def test_production_functions_nonpreemptible():
@@ -117,6 +136,9 @@ def test_image_helper_modules_copied():
         "csi1000_production_config.py",
         "chart_series.py",
         "signal_publication_gate.py",
+        "provider_archive.py",
+        "publication_journal.py",
+        "name_map_sync.py",
     ):
         assert helper in cp.group(1), \
             f"{helper} not copied to /root/ — container import would fail (ModuleNotFoundError)"

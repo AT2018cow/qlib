@@ -12,15 +12,63 @@ import argparse
 import csv
 import json
 import re
+import sys
 from datetime import date
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 
+CODE_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(CODE_ROOT))
+
+from quant_bootstrap import ensure_quant_import_paths  # noqa: E402
+
+ensure_quant_import_paths()
+
 START = "2026-10-12"
-LINEAGE = "stage_b_winner_canonical"
+LINEAGE = "stage_b_winner_canonical"  # legacy Stage-B winner lineage (explicit opt-in)
 CENT_TOL = Decimal("0.035")
 RET_TOL = Decimal("0.00000001")
 FILE_PATTERN = re.compile(r"(\d{4}-\d{2}-\d{2})_paper_portfolio\.json$")
+
+
+def resolve_audit_target(market: str = "csi1000", lineage: str = None, profile: str = None,
+                         legacy_winner: bool = False) -> dict:
+    """Resolve the audited market/profile/lineage; fail closed on mismatches (R03).
+
+    The tool previously hardcoded the historical ``stage_b_winner`` lineage and
+    silently skipped the current canonical artifacts, returning NOT_STARTED
+    that read like a pass.  The default is now the *current* production
+    canonical for the requested market; the legacy winner must be requested
+    explicitly via ``legacy_winner=True``.
+    """
+    if legacy_winner:
+        if market != "csi1000":
+            raise ValueError("legacy Stage-B winner audit is only defined for csi1000")
+        target = {"market": "csi1000", "lineage": LINEAGE, "profile": "stage_b_winner"}
+        if lineage and lineage != LINEAGE:
+            raise ValueError(f"legacy audit lineage mismatch: {lineage!r}")
+        if profile and profile != "stage_b_winner":
+            raise ValueError(f"legacy audit profile mismatch: {profile!r}")
+        return target
+    from csi1000_production_config import (
+        CANONICAL_PAPER_LINEAGES_BY_MARKET,
+        CANONICAL_PROFILES_BY_MARKET,
+    )
+
+    if market not in CANONICAL_PAPER_LINEAGES_BY_MARKET:
+        raise ValueError(f"unknown audit market: {market!r}")
+    expected_lineage = CANONICAL_PAPER_LINEAGES_BY_MARKET[market]
+    expected_profile = CANONICAL_PROFILES_BY_MARKET[market]
+    if lineage and lineage != expected_lineage:
+        raise ValueError(
+            f"lineage {lineage!r} does not match market {market!r} canonical "
+            f"{expected_lineage!r}; use --legacy-stage-b-winner for historical winner audits"
+        )
+    if profile and profile != expected_profile:
+        raise ValueError(
+            f"profile {profile!r} does not match market {market!r} canonical {expected_profile!r}"
+        )
+    return {"market": market, "lineage": expected_lineage, "profile": expected_profile}
 
 
 def number(value, name):
@@ -44,7 +92,8 @@ def valid_date(value):
         return False
 
 
-def reconcile(artifacts, *, forward=None, calendar=None, quotes=None):
+def reconcile(artifacts, *, forward=None, calendar=None, quotes=None,
+              market="csi1000", lineage=None, profile=None, legacy_winner=False):
     """Return a JSON-compatible ledger audit without changing its inputs.
 
     artifacts: public *_paper_portfolio.json dicts (usage date in artifact).
@@ -52,10 +101,18 @@ def reconcile(artifacts, *, forward=None, calendar=None, quotes=None):
     calendar: optional list of authoritative trading dates.
     quotes: optional dict keyed by (execution_date, instrument) with adjusted
             'open', 'close', 'factor', from an independent provider snapshot.
+
+    The audited market/lineage defaults to the *current* production canonical
+    (R03); historical Stage-B winner artifacts require ``legacy_winner=True``
+    explicitly.  Artifacts outside the target are reported under ``skipped``,
+    never silently treated as "nothing to audit".
     """
+    target = resolve_audit_target(market, lineage, profile, legacy_winner)
     issues, warnings = [], []
     rows = []
     audited = []
+    target_artifacts = []
+    skipped = {}
     previous = None
     seen_execution = {}
     quote_count = 0
@@ -70,15 +127,27 @@ def reconcile(artifacts, *, forward=None, calendar=None, quotes=None):
         if not isinstance(artifact, dict):
             issue("MALFORMED_ARTIFACT", None, "artifact is not an object")
             continue
-        if artifact.get("market") != "csi1000" or artifact.get("paper_lineage") != LINEAGE:
+        if artifact.get("market") != target["market"]:
+            key = f"market:{artifact.get('market')}"
+            skipped[key] = skipped.get(key, 0) + 1
             continue
+        if artifact.get("paper_lineage") != target["lineage"]:
+            key = f"lineage:{artifact.get('paper_lineage')}"
+            skipped[key] = skipped.get(key, 0) + 1
+            continue
+        target_artifacts.append(artifact)
         day = artifact.get("usage_date")
         if not valid_date(day):
             issue("BAD_USAGE_DATE", day, "missing/invalid published usage_date")
             continue
-        profile = artifact.get("production_lineage")
-        if not isinstance(profile, dict) or profile.get("profile") != "stage_b_winner":
-            issue("LINEAGE_MISMATCH", day, "winner paper requires Stage-B winner production profile")
+        profile_value = artifact.get("production_lineage")
+        if (not isinstance(profile_value, dict)
+                or profile_value.get("profile") != target["profile"]):
+            issue(
+                "LINEAGE_MISMATCH",
+                day,
+                f"{target['profile']} paper requires the matching production profile",
+            )
             continue
         audited.append((day, artifact))
 
@@ -368,10 +437,14 @@ def reconcile(artifacts, *, forward=None, calendar=None, quotes=None):
                 except ValueError:
                     issue("FORWARD_TOTAL_DIFF", None, "final return is not numeric")
 
-    if not rows:
+    if not target_artifacts:
         status = "FAIL" if issues else "NOT_STARTED"
     elif issues:
         status = "FAIL"
+    elif not rows:
+        # Current canonical files exist but no execution settlement yet: this is
+        # explicitly not a pass, and no longer silently filtered to NOT_STARTED.
+        status = "AWAITING_SETTLEMENT"
     elif quotes is None or calendar is None or forward is None or any(
         w["code"] == "MISSING_OPENING_SNAPSHOT" for w in warnings
     ):
@@ -382,8 +455,10 @@ def reconcile(artifacts, *, forward=None, calendar=None, quotes=None):
         warn("PUBLIC_FORWARD_NOT_PROVIDED", None, "cannot certify that webpage return JSON equals the account ledger")
     if rows and quotes is None:
         warn("PRICE_PROVENANCE_NOT_VERIFIED", None, "no independent open/close/factor quotes; original market marks unverified")
-    return {"status": status, "start_date": START, "winner_artifacts": len(audited),
-            "audited_reports": len(rows), "quoted_closes": quote_count,
+    return {"status": status, "start_date": START, "target": target,
+            "winner_artifacts": len(audited), "target_artifacts": len(target_artifacts),
+            "audited_reports": len(rows), "settled_reports": len(rows),
+            "skipped_artifacts": skipped, "quoted_closes": quote_count,
             "issues": issues, "warnings": warnings, "rows": rows}
 
 
@@ -405,14 +480,22 @@ def main():
     parser.add_argument("--calendar", type=Path, help="authoritative dates, one YYYY-MM-DD per line")
     parser.add_argument("--quotes", type=Path, help="independent adjusted open/close/factor CSV")
     parser.add_argument("--output", type=Path, help="optional JSON audit report output")
+    parser.add_argument("--market", default="csi1000", choices=("csi1000", "csi500", "csi300"))
+    parser.add_argument("--lineage", help="explicit lineage override; must match the market mapping")
+    parser.add_argument("--profile", help="explicit profile override; must match the market mapping")
+    parser.add_argument("--legacy-stage-b-winner", action="store_true",
+                        help="audit the historical Stage-B winner lineage (csi1000 only)")
     args = parser.parse_args()
+    suffix = "" if args.market == "csi1000" else f"_{args.market}"
+    pattern = re.compile(rf"(\d{{4}}-\d{{2}}-\d{{2}})_paper_portfolio{re.escape(suffix)}\.json$")
     artifacts = []
-    for path in sorted(args.signals.glob("*_paper_portfolio.json")):
-        if not FILE_PATTERN.fullmatch(path.name):
+    for path in sorted(args.signals.glob(f"*_paper_portfolio{suffix}.json")):
+        match = pattern.fullmatch(path.name)
+        if not match:
             continue
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
-            if isinstance(payload, dict) and payload.get("usage_date") != FILE_PATTERN.fullmatch(path.name).group(1):
+            if isinstance(payload, dict) and payload.get("usage_date") != match.group(1):
                 raise ValueError("filename and usage date mismatch")
             artifacts.append(payload)
         except (OSError, ValueError) as exc:
@@ -421,7 +504,9 @@ def main():
     forward = json.loads(args.forward.read_text()) if args.forward else None
     calendar = [x.strip() for x in args.calendar.read_text().splitlines() if x.strip()] if args.calendar else None
     quotes = load_quote_csv(args.quotes) if args.quotes else None
-    outcome = reconcile(artifacts, forward=forward, calendar=calendar, quotes=quotes)
+    outcome = reconcile(artifacts, forward=forward, calendar=calendar, quotes=quotes,
+                        market=args.market, lineage=args.lineage, profile=args.profile,
+                        legacy_winner=args.legacy_stage_b_winner)
     formatted = json.dumps(outcome, ensure_ascii=False, indent=2)
     print(formatted)
     if args.output:

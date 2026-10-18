@@ -87,13 +87,28 @@ async function fetchText(url, fresh = false) {
 function parseCSV(text) {
   if (!text) return [];
   const lines = text.trim().split('\n');
-  const header = lines[0].split(',');
-  return lines.slice(1).map(line => {
+  if (lines.length > 201) return [];
+  const header = lines[0].split(',').map(h => h.trim());
+  if (!['rank', 'instrument', 'score'].every(h => header.includes(h))) return [];
+  const rows = [];
+  const seen = new Set();
+  for (const line of lines.slice(1)) {
     const cols = line.split(',');
     const obj = {};
-    header.forEach((h, i) => { obj[h.trim()] = (cols[i] || '').trim(); });
-    return obj;
-  });
+    header.forEach((h, i) => { obj[h] = (cols[i] || '').trim(); });
+    const rank = Number(obj.rank);
+    const score = Number(obj.score);
+    // Fail closed on any malformed row: symbol format, contiguous 1..N integer
+    // ranks, unique instruments, finite scores, bounded rows.
+    if (!SIGNAL_INSTRUMENT.test(obj.instrument) ||
+        !Number.isInteger(rank) || rank !== rows.length + 1 ||
+        !Number.isFinite(score) || seen.has(obj.instrument)) {
+      return [];
+    }
+    seen.add(obj.instrument);
+    rows.push(obj);
+  }
+  return rows;
 }
 
 function parseJSONLoose(text) {
@@ -114,6 +129,27 @@ function formatScore(value) {
     text: `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`,
     klass: n >= 0 ? 'positive' : 'negative',
   };
+}
+
+// R04 trust boundary: third-party names and CSV cells are rendered as text or
+// rejected outright; nothing fetched from the network may become live HTML.
+const SIGNAL_INSTRUMENT = /^(SH|SZ|BJ)\d{6}$/;
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[ch]));
+}
+
+function sanitizeNameMap(raw) {
+  const names = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return names;
+  for (const [code, name] of Object.entries(raw)) {
+    if (!/^\d{6}$/.test(code) || typeof name !== 'string') continue;
+    if (!name || name.length > 40 || /[<>&"'\u0000-\u001f]/.test(name)) continue;
+    names[code] = name;
+  }
+  return names;
 }
 
 function calendarAlignChartValues(values, dates) {
@@ -196,7 +232,7 @@ async function loadAvailableDates(pool = currentPool) {
         (i > 0 && manifest.dates[i - 1] <= day))) {
     return null;
   }
-  return { dates: manifest.dates.map(date => ({ date })), nameMap: manifest.names };
+  return { dates: manifest.dates.map(date => ({ date })), nameMap: sanitizeNameMap(manifest.names) };
 }
 
 async function loadDateContext(date, fresh = false, pool = currentPool) {
@@ -515,10 +551,10 @@ function buildRows(rows, nameMap, prev, chartData) {
 function tableRows(rows) {
   return rows.map(r => `
     <tr>
-      <td><span class="rank-badge${r.rank <= 3 ? ' top' : ''}">${r.rank}</span></td>
-      <td><a class="stock-link" href="${r.url}" target="_blank" rel="noopener">${r.instrument}</a></td>
-      <td class="stock-name">${r.name}</td>
-      <td><span class="score ${r.score.klass}">${r.score.text}</span></td>
+      <td><span class="rank-badge${r.rank <= 3 ? ' top' : ''}">${escapeHtml(r.rank)}</span></td>
+      <td><a class="stock-link" href="${escapeHtml(r.url)}" target="_blank" rel="noopener">${escapeHtml(r.instrument)}</a></td>
+      <td class="stock-name">${escapeHtml(r.name)}</td>
+      <td><span class="score ${r.score.klass}">${escapeHtml(r.score.text)}</span></td>
       <td>${r.tag}</td>
       <td class="spark">${r.spark}</td>
     </tr>
@@ -528,13 +564,13 @@ function tableRows(rows) {
 function mobileCards(rows) {
   return rows.map(r => `
     <article class="stock-card">
-      <span class="rank-badge${r.rank <= 3 ? ' top' : ''}">${r.rank}</span>
+      <span class="rank-badge${r.rank <= 3 ? ' top' : ''}">${escapeHtml(r.rank)}</span>
       <div class="stock-main">
-        <a class="stock-link" href="${r.url}" target="_blank" rel="noopener">${r.instrument}</a>
-        <span class="stock-name">${r.name}</span>
+        <a class="stock-link" href="${escapeHtml(r.url)}" target="_blank" rel="noopener">${escapeHtml(r.instrument)}</a>
+        <span class="stock-name">${escapeHtml(r.name)}</span>
       </div>
       <div class="stock-side">
-        <div><span class="score ${r.score.klass}">${r.score.text}</span> ${r.tag}</div>
+        <div><span class="score ${r.score.klass}">${escapeHtml(r.score.text)}</span> ${r.tag}</div>
         <div class="spark">${r.spark}</div>
       </div>
     </article>
@@ -812,7 +848,7 @@ async function main() {
             ? `已完成最新收盘行情、当日 ${pool.expectedPitCount} 只${pool.label}成分股、${horizonDays} 日样本防泄漏、策略参数锁定与模拟账本核验。`
             : contract.legacy
               ? '该历史日期缺少完整校验文件，仅作只读展示，因此不会把旧版本标识单独解释为“已核验”。'
-              : '每日数据校验未通过：' + contract.errors.join('；');
+              : '每日数据校验未通过：' + escapeHtml(contract.errors.join('；'));
       }
       document.querySelectorAll('.date-btn').forEach(btn => {
         const active = btn.dataset.date === dateInfo.date;

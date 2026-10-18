@@ -32,6 +32,7 @@ from board_execution import compute_limit_masks, research_exchange
 from signal_publication_gate import (
     _csi1000_canonical_publication_decision,
     _publication_decision,
+    validate_multi_market_publication,
 )
 from board_rules import (
     CHINEXT_REFORM,
@@ -123,7 +124,9 @@ image = (
         "/root/qlib/quant/code/production/github_commit.py /root/qlib/quant/code/research/stage_ab/csi1000_tuner_core.py "
         "/root/qlib/quant/code/production/csi1000_production_config.py /root/qlib/quant/code/production/csi1000_mvp_contract.py "
         "/root/qlib/quant/code/production/chart_series.py /root/qlib/quant/code/production/signal_publication_gate.py "
-        "/root/qlib/quant/code/production/paper_accounting.py /root/qlib/quant/code/execution/execution_limits.py /root/"
+        "/root/qlib/quant/code/production/paper_accounting.py /root/qlib/quant/code/execution/execution_limits.py "
+        "/root/qlib/quant/code/production/provider_archive.py /root/qlib/quant/code/production/publication_journal.py "
+        "/root/qlib/quant/code/production/name_map_sync.py /root/"
     )
 )
 
@@ -146,9 +149,10 @@ def _ensure_data(force: bool = False):
     - 部署前清空旧数据（2020 版），防止 features 格式混用。
     """
     import shutil
-    import tarfile
 
     import requests
+
+    from provider_archive import safe_extract_provider_archive
 
     marker = DATA_DIR / ".chenditc"
     if not force and marker.exists() and (DATA_DIR / "features").exists():
@@ -178,16 +182,11 @@ def _ensure_data(force: bool = False):
 
     if extract_dir.exists():
         shutil.rmtree(extract_dir)
-    extract_dir.mkdir(parents=True)
-    with tarfile.open(zip_path, "r:gz") as tf:
-        tf.extractall(extract_dir)
-    # 兼容压缩包顶层是否套一层目录
-    root = extract_dir
-    if not (root / "features").exists():
-        for sub in root.iterdir():
-            if sub.is_dir() and (sub / "features").exists():
-                root = sub
-                break
+    try:
+        root = Path(safe_extract_provider_archive(zip_path, extract_dir))
+    except Exception:
+        shutil.rmtree(extract_dir, ignore_errors=True)
+        raise
     print(f"[data] 解压完成，内容: {sorted(p.name for p in root.iterdir() if p.is_dir())}")
 
     # 清空旧数据（features/calendars/instruments/缓存），避免两种格式混用
@@ -1442,6 +1441,28 @@ def _paper_execution_context(
     }
 
 
+def _reload_volume_strict(attempts: int = 3) -> None:
+    """Reload the Volume or fail closed (R02).
+
+    ``vol.reload()`` failures used to be swallowed with ``except Exception:
+    pass``; a stale volume view could then silently advance a paper account
+    from an outdated state.  A failed reload must block account advancement.
+    """
+    import time as _time
+
+    last = None
+    for attempt in range(attempts):
+        try:
+            vol.reload()
+            return
+        except Exception as exc:  # pylint: disable=W0703
+            last = exc
+            _time.sleep(2 * (attempt + 1))
+    raise RuntimeError(
+        f"volume reload failed; refusing to advance paper state: {type(last).__name__}: {last}"
+    ) from last
+
+
 def _apply_paper_portfolio(
     res: dict,
     usage_date: str,
@@ -1466,10 +1487,7 @@ def _apply_paper_portfolio(
     market = res["market"]
     state_path = _paper_state_path(market, lineage)
     state_path.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        vol.reload()
-    except Exception:
-        pass
+    _reload_volume_strict()
 
     if state_path.exists():
         pp = PaperPortfolio.load(state_path)
@@ -2521,9 +2539,10 @@ def _read_bin(path):
 def _load_0911_package():
     """下载并解压 chenditc 09-11 历史数据包到 /tmp/v0911，返回根目录。"""
     import shutil
-    import tarfile
 
     import requests
+
+    from provider_archive import safe_extract_provider_archive
 
     root = Path("/tmp/v0911")
     if (root / "features").exists():
@@ -2539,15 +2558,11 @@ def _load_0911_package():
     extract = Path("/tmp/v0911_extract")
     if extract.exists():
         shutil.rmtree(extract)
-    extract.mkdir(parents=True)
-    with tarfile.open(zip_path, "r:gz") as tf:
-        tf.extractall(extract)
-    base = extract
-    if not (base / "features").exists():
-        for sub in base.iterdir():
-            if sub.is_dir() and (sub / "features").exists():
-                base = sub
-                break
+    try:
+        base = Path(safe_extract_provider_archive(zip_path, extract))
+    except Exception:
+        shutil.rmtree(extract, ignore_errors=True)
+        raise
     shutil.move(str(base), str(root))
     print(f"[vcheck] 历史包解压完成: {root}")
     return root
@@ -3657,7 +3672,6 @@ def daily_standalone(
     - 结果由本地入口写入 quant/data/signals/ 并 git 推送（Volume 仅在研究批并行场景保留）
     """
     import shutil
-    import tarfile
     import hashlib
     import json
     import os
@@ -3673,6 +3687,8 @@ def daily_standalone(
     from qlib.model.base import Model
     from qlib.utils import init_instance_by_config
 
+    from provider_archive import safe_extract_provider_archive
+
     # ---- 1) 下载最新数据包并解压到容器本地盘 ----
     data_dir = Path("/tmp/cn_data")
     if data_dir.exists():
@@ -3687,15 +3703,11 @@ def daily_standalone(
                 f.write(chunk)
     if extract.exists():
         shutil.rmtree(extract)
-    extract.mkdir(parents=True)
-    with tarfile.open(zip_path, "r:gz") as tf:
-        tf.extractall(extract)
-    base = extract
-    if not (base / "features").exists():
-        for sub in base.iterdir():
-            if sub.is_dir() and (sub / "features").exists():
-                base = sub
-                break
+    try:
+        base = Path(safe_extract_provider_archive(zip_path, extract))
+    except Exception:
+        shutil.rmtree(extract, ignore_errors=True)
+        raise
     shutil.move(str(base), str(data_dir))
     cal_lines = (data_dir / "calendars" / "day.txt").read_text().strip().splitlines()
     from csi1000_mvp_contract import sha256_file
@@ -4022,9 +4034,10 @@ def daily_standalone(
 def _load_latest_to_local():
     """下载最新 chenditc 包并解压到 /tmp/cn_data（daily_standalone 和 backfill 共用）。"""
     import shutil
-    import tarfile
 
     import requests
+
+    from provider_archive import safe_extract_provider_archive
 
     data_dir = Path("/tmp/cn_data")
     if data_dir.exists():
@@ -4038,15 +4051,11 @@ def _load_latest_to_local():
                 f.write(chunk)
     if extract.exists():
         shutil.rmtree(extract)
-    extract.mkdir(parents=True)
-    with tarfile.open(zip_path, "r:gz") as tf:
-        tf.extractall(extract)
-    base = extract
-    if not (base / "features").exists():
-        for sub in base.iterdir():
-            if sub.is_dir() and (sub / "features").exists():
-                base = sub
-                break
+    try:
+        base = Path(safe_extract_provider_archive(zip_path, extract))
+    except Exception:
+        shutil.rmtree(extract, ignore_errors=True)
+        raise
     shutil.move(str(base), str(data_dir))
     return data_dir
 
@@ -4210,26 +4219,33 @@ def _early_gate(cal, signal_date: str) -> str:
     # 空 secret 只过 spec 校验，cron 真实推送仍需 GITHUB_TOKEN（生产部署只在 at2018cow）
     timeout=2 * 3600,
     nonpreemptible=True,  # 调度入口：被抢占则当天任务丢失；自身运行时间短，3x 成本增量极小
+    # ⚠️ R02 序列化契约：max_containers=1 使 Modal 平台串行执行 daily_cron——07:45 补跑转发
+    #    的调用必须排队等待当前运行结束，两个容器永不重叠。严禁提高此值：Volume 没有原子
+    #    CAS，跨容器互斥只能由平台单执行保证；若必须并发，先引入外部锁服务并暂停自动发布。
+    max_containers=1,
     retries=modal.Retries(max_retries=5, initial_delay=30, backoff_coefficient=2.0, max_delay=60),  # 平台限制单次延迟≤60s：30/60×4 共 5 次覆盖瞬断；重跑幂等
 )
 def daily_cron():
-    """云端全自动每日信号：Stage-B winner CSI1000 canonical → GitHub API 提交。
+    """云端全自动每日信号：三池 canonical（csi1000/csi500/csi300）→ GitHub API 提交。
 
-    当前 production 仅发布 CSI1000：
-      - quant/data/signals/<date>_top20_lgb158.csv
-      - quant/data/signals/<date>_chart.json
-      - quant/data/signals/<date>_paper_portfolio.json
-      - quant/data/signals/<date>_mvp_metadata.json
+    每次发布（R01 多市场快照校验 + R02 事务日志）：
+      - quant/data/signals/<date>_top20_lgb158[_csi500|_csi300].csv
+      - quant/data/signals/<date>_chart[_csi500|_csi300].json
+      - quant/data/signals/<date>_paper_portfolio[_csi500|_csi300].json
+      - quant/data/signals/<date>_mvp_metadata[_csi500|_csi300].json
 
+    发布顺序由 Volume journal 固化（PREPARED → GITHUB_PUBLISHED →
+    VOLUME_COMMITTED）：先冻结全部载荷与哈希，再推送 GitHub，最后落盘三池
+    状态；任何中断都由后续（补跑/重试/次日）运行按冻结载荷幂等完成。
+    跨运行互斥由装饰器 max_containers=1 的平台单执行保证（本函数内不得引入
+    Volume 文件锁等非原子互斥）；journal 是串行执行内的单写者状态机。
     ChiNext 日更暂时停用；研究函数和历史 artifacts 保留，待新模型重新通过
     production gate 后再显式恢复 scheduled publication。
     需 Modal Secret `github-push`（含 GITHUB_TOKEN，对 fork 仓库 Contents 读写权限的 PAT）。"""
-    import base64
     import os
+    import uuid
     from datetime import datetime
     from zoneinfo import ZoneInfo
-
-    import requests
 
     # ---- gate 前移：先拿日历做零成本预判定，非交易日直接 return ----
     # CSI1000 canonical 已冻结为严格 T-close -> T+1-open，因此交易日历不可验证时
@@ -4242,12 +4258,10 @@ def daily_cron():
         raise RuntimeError(
             "CSI1000 Stage-B canonical requires a verified trading calendar"
         ) from e
-    early = _early_gate(cal, signal_date)
-    if early == "skip":
-        print(f"[cron] {signal_date} 非 A 股交易日（假日），gate 前移零成本跳过；最近排名见最近一份已发布信号")
-        return
 
-    print(f"[cron] {signal_date} 为交易日——启动 CSI1000/500/300 canonical")
+    # ---- R02: 先恢复/校验中断的 publication，再决定今天的流程 ----
+    # 平台已以 max_containers=1 串行化本函数（含 07:45 补跑转发的调用），
+    # 因此这里无需、也不允许再加任何跨容器锁；invocation_id 仅作审计标识。
     from csi1000_production_config import (
         CANONICAL_ND,
         CANONICAL_PAPER_LINEAGE,
@@ -4257,6 +4271,66 @@ def daily_cron():
         CANONICAL_TOPK,
         profile_manifest,
     )
+    from publication_journal import FilesystemStorage, PublicationJournal
+
+    invocation_id = uuid.uuid4().hex
+    token = os.environ["GITHUB_TOKEN"]
+    headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
+    storage = FilesystemStorage(VOL_ROOT, reload_fn=vol.reload, commit_fn=vol.commit)
+    journal = PublicationJournal(storage)
+    try:
+        storage.reload()
+    except Exception as exc:  # pylint: disable=W0703
+        raise RuntimeError(
+            "volume reload failed; refusing to publish or advance paper state"
+        ) from exc
+
+    # ---- R02/B06: 严格跨日哈希链（在恢复写入/任何 paper 副作用之前）----
+    journal.verify_chain_integrity()
+
+    incomplete = journal.incomplete_records()
+    if incomplete:
+        candidate = incomplete[0]
+        print(
+            f"[cron] 发现未完成 publication {candidate['signal_date']}"
+            f"（stage={candidate['stage']}），先按冻结载荷恢复"
+        )
+        record = journal.load(candidate["signal_date"])
+        if record is not None and record["stage"] != "VOLUME_COMMITTED":
+            _complete_journal_publication(record, journal, headers)
+        elif record is not None:
+            _verify_committed_record(record, journal, headers)
+        if candidate["signal_date"] == signal_date:
+            _update_code_name_map(headers)
+            return
+
+    # ---- R02/B06: 严格跨日哈希链 + 账户状态锚点校验 ----
+    # 必须在任何 paper 状态加载、训练、发布副作用之前执行；任一市场偏离
+    # 逐条连续链（含未锚定的现存状态）立即 fail-closed。
+    journal.check_paper_state_entry(
+        {
+            market: str(
+                _paper_state_path(
+                    market, CANONICAL_PAPER_LINEAGES_BY_MARKET[market]
+                ).relative_to(VOL_ROOT)
+            )
+            for market in ("csi1000", "csi500", "csi300")
+        }
+    )
+
+    committed = journal.load(signal_date)
+    if committed is not None and committed["stage"] == "VOLUME_COMMITTED":
+        _verify_committed_record(committed, journal, headers)
+        _update_code_name_map(headers)
+        print(f"[cron] {signal_date} publication 已提交且校验一致；无需重复运行")
+        return
+
+    early = _early_gate(cal, signal_date)
+    if early == "skip":
+        print(f"[cron] {signal_date} 非 A 股交易日（假日），gate 前移零成本跳过；最近排名见最近一份已发布信号")
+        return
+
+    print(f"[cron] {signal_date} 为交易日——启动 CSI1000/500/300 canonical")
 
     try:
         res = daily_standalone.remote(
@@ -4309,6 +4383,21 @@ def daily_cron():
         return
     if csi_action == "raise":
         raise RuntimeError(csi_detail)
+
+    # R01: each market must independently prove lag=0 freshness, matching
+    # provider calendar end and an identical immutable snapshot (archive +
+    # calendar SHA256).  Runs before any artifact/paper/volume work.
+    multi_action, multi_detail = validate_multi_market_publication(
+        {"csi1000": res, "csi500": res_csi500, "csi300": res_csi300},
+        signal_date,
+        cal,
+    )
+    print(f"[cron] {multi_detail}")
+    if multi_action == "skip":
+        return
+    if multi_action == "raise":
+        raise RuntimeError(multi_detail)
+
     # R28: build stateful paper artifacts only after the data/publication gate
     # has passed.  State is proposed now but persisted only after immutable
     # GitHub publication succeeds.
@@ -4413,101 +4502,197 @@ def daily_cron():
                 dumps_metadata(extra_meta)
             )
 
-    def _persist_paper_states():
-        if not paper_proposals:
-            return
-        for proposal in paper_proposals.values():
-            p = Path(proposal["state_path"])
-            p.parent.mkdir(parents=True, exist_ok=True)
-            tmp = p.with_name(f".{p.name}.cron.tmp")
-            tmp.write_text(proposal["state_json"])
-            os.replace(tmp, p)
-        vol.commit()
+    # ---- R02 critical section: freeze intent -> publish -> persist ----
+    # Serialized by max_containers=1; no cross-container lock is acquired here.
+    import hashlib
 
-    token = os.environ["GITHUB_TOKEN"]
-    headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
-    # 同日重跑按文件幂等：已存在且相同则保留；缺失则补发；已有但内容不同则拒绝覆盖。
-    missing_files = {}
-    for path, content in files.items():
+    state_entries = {}
+    for market, proposal in paper_proposals.items():
+        state_path = Path(proposal["state_path"])
+        prior = state_path.read_bytes() if state_path.exists() else None
+        state_entries[market] = {
+            "path": str(state_path.relative_to(VOL_ROOT)),
+            "prior_sha256": hashlib.sha256(prior).hexdigest() if prior is not None else None,
+            "content": proposal["state_json"],
+        }
+    record = journal.load(signal_date)
+    if record is None:
+        journal.prepare(signal_date, invocation_id, files, state_entries)
+        record = journal.load(signal_date)
+    if record["stage"] != "VOLUME_COMMITTED":
+        _complete_journal_publication(record, journal, headers)
+    else:
+        _verify_committed_record(record, journal, headers)
+
+    _update_code_name_map(headers)
+    print(f"[cron] ✅ {signal_date} 三池 canonical 已按 journal 发布并提交")
+
+
+def _github_existing_files(paths, headers):
+    """Return current repo bytes per artifact path (None when absent).
+
+    # 同日重跑按文件幂等：与冻结哈希一致的已发布文件保留；缺失的按冻结载荷补发；
+    # 内容不同的走 BLOCKED_MANUAL_RECOVERY，绝不改写不可变历史。
+    """
+    import base64
+
+    import requests
+
+    result = {}
+    for path in paths:
         api = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{path}"
         exist = requests.get(api, headers=headers, timeout=30)
         if exist.status_code == 200:
-            old = base64.b64decode(exist.json()["content"]).decode()
-            if old != content:
-                raise RuntimeError(f"Same-date artifact changed: refusing to rewrite immutable record {path}")
-            print(f"[cron] {path} 已存在且内容一致，保留")
-            continue
-        if exist.status_code == 404:
-            missing_files[path] = content
-            continue
-        raise RuntimeError(f"Cannot check existing artifact {path}: HTTP {exist.status_code}")
-    if not missing_files:
-        _persist_paper_states()
-        print(f"[cron] {signal_date} 所有目标文件均已存在且一致；paper state 已对齐，无需重复提交")
-        return
+            result[path] = base64.b64decode(exist.json()["content"])
+        elif exist.status_code == 404:
+            result[path] = None
+        else:
+            raise RuntimeError(f"Cannot check existing artifact {path}: HTTP {exist.status_code}")
+    return result
 
-    # 使用 Git Data API 一次 commit 写入所有缺失文件
-    # （避免多次独立的 Contents API push 触发两次 Actions → concurrency cancel 导致 chart 部署丢失）
+
+def _complete_journal_publication(record, journal, headers):
+    """Idempotently finish PREPARED/GITHUB_PUBLISHED stages from frozen payloads (R02).
+
+    Runs inside the platform-serialized daily_cron (max_containers=1); content
+    is never regenerated here: payloads were hashed and frozen at PREPARED
+    time; already published bytes must match those hashes or the run fails
+    closed with BLOCKED_MANUAL_RECOVERY.
+    """
+    import os
+
     from github_commit import push_files
 
-    push_files(
-        token=token,
-        repo=GITHUB_REPO,
-        branch=SIGNAL_BRANCH,
-        files=missing_files,
-        message=f"chore(signal): {signal_date} repair/publish {len(missing_files)} signal artifacts (cron)",
-    )
-    _persist_paper_states()
+    files, states = journal.read_payloads(record)
+    published = _github_existing_files(list(files), headers)
+    missing = journal.plan_completion(record, published)
     print(
-        f"[cron] ✅ 已补发/推送 {len(missing_files)} 个 CSI1000 canonical 文件: "
-        f"{signal_date}"
+        f"[cron] journal {record['signal_date']}: stage={record['stage']}, "
+        f"published={len(files) - len(missing)}/{len(files)}"
+    )
+    if missing:
+        commit_sha = push_files(
+            token=os.environ["GITHUB_TOKEN"],
+            repo=GITHUB_REPO,
+            branch=SIGNAL_BRANCH,
+            files={path: files[path] for path in missing},
+            message=(
+                f"chore(signal): {record['signal_date']} repair/publish "
+                f"{len(missing)} signal artifacts (cron)"
+            ),
+        )
+        record = journal.mark(record, "GITHUB_PUBLISHED", github_commit=commit_sha)
+        print(f"[cron] ✅ 已推送 {len(missing)} 个 canonical 文件: {record['signal_date']}")
+    elif record["stage"] == "PREPARED":
+        record = journal.mark(record, "GITHUB_PUBLISHED")
+
+    current = {}
+    for market, entry in record["states"].items():
+        p = VOL_ROOT / entry["path"]
+        current[market] = p.read_bytes() if p.exists() else None
+    journal.plan_state_writes(record, current)
+    for market, entry in record["states"].items():
+        p = VOL_ROOT / entry["path"]
+        p.parent.mkdir(parents=True, exist_ok=True)
+        tmp = p.with_name(f".{p.name}.cron.tmp")
+        tmp.write_bytes(states[market]["content"].encode())
+        os.replace(tmp, p)
+    vol.commit()
+    journal.mark(record, "VOLUME_COMMITTED")
+    print(
+        f"[cron] ✅ paper state 已按冻结载荷提交: "
+        f"{', '.join(sorted(record['states']))}"
     )
 
-    # ---- 名称映射每日自动更新（akshare 全量拉取，有变化才推送；失败不影响信号）----
-    try:
-        import time
 
+def _verify_committed_record(record, journal, headers):
+    """Verify a VOLUME_COMMITTED record against GitHub AND the Volume states.
+
+    GitHub artifacts must match the frozen hashes (missing files are restored
+    byte-identically from the frozen payloads).  Volume states must match the
+    committed post-state or a legitimate later journal chain link (R02/B05);
+    a missing or diverged account state fails closed.
+    """
+    import os
+
+    from github_commit import push_files
+
+    files, _states = journal.read_payloads(record)
+    published = _github_existing_files(list(files), headers)
+    missing = journal.plan_completion(record, published)
+    if missing:
+        push_files(
+            token=os.environ["GITHUB_TOKEN"],
+            repo=GITHUB_REPO,
+            branch=SIGNAL_BRANCH,
+            files={path: files[path] for path in missing},
+            message=(
+                f"chore(signal): {record['signal_date']} restore "
+                f"{len(missing)} missing immutable artifacts (cron)"
+            ),
+        )
+        print(f"[cron] ⚠️ 已恢复 {len(missing)} 个缺失的已发布文件: {record['signal_date']}")
+    current = {}
+    for market, entry in record["states"].items():
+        p = VOL_ROOT / entry["path"]
+        current[market] = p.read_bytes() if p.exists() else None
+    journal.verify_committed_states(record, current)
+
+
+def _update_code_name_map(headers):
+    """Daily code->name mapping refresh (R07).
+
+    Runs on every completed publication path, including same-day reruns whose
+    main artifacts already exist.  Best-effort by design: a failing name source
+    warns and never blocks or modifies the frozen signal artifacts.
+    """
+    import time
+
+    import requests
+
+    try:
         import akshare as ak
+
+        from name_map_sync import sync_code_name_map
 
         name_df = None
         for attempt in (1, 2):
             try:
                 name_df = ak.stock_info_a_code_name()
                 break
-            except Exception as e1:
+            except Exception as e1:  # pylint: disable=W0703
                 if attempt == 1:
                     print(f"[cron] 名称映射拉取失败（第 1 次），10 秒后重试: {e1}")
                     time.sleep(10)
                 else:
                     raise
         name_csv = name_df.to_csv(index=False)
-        name_path = "quant/data/signals/code_name_map.csv"
-        name_api = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{name_path}"
-        name_exist = requests.get(name_api, headers=headers, timeout=30)
-        if name_exist.status_code == 200:
-            old_csv = base64.b64decode(name_exist.json()["content"]).decode()
-            old_sha = name_exist.json()["sha"]
-        else:
-            old_csv, old_sha = None, None
-        if old_csv != name_csv:
-            rn = requests.put(
-                name_api,
-                headers=headers,
-                timeout=30,
-                json={
-                    "message": "chore(signal): update code->name mapping (cron)",
-                    "content": base64.b64encode(name_csv.encode()).decode(),
-                    "branch": SIGNAL_BRANCH,
-                    **({"sha": old_sha} if old_sha else {}),
-                },
-            )
-            if rn.status_code in (200, 201):
-                print(f"[cron] ✅ 名称映射已更新（{len(name_df)} 只）")
-            else:
-                print(f"[cron] ⚠️ 名称映射推送失败: HTTP {rn.status_code}")
+
+        def _get(url):
+            response = requests.get(url, headers=headers, timeout=30)
+            payload = None
+            if response.status_code == 200:
+                try:
+                    payload = response.json()
+                except ValueError:
+                    payload = None
+            return response.status_code, payload
+
+        def _put(url, body):
+            return requests.put(url, headers=headers, timeout=30, json=body).status_code
+
+        status = sync_code_name_map(
+            name_csv,
+            http_get=_get,
+            http_put=_put,
+            repo=GITHUB_REPO,
+            branch=SIGNAL_BRANCH,
+        )
+        if status == "updated":
+            print(f"[cron] ✅ 名称映射已更新（{len(name_df)} 只）")
         else:
             print("[cron] 名称映射无变化，跳过")
-    except Exception as e:
+    except Exception as e:  # pylint: disable=W0703
         print(f"[cron] ⚠️ 名称映射更新失败（不影响信号推送）: {e}")
 
 
@@ -4519,10 +4704,64 @@ def daily_cron():
 def daily_cron_second_chance():
     """07:45 幂等二次调度：转发调用 daily_cron。
 
-    同日重跑已于代码层核验为字节级幂等（已发布文件内容一致则保留、纸面状态仅在发布成功后
-    落盘），因此首跑成功时本函数只做校验并立即返回；首跑失败（瞬断/晚启动）时补完成发布。
+    转发调用由 Modal 平台按 max_containers=1 排队：首跑未结束前本补跑不会启动；
+    首跑成功后 daily_cron 走 journal 已提交快速路径（校验 GitHub 与 Volume 状态
+    一致后立即返回）；首跑中断时按冻结载荷完成推送与三池状态提交。平台单执行
+    保证两次运行不重叠，无需任何跨容器文件锁。
     """
     daily_cron.remote()
+
+
+@app.function(
+    volumes={str(VOL_ROOT): vol},
+    timeout=900,
+    nonpreemptible=True,
+)
+def attest_paper_state_bootstrap(note: str = "", approve: bool = False):
+    """R02/B06 一次性 bootstrap 锚定：人工审阅现存 Volume 账户状态后写入锚点。
+
+    仅用于从"无 journal 历史"的旧部署迁移到 journal 发布流程之前（一次性）。
+    运行方式（人工、需显式批准）：
+
+        modal run modal_qlib_cn_a10g.py::attest_paper_state_bootstrap \
+            --approve --note "<审阅记录>"
+
+    输出每个市场状态的 SHA256 供存档审阅；未加 --approve 时拒绝执行。
+    锚点只对"尚无 journal 记录"的状态路径生效，绝不用于覆盖已断链的历史。
+    """
+    import hashlib
+
+    from csi1000_production_config import CANONICAL_PAPER_LINEAGES_BY_MARKET
+    from publication_journal import FilesystemStorage, PublicationJournal
+
+    if not approve:
+        print("[attest] 拒绝执行：请独立审阅后显式传入 --approve")
+        return {"status": "REFUSED_WITHOUT_APPROVE", "anchored": 0}
+    vol.reload()
+    storage = FilesystemStorage(VOL_ROOT, reload_fn=vol.reload, commit_fn=vol.commit)
+    journal = PublicationJournal(storage)
+    anchors = {}
+    for market in ("csi1000", "csi500", "csi300"):
+        path = str(
+            _paper_state_path(
+                market, CANONICAL_PAPER_LINEAGES_BY_MARKET[market]
+            ).relative_to(VOL_ROOT)
+        )
+        raw = storage.read(path)
+        if raw is None:
+            print(f"[attest] {market}: state 不存在，跳过（按新建账户处理）")
+            continue
+        anchors[path] = hashlib.sha256(raw).hexdigest()
+    if not anchors:
+        print("[attest] Volume 上未发现任何 canonical paper state，无需锚定")
+        return {"status": "NO_STATE", "anchored": 0}
+    merged = journal.write_anchors(
+        anchors, note=note or "pre-journal paper state bootstrap", holder="operator-attestation"
+    )
+    for path in sorted(anchors):
+        print(f"[attest] anchor {path} sha256={merged[path]['sha256']}")
+    return {"status": "ANCHORED", "anchored": len(anchors),
+            "anchors": {path: merged[path]["sha256"] for path in sorted(anchors)}}
 
 
 # ===================== 第六步：重训频率对比实验（freq 5/20/60） =====================

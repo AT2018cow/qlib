@@ -50,6 +50,98 @@ def _publication_decision(cal, data_date: str, signal_date: str, fallback_days: 
     )
 
 
+def validate_multi_market_publication(results, signal_date: str, verified_calendar):
+    """Fail-closed freshness validation for the three-pool canonical publication.
+
+    R01: the legacy flow only checked the CSI1000 worker result before
+    assembling CSI500/CSI300 files under the same signal_date.  Every market
+    must now independently prove:
+
+    - it returned the expected market key and a data date that is exactly the
+      prior verified trading session (lag=0), never today/future;
+    - its provider package calendar ends at that data date;
+    - all three workers agree on data date, archive SHA256 and calendar SHA256
+      (guards against ``latest`` drifting between independently started
+      containers).
+
+    Returns ``(action, detail)`` with action in ``("publish", "skip", "raise")``.
+    Any inconsistency raises for the whole canonical publication; callers must
+    run this *before* pushing files or advancing paper state.
+    """
+    if verified_calendar is None:
+        return (
+            "raise",
+            "multi-market canonical publication requires a verified trading calendar",
+        )
+    cal = verified_calendar
+    if signal_date not in cal:
+        return ("skip", f"{signal_date} 非 A 股交易日，不发布三池 canonical signal")
+
+    expected = None
+    for market in ("csi1000", "csi500", "csi300"):
+        res = results.get(market)
+        if not isinstance(res, dict):
+            return ("raise", f"multi-market canonical: {market} worker result missing")
+        if res.get("market") != market:
+            return (
+                "raise",
+                f"multi-market canonical: {market} result carries market={res.get('market')!r}",
+            )
+        data_date = res.get("date")
+        if not isinstance(data_date, str) or not data_date:
+            return ("raise", f"multi-market canonical: {market} has no usable data date")
+        if data_date not in cal:
+            return (
+                "raise",
+                f"multi-market canonical: {market} data_date={data_date} 不在核实交易日历；拒绝发布",
+            )
+        if data_date >= signal_date:
+            return (
+                "raise",
+                f"multi-market canonical: {market} data_date={data_date} >= signal_date={signal_date}",
+            )
+        lag = sum(1 for c in cal if data_date < c < signal_date)
+        if lag != 0:
+            return (
+                "raise",
+                f"multi-market canonical: {market} requires lag=0 (T-close -> T+1-open); "
+                f"got lag={lag} ({data_date} -> {signal_date})",
+            )
+        identity = res.get("provider_identity")
+        if not isinstance(identity, dict):
+            return ("raise", f"multi-market canonical: {market} provider identity missing")
+        if identity.get("calendar_end") != data_date:
+            return (
+                "raise",
+                f"multi-market canonical: {market} provider calendar_end="
+                f"{identity.get('calendar_end')!r} != data_date={data_date}",
+            )
+        archive = identity.get("archive_sha256")
+        calendar_sha = identity.get("calendar_sha256")
+        if not archive or not calendar_sha:
+            return (
+                "raise",
+                f"multi-market canonical: {market} provider archive/calendar SHA missing",
+            )
+        fingerprint = (data_date, archive, calendar_sha)
+        if expected is None:
+            expected = fingerprint
+        elif fingerprint != expected:
+            return (
+                "raise",
+                "multi-market canonical: market snapshots disagree "
+                f"(data_date/archive/calendar): {market}={fingerprint} vs {expected}; "
+                "refusing mixed-provider publication",
+            )
+    data_date, archive, calendar_sha = expected
+    return (
+        "publish",
+        "multi-market canonical freshness PASS: "
+        f"csi1000/csi500/csi300 data_date={data_date} lag=0, "
+        f"archive={archive[:12]}, calendar={calendar_sha[:12]} identical",
+    )
+
+
 def _csi1000_canonical_publication_decision(cal, data_date: str, signal_date: str):
     """Require exact prior-session data for Stage-B winner canonical signals."""
     if cal is None:

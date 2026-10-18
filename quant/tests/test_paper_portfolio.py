@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 import unittest
@@ -226,6 +227,68 @@ class PaperPortfolioTests(unittest.TestCase):
         self.assertAlmostEqual(report["portfolio_value_close"],
                                restored.cash + sum(p["shares"] * p["last_price"]
                                                    for p in restored.positions.values()), places=2)
+
+
+    def test_verify_ledger_failure_restores_pre_call_state(self):
+        from unittest import mock
+
+        pp = PaperPortfolio(topk=1, nd=1, initial_cash=10000)
+        pp.plan_signal("2026-10-09", "2026-10-12", [("A", 1.0)])
+        # to_dict() exposes live references; serialize for a true byte-level check.
+        before = json.dumps(pp.to_dict(), sort_keys=True)
+        with mock.patch("paper_portfolio.verify_ledger", side_effect=RuntimeError("boom")):
+            with self.assertRaises(RuntimeError):
+                pp.execute_pending(
+                    "2026-10-12", {"A": 10.0}, factors={"A": 1.0},
+                    strict_valuation=True, close_prices={"A": 10.0},
+                )
+        self.assertEqual(json.dumps(pp.to_dict(), sort_keys=True), before)
+        self.assertIsNotNone(pp.pending_signal)
+
+    def test_nonfinite_market_inputs_fail_before_any_mutation(self):
+        cases = (
+            {"open_prices": {"A": float("nan")}, "factors": {"A": 1.0}},
+            {"open_prices": {"A": 10.0}, "factors": {"A": 1.0},
+             "close_prices": {"A": float("inf")}},
+            {"open_prices": {"A": 10.0}, "factors": {"A": float("nan")}},
+        )
+        for case in cases:
+            pp = PaperPortfolio(topk=1, nd=1, initial_cash=10000)
+            pp.plan_signal("2026-10-09", "2026-10-12", [("A", 1.0)])
+            before = json.dumps(pp.to_dict(), sort_keys=True)
+            with self.subTest(case=case):
+                with self.assertRaises(ValueError):
+                    pp.execute_pending(
+                        "2026-10-12", case["open_prices"], factors=case["factors"],
+                        close_prices=case.get("close_prices"),
+                    )
+                self.assertEqual(json.dumps(pp.to_dict(), sort_keys=True), before)
+
+    def test_negative_or_nonfinite_account_cash_is_rejected(self):
+        for cash in (-1.0, float("nan")):
+            pp = PaperPortfolio(topk=1, nd=1, initial_cash=10000)
+            pp.plan_signal("2026-10-09", "2026-10-12", [("A", 1.0)])
+            pp.cash = cash
+            before = json.dumps(pp.to_dict(), sort_keys=True)
+            with self.subTest(cash=cash):
+                with self.assertRaises(ValueError):
+                    pp.execute_pending("2026-10-12", {"A": 10.0}, factors={"A": 1.0})
+            self.assertEqual(json.dumps(pp.to_dict(), sort_keys=True), before)
+
+    def test_successful_strict_execution_calls_verify_and_advances_state(self):
+        from unittest import mock
+
+        pp = PaperPortfolio(topk=1, nd=1, initial_cash=10000)
+        pp.plan_signal("2026-10-09", "2026-10-12", [("A", 1.0)])
+        with mock.patch("paper_portfolio.verify_ledger") as verify:
+            report = pp.execute_pending(
+                "2026-10-12", {"A": 10.0}, factors={"A": 1.0},
+                strict_valuation=True, close_prices={"A": 10.0},
+            )
+        verify.assert_called_once()
+        self.assertIsNone(pp.pending_signal)
+        # Qlib lot rounding: (950 + 0.1) // 100 == 9 lots -> 900 adjusted shares.
+        self.assertEqual(report["executed_buy"][0]["shares"], 900.0)
 
 
 if __name__ == "__main__":

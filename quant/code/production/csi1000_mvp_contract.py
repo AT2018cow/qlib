@@ -22,6 +22,7 @@ MVP_CONTRACT_VERSION = "csi1000_mvp_daily_v1"
 # Explicit execution assumption, separate from the frozen model/candidate identity.
 REFERENCE_ST_POLICY = "ST_IGNORED_REFERENCE_ONLY"
 VERIFIED_ST_POLICY = "ST_VERIFIED_PREOPEN"
+LEGACY_WINNER_LINEAGE = "stage_b_winner_canonical"
 EXPECTED_POOL_COUNTS = {"csi1000": 1000, "csi500": 500, "csi300": 300}
 _SYMBOL = re.compile(r"^(SH|SZ|BJ)\d{6}$")
 _HIST_SYMBOL = re.compile(r"^(SH|SZ|BJ)[A-Z0-9]{6}$")
@@ -345,18 +346,28 @@ def summarize_paper_state(
     usage_date: str,
     expected_lineage: dict,
     market: str = "csi1000",
+    allow_legacy_winner: bool = False,
 ) -> dict:
     if not isinstance(paper, dict):
         raise ValueError("paper artifact missing")
     if paper.get("market") != market:
         raise ValueError(f"paper market is not {market}")
-    if paper.get("paper_lineage") not in (
-        "stage_b_winner_canonical",
-        "c98856b4_top10_drop1_canonical",
-        "raw10d_c98856b4_top10_drop1_canonical",
-        "59b93929_top10_drop1_canonical",
+    # R06: bind paper lineage to the market's *current* canonical mapping.
+    # A canonical lineage belonging to another market (or an unversioned legacy
+    # winner without the explicit opt-in) must never pass this gate.
+    from csi1000_production_config import CANONICAL_PAPER_LINEAGES_BY_MARKET
+
+    expected_paper_lineage = CANONICAL_PAPER_LINEAGES_BY_MARKET.get(market)
+    if expected_paper_lineage is None:
+        raise ValueError(f"unknown paper market: {market!r}")
+    actual_lineage = paper.get("paper_lineage")
+    if actual_lineage != expected_paper_lineage and not (
+        allow_legacy_winner and market == "csi1000" and actual_lineage == LEGACY_WINNER_LINEAGE
     ):
-        raise ValueError("paper lineage is not the canonical winner lineage")
+        raise ValueError(
+            f"paper lineage {actual_lineage!r} is not canonical for market {market!r} "
+            f"(expected {expected_paper_lineage!r})"
+        )
     validate_production_lineage(paper.get("production_lineage"), expected_lineage)
     if paper.get("signal_data_date") != signal_data_date or paper.get("usage_date") != usage_date:
         raise ValueError("paper signal/usage dates are not bound to publication")
@@ -412,6 +423,7 @@ def build_mvp_metadata(
     risk: dict,
     publication_detail: str,
     market: str = "csi1000",
+    allow_legacy_winner: bool = False,
 ) -> dict:
     """Build the immutable sidecar emitted with each canonical daily signal."""
     if market not in EXPECTED_POOL_COUNTS:
@@ -443,6 +455,7 @@ def build_mvp_metadata(
         usage_date=usage_date,
         expected_lineage=expected_lineage,
         market=market,
+        allow_legacy_winner=allow_legacy_winner,
     )
 
     if not isinstance(ranking_full, list) or len(ranking_full) < 20:

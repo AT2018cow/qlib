@@ -15,6 +15,7 @@ ranked stock.  Cash sizing follows Qlib's risk_degree convention.
 """
 from __future__ import annotations
 
+import copy
 import json
 import math
 from pathlib import Path
@@ -200,7 +201,42 @@ class PaperPortfolio:
         Shares/prices are in Qlib's adjusted coordinate system. A physical
         100-share trading lot represents 100 / $factor adjusted share units.
         Never assume $factor=1 for production fills.
+
+        Failure atomicity (R10): the account is only mutated on a fully
+        validated execution.  On any exception the pre-call object state is
+        restored byte-for-byte (``to_dict()`` identical before and after).
         """
+        snapshot = copy.deepcopy(self.__dict__)
+        try:
+            return self._execute_pending_impl(
+                execution_date,
+                open_prices,
+                buy_tradable,
+                sell_tradable,
+                close_prices,
+                factors=factors,
+                strict_valuation=strict_valuation,
+                confirmed_halts=confirmed_halts,
+                halt_evidence=halt_evidence,
+            )
+        except Exception:
+            self.__dict__.clear()
+            self.__dict__.update(snapshot)
+            raise
+
+    def _execute_pending_impl(
+        self,
+        execution_date: str,
+        open_prices: Dict[str, float],
+        buy_tradable: Optional[Dict[str, bool]],
+        sell_tradable: Optional[Dict[str, bool]],
+        close_prices: Optional[Dict[str, float]],
+        *,
+        factors: Dict[str, float],
+        strict_valuation: bool,
+        confirmed_halts: Optional[set[str]],
+        halt_evidence: Optional[dict],
+    ) -> dict:
         if self.pending_signal is None:
             return {"date": execution_date, "status": "no_pending"}
         pending = self.pending_signal
@@ -218,6 +254,22 @@ class PaperPortfolio:
         halt_evidence = halt_evidence or {}
         if not isinstance(factors, dict):
             raise ValueError("execution-day Qlib $factor mapping is required")
+        # Reject malformed account/quotes before any mutation (R10): only
+        # finite values may enter the ledger; missing opens stay blockable.
+        if not math.isfinite(float(self.cash)) or self.cash < 0:
+            raise ValueError("paper cash must be a finite non-negative number")
+        for mapping_name, mapping in (
+            ("open_prices", open_prices),
+            ("close_prices", close_prices),
+            ("factors", factors),
+        ):
+            if not isinstance(mapping, dict):
+                raise ValueError(f"{mapping_name} must be a mapping")
+            for sym, value in mapping.items():
+                if value is None:
+                    continue
+                if not math.isfinite(float(value)):
+                    raise ValueError(f"nonfinite {mapping_name} value for {sym!r}")
         decision = self.decision_from_ranking(pending["ranking"])
         # Reject missing/nonfinite factors *before* any sells or cash mutation.
         # Blocked buys and missing-open orders do not require an executable lot.

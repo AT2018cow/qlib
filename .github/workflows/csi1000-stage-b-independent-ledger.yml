@@ -57,7 +57,7 @@ jobs:
       - name: Check current committed paper artifact identity (NOT live deployment)
         run: |
           python quant/code/audit/mvp_entry_review.py \
-            --paper-artifact quant/data/signals/2026-10-09_paper_portfolio.json \
+            --paper-artifact quant/data/signals/2026-10-16_paper_portfolio.json \
             --output /tmp/csi1000-mvp-static-gate-ci.json
           python -c 'import json; r=json.load(open("/tmp/csi1000-mvp-static-gate-ci.json")); assert r["static_artifact_contract"] == "PASS_STATIC_ONLY"; assert r["mvp_activation_approved"] is False'
       - name: Declare CI limitations

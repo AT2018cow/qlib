@@ -56,6 +56,24 @@ def test_index_caps_archive_to_24_buttons_plus_previous_comparison(tmp_path):
     assert index["names"] == {}
 
 
+def test_index_sanitizes_hostile_name_values(tmp_path):
+    """R04: names from the external CSV must never publish markup/control chars."""
+    with (tmp_path / "code_name_map.csv").open("w", newline="", encoding="utf-8") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(["code", "name"])
+        writer.writerows([
+            ["600001", "测试甲"],
+            ["600002", "<img src=x onerror=alert(1)>"],
+            ["600003", 'bad"quote'],
+            ["600004", "控\x07制"],
+            ["600005", "x" * 41],
+            ["bad-code", "非法代码"],
+        ])
+    write_signal(tmp_path, "2026-10-08", ["SH600001", "SH600002", "SH600003", "SH600004", "SH600005"])
+    index = build_index(tmp_path)
+    assert index["names"] == {"600001": "测试甲"}
+
+
 def test_index_fails_closed_without_signals(tmp_path):
     output = tmp_path / "available_dates.json"
     result = subprocess.run([

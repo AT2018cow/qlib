@@ -15,10 +15,14 @@ import math
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
+CODE_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(CODE_ROOT))
 
-from forward_performance import FORWARD_PERFORMANCE_START, CANONICAL_LINEAGE, build_forward_performance
+from quant_bootstrap import ensure_quant_import_paths  # noqa: E402
+
+ensure_quant_import_paths()
+
+from forward_performance import FORWARD_PERFORMANCE_START, CANONICAL_LINEAGE, build_forward_performance  # noqa: E402
 
 
 def _read_csv(path, required):

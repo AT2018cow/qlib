@@ -302,6 +302,7 @@ def test_paper_planner_prefers_st_and_only_transport_fallback(tmp_path, monkeypa
     namespace = {
         "Path": Path,
         "vol": types.SimpleNamespace(reload=lambda: None),
+        "_reload_volume_strict": lambda: None,
         "_paper_state_path": lambda market, lineage: tmp_path / "state.json",
         "_current_st_risk_snapshot": lambda instruments: outcome["data"],
     }
