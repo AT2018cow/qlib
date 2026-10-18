@@ -99,7 +99,13 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install runners and lightweight data dependencies
-        run: python -m pip install --disable-pip-version-check pytest pandas numpy
+        # Pins mirror the production data line (numpy 1.26 / pandas 2.2) plus the
+        # parquet engine and the small deps required by scripts/check_data_health
+        # wrappers; validated in a clean venv with only this set installed.
+        run: >-
+          python -m pip install --disable-pip-version-check
+          pytest "pandas==2.2.3" "numpy==1.26.4" "pyarrow==17.0.0"
+          fire loguru tqdm
       - name: Run execution, accounting and audit regression tests (no Qlib/Modal)
         run: >-
           python -m pytest -q
