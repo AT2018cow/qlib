@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -210,7 +211,7 @@ def inspect_viewport(browser, base_url, width: int):
     assert after_history == initial_requests + 3, signals_requests
     metadata_404s = [
         url for url, status in statuses
-        if url.endswith("_mvp_metadata.json") and status == 404
+        if re.search(r"_mvp_metadata(_csi500|_csi300)?\.json$", url) and status == 404
     ]
     assert len(metadata_404s) == 1, statuses
     if width in (390, 320):
@@ -246,7 +247,7 @@ def main():
                 page = browser.new_page(viewport={"width": 390, "height": 844})
                 page.add_init_script("""
                     const nativeFetch = window.fetch.bind(window);
-                    window.fetch = (url, opts) => String(url).includes('_chart.json')
+                    window.fetch = (url, opts) => /_chart(_csi500|_csi300)?\\.json/.test(String(url))
                       ? new Promise(resolve => setTimeout(() => resolve(nativeFetch(url, opts)), 1200))
                       : nativeFetch(url, opts);
                 """)
