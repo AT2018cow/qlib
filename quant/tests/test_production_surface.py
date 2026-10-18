@@ -150,8 +150,20 @@ def test_pages_deployment_packages_stylesheet():
     and causes the browser to fall back to an unstyled white document.
     """
     workflow = (ROOT / ".github" / "workflows" / "website-deploy.yml").read_text()
-    assert "cp quant/website/*.html quant/website/*.js quant/website/*.css quant/website/*.svg _site/" in workflow
-    for filename in ("index.html", "methodology.html", "app.js", "styles.css", "favicon.svg"):
+    assert (
+        "cp quant/website/*.html quant/website/*.js quant/website/*.css "
+        "quant/website/*.svg quant/website/*.png quant/website/*.ico _site/" in workflow
+    )
+    for filename in (
+        "index.html",
+        "methodology.html",
+        "app.js",
+        "styles.css",
+        "favicon.svg",
+        "favicon-32.png",
+        "favicon.ico",
+        "apple-touch-icon.png",
+    ):
         assert f"test -s _site/{filename}" in workflow
 
 
@@ -233,10 +245,25 @@ def test_favicon_is_valid_svg_and_published_on_both_pages():
 
     for name in ("index.html", "methodology.html"):
         html = (ROOT / "quant" / "website" / name).read_text()
-        assert '<link rel="icon" type="image/svg+xml" href="favicon.svg?v=1">' in html
+        assert '<link rel="icon" type="image/svg+xml" href="favicon.svg?v=2">' in html
+        assert '<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=2">' in html
+        assert '<link rel="apple-touch-icon" href="apple-touch-icon.png?v=2">' in html
+
+    def png_size(filename):
+        data = (ROOT / "quant" / "website" / filename).read_bytes()
+        assert data[:8] == b"\x89PNG\r\n\x1a\n" and data[12:16] == b"IHDR"
+        return int.from_bytes(data[16:20], "big"), int.from_bytes(data[20:24], "big")
+
+    assert png_size("favicon-32.png") == (32, 32)
+    assert png_size("apple-touch-icon.png") == (180, 180)
+    ico = (ROOT / "quant" / "website" / "favicon.ico").read_bytes()
+    assert ico[:2] == b"\x00\x00" and ico[2:4] == b"\x01\x00"
+    count = int.from_bytes(ico[4:6], "little")
+    assert count >= 3
+    assert all(ico[6 + 16 * i] in (16, 32, 48) for i in range(count))
 
     workflow = (ROOT / ".github" / "workflows" / "website-deploy.yml").read_text()
-    assert "website/*.svg _site/" in workflow
+    assert "website/*.png quant/website/*.ico _site/" in workflow
     assert "test -s _site/favicon.svg" in workflow
 
 

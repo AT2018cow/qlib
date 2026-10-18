@@ -36,7 +36,7 @@ jobs:
         run: |
           mkdir -p _site/signals
           # Keep all local HTML/JS/CSS dependencies together in Pages artifact.
-          cp quant/website/*.html quant/website/*.js quant/website/*.css quant/website/*.svg _site/
+          cp quant/website/*.html quant/website/*.js quant/website/*.css quant/website/*.svg quant/website/*.png quant/website/*.ico _site/
           cp quant/data/signals/*.csv quant/data/signals/*.json _site/signals/
           python3 quant/website/build_index.py \
             --signals quant/data/signals \
@@ -66,6 +66,9 @@ jobs:
           test -s _site/app.js
           test -s _site/styles.css
           test -s _site/favicon.svg
+          test -s _site/favicon-32.png
+          test -s _site/favicon.ico
+          test -s _site/apple-touch-icon.png
           test -s _site/signals/available_dates.json
           test -s _site/signals/available_dates_csi500.json
           test -s _site/signals/available_dates_csi300.json
