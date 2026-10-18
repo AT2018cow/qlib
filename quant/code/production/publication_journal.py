@@ -28,6 +28,25 @@ is additionally guarded by the recorded prior/post SHA256 (fencing by
 content, not by lease).  If ``max_containers`` is ever changed, scheduled
 publication must be paused until an external lock service is introduced.
 
+Cross-day ledger continuity (R02/B06)
+-------------------------------------
+Per market state path the journal must form one strictly sequential chain:
+
+    first record: prior == attested bootstrap anchor (or None for a fresh
+                  account that never existed on the Volume)
+    every later record: prior_sha256 == previous record's post sha256
+    committed records form a prefix of the chain (an incomplete record may
+    only be followed by records created after it was recovered/committed)
+
+``verify_chain_integrity`` enforces that chain; ``check_live_state`` then
+requires the live Volume bytes to be the last committed post-state or the
+post-state of a still-incomplete successor (crash-after-write window).  A new
+trading day calls both *before* loading/planning any paper order, and
+``prepare`` refuses a prior hash that differs from the chain expectation.
+Existing pre-journal Volume states are never trusted implicitly: they must be
+attested once by the operator (``write_anchors`` / the Modal
+``attest_paper_state_bootstrap`` command) before the first journaled day.
+
 The module is stdlib-only and storage-agnostic so CI can fault-inject writes
 and crashes without Modal.
 """
@@ -36,6 +55,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -45,6 +65,8 @@ STAGE_VOLUME_COMMITTED = "VOLUME_COMMITTED"
 _STAGE_ORDER = (STAGE_PREPARED, STAGE_GITHUB_PUBLISHED, STAGE_VOLUME_COMMITTED)
 
 BASE_DIR = "publication_journal"
+ANCHOR_FILE = f"{BASE_DIR}/bootstrap_anchors.json"
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 class JournalError(RuntimeError):
@@ -116,6 +138,11 @@ class PublicationJournal:
     def _record_path(self, signal_date: str) -> str:
         return f"{self._dir(signal_date)}/record.json"
 
+    def _anchor_path(self) -> str:
+        return f"{self.base_dir}/bootstrap_anchors.json" if self.base_dir != BASE_DIR else ANCHOR_FILE
+
+    # ------------------------------------------------------------- records
+
     def load(self, signal_date: str):
         raw = self.storage.read(self._record_path(signal_date))
         if raw is None:
@@ -142,6 +169,182 @@ class PublicationJournal:
     def incomplete_records(self) -> list:
         return [record for record in self.all_records() if record["stage"] != STAGE_VOLUME_COMMITTED]
 
+    def _path_records(self, path: str) -> list:
+        """[(record, market, entry)] ascending for one state path."""
+        chain = []
+        for record in self.all_records():
+            for market, entry in record["states"].items():
+                if entry.get("path") == path:
+                    chain.append((record, market, entry))
+        return chain
+
+    # ------------------------------------------------------------- anchors
+
+    def load_anchors(self) -> dict:
+        raw = self.storage.read(self._anchor_path())
+        if raw is None:
+            return {}
+        try:
+            payload = json.loads(raw.decode())
+        except ValueError as exc:
+            raise JournalCorrupt("bootstrap anchor file unreadable") from exc
+        anchors = payload.get("anchors") if isinstance(payload, dict) else None
+        if not isinstance(anchors, dict):
+            raise JournalCorrupt("bootstrap anchor file malformed")
+        for path, meta in anchors.items():
+            if not isinstance(meta, dict) or not _SHA256_RE.fullmatch(str(meta.get("sha256", ""))):
+                raise JournalCorrupt(f"bootstrap anchor malformed for {path}")
+        return anchors
+
+    def write_anchors(self, anchors: dict, note: str, holder: str) -> dict:
+        """Explicit operator attestation of pre-journal Volume states (R02/B06).
+
+        Anchors are only accepted for paths with *no* journal history; they can
+        never whitewash a broken chain.  Re-attesting the same bytes is
+        idempotent; different bytes for an existing anchor are refused.
+        """
+        if not anchors:
+            raise JournalError("no anchors supplied")
+        existing = self.load_anchors()
+        merged = dict(existing)
+        for path, sha in anchors.items():
+            if not _SHA256_RE.fullmatch(str(sha)):
+                raise JournalError(f"invalid anchor sha256 for {path!r}")
+            if self._path_records(path):
+                raise JournalError(
+                    f"cannot attest {path}: journal history already exists; "
+                    "resolve the chain instead of overriding it"
+                )
+            current = existing.get(path)
+            if current is not None and current.get("sha256") != sha:
+                raise JournalError(f"anchor already attested with different bytes: {path}")
+            merged[path] = {
+                "sha256": sha,
+                "note": note,
+                "attested_at": self.now_fn(),
+                "holder": holder,
+            }
+        payload = {"anchors": merged, "updated_at": self.now_fn()}
+        self.storage.write(self._anchor_path(), json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2).encode())
+        self.storage.commit()
+        return merged
+
+    # ------------------------------------------------- chain / live state
+
+    def verify_chain_integrity(self) -> None:
+        """Strict per-path chain: prior == previous post, committed prefix only."""
+        anchors = self.load_anchors()
+        path_records = {}
+        for record in self.all_records():
+            for market, entry in record["states"].items():
+                path_records.setdefault(entry["path"], []).append((record, market, entry))
+        for path, chain in path_records.items():
+            anchor = anchors.get(path, {}).get("sha256")
+            previous_post = None
+            first = True
+            seen_incomplete = False
+            for record, _market, entry in chain:
+                prior = entry.get("prior_sha256")
+                if first:
+                    if anchor is None:
+                        if prior is not None:
+                            raise JournalCorrupt(
+                                "BLOCKED_MANUAL_RECOVERY: first journal record for "
+                                f"{path} claims prior={prior} without an attested bootstrap anchor"
+                            )
+                    elif prior != anchor:
+                        raise JournalCorrupt(
+                            "BLOCKED_MANUAL_RECOVERY: first journal prior for "
+                            f"{path} does not match the attested bootstrap anchor"
+                        )
+                    first = False
+                elif prior != previous_post:
+                    raise JournalCorrupt(
+                        "BLOCKED_MANUAL_RECOVERY: journal chain break for "
+                        f"{path} at {record['signal_date']}: prior={prior} != previous post={previous_post}"
+                    )
+                if record["stage"] == STAGE_VOLUME_COMMITTED:
+                    if seen_incomplete:
+                        raise JournalCorrupt(
+                            "BLOCKED_MANUAL_RECOVERY: committed record after an "
+                            f"incomplete one for {path} ({record['signal_date']})"
+                        )
+                else:
+                    seen_incomplete = True
+                previous_post = entry["sha256"]
+
+    def expected_prior_for_path(self, path: str) -> str:
+        """The only prior hash a new record may declare for ``path``."""
+        chain = self._path_records(path)
+        if chain:
+            if any(record["stage"] != STAGE_VOLUME_COMMITTED for record, _m, _e in chain):
+                raise JournalCorrupt(
+                    "BLOCKED_MANUAL_RECOVERY: incomplete publication must be "
+                    f"recovered before a new record for {path}"
+                )
+            return chain[-1][2]["sha256"]
+        return self.load_anchors().get(path, {}).get("sha256")
+
+    def check_live_state(self, path: str, actual) -> None:
+        """Live Volume bytes must be a legal state for this path (R02/B06)."""
+        self.verify_chain_integrity()
+        chain = self._path_records(path)
+        anchor = self.load_anchors().get(path, {}).get("sha256")
+        if not chain:
+            if actual is None:
+                if anchor is not None:
+                    raise JournalCorrupt(
+                        "BLOCKED_MANUAL_RECOVERY: anchored paper state is missing: " + path
+                    )
+                return
+            if anchor is None:
+                raise JournalCorrupt(
+                    "BLOCKED_MANUAL_RECOVERY: unanchored existing paper state; run the "
+                    f"approved bootstrap attestation before trading on it: {path}"
+                )
+            if _sha256(actual) != anchor:
+                raise JournalCorrupt(
+                    "BLOCKED_MANUAL_RECOVERY: paper state differs from its attested "
+                    f"bootstrap anchor: {path}"
+                )
+            return
+        committed = [pair for pair in chain if pair[0]["stage"] == STAGE_VOLUME_COMMITTED]
+        allowed = set()
+        if committed:
+            allowed.add(committed[-1][2]["sha256"])
+        else:
+            first_prior = chain[0][2].get("prior_sha256")
+            allowed.add(first_prior)  # None when the account never existed
+        for record, _market, entry in chain:
+            if record["stage"] != STAGE_VOLUME_COMMITTED:
+                allowed.add(entry["sha256"])
+        if actual is None:
+            if None in allowed:
+                return
+            raise JournalCorrupt(
+                "BLOCKED_MANUAL_RECOVERY: committed paper state file is missing: " + path
+            )
+        if _sha256(actual) not in allowed:
+            raise JournalCorrupt(
+                "BLOCKED_MANUAL_RECOVERY: paper state diverged from the journal chain: " + path
+            )
+
+    def check_paper_state_entry(self, state_paths: dict) -> None:
+        """Day-start gate: every market's live state must be chain-legal.
+
+        ``state_paths`` maps market -> state path (relative to the Volume
+        root).  Raises on the first violation; callers must run it before
+        loading or planning any paper order.
+        """
+        for market, path in state_paths.items():
+            actual = self.storage.read(path)
+            try:
+                self.check_live_state(path, actual)
+            except JournalCorrupt as exc:
+                raise JournalCorrupt(f"{market}: {exc}") from exc
+
+    # ------------------------------------------------------------- prepare
+
     def prepare(
         self,
         signal_date: str,
@@ -150,9 +353,22 @@ class PublicationJournal:
         states: dict,
     ) -> dict:
         """Freeze the publication intent.  ``files`` maps path -> content str;
-        ``states`` maps market -> {path, prior_sha256, content}."""
+        ``states`` maps market -> {path, prior_sha256, content}.
+
+        The declared prior must equal the chain expectation
+        (``expected_prior_for_path``); drifted or unanchored live states are
+        refused here as well as at the day-start gate.
+        """
         if self.load(signal_date) is not None:
             raise JournalError(f"journal already exists for {signal_date}")
+        for market, entry in states.items():
+            expected = self.expected_prior_for_path(entry["path"])
+            declared = entry.get("prior_sha256")
+            if declared != expected:
+                raise JournalCorrupt(
+                    "BLOCKED_MANUAL_RECOVERY: declared prior for "
+                    f"{market} ({entry['path']}) is {declared}, expected {expected}"
+                )
         files_payload = {path: content for path, content in files.items()}
         states_payload = {
             market: {
@@ -286,35 +502,13 @@ class PublicationJournal:
         return writes
 
     def verify_committed_states(self, record: dict, current: dict) -> None:
-        """Verify Volume states of a VOLUME_COMMITTED record (R02/B05).
-
-        The committed bytes may since have been legitimately advanced by a
-        later serialized run; the chain link is the later record's
-        ``prior_sha256`` (bytes that run read before writing) or its post
-        ``sha256``.  Missing files and non-chained bytes fail closed.
-        """
-        later = [r for r in self.all_records() if r["signal_date"] > record["signal_date"]]
+        """Verify live Volume states against the journal chain (R02/B05+B06)."""
         for market, entry in record["states"].items():
             actual = current.get(market)
-            if actual is None:
-                raise JournalCorrupt(
-                    "BLOCKED_MANUAL_RECOVERY: committed paper state file is missing "
-                    f"({market} {entry['path']})"
-                )
-            actual_sha = _sha256(actual)
-            if actual_sha == entry["sha256"]:
-                continue
-            for later_record in later:
-                successor = later_record["states"].get(market)
-                if not successor or successor.get("path") != entry["path"]:
-                    continue
-                if actual_sha in (successor.get("prior_sha256"), successor.get("sha256")):
-                    break
-            else:
-                raise JournalCorrupt(
-                    "BLOCKED_MANUAL_RECOVERY: committed paper state diverged from the "
-                    f"journal chain ({market} {entry['path']})"
-                )
+            try:
+                self.check_live_state(entry["path"], actual)
+            except JournalCorrupt as exc:
+                raise JournalCorrupt(f"{market}: {exc}") from exc
 
     def _write_record(self, record: dict) -> None:
         self.storage.write(

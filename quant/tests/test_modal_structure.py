@@ -30,7 +30,8 @@ EXPECTED_FUNCTIONS = [
     "tune_driver", "dual_horizon", "p0_diagnostics", "p1_diagnostics",
     "version_check_0911", "version_check_0916", "batch_c_window", "batch_c",
     "p2_rolling", "topk_grid", "batch_a", "batch_b", "daily_standalone",
-    "daily_cron", "daily_cron_second_chance", "freq_window", "freq_driver", "backfill_signals",
+    "daily_cron", "daily_cron_second_chance", "attest_paper_state_bootstrap",
+    "freq_window", "freq_driver", "backfill_signals",
     # Satellite/universe-expansion batch functions (kept in the cron image).
     "verify_universe", "build_star_chn_bench", "batch_a_star_chn", "batch_b_one",
 ]

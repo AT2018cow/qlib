@@ -1,19 +1,22 @@
-"""R02 behavioral tests: publication journal and fault-injected recovery.
+"""R02 behavioral tests: publication journal, strict cross-day chains and fault-injected recovery.
 
 Simulates the Modal Volume with an in-memory storage and the GitHub repo with a
-path->bytes dict, then injects crashes at each commit stage.  A rerun must
-complete the publication from the frozen payloads without regenerating content,
-without double-persisting divergent state and without rewriting published
-history.
+path->bytes dict, then injects crashes and cross-day tampering.  The invariants
+under test (review R02/B06):
+
+- per state path the journal must be one strictly sequential chain
+  (``prior == previous post``, first prior == attested anchor or None);
+- a new day may only trade on live bytes that equal the last committed post
+  state (or an incomplete successor's post during a crash window);
+- any drift/missing committed state fails closed *before* prepare side effects;
+- existing pre-journal states are never trusted without an explicit anchor.
 
 Cross-run serialization itself is a Modal platform property (max_containers=1)
-pinned by test_modal_structure.py::test_daily_cron_single_execution_contract;
-these tests cover the single-writer journal state machine *inside* that
-serialized execution, including every crash/replay window and the fail-closed
-preconditions on Volume state files.
+pinned by test_modal_structure.py::test_daily_cron_single_execution_contract.
 """
 
 import hashlib
+import json
 
 import pytest
 
@@ -59,17 +62,18 @@ FILES = {
     "quant/data/signals/2026-10-18_top20_lgb158.csv": "rank,instrument,score\n1,SH600000,0.5\n",
     "quant/data/signals/2026-10-18_paper_portfolio.json": '{"market": "csi1000"}\n',
 }
+PATHS = {
+    "csi1000": "paper_portfolio/csi1000__canonical.json",
+    "csi500": "paper_portfolio/csi500__canonical.json",
+    "csi300": "paper_portfolio/csi300__canonical.json",
+}
+DAY1_CONTENT = {
+    "csi1000": '{"version": 2, "cash": 100.0}\n',
+    "csi500": '{"version": 2, "cash": 200.0}\n',
+}
 STATES = {
-    "csi1000": {
-        "path": "paper_portfolio/csi1000__canonical.json",
-        "prior_sha256": None,
-        "content": '{"version": 2, "cash": 100.0}\n',
-    },
-    "csi500": {
-        "path": "paper_portfolio/csi500__canonical.json",
-        "prior_sha256": None,
-        "content": '{"version": 2, "cash": 200.0}\n',
-    },
+    market: {"path": PATHS[market], "prior_sha256": None, "content": content}
+    for market, content in DAY1_CONTENT.items()
 }
 
 
@@ -78,8 +82,22 @@ def make_journal():
     return PublicationJournal(storage), storage
 
 
-def sha(text):
-    return hashlib.sha256(text.encode()).hexdigest()
+def sha(data):
+    if isinstance(data, str):
+        data = data.encode()
+    return hashlib.sha256(data).hexdigest()
+
+
+def day_states(journal, contents):
+    """Build state entries with the chain-expected prior (mirrors modal_cron)."""
+    return {
+        market: {
+            "path": PATHS[market],
+            "prior_sha256": journal.expected_prior_for_path(PATHS[market]),
+            "content": content,
+        }
+        for market, content in contents.items()
+    }
 
 
 def simulate_completion(record, journal, github, state_fs, fail_at=None):
@@ -107,6 +125,39 @@ def simulate_completion(record, journal, github, state_fs, fail_at=None):
     if fail_at == "after_volume_commit":
         raise InjectedCrash()
     return record
+
+
+def complete_day(journal, date="2026-10-16", contents=None):
+    """Publish one fully successful day; returns (record, github, state_fs).
+
+    State bytes are written into the journal storage itself so day-start gates
+    that read the live Volume see the same bytes."""
+    contents = DAY1_CONTENT if contents is None else contents
+    github = {}
+    state_fs = journal.storage.files
+    record = journal.prepare(date, f"inv-{date}", FILES, day_states(journal, contents))
+    simulate_completion(record, journal, github, state_fs)
+    return journal.load(date), github, state_fs
+
+
+def inject_record(storage, date, stage, prior, post, market="csi1000"):
+    """Write a raw journal record (bypassing prepare) to test chain rejection."""
+    fake = {
+        "publication_id": f"signal-{date}",
+        "signal_date": date,
+        "stage": stage,
+        "holder": "injected",
+        "created_at": "t",
+        "updated_at": "t",
+        "github_commit": None,
+        "files": {},
+        "states": {market: {"path": PATHS[market], "prior_sha256": prior, "sha256": post}},
+        "payloads": {},
+    }
+    storage.files[f"publication_journal/{date}/record.json"] = json.dumps(fake).encode()
+
+
+# ---------------------------------------------------------------- records/payloads
 
 
 def test_prepare_freezes_hashes_and_payloads_survive_reload():
@@ -161,26 +212,175 @@ def test_plan_state_writes_accepts_prior_or_target_and_rejects_divergence():
         journal.plan_state_writes(record, diverged)
 
 
-def _prepared_authored_states():
-    """Prior states where the csi1000 account file already exists on disk."""
-    states = {market: dict(entry) for market, entry in STATES.items()}
-    states["csi1000"]["prior_sha256"] = sha('{"version": 2, "cash": 50.0}\n')
-    return states
+# ---------------------------------------------------------------- bootstrap anchors
+
+
+def test_existing_unanchored_state_is_rejected_until_attested():
+    journal, _storage = make_journal()
+    path = PATHS["csi1000"]
+    live = b'{"version": 2, "cash": 1.0}\n'
+    with pytest.raises(JournalCorrupt, match="unanchored"):
+        journal.check_live_state(path, live)
+    journal.write_anchors({path: sha(live)}, note="reviewed pre-journal state", holder="operator")
+    journal.check_live_state(path, live)
+    with pytest.raises(JournalCorrupt, match="anchor"):
+        journal.check_live_state(path, b'{"version": 2, "cash": 2.0}\n')
+    with pytest.raises(JournalCorrupt, match="missing"):
+        journal.check_live_state(path, None)
+
+
+def test_anchor_write_refuses_history_and_mismatched_reanchor():
+    journal, _storage = make_journal()
+    complete_day(journal, contents={"csi1000": DAY1_CONTENT["csi1000"]})
+    with pytest.raises(JournalError, match="journal history"):
+        journal.write_anchors({PATHS["csi1000"]: sha(b"whatever")}, note="n", holder="op")
+    journal.write_anchors({PATHS["csi500"]: sha(b"reviewed")}, note="n", holder="op")
+    journal.write_anchors({PATHS["csi500"]: sha(b"reviewed")}, note="re-run", holder="op")  # idempotent
+    with pytest.raises(JournalError, match="different bytes"):
+        journal.write_anchors({PATHS["csi500"]: sha(b"changed")}, note="n", holder="op")
+
+
+def test_anchored_fresh_account_chain_accepts_matching_prior():
+    journal, _storage = make_journal()
+    prior = b'{"version": 2, "cash": 50.0}\n'
+    path = PATHS["csi1000"]
+    journal.write_anchors({path: sha(prior)}, note="n", holder="op")
+    states = day_states(journal, {"csi1000": '{"version": 2, "cash": 60.0}\n'})
+    assert states["csi1000"]["prior_sha256"] == sha(prior)
+    record = journal.prepare("2026-10-18", "inv", FILES, states)
+    journal.verify_chain_integrity()
+    journal.check_live_state(path, prior)
+    live_fs = {path: prior}
+    simulate_completion(record, journal, {}, live_fs)
+    journal.check_live_state(path, live_fs[path])
+    assert live_fs[path] == b'{"version": 2, "cash": 60.0}\n'
+
+
+# ---------------------------------------------------------------- cross-day (B06)
+
+
+def test_cross_day_tamper_fails_before_any_prepare_side_effect():
+    journal, storage = make_journal()
+    complete_day(journal)
+    path = PATHS["csi1000"]
+    tampered = DAY1_CONTENT["csi1000"].encode() + b" "
+    storage.files[path] = tampered
+    with pytest.raises(JournalCorrupt, match="diverged"):
+        journal.check_paper_state_entry({market: PATHS[market] for market in PATHS})
+    bogus = day_states(journal, {"csi1000": '{"version": 2, "cash": 101.0}\n'})
+    bogus["csi1000"]["prior_sha256"] = sha(tampered)
+    with pytest.raises(JournalCorrupt, match="expected"):
+        journal.prepare("2026-10-17", "inv", FILES, bogus)
+    assert journal.load("2026-10-17") is None
+
+
+def test_bogus_successor_prior_never_makes_an_old_record_valid():
+    """Reviewer repro: an arbitrary later PREPARED prior must not whitelist drift."""
+    journal, storage = make_journal()
+    complete_day(journal)
+    path = PATHS["csi1000"]
+    inject_record(storage, "2026-10-17", "PREPARED", prior=sha(b"garbage"), post=sha(b"post"))
+    with pytest.raises(JournalCorrupt, match="chain break"):
+        journal.verify_chain_integrity()
+    with pytest.raises(JournalCorrupt, match="chain break"):
+        journal.check_live_state(path, DAY1_CONTENT["csi1000"].encode())
+    with pytest.raises(JournalCorrupt):
+        journal.prepare("2026-10-18", "inv", FILES, day_states(journal, {"csi1000": "x"}))
+
+
+def test_committed_record_after_incomplete_is_rejected():
+    journal, storage = make_journal()
+    complete_day(journal)
+    record2 = journal.prepare(
+        "2026-10-17", "inv2", FILES,
+        day_states(journal, {"csi1000": '{"version": 2, "cash": 101.0}\n'}),
+    )
+    inject_record(storage, "2026-10-18", "VOLUME_COMMITTED",
+                  prior=record2["states"]["csi1000"]["sha256"], post=sha(b"later"))
+    with pytest.raises(JournalCorrupt, match="committed record after"):
+        journal.verify_chain_integrity()
+
+
+def test_expected_prior_requires_recovery_of_incomplete_successor():
+    journal, _storage = make_journal()
+    complete_day(journal)
+    journal.prepare(
+        "2026-10-17", "inv2", FILES,
+        day_states(journal, {"csi1000": '{"version": 2, "cash": 101.0}\n'}),
+    )
+    with pytest.raises(JournalCorrupt, match="recovered"):
+        journal.expected_prior_for_path(PATHS["csi1000"])
+
+
+def test_two_day_legitimate_chain_with_mid_crash_recovery():
+    journal, _storage = make_journal()
+    _day1, github, state_fs = complete_day(journal)
+    day2_content = {
+        "csi1000": '{"version": 2, "cash": 150.0}\n',
+        "csi500": '{"version": 2, "cash": 250.0}\n',
+    }
+    record2 = journal.prepare("2026-10-17", "inv2", FILES, day_states(journal, day2_content))
+    # Before any write: live day-1 post is legal (incomplete successor window).
+    journal.check_live_state(PATHS["csi1000"], DAY1_CONTENT["csi1000"].encode())
+    with pytest.raises(InjectedCrash):
+        simulate_completion(record2, journal, github, state_fs, fail_at="mid_states")
+    # Mixed window: csi1000 advanced, csi500 still at day-1 post; both legal.
+    journal.check_live_state(PATHS["csi1000"], day2_content["csi1000"].encode())
+    journal.check_live_state(PATHS["csi500"], DAY1_CONTENT["csi500"].encode())
+    final = simulate_completion(journal.load("2026-10-17"), journal, github, state_fs)
+    assert final["stage"] == "VOLUME_COMMITTED"
+    journal.verify_chain_integrity()
+    journal.check_paper_state_entry({market: PATHS[market] for market in PATHS})
+    # After day-2 commit, the day-1 bytes are stale and must be rejected.
+    with pytest.raises(JournalCorrupt, match="diverged"):
+        journal.check_live_state(PATHS["csi1000"], DAY1_CONTENT["csi1000"].encode())
+    # Missing committed state is rejected too.
+    with pytest.raises(JournalCorrupt, match="missing"):
+        journal.check_live_state(PATHS["csi1000"], None)
+
+
+def test_three_market_single_tamper_fails_whole_batch():
+    journal, storage = make_journal()
+    contents = {
+        "csi1000": DAY1_CONTENT["csi1000"],
+        "csi500": DAY1_CONTENT["csi500"],
+        "csi300": '{"version": 2, "cash": 300.0}\n',
+    }
+    complete_day(journal, contents=contents)
+    storage.files[PATHS["csi500"]] = DAY1_CONTENT["csi500"].encode() + b"\n"
+    with pytest.raises(JournalCorrupt) as excinfo:
+        journal.check_paper_state_entry({market: PATHS[market] for market in PATHS})
+    assert "csi500" in str(excinfo.value)
+    # The untampered markets alone would pass; the batch must fail as a whole.
+    journal.check_live_state(PATHS["csi1000"], DAY1_CONTENT["csi1000"].encode())
+    journal.check_live_state(PATHS["csi300"], contents["csi300"].encode())
 
 
 def test_missing_previously_existing_state_file_fails_closed():
     """R02/B04: a recorded prior state that disappeared must never be recreated."""
     journal, _storage = make_journal()
-    record = journal.prepare("2026-10-18", "invocation-a", FILES, _prepared_authored_states())
-    # csi500 never existed (prior None) -> creation allowed; csi1000 prior exists
-    # but the file is gone -> fail closed.
+    prior = b'{"version": 2, "cash": 50.0}\n'
+    journal.write_anchors({PATHS["csi1000"]: sha(prior)}, note="n", holder="op")
+    record = journal.prepare(
+        "2026-10-18", "inv",
+        FILES,
+        day_states(journal, {"csi1000": '{"version": 2, "cash": 60.0}\n',
+                             "csi500": '{"version": 2, "cash": 70.0}\n'}),
+    )
     with pytest.raises(JournalCorrupt, match="missing"):
         journal.plan_state_writes(record, {"csi1000": None, "csi500": None})
 
 
 def test_truncated_or_replaced_state_file_fails_closed():
     journal, _storage = make_journal()
-    record = journal.prepare("2026-10-18", "invocation-a", FILES, _prepared_authored_states())
+    prior = b'{"version": 2, "cash": 50.0}\n'
+    journal.write_anchors({PATHS["csi1000"]: sha(prior)}, note="n", holder="op")
+    record = journal.prepare(
+        "2026-10-18", "inv",
+        FILES,
+        day_states(journal, {"csi1000": '{"version": 2, "cash": 60.0}\n',
+                             "csi500": '{"version": 2, "cash": 70.0}\n'}),
+    )
     truncated = b'{"version": 2, "cash": 50.0'  # prior file cut off mid-write
     with pytest.raises(JournalCorrupt, match="diverged"):
         journal.plan_state_writes(record, {"csi1000": truncated, "csi500": None})
@@ -242,69 +442,49 @@ def test_crash_after_volume_commit_then_fast_path_verifies_without_repush():
     assert github == {path: content.encode() for path, content in FILES.items()}
 
 
-def test_verify_committed_states_accepts_chain_and_rejects_loss_or_divergence():
+def test_verify_committed_states_rejects_loss_divergence_and_stale_state():
     journal, _storage = make_journal()
-    github = {}
-    state_fs = {}
-    record = journal.prepare("2026-10-16", "invocation-a", FILES, STATES)
-    simulate_completion(record, journal, github, state_fs)
+    _day1, github, state_fs = complete_day(journal)
     committed = journal.load("2026-10-16")
     current = {market: state_fs.get(entry["path"]) for market, entry in committed["states"].items()}
     journal.verify_committed_states(committed, current)
 
-    # A later serialized run legitimately advances both accounts; its prior
-    # hashes link back to the committed post-states, so the chain verifies.
-    later_states = {
-        market: {
-            "path": entry["path"],
-            "prior_sha256": sha(entry["content"]),
-            "content": entry["content"].replace('"cash": 100', '"cash": 111').replace('"cash": 200', '"cash": 222'),
-        }
-        for market, entry in STATES.items()
-    }
-    later = journal.prepare("2026-10-17", "invocation-b", FILES, later_states)
-    simulate_completion(later, journal, github, state_fs)
-    advanced = {market: state_fs.get(entry["path"]) for market, entry in committed["states"].items()}
-    journal.verify_committed_states(committed, advanced)
-
-    # A later PREPARED record that read the live state proves those exact bytes
-    # were current at that time (prior_sha256 link), even before it writes.
-    live_bytes = b'{"version": 2, "cash": 7.0}\n'
-    journal.prepare(
-        "2026-10-19",
-        "invocation-c",
-        FILES,
-        {
-            market: {
-                "path": entry["path"],
-                "prior_sha256": hashlib.sha256(live_bytes).hexdigest(),
-                "content": entry["content"],
-            }
-            for market, entry in STATES.items()
-        },
-    )
-    prior_link = {"csi1000": live_bytes, "csi500": state_fs[STATES["csi500"]["path"]]}
-    journal.verify_committed_states(committed, prior_link)
-
     # Missing committed file fails closed.
-    lost = dict(advanced)
+    lost = dict(current)
     lost["csi1000"] = None
     with pytest.raises(JournalCorrupt, match="missing"):
         journal.verify_committed_states(committed, lost)
 
     # Unrelated bytes fail closed.
-    foreign = dict(advanced)
+    foreign = dict(current)
     foreign["csi1000"] = b'{"version": 2, "cash": 42.0, "unrelated": true}\n'
     with pytest.raises(JournalCorrupt, match="chain"):
         journal.verify_committed_states(committed, foreign)
 
+    # A legitimate later day advances both accounts; the chain stays valid.
+    day2 = {"csi1000": '{"version": 2, "cash": 111.0}\n',
+            "csi500": '{"version": 2, "cash": 222.0}\n'}
+    journal.prepare("2026-10-17", "inv2", FILES, day_states(journal, day2))
+    simulate_completion(journal.load("2026-10-17"), journal, github, state_fs)
+    advanced = {market: state_fs.get(entry["path"]) for market, entry in committed["states"].items()}
+    journal.verify_committed_states(committed, advanced)
+    # Day-1 bytes are stale once day 2 is committed.
+    with pytest.raises(JournalCorrupt):
+        journal.verify_committed_states(committed, {
+            "csi1000": DAY1_CONTENT["csi1000"].encode(),
+            "csi500": DAY1_CONTENT["csi500"].encode(),
+        })
+
 
 def test_journal_records_sort_oldest_first():
-    journal, _storage = make_journal()
-    journal.prepare("2026-10-18", "h", FILES, STATES)
-    journal.prepare("2026-10-16", "h", FILES, STATES)
+    journal, storage = make_journal()
+    inject_record(storage, "2026-10-18", "PREPARED", prior=None, post=sha(b"post18"))
+    inject_record(storage, "2026-10-16", "PREPARED", prior=None, post=sha(b"post16"))
     records = journal.incomplete_records()
     assert [record["signal_date"] for record in records] == ["2026-10-16", "2026-10-18"]
+
+
+# ---------------------------------------------------------------- modal glue
 
 
 def _modal_helper_source(name):
@@ -371,7 +551,7 @@ def test_modal_completion_helper_pushes_then_persists_and_is_idempotent(tmp_path
 
 
 def test_modal_verify_helper_checks_volume_states(tmp_path, monkeypatch):
-    """B05: the committed-record verifier must also validate Volume states."""
+    """B05/B06: the committed-record verifier must also validate Volume states."""
     import sys
     import types
 
@@ -411,4 +591,9 @@ def test_modal_verify_helper_checks_volume_states(tmp_path, monkeypatch):
     # Losing one account state must fail closed instead of appearing verified.
     (tmp_path / STATES["csi500"]["path"]).unlink()
     with pytest.raises(JournalCorrupt, match="missing"):
+        verify(journal.load("2026-10-18"), journal, {})
+
+    # A one-byte tamper must also fail closed.
+    (tmp_path / STATES["csi500"]["path"]).write_bytes(STATES["csi500"]["content"].encode() + b" ")
+    with pytest.raises(JournalCorrupt, match="diverged"):
         verify(journal.load("2026-10-18"), journal, {})

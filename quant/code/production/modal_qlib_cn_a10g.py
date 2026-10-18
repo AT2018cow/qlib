@@ -4262,6 +4262,15 @@ def daily_cron():
     # ---- R02: 先恢复/校验中断的 publication，再决定今天的流程 ----
     # 平台已以 max_containers=1 串行化本函数（含 07:45 补跑转发的调用），
     # 因此这里无需、也不允许再加任何跨容器锁；invocation_id 仅作审计标识。
+    from csi1000_production_config import (
+        CANONICAL_ND,
+        CANONICAL_PAPER_LINEAGE,
+        CANONICAL_PAPER_LINEAGES_BY_MARKET,
+        CANONICAL_PROFILE,
+        CANONICAL_PROFILES_BY_MARKET,
+        CANONICAL_TOPK,
+        profile_manifest,
+    )
     from publication_journal import FilesystemStorage, PublicationJournal
 
     invocation_id = uuid.uuid4().hex
@@ -4275,6 +4284,10 @@ def daily_cron():
         raise RuntimeError(
             "volume reload failed; refusing to publish or advance paper state"
         ) from exc
+
+    # ---- R02/B06: 严格跨日哈希链（在恢复写入/任何 paper 副作用之前）----
+    journal.verify_chain_integrity()
+
     incomplete = journal.incomplete_records()
     if incomplete:
         candidate = incomplete[0]
@@ -4290,6 +4303,21 @@ def daily_cron():
         if candidate["signal_date"] == signal_date:
             _update_code_name_map(headers)
             return
+
+    # ---- R02/B06: 严格跨日哈希链 + 账户状态锚点校验 ----
+    # 必须在任何 paper 状态加载、训练、发布副作用之前执行；任一市场偏离
+    # 逐条连续链（含未锚定的现存状态）立即 fail-closed。
+    journal.check_paper_state_entry(
+        {
+            market: str(
+                _paper_state_path(
+                    market, CANONICAL_PAPER_LINEAGES_BY_MARKET[market]
+                ).relative_to(VOL_ROOT)
+            )
+            for market in ("csi1000", "csi500", "csi300")
+        }
+    )
+
     committed = journal.load(signal_date)
     if committed is not None and committed["stage"] == "VOLUME_COMMITTED":
         _verify_committed_record(committed, journal, headers)
@@ -4303,15 +4331,6 @@ def daily_cron():
         return
 
     print(f"[cron] {signal_date} 为交易日——启动 CSI1000/500/300 canonical")
-    from csi1000_production_config import (
-        CANONICAL_ND,
-        CANONICAL_PAPER_LINEAGE,
-        CANONICAL_PAPER_LINEAGES_BY_MARKET,
-        CANONICAL_PROFILE,
-        CANONICAL_PROFILES_BY_MARKET,
-        CANONICAL_TOPK,
-        profile_manifest,
-    )
 
     try:
         res = daily_standalone.remote(
@@ -4691,6 +4710,58 @@ def daily_cron_second_chance():
     保证两次运行不重叠，无需任何跨容器文件锁。
     """
     daily_cron.remote()
+
+
+@app.function(
+    volumes={str(VOL_ROOT): vol},
+    timeout=900,
+    nonpreemptible=True,
+)
+def attest_paper_state_bootstrap(note: str = "", approve: bool = False):
+    """R02/B06 一次性 bootstrap 锚定：人工审阅现存 Volume 账户状态后写入锚点。
+
+    仅用于从"无 journal 历史"的旧部署迁移到 journal 发布流程之前（一次性）。
+    运行方式（人工、需显式批准）：
+
+        modal run modal_qlib_cn_a10g.py::attest_paper_state_bootstrap \
+            --approve --note "<审阅记录>"
+
+    输出每个市场状态的 SHA256 供存档审阅；未加 --approve 时拒绝执行。
+    锚点只对"尚无 journal 记录"的状态路径生效，绝不用于覆盖已断链的历史。
+    """
+    import hashlib
+
+    from csi1000_production_config import CANONICAL_PAPER_LINEAGES_BY_MARKET
+    from publication_journal import FilesystemStorage, PublicationJournal
+
+    if not approve:
+        print("[attest] 拒绝执行：请独立审阅后显式传入 --approve")
+        return {"status": "REFUSED_WITHOUT_APPROVE", "anchored": 0}
+    vol.reload()
+    storage = FilesystemStorage(VOL_ROOT, reload_fn=vol.reload, commit_fn=vol.commit)
+    journal = PublicationJournal(storage)
+    anchors = {}
+    for market in ("csi1000", "csi500", "csi300"):
+        path = str(
+            _paper_state_path(
+                market, CANONICAL_PAPER_LINEAGES_BY_MARKET[market]
+            ).relative_to(VOL_ROOT)
+        )
+        raw = storage.read(path)
+        if raw is None:
+            print(f"[attest] {market}: state 不存在，跳过（按新建账户处理）")
+            continue
+        anchors[path] = hashlib.sha256(raw).hexdigest()
+    if not anchors:
+        print("[attest] Volume 上未发现任何 canonical paper state，无需锚定")
+        return {"status": "NO_STATE", "anchored": 0}
+    merged = journal.write_anchors(
+        anchors, note=note or "pre-journal paper state bootstrap", holder="operator-attestation"
+    )
+    for path in sorted(anchors):
+        print(f"[attest] anchor {path} sha256={merged[path]['sha256']}")
+    return {"status": "ANCHORED", "anchored": len(anchors),
+            "anchors": {path: merged[path]["sha256"] for path in sorted(anchors)}}
 
 
 # ===================== 第六步：重训频率对比实验（freq 5/20/60） =====================

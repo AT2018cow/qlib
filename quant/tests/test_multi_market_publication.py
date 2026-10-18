@@ -117,3 +117,12 @@ def test_daily_cron_validates_all_markets_before_side_effects():
     # Serialization is a platform property (max_containers=1), pinned separately;
     # the critical section itself must not acquire any Volume-file lock.
     assert "lease" not in cron
+    # B06: strict chain + live-state gate must run before training/publishing,
+    # and chain integrity before any recovery write.
+    verify_chain = cron.index("journal.verify_chain_integrity()")
+    anchor_gate = cron.index("journal.check_paper_state_entry(")
+    remote = cron.index("daily_standalone.remote(")
+    apply_paper = cron.index("_apply_paper_portfolio(")
+    assert verify_chain < cron.index("_complete_journal_publication(")
+    assert verify_chain < remote and anchor_gate < remote
+    assert verify_chain < apply_paper and anchor_gate < apply_paper
