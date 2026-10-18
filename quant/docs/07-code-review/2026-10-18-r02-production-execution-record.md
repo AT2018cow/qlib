@@ -191,3 +191,11 @@ modal run quant/code/production/modal_qlib_cn_a10g.py::daily_standalone \
 | PR #83 | 仍为 OPEN，未合并（等待明确授权） |
 | main | 保持 `bfd5e63a`（未合并） |
 
+## 10. 合并后记（2026-10-18 14:08–14:12 +08）
+
+- **PR #83 已合并**：merge commit `9351e5abd270cf96b2e81071d619e38afd52ce42`。（合并时 `main` 已包含操作员的网站发布调整提交 `1bd8c497`，无冲突。）
+- **从 `main` 重新部署**：v20（14:09 +08，49.4s），部署提交标记 `9351e5a`；`daily_cron` 调度 `0 7 * * 1-5`、补跑 `45 7 * * 1-5` 保留；平台 `update_autoscaler()` 回读 `max_containers=1`。
+- **v20 生产冒烟**：假日路径（链+锚点门禁）全通过，exit 0。
+- **合并触发的 main CI 全部 success**：Quant extension checks、CSI1000 MVP publication contract、CSI1000 Stage-B 独立负控制、Deploy signal website（网站构建/发布流程）。
+- 至此「线上运行版本 = `main` = 复审通过的修复」完全对齐；次日 07:00 发布路径与本文第 6 节预期一致。
+
