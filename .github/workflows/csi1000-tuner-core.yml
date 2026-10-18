@@ -1,83 +1,27 @@
-name: CSI1000 tuner core checks
+name: Quant extension checks
+
+# R09 (2026-10-18 review): the old workflow watched a hand-maintained file list
+# and ran a fixed subset of tests, so changes to execution rules, accounting,
+# auditing or new tests could bypass CI entirely.  Any change under the custom
+# extension now triggers the core group; heavier execution/accounting tests run
+# in a second job with pandas/numpy.  Expensive Modal jobs are never triggered
+# from PR CI.
 
 on:
   pull_request:
     branches: [main]
     paths:
-      - 'quant/code/research/stage_ab/csi1000_tuner.py'
-      - 'quant/code/research/stage_ab/csi1000_tuner_core.py'
-      - 'quant/code/execution/deterministic_strategy.py'
-      - 'quant/code/research/stage_ab/csi1000_tuner_audit.py'
-      - 'quant/code/research/stage_ab/csi1000_stage_b.py'
-      - 'quant/code/research/stage_ab/csi1000_stage_b_core.py'
-      - 'quant/code/production/csi1000_production_config.py'
-      - 'quant/code/production/signal_publication_gate.py'
-      - 'quant/code/production/paper_portfolio.py'
-      - 'quant/code/production/forward_performance.py'
-      - 'quant/code/production/chart_series.py'
-      - 'quant/tests/test_chart_series.py'
-      - 'quant/tests/test_sparkline_frontend.cjs'
-      - 'quant/tests/test_website_index.py'
-      - 'quant/website/build_index.py'
-      - 'quant/code/ops/build_forward_performance.py'
-      - 'quant/code/production/modal_qlib_cn_a10g.py'
-      - 'quant/tests/test_csi1000_production_config.py'
-      - 'quant/tests/test_paper_portfolio.py'
-      - 'quant/tests/test_forward_performance.py'
-      - 'quant/tests/test_cron_gate.py'
-      - 'quant/tests/test_modal_structure.py'
-      - 'quant/tests/test_production_surface.py'
-      - 'quant/website/app.js'
-      - 'quant/website/index.html'
-      - 'quant/website/styles.css'
-      - 'quant/website/favicon.svg'
-      - 'quant/website/methodology.html'
-      - 'quant/docs/02-round1-stage-ab/19-csi1000-stage-b-final-audit-forward-contract-20261008.md'
-      - 'quant/docs/02-round1-stage-ab/20-csi1000-stage-b-winner-canonical-promotion-20261008.md'
-      - 'quant/tests/test_csi1000_tuner_core.py'
-      - 'quant/tests/test_csi1000_stage_b_core.py'
-      - 'quant/docs/02-round1-stage-ab/16-csi1000-stage-a-tuning-contract-20261007.md'
-      - 'quant/docs/02-round1-stage-ab/17-csi1000-stage-a-expanded-screen-runbook-20261007.md'
-      - 'quant/docs/02-round1-stage-ab/18-next-conversation-handoff-stage-b-20261007.md'
+      - 'quant/code/**'
+      - 'quant/tests/**'
+      - 'quant/website/**'
       - '.github/workflows/csi1000-tuner-core.yml'
       - '.github/workflows/website-deploy.yml'
   push:
     branches: [main]
     paths:
-      - 'quant/code/research/stage_ab/csi1000_tuner.py'
-      - 'quant/code/research/stage_ab/csi1000_tuner_core.py'
-      - 'quant/code/execution/deterministic_strategy.py'
-      - 'quant/code/research/stage_ab/csi1000_tuner_audit.py'
-      - 'quant/code/research/stage_ab/csi1000_stage_b.py'
-      - 'quant/code/research/stage_ab/csi1000_stage_b_core.py'
-      - 'quant/code/production/csi1000_production_config.py'
-      - 'quant/code/production/signal_publication_gate.py'
-      - 'quant/code/production/paper_portfolio.py'
-      - 'quant/code/production/forward_performance.py'
-      - 'quant/code/production/chart_series.py'
-      - 'quant/tests/test_chart_series.py'
-      - 'quant/tests/test_sparkline_frontend.cjs'
-      - 'quant/tests/test_website_index.py'
-      - 'quant/website/build_index.py'
-      - 'quant/code/ops/build_forward_performance.py'
-      - 'quant/code/production/modal_qlib_cn_a10g.py'
-      - 'quant/tests/test_csi1000_production_config.py'
-      - 'quant/tests/test_paper_portfolio.py'
-      - 'quant/tests/test_forward_performance.py'
-      - 'quant/tests/test_cron_gate.py'
-      - 'quant/tests/test_modal_structure.py'
-      - 'quant/tests/test_production_surface.py'
-      - 'quant/website/app.js'
-      - 'quant/website/index.html'
-      - 'quant/website/styles.css'
-      - 'quant/website/favicon.svg'
-      - 'quant/website/methodology.html'
-      - 'quant/docs/02-round1-stage-ab/19-csi1000-stage-b-final-audit-forward-contract-20261008.md'
-      - 'quant/docs/02-round1-stage-ab/20-csi1000-stage-b-winner-canonical-promotion-20261008.md'
-      - 'quant/tests/test_csi1000_tuner_core.py'
-      - 'quant/tests/test_csi1000_stage_b_core.py'
-      - 'quant/docs/02-round1-stage-ab/17-csi1000-stage-a-expanded-screen-runbook-20261007.md'
-      - 'quant/docs/02-round1-stage-ab/18-next-conversation-handoff-stage-b-20261007.md'
+      - 'quant/code/**'
+      - 'quant/tests/**'
+      - 'quant/website/**'
       - '.github/workflows/csi1000-tuner-core.yml'
       - '.github/workflows/website-deploy.yml'
   workflow_dispatch:
@@ -98,30 +42,76 @@ jobs:
           python-version: '3.11'
       - name: Install test runner
         run: python -m pip install --disable-pip-version-check pytest
-      - name: Compile CSI1000 production migration
+      - name: Compile production and safety modules
         run: >-
           python -m py_compile
           quant/code/production/csi1000_production_config.py
           quant/code/production/signal_publication_gate.py
           quant/code/production/paper_portfolio.py
+          quant/code/production/paper_accounting.py
           quant/code/production/forward_performance.py
           quant/code/production/chart_series.py
+          quant/code/production/github_commit.py
+          quant/code/production/provider_archive.py
+          quant/code/production/publication_journal.py
+          quant/code/production/name_map_sync.py
+          quant/code/quant_bootstrap.py
           quant/code/ops/build_forward_performance.py
+          quant/code/ops/audit_paper_nav.py
           quant/code/production/modal_qlib_cn_a10g.py
       - name: Validate website JavaScript
         run: node --check quant/website/app.js
-      - name: Verify sparkline behavior and CSS layout semantics
-        run: node --test quant/tests/test_sparkline_frontend.cjs
-      - name: Run full CSI1000 Stage-A, Stage-B and production contract tests
+      - name: Frontend behavior and security tests (no npm dependencies)
+        run: >-
+          node --test
+          quant/tests/test_sparkline_frontend.cjs
+          quant/tests/test_website_security.cjs
+      - name: Run core contract, publication, security and CLI tests
         run: >-
           python -m pytest -q
           quant/tests/test_csi1000_tuner_core.py
           quant/tests/test_csi1000_stage_b_core.py
           quant/tests/test_csi1000_production_config.py
+          quant/tests/test_csi1000_mvp_contract.py
           quant/tests/test_paper_portfolio.py
           quant/tests/test_forward_performance.py
+          quant/tests/test_forward_nav_acceptance.py
+          quant/tests/test_paper_nav_independent_audit.py
           quant/tests/test_chart_series.py
           quant/tests/test_cron_gate.py
+          quant/tests/test_multi_market_publication.py
+          quant/tests/test_publication_journal.py
+          quant/tests/test_provider_archive.py
+          quant/tests/test_name_map_sync.py
+          quant/tests/test_lineage_market_binding.py
+          quant/tests/test_cli_standalone.py
           quant/tests/test_modal_structure.py
           quant/tests/test_production_surface.py
           quant/tests/test_website_index.py
+          quant/tests/test_review_regressions.py
+
+  extended-execution-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install runners and lightweight data dependencies
+        run: python -m pip install --disable-pip-version-check pytest pandas numpy
+      - name: Run execution, accounting and audit regression tests (no Qlib/Modal)
+        run: >-
+          python -m pytest -q
+          quant/tests/test_qlib_board_rules.py
+          quant/tests/test_paper_accounting_replay.py
+          quant/tests/test_portfolio_performance.py
+          quant/tests/test_phase_attribution.py
+          quant/tests/test_phase_regime_age.py
+          quant/tests/test_independent_stage_b_metrics.py
+          quant/tests/test_verify_stage_b_fixed_ledger.py
+          quant/tests/test_data_health_wrapper.py
+          quant/tests/test_csi1000_l1b_runner.py
+          quant/tests/test_csi1000_l3_runner.py
+          quant/tests/test_csi1000_l3_runtime_guards.py
+          quant/tests/test_csi1000_l4_final.py
+          quant/tests/test_csi1000_layered_search_replay.py

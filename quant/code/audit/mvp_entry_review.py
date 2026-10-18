@@ -15,7 +15,11 @@ from datetime import date
 from pathlib import Path
 
 # Direct-file invocation from the repository's audit/ subdirectory.
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from quant_bootstrap import ensure_quant_import_paths  # noqa: E402
+
+ensure_quant_import_paths()
+
 from csi1000_production_config import (  # noqa: E402
     CANONICAL_PAPER_LINEAGE, CANONICAL_PROFILE, WINNER_PROFILE, profile_manifest,
 )

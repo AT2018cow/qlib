@@ -47,7 +47,7 @@ jobs:
           summary = (f"### Independent paper NAV audit\n"
                      f"Status: **{row['status']}**; execution reports: **{row['audited_reports']}**; "
                      f"issues: **{len(row['issues'])}**.\n\n"
-                     "NOT_STARTED is not a passing real-money/performance audit. "
+                     "AWAITING_SETTLEMENT and NOT_STARTED are not passing real-money/performance audits. "
                      "External immutable quote/calendar evidence is not available in this CI job.\n")
           print(summary)
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:

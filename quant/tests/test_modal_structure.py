@@ -117,6 +117,9 @@ def test_image_helper_modules_copied():
         "csi1000_production_config.py",
         "chart_series.py",
         "signal_publication_gate.py",
+        "provider_archive.py",
+        "publication_journal.py",
+        "name_map_sync.py",
     ):
         assert helper in cp.group(1), \
             f"{helper} not copied to /root/ — container import would fail (ModuleNotFoundError)"

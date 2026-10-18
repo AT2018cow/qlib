@@ -12,6 +12,7 @@ from typing import Any, Iterable, Mapping
 
 from paper_accounting import verify_ledger
 from csi1000_mvp_contract import REFERENCE_ST_POLICY, VERIFIED_ST_POLICY
+from csi1000_production_config import CANONICAL_PAPER_LINEAGES_BY_MARKET
 
 FORWARD_PERFORMANCE_START = "2026-10-12"
 CANONICAL_LINEAGE = "c98856b4_top10_drop1_canonical"
@@ -37,7 +38,19 @@ def build_forward_performance(
     for artifact in artifacts:
         if artifact.get("market") != market:
             continue
-        if artifact.get("paper_lineage") not in CANONICAL_LINEAGES:
+        # R06: bind this market's expected canonical lineage by identity, not
+        # by membership in a shared set.  A canonical lineage belonging to a
+        # different market is a hard error; legacy/unknown lineages are not
+        # part of the current public forward series and are skipped.
+        expected_lineage = CANONICAL_PAPER_LINEAGES_BY_MARKET.get(market)
+        if expected_lineage is None:
+            raise ValueError(f"unknown forward-performance market: {market!r}")
+        lineage = artifact.get("paper_lineage")
+        if lineage != expected_lineage:
+            if lineage in CANONICAL_LINEAGES:
+                raise ValueError(
+                    f"cross-market paper lineage mismatch for {market}: {lineage!r}"
+                )
             continue
         usage_day = artifact.get("usage_date")
         if isinstance(usage_day, str) and usage_day >= start_date:

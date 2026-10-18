@@ -117,6 +117,7 @@ def _fixture(tmp_path):
         paper=paper,
         risk=risk,
         publication_detail="canonical freshness PASS",
+        allow_legacy_winner=True,
     )
     return kwargs
 

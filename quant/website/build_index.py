@@ -40,8 +40,15 @@ def build_index(signals: Path, market: str = "csi1000") -> dict:
     if names_path.is_file():
         with names_path.open(encoding="utf-8-sig", newline="") as stream:
             for row in csv.DictReader(stream):
-                if row.get("code") and row.get("name"):
-                    name_lookup[row["code"]] = row["name"]
+                code = (row.get("code") or "").strip()
+                name = (row.get("name") or "").strip()
+                # R04: the manifest crosses a trust boundary into innerHTML;
+                # never publish markup/control characters or unbounded names.
+                if not re.fullmatch(r"\d{6}", code):
+                    continue
+                if not name or len(name) > 40 or re.search(r"""[<>&"'\x00-\x1f]""", name):
+                    continue
+                name_lookup[code] = name
 
     names = {}
     for day in dates[:VISIBLE_DATES]:

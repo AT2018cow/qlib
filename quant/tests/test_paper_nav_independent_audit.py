@@ -7,8 +7,8 @@ from audit_paper_nav import reconcile
 def fixture():
     initial = {
         "market": "csi1000",
-        "paper_lineage": "stage_b_winner_canonical",
-        "production_lineage": {"profile": "stage_b_winner"},
+        "paper_lineage": "c98856b4_top10_drop1_canonical",
+        "production_lineage": {"profile": "c98856b4_top10_drop1"},
         "usage_date": "2026-10-09",
         "cash": 2000.0,
         "positions": {},
@@ -92,6 +92,50 @@ def test_current_public_pre_inception_is_not_called_pass():
     assert result["status"] == "NOT_STARTED"
     assert not result["issues"]
     assert result["audited_reports"] == 0
+    # Non-target lineage is reported as explicitly skipped, never silently dropped.
+    assert result["skipped_artifacts"].get("lineage:canonical") == 1
+
+
+def _to_legacy(artifacts):
+    for artifact in artifacts:
+        artifact["paper_lineage"] = "stage_b_winner_canonical"
+        artifact["production_lineage"] = {"profile": "stage_b_winner"}
+    return artifacts
+
+
+def test_legacy_winner_lineage_requires_explicit_mode():
+    artifacts, quotes, calendar, forward = fixture()
+    legacy = _to_legacy(artifacts)
+    # Default mode must not audit legacy lineage; and a forward series without
+    # audited rows is itself a reported failure, so omit it here.
+    default = reconcile(legacy, quotes=quotes, calendar=calendar)
+    assert default["status"] == "NOT_STARTED"
+    assert default["skipped_artifacts"].get("lineage:stage_b_winner_canonical") == 3
+    explicit = reconcile(legacy, quotes=quotes, calendar=calendar, forward=forward,
+                         legacy_winner=True)
+    assert explicit["status"] == "PASS", explicit
+    assert explicit["target"]["lineage"] == "stage_b_winner_canonical"
+
+
+def test_current_canonical_without_settlement_is_awaiting_not_pass():
+    artifacts, _, _, _ = fixture()
+    pending = [a for a in artifacts if a["execution_report"] is None]
+    result = reconcile(pending)
+    assert result["status"] == "AWAITING_SETTLEMENT"
+    assert result["target_artifacts"] == len(pending)
+    assert not result["issues"]
+
+
+def test_cross_market_lineage_mapping_is_rejected():
+    import pytest
+
+    with pytest.raises(ValueError, match="does not match market"):
+        reconcile([], market="csi500", lineage="c98856b4_top10_drop1_canonical")
+    with pytest.raises(ValueError, match="unknown audit market"):
+        reconcile([], market="chinext")
+    resolved = reconcile([], market="csi300")
+    assert resolved["target"]["lineage"] == "59b93929_top10_drop1_canonical"
+    assert resolved["status"] == "NOT_STARTED"
 
 
 def test_no_external_quotes_cannot_be_certified():
