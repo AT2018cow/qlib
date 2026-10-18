@@ -127,8 +127,67 @@ QLIB_PROVIDER_ARCHIVE=/tmp/.../qlib_bin_2026-10-15.tar.gz \
 4. **失败关闭项与处置**：数据包漂移（"market snapshots disagree"/"lag=0"）→ 等待数据源稳定后由 07:45 补跑或人工 `modal run ...::daily_cron` 重跑；链/锚点/状态不符（`BLOCKED_MANUAL_RECOVERY`）→ 按运行手册第 2 节处置，禁止绕过。
 5. **网站**：信号提交推送到 `main` 后，`website-deploy` workflow 自动构建并发布（GitHub Pages + Cloudflare Pages 镜像），无需人工步骤。
 
-## 7. 本轮证据与限制
+## 8. 补充验证（2026-10-18 下午追加，直接针对次日发布风险）
 
-- 证据：平台 API 读回的并发配置、app 版本史 v19、锚定命令输出与锚点文件回读、负向/正向冒烟输出、Volume 演练返回值、真实包回归输出。关键输出均已内嵌本文；原始日志留在执行终端（不入库）。
-- 限制：本记录不构成生产交易认证；未接入真实成交/回报数据；平台 autoscaler 若被人工再次覆盖需按手册重新核验；下次 App 重新部署会重置平台 override（静态值同为 1）。
-- 未改动：Microsoft Qlib 上游、冻结模型候选/参数、`quant/data/signals/**` 已发布历史、任何历史回测证据。
+在完成上述五项任务后，又对"次日使用的新代码路径"做了两项额外验证：
+
+### 8.1 当前最新行情包与严格解压器兼容性
+
+下载当日最新 release（2026-10-18）：
+
+```
+qlib_bin.tar.gz (release tag 2026-10-18)  568,280,701 bytes
+sha256 = a11eaba954f2d5658c017fa800eea85bb6277f8ffc3d7b0449f791a44e43e7dd
+```
+
+以 `provider_archive.validate_archive_members` + `safe_extract_provider_archive` 验证：
+
+```
+members validated: 67871 in 5.8s
+extract root: .../qlib_bin
+calendar: 2000-01-04 -> 2026-10-16 (6489 sessions)
+features: True
+```
+
+结论：新增的严格成员规则（无重复成员/链接/越界路径）与当前最新发布兼容；次日数据日为 **2026-10-16（周五）**，满足三池 lag=0 门禁。
+
+### 8.2 生产容器端到端冒烟（不发布）
+
+以生产参数运行一次 `daily_standalone`（仅返回结果，不推送 GitHub、不写账户状态）：
+
+```
+modal run quant/code/production/modal_qlib_cn_a10g.py::daily_standalone \
+  --topk 10 --nd 1 --market csi1000 \
+  --csi1000-profile c98856b4_top10_drop1 \
+  --paper-lineage c98856b4_top10_drop1_canonical
+```
+
+关键输出与结果（exit 0）：
+
+```
+[daily] 下载最新数据 https://github.com/chenditc/investment_data/releases/latest/download/qlib_bin.tar.gz ...
+[daily] 数据就绪：日历 2000-01-04 ~ 2026-10-16（6489 个交易日），archive=a11eaba954f2
+[daily] CSI1000 PIT universe PASS: 1000 members asof=2026-10-16
+[daily] 复用模型，训练日期=2026-10-16，距今未满 20 交易日
+[daily] 20-session label maturity PASS: train_end=2025-07-29 valid_end=2026-09-09 fit_asof=2026-10-16
+[daily] 2026-10-16 top10（csi1000）…（10 行排名输出）
+```
+
+证明：生产镜像内的新安全解压器可直接消费当日最新包；PIT/标签成熟度/live 模型缓存路径工作正常。该冒烟不改变持久状态（模型缓存属既有机制）。
+
+## 9. 本轮执行后的状态总览
+
+| 项目 | 状态 |
+| --- | --- |
+| 生产 Modal app | v19（`9ae29e75`），调度 07:00/07:45 保留，单 app 单工作区 |
+| 平台并发 | `max_containers=1` 已读回并显式固化（`daily_cron`） |
+| 三市场 bootstrap 锚点 | 已写入并与 2026-10-16 已发布账本核对一致 |
+| 负向冒烟（未锚定） | fail-closed，无副作用 |
+| 正向冒烟（锚定后） | 门禁全通过，假日跳过 exit 0 |
+| Volume 受控演练 | 冻结→崩溃→冻结载荷恢复→篡改拒绝，scratch 已清理 |
+| 真实包回归（10-15） | 1 passed（18.10s，哈希与生产元数据一致） |
+| 最新包兼容（10-18） | 67,871 成员验证 + 完整安全解压通过 |
+| 端到端 standalone 冒烟 | exit 0，archive=a11eaba954f2，排名正常 |
+| PR #83 | 仍为 OPEN，未合并（等待明确授权） |
+| main | 保持 `bfd5e63a`（未合并） |
+
