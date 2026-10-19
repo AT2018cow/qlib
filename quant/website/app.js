@@ -548,66 +548,150 @@ function buildRows(rows, nameMap, prev, chartData) {
   });
 }
 
-// Instruments present in the previous ranking but absent from this one.
-// Missing comparison data yields an empty list, never a guessed removal.
-function buildDropped(rows, nameMap, prev) {
-  if (!prev || !prev.length || !rows.length) return [];
-  const currentCodes = new Set(rows.map(r => r.instrument));
-  return prev
-    .filter(r => !currentCodes.has(r.instrument))
-    .map(r => ({
-      rank: Number(r.rank),
-      instrument: r.instrument,
-      name: nameMap[qlibCode(r.instrument)] || '名称待更新',
-      score: formatScore(r.score),
-      url: thsUrl(r.instrument),
-    }));
+// Dropping out of the ranking is not the same as being sold. The production
+// paper artifact carries the actual planned Top10/Drop1 orders for the next
+// open plus the pre-trade holdings, so the page can separate a real sell from
+// a stock that left the Top 10 but is still held and will be re-evaluated on
+// later sessions.
+function buildRebalance(rows, nameMap, prev, paper, date) {
+  const currentRank = new Map(rows.map(r => [r.instrument, Number(r.rank)]));
+  const prevRank = new Map((prev || []).map(r => [r.instrument, Number(r.rank)]));
+  const item = (instrument, rank, rankLabel, rankFallback) => ({
+    instrument,
+    name: nameMap[qlibCode(instrument)] || '名称待更新',
+    rank: Number.isFinite(rank) ? rank : null,
+    rankLabel,
+    rankFallback,
+    url: thsUrl(instrument),
+  });
+  const exits = (prev || [])
+    .filter(r => !currentRank.has(r.instrument))
+    .map(r => item(r.instrument, Number(r.rank), '上期', '上期未在榜'));
+
+  const paperMatches = Boolean(paper) && paper.usage_date === date;
+  const pending = paperMatches ? paper.pending_orders : null;
+  const sellCodes = pending && Array.isArray(pending.sell) ? pending.sell : null;
+  const buyCodes = pending && Array.isArray(pending.buy) ? pending.buy : null;
+  const planAvailable = sellCodes !== null && buyCodes !== null;
+  const clean = codes => [...new Set(codes.filter(code => SIGNAL_INSTRUMENT.test(code)))];
+  const sell = planAvailable ? clean(sellCodes).map(code => item(code, prevRank.get(code), '上期', '持仓中')) : [];
+  const buy = planAvailable ? clean(buyCodes).map(code => item(code, currentRank.get(code), '本期', '本期未在榜')) : [];
+
+  const positionsAvailable = paperMatches && paper.positions && typeof paper.positions === 'object'
+    && !Array.isArray(paper.positions);
+  const positions = positionsAvailable
+    ? new Set(Object.keys(paper.positions).filter(code => SIGNAL_INSTRUMENT.test(code)))
+    : null;
+  const sold = new Set(sell.map(r => r.instrument));
+  // Every held name outside the current Top 10 is still exposed to Drop1 on
+  // later sessions, not only the names that left the ranking today.
+  const heldOutside = planAvailable && positions
+    ? [...positions]
+      .filter(code => !currentRank.has(code) && !sold.has(code))
+      .sort((a, b) => (prevRank.get(a) || 1e9) - (prevRank.get(b) || 1e9) || a.localeCompare(b))
+      .map(code => item(code, prevRank.get(code), '上期', '上期未在榜'))
+    : [];
+  return {
+    planAvailable,
+    awaiting: Boolean(pending && pending.status === 'awaiting_execution_data'),
+    positionsAvailable: Boolean(positionsAvailable),
+    sell,
+    buy,
+    exits,
+    heldOutside,
+  };
 }
 
-function droppedRows(dropped) {
-  return dropped.map(r => `
-    <tr>
-      <td><span class="rank-badge">${escapeHtml(r.rank)}</span></td>
-      <td><a class="stock-link" href="${escapeHtml(r.url)}" target="_blank" rel="noopener">${escapeHtml(r.instrument)}</a></td>
-      <td class="stock-name">${escapeHtml(r.name)}</td>
-      <td><span class="score ${r.score.klass}">${escapeHtml(r.score.text)}</span></td>
-    </tr>
-  `).join('');
+function rebalanceItem(r) {
+  const rank = r.rank === null
+    ? `<span class="trade-rank">${escapeHtml(r.rankFallback)}</span>`
+    : `<span class="trade-rank">${escapeHtml(r.rankLabel)} #${escapeHtml(r.rank)}</span>`;
+  return `
+    <div class="trade-item">
+      <a class="stock-link" href="${escapeHtml(r.url)}" target="_blank" rel="noopener">${escapeHtml(r.instrument)}</a>
+      <span class="stock-name">${escapeHtml(r.name)}</span>
+      ${rank}
+    </div>`;
 }
 
-function droppedCards(dropped) {
-  return dropped.map(r => `
-    <article class="stock-card dropped-card">
-      <span class="rank-badge">${escapeHtml(r.rank)}</span>
-      <div class="stock-main">
-        <a class="stock-link" href="${escapeHtml(r.url)}" target="_blank" rel="noopener">${escapeHtml(r.instrument)}</a>
-        <span class="stock-name">${escapeHtml(r.name)}</span>
+function heldOutsideHtml(items, title, note) {
+  return `
+    <div class="held-exits">
+      <div class="held-exits-head">
+        <span class="panel-kicker">${title}</span>
+        <span class="held-exits-note">${note}</span>
       </div>
-      <div class="stock-side">
-        <span class="dropped-label">上期预测</span>
-        <span class="score ${r.score.klass}">${escapeHtml(r.score.text)}</span>
+      <div class="held-exit-list">
+        ${items.map(r => `
+          <span class="held-exit-item">
+            <span class="held-exit-rank">${r.rank === null ? escapeHtml(r.rankFallback) : `${escapeHtml(r.rankLabel)} #${escapeHtml(r.rank)}`}</span>
+            <a class="stock-link" href="${escapeHtml(r.url)}" target="_blank" rel="noopener">${escapeHtml(r.instrument)}</a>
+            <span class="stock-name">${escapeHtml(r.name)}</span>
+          </span>`).join('')}
       </div>
-    </article>
-  `).join('');
+    </div>`;
 }
 
-function renderDropped(dropped, prevDate) {
-  const section = document.getElementById('dropped');
+function rebalanceBody(model) {
+  const column = (title, cls, items, emptyText) => `
+    <div class="trade-column ${cls}">
+      <div class="trade-head">
+        <span class="trade-title">${title}</span>
+        <span class="trade-count">${items.length} 只</span>
+      </div>
+      ${items.length ? `<div class="trade-items">${items.map(rebalanceItem).join('')}</div>` :
+        `<div class="trade-empty">${emptyText}</div>`}
+    </div>`;
+  let body = '';
+  if (model.planAvailable) {
+    body += `
+      <div class="rebalance-grid">
+        ${column('计划调出', 'trade-out', model.sell, '本期无调出')}
+        ${column('计划调入', 'trade-in', model.buy, '本期无调入')}
+      </div>`;
+  }
+  if (model.planAvailable && model.heldOutside.length) {
+    body += heldOutsideHtml(
+      model.heldOutside,
+      '持仓中不在本期 Top 10',
+      '未触发 Drop1；仍在模拟持仓，后续每日最多调出 1 只'
+    );
+  } else if (!model.planAvailable && model.exits.length) {
+    body += heldOutsideHtml(
+      model.exits,
+      '榜单移出',
+      '调仓计划暂不可用；仅表示退出 Top 10，不代表实际调出'
+    );
+  } else if (model.planAvailable && !model.positionsAvailable && model.exits.length) {
+    body += heldOutsideHtml(
+      model.exits,
+      '榜单移出',
+      '持仓数据暂不可用；仅表示退出 Top 10，不代表实际调出'
+    );
+  }
+  return body;
+}
+
+function renderRebalance(model, prevDate) {
+  const section = document.getElementById('rebalance');
   if (!section) return;
-  const body = document.getElementById('dropped-rows');
-  const cards = document.getElementById('dropped-cards');
-  const note = document.getElementById('dropped-note');
-  if (!dropped.length) {
+  const body = document.getElementById('rebalance-body');
+  const note = document.getElementById('rebalance-note');
+  const visible = model.planAvailable || model.exits.length > 0;
+  if (!visible) {
     section.hidden = true;
     if (body) body.innerHTML = '';
-    if (cards) cards.innerHTML = '';
     return;
   }
   section.hidden = false;
-  if (body) body.innerHTML = droppedRows(dropped);
-  if (cards) cards.innerHTML = droppedCards(dropped);
+  if (body) body.innerHTML = rebalanceBody(model);
   if (note) {
-    note.textContent = `对比上一期榜单（${formatDate(prevDate)}）· 本期未进入 Top 10，不代表实际持仓变化`;
+    const compare = prevDate ? `对比上一期榜单（${formatDate(prevDate)}）· ` : '';
+    if (model.planAvailable) {
+      note.textContent = compare + `T+1 开盘执行 · 单日最多调出 1 只${model.awaiting ? ' · 沿用待执行计划' : ''}`;
+    } else {
+      note.textContent = compare + '调仓计划暂不可用，不代表实际调出';
+    }
   }
 }
 
@@ -733,23 +817,15 @@ function pageShell(dates) {
           </table>
         </div>
         <div id="mobile-cards" class="mobile-cards"></div>
-        <div id="dropped" class="dropped-block" hidden>
-          <div class="dropped-head">
+        <div id="rebalance" class="rebalance-block" hidden>
+          <div class="rebalance-head">
             <div>
-              <div class="panel-kicker">本期移出</div>
-              <h3>较上一期移出榜单</h3>
+              <div class="panel-kicker">本期调仓 · Top 10 / Drop1</div>
+              <h3>计划调出与调入</h3>
             </div>
-            <div class="panel-note" id="dropped-note"></div>
+            <div class="panel-note" id="rebalance-note"></div>
           </div>
-          <div class="table-wrap">
-            <table class="signal-table dropped-table">
-              <thead>
-                <tr><th>上期排名</th><th>代码</th><th>名称</th><th>上期预测</th></tr>
-              </thead>
-              <tbody id="dropped-rows"></tbody>
-            </table>
-          </div>
-          <div id="dropped-cards" class="mobile-cards"></div>
+          <div id="rebalance-body"></div>
         </div>
       </section>
 
@@ -808,6 +884,7 @@ function pageShell(dates) {
             </div>
           </div>
           <ul class="governance-list">
+            <li><strong>Drop1 调仓口径：</strong>三个指数池均为 Top 10 / 单日最多调出 1 只。榜单移出但未触发 Drop1 的股票仍保留在模拟持仓中，之后每个交易日继续与最新候选比较，可能逐日调出，也可能因排名回升继续保留；受涨跌停或停牌限制未成交的，会在后续交易日重新评估。</li>
             <li><strong>排名与预测口径：</strong>排名变化对比上一期可用榜单，不代表实际持仓；预测分数仅用于横截面排序，不构成收益承诺。</li>
             <li><strong>模拟收益与交易规则：</strong>旧策略信号已归档移除，累计收益自 2026.10.16 启用当前定型策略（等权 10 只 · 单日限换 1 只）起按 T+1 开盘调仓、收盘估值独立计算。模拟盘在开盘前自动核验 ST 快照（仅当外部接口连接故障时降级为不考虑 ST 的参考计算），仅作模拟参考，不代表实盘真实成交。</li>
           </ul>
@@ -881,7 +958,7 @@ async function main() {
     if (!rows.length) {
       document.getElementById('signal-rows').innerHTML = '';
       document.getElementById('mobile-cards').innerHTML = '';
-      renderDropped([], null);
+      renderRebalance(buildRebalance([], nameMap, null, null, dateInfo.date), null);
       document.getElementById('artifact-status').textContent = '该日信号文件无法读取';
       document.getElementById('stat-date').textContent = formatDate(dateInfo.date);
       document.getElementById('stat-data-date').textContent = '—';
@@ -898,8 +975,8 @@ async function main() {
     function paint(previous, ctx) {
       if (request !== latestDateRequest) return;
       const built = buildRows(rows, nameMap, previous, ctx ? ctx.chart : undefined);
-      const dropped = buildDropped(rows, nameMap, previous);
-      renderDropped(dropped, prevDateInfo ? prevDateInfo.date : null);
+      const rebalance = buildRebalance(rows, nameMap, previous, ctx ? ctx.paper : null, dateInfo.date);
+      renderRebalance(rebalance, prevDateInfo ? prevDateInfo.date : null);
       const titleEl = document.getElementById('ranking-title');
       if (titleEl && rows.length) titleEl.textContent = 'Top ' + rows.length;
       document.getElementById('signal-rows').innerHTML = tableRows(built);

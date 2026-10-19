@@ -230,7 +230,7 @@ test('ranking change labels reflect position, not paper account holdings', () =>
 });
 
 
-test('dropped stocks are the previous ranking minus the current one', () => {
+test('rebalance separates Drop1 sells from ranked-out holdings', () => {
   const startRows = source.indexOf('function buildRows(');
   const endRows = source.indexOf('function tableRows(', startRows);
   assert.ok(startRows >= 0 && endRows > startRows);
@@ -241,12 +241,12 @@ test('dropped stocks are the previous ranking minus the current one', () => {
       return nodes.get(id);
     },
   };
-  const { buildDropped, renderDropped } = vm.runInNewContext(
-    source.slice(startRows, endRows) + ';({ buildDropped, renderDropped })',
+  const { buildRebalance, renderRebalance } = vm.runInNewContext(
+    source.slice(startRows, endRows) + ';({ buildRebalance, renderRebalance })',
     {
       qlibCode: instrument => instrument.slice(2),
       thsUrl: instrument => `https://stockpage.10jqka.com.cn/${instrument.slice(2)}/`,
-      formatScore: value => ({ text: Number(value).toFixed(1), klass: '' }),
+      SIGNAL_INSTRUMENT: /^(SH|SZ|BJ)\d{6}$/,
       formatDate: date => date,
       escapeHtml: value => String(value),
       document: doc,
@@ -261,36 +261,85 @@ test('dropped stocks are the previous ranking minus the current one', () => {
     { rank: '2', instrument: 'SH600003', score: '0.3' },
     { rank: '3', instrument: 'SH600004', score: '0.2' },
   ];
-  const dropped = buildDropped(current, { 600003: '名称三' }, previous);
-  assert.equal(dropped.length, 2);
-  assert.deepEqual(dropped.map(r => r.instrument), ['SH600003', 'SH600004']);
-  assert.equal(dropped[0].rank, 2);
-  assert.equal(dropped[0].name, '名称三');
-  assert.equal(dropped[0].url, 'https://stockpage.10jqka.com.cn/600003/');
+  const paper = {
+    usage_date: '2026-10-19',
+    pending_orders: { execution_date: '2026-10-19', sell: ['SH600003'], buy: ['SH600002'] },
+    positions: { SH600003: {}, SH600004: {}, SH600005: {} },
+  };
+  const model = buildRebalance(current, { 600003: '名称三' }, previous, paper, '2026-10-19');
+  assert.equal(model.planAvailable, true);
+  assert.equal(model.positionsAvailable, true);
+  assert.equal(model.sell.length, 1);
+  assert.equal(model.sell[0].instrument, 'SH600003');
+  assert.equal(model.sell[0].rank, 2);
+  assert.equal(model.sell[0].name, '名称三');
+  assert.equal(model.sell[0].url, 'https://stockpage.10jqka.com.cn/600003/');
+  assert.equal(model.buy.length, 1);
+  assert.equal(model.buy[0].instrument, 'SH600002');
+  assert.equal(model.buy[0].rank, 2);
+  // Ranking exits that are still held are not sells. SH600005 left earlier and
+  // is still held, so it is listed too.
+  assert.equal(model.exits.length, 2);
+  assert.equal(model.heldOutside.length, 2);
+  assert.equal(model.heldOutside[0].instrument, 'SH600004');
+  assert.equal(model.heldOutside[0].rank, 3);
+  assert.equal(model.heldOutside[1].instrument, 'SH600005');
+  assert.equal(model.heldOutside[1].rank, null);
+  assert.equal(model.heldOutside[1].rankFallback, '上期未在榜');
 
-  assert.equal(buildDropped(current, {}, null).length, 0, 'no comparison date means no claimed removals');
-  assert.equal(buildDropped(current, {}, []).length, 0);
-  assert.equal(buildDropped([], {}, previous).length, 0, 'unreadable current ranking must not list removals');
-  assert.equal(buildDropped(previous, {}, previous).length, 0, 'identical rankings have no removals');
+  const fallback = buildRebalance(current, {}, previous, null, '2026-10-19');
+  assert.equal(fallback.planAvailable, false);
+  assert.equal(fallback.heldOutside.length, 0, 'no paper data means no held/sold claim');
+  assert.equal(fallback.exits.length, 2);
 
-  renderDropped(dropped, '2026-10-16');
-  assert.equal(nodes.get('dropped').hidden, false);
-  assert.match(nodes.get('dropped-rows').innerHTML, /SH600003/);
-  assert.match(nodes.get('dropped-cards').innerHTML, /SH600004/);
-  assert.match(nodes.get('dropped-note').textContent, /2026-10-16/);
-  renderDropped([], null);
-  assert.equal(nodes.get('dropped').hidden, true, 'no removals hides the section');
-  assert.equal(nodes.get('dropped-rows').innerHTML, '');
+  const stale = buildRebalance(current, {}, previous, { ...paper, usage_date: '2026-10-18' }, '2026-10-19');
+  assert.equal(stale.planAvailable, false, 'a paper snapshot for another date is not used');
+  const invalid = buildRebalance(current, {}, previous, {
+    usage_date: '2026-10-19',
+    pending_orders: { sell: ['<script>', 'SH600003'], buy: ['SH600002'] },
+    positions: { SH600003: {} },
+  }, '2026-10-19');
+  assert.equal(invalid.sell.length, 1);
+  assert.equal(invalid.sell[0].instrument, 'SH600003');
+  assert.equal(buildRebalance(current, {}, previous, {
+    usage_date: '2026-10-19',
+    pending_orders: { sell: [], buy: [] },
+    positions: {},
+  }, '2026-10-19').heldOutside.length, 0);
 
-  // The section is rendered inside the ranking panel, after the ranking list.
+  renderRebalance(model, '2026-10-16');
+  assert.equal(nodes.get('rebalance').hidden, false);
+  const body = nodes.get('rebalance-body').innerHTML;
+  assert.match(body, /计划调出/);
+  assert.match(body, /SH600003/);
+  assert.match(body, /上期 #2/);
+  assert.match(body, /计划调入/);
+  assert.match(body, /SH600002/);
+  assert.match(body, /本期 #2/);
+  assert.match(body, /持仓中不在本期 Top 10/);
+  assert.match(body, /SH600004/);
+  assert.match(body, /SH600005/);
+  assert.match(body, /上期未在榜/);
+  assert.match(nodes.get('rebalance-note').textContent, /单日最多调出 1 只/);
+  assert.match(nodes.get('rebalance-note').textContent, /2026-10-16/);
+  renderRebalance(fallback, '2026-10-16');
+  assert.match(nodes.get('rebalance-body').innerHTML, /调仓计划暂不可用/);
+  assert.doesNotMatch(nodes.get('rebalance-body').innerHTML, /计划调出/);
+  renderRebalance(buildRebalance(current, {}, null, null, '2026-10-19'), null);
+  assert.equal(nodes.get('rebalance').hidden, true);
+  assert.equal(nodes.get('rebalance-body').innerHTML, '');
+
+  // Rendered inside the ranking panel after the ranking list.
   const rankingStart = source.indexOf('id="ranking"');
-  const droppedStart = source.indexOf('id="dropped"');
+  const rebalanceStart = source.indexOf('id="rebalance"');
   const historyStart = source.indexOf('id="history"');
-  assert.ok(rankingStart >= 0 && droppedStart > rankingStart && historyStart > droppedStart);
-  assert.match(source, /renderDropped\(dropped, prevDateInfo \? prevDateInfo\.date : null\)/);
+  assert.ok(rankingStart >= 0 && rebalanceStart > rankingStart && historyStart > rebalanceStart);
+  assert.match(source, /renderRebalance\(rebalance, prevDateInfo \? prevDateInfo\.date : null\)/);
+  assert.match(source, /单日最多调出 1 只/);
   const css = fs.readFileSync(path.join(root, 'website', 'styles.css'), 'utf8');
-  assert.match(css, /\.dropped-block\[hidden\]\s*\{\s*display:\s*none;/);
-  assert.match(css, /\.dropped-table th\s*\{/);
+  assert.match(css, /\.rebalance-block\[hidden\]\s*\{\s*display:\s*none;/);
+  assert.match(css, /\.rebalance-grid\s*\{/);
+  assert.match(css, /\.held-exits\s*\{/);
 });
 
 

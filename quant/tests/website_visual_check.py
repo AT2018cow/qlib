@@ -61,10 +61,11 @@ def make_fixture(root: Path):
         writer.writerow(["code", "name"])
         for i, code in enumerate(codes):
             writer.writerow([code[2:], ("测试样例股票" if i == 0 else "示例名称") + str(i + 1)])
-        writer.writerow(["609999", "退榜样例"])
-    # The older ranking contains one code that is absent from the latest one,
-    # so the latest page exercises the "removed from the ranking" section.
-    previous_codes = codes[:-1] + ["SH609999"]
+        writer.writerow(["609998", "仍在持仓样例"])
+        writer.writerow(["609999", "计划调出样例"])
+    # The older ranking contains two codes absent from the latest one: one is
+    # the actual Drop1 sell, the other stays held outside the current Top 10.
+    previous_codes = codes[:-2] + ["SH609998", "SH609999"]
     for offset, selected in enumerate((days[-1], days[-2])):
         key = selected.isoformat()
         selected_codes = previous_codes if offset else codes
@@ -91,6 +92,15 @@ def make_fixture(root: Path):
                     "production_lineage": lineage,
                     "usage_date": key,
                 })
+                paper["positions"] = {
+                    code: {"shares": 1} for code in previous_codes if code != "SH688146"
+                }
+                paper["pending_orders"] = {
+                    "signal_date": days[-2].isoformat(),
+                    "execution_date": key,
+                    "sell": ["SH609999"],
+                    "buy": ["SH688146"],
+                }
                 metadata = {
                     "contract_version": "csi1000_mvp_daily_v1",
                     "market": mkt,
@@ -191,23 +201,19 @@ def inspect_viewport(browser, base_url, width: int):
     # The status is a ranking comparison, never a paper-account holding.
     assert page.locator("#signal-rows tr").first.locator(".tag").inner_text() == "持平"
     assert page.locator("#mobile-cards .stock-card").first.locator(".tag").inner_text() == "持平"
-    assert "持有" not in page.locator("#ranking").inner_text()
-    # Stocks removed from this ranking versus the previous list are disclosed
-    # below the ranking, are never network fetches, and stay out of the count
-    # of current Top N cards.
-    dropped = page.locator("#dropped")
-    dropped.wait_for(state="visible", timeout=20000)
-    assert page.evaluate("document.getElementById('dropped').previousElementSibling.id === 'mobile-cards'")
-    assert page.locator("#dropped-rows tr").count() == 1
-    assert "SH609999" in dropped.text_content()
-    assert "退榜样例" in dropped.text_content()
-    assert page.locator("#dropped-rows a").first.get_attribute("href") == "https://stockpage.10jqka.com.cn/609999/"
-    assert page.locator("#dropped-note").inner_text() != ""
-    if width <= 860:
-        assert page.locator("#dropped-cards .stock-card").count() == 1
-        assert page.locator("#dropped-cards").is_visible()
-    else:
-        assert page.locator("#dropped-cards").is_hidden()
+    assert "持有" not in page.locator("#signal-rows").inner_text()
+    # Drop1 is not "sell everything that left the Top 10": one planned sell is
+    # shown explicitly, and the other ranked-out name is marked as still held.
+    rebalance = page.locator("#rebalance")
+    rebalance.wait_for(state="visible", timeout=20000)
+    assert page.evaluate("document.getElementById('rebalance').previousElementSibling.id === 'mobile-cards'")
+    trade_text = rebalance.text_content()
+    assert "计划调出" in trade_text and "SH609999" in trade_text
+    assert "计划调入" in trade_text and "SH688146" in trade_text
+    assert "持仓中不在本期 Top 10" in trade_text and "SH609998" in trade_text
+    assert "未触发 Drop1" in trade_text
+    assert page.locator("#rebalance a[href='https://stockpage.10jqka.com.cn/609999/']").count() == 1
+    assert "单日最多调出 1 只" in page.locator("#rebalance-note").inner_text()
     if width <= 860:
         stock_rows = page.locator("#mobile-cards .stock-card")
         assert stock_rows.count() == 20
@@ -227,7 +233,7 @@ def inspect_viewport(browser, base_url, width: int):
     page.wait_for_function("document.getElementById('stat-lineage')?.textContent === '历史 / 未核验'")
     assert page.locator("#ranking-date").inner_text() == page.locator("#stat-date").inner_text()
     assert page.locator("#signal-rows tr").first.locator(".tag").inner_text() == "无对照"
-    assert page.locator("#dropped").is_hidden(), "the oldest visible date has no comparison date"
+    assert page.locator("#rebalance").is_hidden(), "the oldest visible date has no comparison date"
     page.wait_for_function("Math.abs(document.querySelector('#ranking').getBoundingClientRect().top) < 30")
     after_history = len(signals_requests)
     assert after_history == initial_requests + 3, signals_requests
