@@ -214,6 +214,7 @@ def inspect_viewport(browser, base_url, width: int):
     assert "未触发 Drop1" in trade_text
     assert page.locator("#rebalance a[href='https://stockpage.10jqka.com.cn/609999/']").count() == 1
     assert "单日最多调出 1 只" in page.locator("#rebalance-note").inner_text()
+    assert "单日最多买入 1 只" in page.locator(".rebalance-foot").inner_text()
     if width <= 860:
         stock_rows = page.locator("#mobile-cards .stock-card")
         assert stock_rows.count() == 20

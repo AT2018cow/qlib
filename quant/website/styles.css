@@ -473,6 +473,13 @@ h1, h2, h3, p { margin-top: 0; }
 }
 .held-exit-rank { color: var(--quiet); font-size: 11px; white-space: nowrap; }
 .held-exit-item .stock-name { min-width: 0; color: var(--muted); overflow-wrap: anywhere; }
+.rebalance-foot {
+  border-top: 1px solid var(--border);
+  padding: 10px 25px 13px;
+  color: var(--quiet);
+  font-size: 11px;
+  line-height: 1.6;
+}
 
 /* Keep desktop <td> as a real table cell; flex would break column sizing. */
 .signal-table td.spark {
@@ -692,6 +699,7 @@ details p { margin: 12px 0 0; }
   .held-exits { padding: 12px 16px 14px; }
   .held-exits-head { flex-direction: column; align-items: flex-start; gap: 4px; }
   .held-exits-note { text-align: left; }
+  .rebalance-foot { padding: 10px 16px 12px; }
   .table-wrap { display: none; }
   .mobile-cards { display: grid; gap: 0; }
   .stock-card {

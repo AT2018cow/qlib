@@ -530,7 +530,7 @@ function buildRows(rows, nameMap, prev, chartData) {
   return rows.map(r => {
     const rank = Number(r.rank);
     let tag = prev ? '<span class="tag tag-neutral" title="与上一期可用榜单排名相同">持平</span>' : '<span class="tag tag-neutral">无对照</span>';
-    if (prev && !prevCodes.has(r.instrument)) tag = '<span class="tag tag-new">新进</span>';
+    if (prev && !prevCodes.has(r.instrument)) tag = '<span class="tag tag-new" title="进入本期 Top 10；受 Drop1 限制，不等于实际买入">新进</span>';
     else if (prev && rank < prevRank[r.instrument]) tag = '<span class="tag tag-up">上升</span>';
     else if (prev && rank > prevRank[r.instrument]) tag = '<span class="tag tag-dn">下降</span>';
 
@@ -826,6 +826,7 @@ function pageShell(dates) {
             <div class="panel-note" id="rebalance-note"></div>
           </div>
           <div id="rebalance-body"></div>
+          <div class="rebalance-foot">榜单新进只代表进入模型 Top 10；满仓时受 Drop1 限制，单日最多买入 1 只，未买入的新进股票继续观察。</div>
         </div>
       </section>
 
@@ -884,7 +885,7 @@ function pageShell(dates) {
             </div>
           </div>
           <ul class="governance-list">
-            <li><strong>Drop1 调仓口径：</strong>三个指数池均为 Top 10 / 单日最多调出 1 只。榜单移出但未触发 Drop1 的股票仍保留在模拟持仓中，之后每个交易日继续与最新候选比较，可能逐日调出，也可能因排名回升继续保留；受涨跌停或停牌限制未成交的，会在后续交易日重新评估。</li>
+            <li><strong>Drop1 调仓口径：</strong>三个指数池均为 Top 10 / 单日最多调出 1 只。榜单移出但未触发 Drop1 的股票仍保留在模拟持仓中，之后每个交易日继续与最新候选比较，可能逐日调出，也可能因排名回升继续保留；受涨跌停或停牌限制未成交的，会在后续交易日重新评估。同理，新进 Top 10 也不等于立即买入；满仓时单日最多调入 1 只，未买入的新进股票继续留在候选池。</li>
             <li><strong>排名与预测口径：</strong>排名变化对比上一期可用榜单，不代表实际持仓；预测分数仅用于横截面排序，不构成收益承诺。</li>
             <li><strong>模拟收益与交易规则：</strong>旧策略信号已归档移除，累计收益自 2026.10.16 启用当前定型策略（等权 10 只 · 单日限换 1 只）起按 T+1 开盘调仓、收盘估值独立计算。模拟盘在开盘前自动核验 ST 快照（仅当外部接口连接故障时降级为不考虑 ST 的参考计算），仅作模拟参考，不代表实盘真实成交。</li>
           </ul>

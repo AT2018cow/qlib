@@ -79,8 +79,8 @@ def test_public_site_uses_shared_stylesheet():
     methodology = (ROOT / "quant" / "website" / "methodology.html").read_text()
     styles = ROOT / "quant" / "website" / "styles.css"
     assert styles.is_file()
-    assert 'href="styles.css?v=16"' in index
-    assert 'href="styles.css?v=16"' in methodology
+    assert 'href="styles.css?v=17"' in index
+    assert 'href="styles.css?v=17"' in methodology
 
 
 def test_dashboard_dark_theme_and_responsive_layout():
@@ -93,7 +93,7 @@ def test_dashboard_dark_theme_and_responsive_layout():
     assert ".table-wrap { display: none; }" in styles
     assert ".mobile-cards { display: grid;" in styles
     assert ".doc-grid { grid-template-columns: 1fr;" in styles
-    assert 'src="app.js?v=37"' in index
+    assert 'src="app.js?v=38"' in index
 
 
 def test_rebalance_distinguishes_drop1_sells_from_ranked_out_holdings():
@@ -104,6 +104,8 @@ def test_rebalance_distinguishes_drop1_sells_from_ranked_out_holdings():
     assert "heldOutside" in app
     assert "单日最多调出 1 只" in app
     assert "仍在模拟持仓" in app
+    assert "榜单新进只代表进入模型 Top 10" in app
+    assert "单日最多买入 1 只" in app
     assert ".rebalance-block[hidden]" in styles
     assert ".rebalance-grid" in styles
 

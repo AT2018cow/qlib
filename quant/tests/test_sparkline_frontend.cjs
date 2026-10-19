@@ -219,6 +219,7 @@ test('ranking change labels reflect position, not paper account holdings', () =>
   assert.match(tags[1], />上升<\/span>/);
   assert.match(tags[2], />下降<\/span>/);
   assert.match(tags[3], />新进<\/span>/);
+  assert.match(tags[3], /不等于实际买入/);
   assert.ok(tags.every(tag => !tag.includes('持有')));
   assert.ok(buildRows(rows, {}, null, undefined).every(row => row.tag.includes('无对照')));
 
@@ -336,6 +337,8 @@ test('rebalance separates Drop1 sells from ranked-out holdings', () => {
   assert.ok(rankingStart >= 0 && rebalanceStart > rankingStart && historyStart > rebalanceStart);
   assert.match(source, /renderRebalance\(rebalance, prevDateInfo \? prevDateInfo\.date : null\)/);
   assert.match(source, /单日最多调出 1 只/);
+  assert.match(source, /榜单新进只代表进入模型 Top 10/);
+  assert.match(source, /单日最多买入 1 只/);
   const css = fs.readFileSync(path.join(root, 'website', 'styles.css'), 'utf8');
   assert.match(css, /\.rebalance-block\[hidden\]\s*\{\s*display:\s*none;/);
   assert.match(css, /\.rebalance-grid\s*\{/);
