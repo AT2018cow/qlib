@@ -548,6 +548,69 @@ function buildRows(rows, nameMap, prev, chartData) {
   });
 }
 
+// Instruments present in the previous ranking but absent from this one.
+// Missing comparison data yields an empty list, never a guessed removal.
+function buildDropped(rows, nameMap, prev) {
+  if (!prev || !prev.length || !rows.length) return [];
+  const currentCodes = new Set(rows.map(r => r.instrument));
+  return prev
+    .filter(r => !currentCodes.has(r.instrument))
+    .map(r => ({
+      rank: Number(r.rank),
+      instrument: r.instrument,
+      name: nameMap[qlibCode(r.instrument)] || '名称待更新',
+      score: formatScore(r.score),
+      url: thsUrl(r.instrument),
+    }));
+}
+
+function droppedRows(dropped) {
+  return dropped.map(r => `
+    <tr>
+      <td><span class="rank-badge">${escapeHtml(r.rank)}</span></td>
+      <td><a class="stock-link" href="${escapeHtml(r.url)}" target="_blank" rel="noopener">${escapeHtml(r.instrument)}</a></td>
+      <td class="stock-name">${escapeHtml(r.name)}</td>
+      <td><span class="score ${r.score.klass}">${escapeHtml(r.score.text)}</span></td>
+    </tr>
+  `).join('');
+}
+
+function droppedCards(dropped) {
+  return dropped.map(r => `
+    <article class="stock-card dropped-card">
+      <span class="rank-badge">${escapeHtml(r.rank)}</span>
+      <div class="stock-main">
+        <a class="stock-link" href="${escapeHtml(r.url)}" target="_blank" rel="noopener">${escapeHtml(r.instrument)}</a>
+        <span class="stock-name">${escapeHtml(r.name)}</span>
+      </div>
+      <div class="stock-side">
+        <span class="dropped-label">上期预测</span>
+        <span class="score ${r.score.klass}">${escapeHtml(r.score.text)}</span>
+      </div>
+    </article>
+  `).join('');
+}
+
+function renderDropped(dropped, prevDate) {
+  const section = document.getElementById('dropped');
+  if (!section) return;
+  const body = document.getElementById('dropped-rows');
+  const cards = document.getElementById('dropped-cards');
+  const note = document.getElementById('dropped-note');
+  if (!dropped.length) {
+    section.hidden = true;
+    if (body) body.innerHTML = '';
+    if (cards) cards.innerHTML = '';
+    return;
+  }
+  section.hidden = false;
+  if (body) body.innerHTML = droppedRows(dropped);
+  if (cards) cards.innerHTML = droppedCards(dropped);
+  if (note) {
+    note.textContent = `对比上一期榜单（${formatDate(prevDate)}）· 本期未进入 Top 10，不代表实际持仓变化`;
+  }
+}
+
 function tableRows(rows) {
   return rows.map(r => `
     <tr>
@@ -670,6 +733,24 @@ function pageShell(dates) {
           </table>
         </div>
         <div id="mobile-cards" class="mobile-cards"></div>
+        <div id="dropped" class="dropped-block" hidden>
+          <div class="dropped-head">
+            <div>
+              <div class="panel-kicker">本期移出</div>
+              <h3>较上一期移出榜单</h3>
+            </div>
+            <div class="panel-note" id="dropped-note"></div>
+          </div>
+          <div class="table-wrap">
+            <table class="signal-table dropped-table">
+              <thead>
+                <tr><th>上期排名</th><th>代码</th><th>名称</th><th>上期预测</th></tr>
+              </thead>
+              <tbody id="dropped-rows"></tbody>
+            </table>
+          </div>
+          <div id="dropped-cards" class="mobile-cards"></div>
+        </div>
       </section>
 
       <section class="panel" id="history">
@@ -789,8 +870,9 @@ async function main() {
     document.getElementById('ranking-date').textContent = formatDate(dateInfo.date);
     document.getElementById('artifact-status').textContent = '正在加载日期记录…';
     const idx = dates.findIndex(d => d.date === dateInfo.date);
-    const previousPromise = idx >= 0 && idx + 1 < dates.length
-      ? loadDateRows(dates[idx + 1].date, pool).then(previous => previous.length ? previous : null)
+    const prevDateInfo = idx >= 0 && idx + 1 < dates.length ? dates[idx + 1] : null;
+    const previousPromise = prevDateInfo
+      ? loadDateRows(prevDateInfo.date, pool).then(previous => previous.length ? previous : null)
       : Promise.resolve(null);
     const ctxPromise = loadContext(dateInfo.date, pool);
     const rows = await loadDateRows(dateInfo.date, pool);
@@ -799,6 +881,7 @@ async function main() {
     if (!rows.length) {
       document.getElementById('signal-rows').innerHTML = '';
       document.getElementById('mobile-cards').innerHTML = '';
+      renderDropped([], null);
       document.getElementById('artifact-status').textContent = '该日信号文件无法读取';
       document.getElementById('stat-date').textContent = formatDate(dateInfo.date);
       document.getElementById('stat-data-date').textContent = '—';
@@ -815,6 +898,8 @@ async function main() {
     function paint(previous, ctx) {
       if (request !== latestDateRequest) return;
       const built = buildRows(rows, nameMap, previous, ctx ? ctx.chart : undefined);
+      const dropped = buildDropped(rows, nameMap, previous);
+      renderDropped(dropped, prevDateInfo ? prevDateInfo.date : null);
       const titleEl = document.getElementById('ranking-title');
       if (titleEl && rows.length) titleEl.textContent = 'Top ' + rows.length;
       document.getElementById('signal-rows').innerHTML = tableRows(built);

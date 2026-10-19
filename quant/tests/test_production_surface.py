@@ -79,8 +79,8 @@ def test_public_site_uses_shared_stylesheet():
     methodology = (ROOT / "quant" / "website" / "methodology.html").read_text()
     styles = ROOT / "quant" / "website" / "styles.css"
     assert styles.is_file()
-    assert 'href="styles.css?v=14"' in index
-    assert 'href="styles.css?v=14"' in methodology
+    assert 'href="styles.css?v=15"' in index
+    assert 'href="styles.css?v=15"' in methodology
 
 
 def test_dashboard_dark_theme_and_responsive_layout():
@@ -93,7 +93,7 @@ def test_dashboard_dark_theme_and_responsive_layout():
     assert ".table-wrap { display: none; }" in styles
     assert ".mobile-cards { display: grid;" in styles
     assert ".doc-grid { grid-template-columns: 1fr;" in styles
-    assert 'src="app.js?v=35"' in index
+    assert 'src="app.js?v=36"' in index
 
 
 def test_forward_performance_panel_is_forward_only_from_20261012():

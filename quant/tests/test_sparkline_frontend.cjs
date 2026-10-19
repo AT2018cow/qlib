@@ -230,6 +230,70 @@ test('ranking change labels reflect position, not paper account holdings', () =>
 });
 
 
+test('dropped stocks are the previous ranking minus the current one', () => {
+  const startRows = source.indexOf('function buildRows(');
+  const endRows = source.indexOf('function tableRows(', startRows);
+  assert.ok(startRows >= 0 && endRows > startRows);
+  const nodes = new Map();
+  const doc = {
+    getElementById(id) {
+      if (!nodes.has(id)) nodes.set(id, { hidden: true, innerHTML: '', textContent: '' });
+      return nodes.get(id);
+    },
+  };
+  const { buildDropped, renderDropped } = vm.runInNewContext(
+    source.slice(startRows, endRows) + ';({ buildDropped, renderDropped })',
+    {
+      qlibCode: instrument => instrument.slice(2),
+      thsUrl: instrument => `https://stockpage.10jqka.com.cn/${instrument.slice(2)}/`,
+      formatScore: value => ({ text: Number(value).toFixed(1), klass: '' }),
+      formatDate: date => date,
+      escapeHtml: value => String(value),
+      document: doc,
+    }
+  );
+  const current = [
+    { rank: '1', instrument: 'SH600001', score: '0.5' },
+    { rank: '2', instrument: 'SH600002', score: '0.4' },
+  ];
+  const previous = [
+    { rank: '1', instrument: 'SH600001', score: '0.6' },
+    { rank: '2', instrument: 'SH600003', score: '0.3' },
+    { rank: '3', instrument: 'SH600004', score: '0.2' },
+  ];
+  const dropped = buildDropped(current, { 600003: '名称三' }, previous);
+  assert.equal(dropped.length, 2);
+  assert.deepEqual(dropped.map(r => r.instrument), ['SH600003', 'SH600004']);
+  assert.equal(dropped[0].rank, 2);
+  assert.equal(dropped[0].name, '名称三');
+  assert.equal(dropped[0].url, 'https://stockpage.10jqka.com.cn/600003/');
+
+  assert.equal(buildDropped(current, {}, null).length, 0, 'no comparison date means no claimed removals');
+  assert.equal(buildDropped(current, {}, []).length, 0);
+  assert.equal(buildDropped([], {}, previous).length, 0, 'unreadable current ranking must not list removals');
+  assert.equal(buildDropped(previous, {}, previous).length, 0, 'identical rankings have no removals');
+
+  renderDropped(dropped, '2026-10-16');
+  assert.equal(nodes.get('dropped').hidden, false);
+  assert.match(nodes.get('dropped-rows').innerHTML, /SH600003/);
+  assert.match(nodes.get('dropped-cards').innerHTML, /SH600004/);
+  assert.match(nodes.get('dropped-note').textContent, /2026-10-16/);
+  renderDropped([], null);
+  assert.equal(nodes.get('dropped').hidden, true, 'no removals hides the section');
+  assert.equal(nodes.get('dropped-rows').innerHTML, '');
+
+  // The section is rendered inside the ranking panel, after the ranking list.
+  const rankingStart = source.indexOf('id="ranking"');
+  const droppedStart = source.indexOf('id="dropped"');
+  const historyStart = source.indexOf('id="history"');
+  assert.ok(rankingStart >= 0 && droppedStart > rankingStart && historyStart > droppedStart);
+  assert.match(source, /renderDropped\(dropped, prevDateInfo \? prevDateInfo\.date : null\)/);
+  const css = fs.readFileSync(path.join(root, 'website', 'styles.css'), 'utf8');
+  assert.match(css, /\.dropped-block\[hidden\]\s*\{\s*display:\s*none;/);
+  assert.match(css, /\.dropped-table th\s*\{/);
+});
+
+
 test('ST-free forward NAV is explicitly shown as research reference', () => {
   const ref = {
     ...validForward, execution_st_policy: 'ST_IGNORED_REFERENCE_ONLY',
