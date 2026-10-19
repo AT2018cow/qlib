@@ -93,13 +93,14 @@ def test_dashboard_dark_theme_and_responsive_layout():
     assert ".table-wrap { display: none; }" in styles
     assert ".mobile-cards { display: grid;" in styles
     assert ".doc-grid { grid-template-columns: 1fr;" in styles
-    assert 'src="app.js?v=39"' in index
+    assert 'src="app.js?v=40"' in index
 
 
 def test_rebalance_distinguishes_drop1_sells_from_ranked_out_holdings():
     app = (ROOT / "quant" / "website" / "app.js").read_text()
     styles = (ROOT / "quant" / "website" / "styles.css").read_text()
     assert 'id="rebalance"' in app
+    assert "<h3>计划调入与调出</h3>" in app
     assert "pending_orders" in app
     assert "heldOutside" in app
     assert "单日最多调出 1 只" in app

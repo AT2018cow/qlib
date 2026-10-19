@@ -821,7 +821,7 @@ function pageShell(dates) {
           <div class="rebalance-head">
             <div>
               <div class="panel-kicker">本期调仓 · Top 10 / Drop1</div>
-              <h3>计划调出与调入</h3>
+              <h3>计划调入与调出</h3>
             </div>
             <div class="panel-note" id="rebalance-note"></div>
           </div>

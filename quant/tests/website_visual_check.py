@@ -206,6 +206,7 @@ def inspect_viewport(browser, base_url, width: int):
     # shown explicitly, and the other ranked-out name is marked as still held.
     rebalance = page.locator("#rebalance")
     rebalance.wait_for(state="visible", timeout=20000)
+    assert rebalance.locator("h3").inner_text() == "计划调入与调出"
     assert page.evaluate("document.getElementById('rebalance').previousElementSibling.id === 'mobile-cards'")
     trade_text = rebalance.text_content()
     assert "计划调出" in trade_text and "SH609999" in trade_text
