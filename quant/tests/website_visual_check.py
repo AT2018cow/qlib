@@ -215,6 +215,12 @@ def inspect_viewport(browser, base_url, width: int):
     assert page.locator("#rebalance a[href='https://stockpage.10jqka.com.cn/609999/']").count() == 1
     assert "单日最多调出 1 只" in page.locator("#rebalance-note").inner_text()
     assert "单日最多买入 1 只" in page.locator(".rebalance-foot").inner_text()
+    assert page.locator(".trade-column").nth(0).inner_text().startswith("计划调入")
+    assert page.locator(".trade-column").nth(1).inner_text().startswith("计划调出")
+    trade_colors = page.evaluate(
+        "[...document.querySelectorAll('.trade-title')].map(el => getComputedStyle(el).color)"
+    )
+    assert trade_colors == ["rgb(139, 189, 255)", "rgb(139, 189, 255)"], trade_colors
     if width <= 860:
         stock_rows = page.locator("#mobile-cards .stock-card")
         assert stock_rows.count() == 20

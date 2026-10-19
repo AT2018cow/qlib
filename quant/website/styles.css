@@ -419,9 +419,7 @@ h1, h2, h3, p { margin-top: 0; }
   gap: 10px;
   margin-bottom: 5px;
 }
-.trade-title { font-size: 12px; font-weight: 720; letter-spacing: .01em; }
-.trade-out .trade-title { color: var(--amber); }
-.trade-in .trade-title { color: var(--blue); }
+.trade-title { color: var(--blue); font-size: 12px; font-weight: 720; letter-spacing: .01em; }
 .trade-count { color: var(--quiet); font-size: 11px; font-variant-numeric: tabular-nums; }
 .trade-item {
   display: flex;

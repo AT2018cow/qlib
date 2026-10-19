@@ -646,8 +646,8 @@ function rebalanceBody(model) {
   if (model.planAvailable) {
     body += `
       <div class="rebalance-grid">
-        ${column('计划调出', 'trade-out', model.sell, '本期无调出')}
         ${column('计划调入', 'trade-in', model.buy, '本期无调入')}
+        ${column('计划调出', 'trade-out', model.sell, '本期无调出')}
       </div>`;
   }
   if (model.planAvailable && model.heldOutside.length) {

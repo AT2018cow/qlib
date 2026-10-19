@@ -317,6 +317,7 @@ test('rebalance separates Drop1 sells from ranked-out holdings', () => {
   assert.match(body, /计划调入/);
   assert.match(body, /SH600002/);
   assert.match(body, /本期 #2/);
+  assert.ok(body.indexOf('计划调入') < body.indexOf('计划调出'), 'buy column must be left of sell column');
   assert.match(body, /持仓中不在本期 Top 10/);
   assert.match(body, /SH600004/);
   assert.match(body, /SH600005/);
@@ -343,6 +344,8 @@ test('rebalance separates Drop1 sells from ranked-out holdings', () => {
   assert.match(css, /\.rebalance-block\[hidden\]\s*\{\s*display:\s*none;/);
   assert.match(css, /\.rebalance-grid\s*\{/);
   assert.match(css, /\.held-exits\s*\{/);
+  assert.match(css, /\.trade-title\s*\{[^}]*color:\s*var\(--blue\)/);
+  assert.doesNotMatch(css, /\.trade-(out|in) \.trade-title/);
 });
 
 
