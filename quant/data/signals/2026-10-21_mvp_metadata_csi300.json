@@ -1,0 +1,101 @@
+{
+  "contract_version": "csi1000_mvp_daily_v1",
+  "label_maturity": {
+    "fit_asof": "2026-10-15",
+    "horizon_sessions": 20,
+    "signal_data_date": "2026-10-20",
+    "status": "PASS",
+    "train_end": "2025-07-28",
+    "train_label_last_observation": "2025-08-25",
+    "train_start": "2016-01-01",
+    "train_start_effective": "2016-01-04",
+    "train_start_resolution": "FROZEN_HOLIDAY_TO_NEXT_SESSION",
+    "valid_end": "2026-09-08",
+    "valid_label_last_observation": "2026-10-14",
+    "valid_start": "2025-08-26"
+  },
+  "market": "csi300",
+  "paper": {
+    "execution_date": "2026-10-21",
+    "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
+    "n_positions": 10,
+    "planned_buy_count": 1,
+    "planned_sell_count": 1,
+    "prior_execution_blocked_order_count": 0,
+    "prior_execution_report": "present",
+    "real_fill_execution": "NOT_CERTIFIED_PAPER_ONLY",
+    "return_interpretation": "REFERENCE_ONLY_ST_NOT_MODELED",
+    "signal_date": "2026-10-20",
+    "status": "planned"
+  },
+  "pit_universe": {
+    "asof": "2026-10-20",
+    "expected_count": 300,
+    "member_count": 300,
+    "membership_sha256": "1b16c959b279464f5f92aa9e0d76a44c06717ac2883eecd423e0e8f6d2f9b769",
+    "source_sha256": "512999f44c27ba9b537946d89592dc956f952925e0fb621f8869e94c701b9140",
+    "status": "PASS"
+  },
+  "production_lineage": {
+    "candidate_id": "59b93929bff1e736228d31403a167781aff433d27da1870bcf9fe34e04b6bbb9",
+    "contract_version": "csi1000_stage_b_forward_v1",
+    "model_config_sha256": "b97bc44d1c02acb4d85c344d2d570e00ef9ff365228c8a9550fa45393859ae67",
+    "profile": "59b93929_top10_drop1",
+    "stage_b_snapshot_token": "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1"
+  },
+  "provider": {
+    "archive_sha256": "ff60683d0459a12e9432b2b0ce2aca1a6fe24a3114aed3247c87d157c709f1e4",
+    "calendar_end": "2026-10-20",
+    "calendar_sha256": "dce61b43829ee8da92b8b319ba02573fa9145e57706cf4aea26bd1f1e4220c4f",
+    "name": "chenditc",
+    "source_url": "https://github.com/chenditc/investment_data/releases/latest/download/qlib_bin.tar.gz"
+  },
+  "publication": {
+    "canonical_freshness_gate": "CSI1000 Stage-B canonical freshness PASS: 2026-10-20 close -> 2026-10-21 open (lag=0)",
+    "signal_data_date": "2026-10-20",
+    "status": "PASS",
+    "usage_date": "2026-10-21"
+  },
+  "risk": {
+    "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
+    "st": {
+      "date": "2026-10-21",
+      "detail": "ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+      "failure_kind": "TRANSPORT",
+      "scope": "transport outage; reference paper without ST restrictions",
+      "selection_filter_applied": false,
+      "source": "akshare.stock_zh_a_st_em",
+      "status": "NOT_CHECKED_REFERENCE_ONLY",
+      "top20_st": null,
+      "top20_st_count": null,
+      "tradeability_certified": false
+    },
+    "tradeability_certified": false,
+    "usage_day_suspension": {
+      "note": "Execution-day suspension cannot be certified from the prior close package. Paper settlement waits for the later provider refresh and records blocked orders.",
+      "scope": "2026-10-21",
+      "selection_filter_applied": false,
+      "status": "NOT_INDEPENDENTLY_VERIFIED_PREOPEN",
+      "tradeability_certified": false
+    }
+  },
+  "signal_lineage": {
+    "display_surface": "board_aware_close_limit_filtered_top20",
+    "display_top20_instruments": [
+      "SH688521",
+      "SZ000657",
+      "SZ002353",
+      "SZ301165",
+      "SH603986",
+      "SZ301308",
+      "SZ300502",
+      "SZ300308",
+      "SZ002384",
+      "SZ000338"
+    ],
+    "display_top20_sha256": "ec452ca9d54cf0c6e93af85c12ceac3b2a4bb4383ec233498db4816f3421d2a4",
+    "paper_planner_source": "pre_display_limit_filter_full_ranking",
+    "paper_ranking_count": 299,
+    "paper_ranking_full_sha256": "2a6d5373ddcc9a604e7081615e50a68bf288b09b8ca75852c9475927cc1ba55b"
+  }
+}
