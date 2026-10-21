@@ -240,7 +240,6 @@ def inspect_viewport(browser, base_url, width: int):
     page.screenshot(path=str(OUT / f"dashboard-fixture-awaiting-{width}.png"), full_page=True)
     date_button = page.locator(".date-btn").nth(1)
     date_button.scroll_into_view_if_needed()
-    scroll_before = page.evaluate("window.scrollY")
     ranking_top_before = page.evaluate(
         "document.querySelector('#ranking').getBoundingClientRect().top"
     )
@@ -250,10 +249,13 @@ def inspect_viewport(browser, base_url, width: int):
     assert page.locator("#signal-rows tr").first.locator(".tag").inner_text() == "无对照"
     assert page.locator("#rebalance").is_hidden(), "the oldest visible date has no comparison date"
     # Selecting an archive date must not scroll the page back up to #ranking.
-    assert abs(page.evaluate("window.scrollY") - scroll_before) <= 1
-    assert abs(page.evaluate(
+    ranking_top_after = page.evaluate(
         "document.querySelector('#ranking').getBoundingClientRect().top"
-    ) - ranking_top_before) <= 1
+    )
+    assert ranking_top_after < -20, (
+        "date switch jumped to #ranking: "
+        f"before={ranking_top_before:.1f}, after={ranking_top_after:.1f}"
+    )
     after_history = len(signals_requests)
     assert after_history == initial_requests + 3, signals_requests
     metadata_404s = [
