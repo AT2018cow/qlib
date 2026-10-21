@@ -1098,10 +1098,7 @@ async function main() {
     document.querySelectorAll('.date-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const d = dates.find(item => item.date === btn.dataset.date);
-        if (d) {
-          await renderDate(d);
-          document.getElementById('ranking').scrollIntoView({ behavior: 'auto', block: 'start' });
-        }
+        if (d) await renderDate(d);
       });
     });
   }

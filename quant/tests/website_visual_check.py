@@ -238,12 +238,22 @@ def inspect_viewport(browser, base_url, width: int):
         assert stock_rows.first.locator(".sparkline-svg").is_visible()
     OUT.mkdir(parents=True, exist_ok=True)
     page.screenshot(path=str(OUT / f"dashboard-fixture-awaiting-{width}.png"), full_page=True)
-    page.locator(".date-btn").nth(1).click()
+    date_button = page.locator(".date-btn").nth(1)
+    date_button.scroll_into_view_if_needed()
+    scroll_before = page.evaluate("window.scrollY")
+    ranking_top_before = page.evaluate(
+        "document.querySelector('#ranking').getBoundingClientRect().top"
+    )
+    date_button.click()
     page.wait_for_function("document.getElementById('stat-lineage')?.textContent === '历史 / 未核验'")
     assert page.locator("#ranking-date").inner_text() == page.locator("#stat-date").inner_text()
     assert page.locator("#signal-rows tr").first.locator(".tag").inner_text() == "无对照"
     assert page.locator("#rebalance").is_hidden(), "the oldest visible date has no comparison date"
-    page.wait_for_function("Math.abs(document.querySelector('#ranking').getBoundingClientRect().top) < 30")
+    # Selecting an archive date must not scroll the page back up to #ranking.
+    assert abs(page.evaluate("window.scrollY") - scroll_before) <= 1
+    assert abs(page.evaluate(
+        "document.querySelector('#ranking').getBoundingClientRect().top"
+    ) - ranking_top_before) <= 1
     after_history = len(signals_requests)
     assert after_history == initial_requests + 3, signals_requests
     metadata_404s = [
