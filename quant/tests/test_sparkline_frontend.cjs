@@ -116,11 +116,14 @@ test('forward awaiting state is not confused with a zero return', () => {
   assert.equal(normalizeForwardPerformance({ ...waiting, cumulative_return: 0 }).status, 'invalid');
   renderForwardPerformance(waiting);
   assert.equal(nodes.get('forward-return').textContent, '待开始');
+  assert.equal(nodes.get('ranking-return').textContent, '累计收益 待开始');
   renderForwardPerformance({ status: 'unavailable' });
   assert.equal(nodes.get('forward-return').textContent, '暂不可用');
+  assert.equal(nodes.get('ranking-return').textContent, '累计收益 暂不可用');
   assert.match(nodes.get('forward-chart').innerHTML, /无法读取/);
   renderForwardPerformance({ status: 'invalid' });
   assert.equal(nodes.get('forward-return').textContent, '数据异常');
+  assert.equal(nodes.get('ranking-return').textContent, '累计收益 数据异常');
   assert.doesNotMatch(nodes.get('forward-chart').innerHTML, /\+0\.00%/);
 });
 
@@ -131,6 +134,49 @@ test('validated forward curve labels dates and flags possibly stale valuations',
   assert.ok(isPossiblyStale('2026-10-12', new Date('2026-10-24T00:00:00Z')));
   assert.equal(isPossiblyStale('2026-10-12', new Date('2026-10-13T00:00:00Z')), false);
   assert.equal(makePerformanceChart([{ cumulative_return: NaN }]).includes('<svg'), false);
+});
+
+test('forward return follows the selected historical ranking date', () => {
+  const multiForward = {
+    ...validForward,
+    inception_date: '2026-10-12',
+    latest_date: '2026-10-14',
+    cumulative_return: 0.06,
+    points: [
+      firstPoint,
+      { date: '2026-10-13', nav: 1.05, daily_return: 1.05 / 1.03 - 1, cumulative_return: 0.05 },
+      { date: '2026-10-14', nav: 1.06, daily_return: 1.06 / 1.05 - 1, cumulative_return: 0.06 },
+    ],
+  };
+  renderForwardPerformance(multiForward, '2026-10-13');
+  assert.equal(nodes.get('forward-return').textContent, '+5.00%');
+  assert.equal(nodes.get('ranking-return').textContent, '累计收益 +5.00%');
+  assert.match(nodes.get('ranking-return').className, /gain/);
+  assert.match(nodes.get('forward-latest').textContent, /估值日 2026\.10\.13/);
+  assert.match(nodes.get('forward-status').textContent, /截至 2026\.10\.13/);
+  assert.match(nodes.get('forward-chart').innerHTML, /2026\.10\.13 · 所选日估值/);
+  assert.doesNotMatch(nodes.get('forward-chart').innerHTML, /2026\.10\.14/);
+
+  renderForwardPerformance(multiForward, '2026-10-12');
+  assert.equal(nodes.get('forward-return').textContent, '+3.00%');
+  assert.match(nodes.get('forward-chart').innerHTML, /2026\.10\.12 · 所选日估值/);
+
+  renderForwardPerformance(multiForward, '2026-10-11');
+  assert.equal(nodes.get('forward-return').textContent, '未启用');
+  assert.equal(nodes.get('ranking-return').textContent, '累计收益 未启用');
+  assert.match(nodes.get('forward-chart').innerHTML, /早于新策略启用日/);
+
+  renderForwardPerformance(multiForward, '2026-10-15');
+  assert.equal(nodes.get('forward-return').textContent, '+6.00%');
+  assert.equal(nodes.get('ranking-return').textContent, '累计收益 待结算');
+  assert.match(nodes.get('forward-latest').textContent, /待结算/);
+  assert.match(nodes.get('forward-latest').textContent, /最近估值 2026\.10\.14/);
+  assert.match(nodes.get('forward-chart').innerHTML, /2026\.10\.14 · 最近估值/);
+
+  renderForwardPerformance(multiForward);
+  assert.equal(nodes.get('forward-return').textContent, '+6.00%');
+  assert.equal(nodes.get('ranking-return').textContent, '累计收益 +6.00%');
+  assert.match(nodes.get('forward-latest').textContent, /最新估值 2026\.10\.14/);
 });
 
 test('date selection is latest-request-wins and the daily ranking leads the archive', () => {
@@ -182,7 +228,8 @@ test('Pages index replaces weekday probing and first-render barrier', () => {
   assert.match(source, /const forwardPromise = loadForwardPerformance\(\);/);
   assert.match(source, /const index = await loadAvailableDates\(\);/);
   assert.match(source, /app\.innerHTML = pageShell\(dates\);/);
-  assert.match(source, /forwardPromise\.then\(renderForwardPerformance\)/);
+  assert.match(source, /loadForwardFor\(pool, dateInfo\.date, request\)/);
+  assert.doesNotMatch(source, /forwardPromise\.then\(renderForwardPerformance\)/);
   assert.match(source, /const csvCache = new Map\(\);/);
   assert.match(source, /paint\(null, null\);/);
   assert.match(source, /paint\(previous, ctx\);/);

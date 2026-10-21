@@ -332,7 +332,7 @@ function formatReturn(value, digits = 2) {
   return `${pct >= 0 ? '+' : ''}${pct.toFixed(digits)}%`;
 }
 
-function makePerformanceChart(points, w = 760, h = 180) {
+function makePerformanceChart(points, w = 760, h = 180, lastLabel = '最近估值') {
   const rows = Array.isArray(points) ? points : [];
   if (!rows.length) {
     return '<div class="performance-empty">从新策略启用（2026.10.15）开始记录，首个收盘估值将在下一交易日数据更新后显示。</div>';
@@ -369,16 +369,22 @@ function makePerformanceChart(points, w = 760, h = 180) {
       <path d="${path}" class="performance-line ${positive ? 'gain' : 'loss'}"/>
       <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="4" class="performance-dot ${positive ? 'gain' : 'loss'}"/>
     </svg>
-    <div class="performance-axis"><span>${formatDate(rows[0].date)} · 首次已核验估值</span><span>${formatDate(rows[rows.length - 1].date)} · 最近估值</span></div>
+    <div class="performance-axis"><span>${formatDate(rows[0].date)} · 首次已核验估值</span><span>${formatDate(rows[rows.length - 1].date)} · ${lastLabel}</span></div>
   `;
 }
 
-function renderForwardPerformance(data) {
+function renderForwardPerformance(data, date = null) {
   const value = document.getElementById('forward-return');
   const latest = document.getElementById('forward-latest');
   const chart = document.getElementById('forward-chart');
   const status = document.getElementById('forward-status');
+  const rankingReturn = document.getElementById('ranking-return');
   if (!value || !latest || !chart || !status) return;
+  const setRankingReturn = (text, klass = '') => {
+    if (!rankingReturn) return;
+    rankingReturn.textContent = text;
+    rankingReturn.className = 'ranking-return' + (klass ? ' ' + klass : '');
+  };
 
   value.className = 'performance-value';
   latest.className = 'performance-latest';
@@ -390,6 +396,7 @@ function renderForwardPerformance(data) {
     latest.textContent = unavailable ? '收益文件加载失败' :
       invalid ? '估值数据校验未通过' : '等待首个交易日收盘结算';
     status.textContent = '模拟净值跟踪 · 2026.10.15 新策略上线起';
+    setRankingReturn(unavailable ? '累计收益 暂不可用' : invalid ? '累计收益 数据异常' : '累计收益 待开始');
     const message = unavailable ? '暂时无法读取累计收益数据，请稍后重试。' :
       invalid ? '累计收益数据不完整或不符合前向跟踪约定，已停止展示。' :
       '从新策略启用（2026.10.15）开始记录，首个收盘估值将在下一交易日数据更新后显示。';
@@ -397,15 +404,54 @@ function renderForwardPerformance(data) {
     return;
   }
 
-  const stale = isPossiblyStale(data.latest_date);
-  value.textContent = formatReturn(data.cumulative_return);
-  value.className = 'performance-value ' + (data.cumulative_return >= 0 ? 'gain' : 'loss');
-  latest.textContent = '最新估值 ' + formatDate(data.latest_date) + (stale ? ' · 可能滞后' : '');
+  // The ranking date is a T+1 usage date; its close valuation appears in the
+  // forward series after that session settles. Show the matching point and
+  // truncate the curve there, never the latest point under an old date label.
+  let point = data.points[data.points.length - 1];
+  let chartPoints = data.points;
+  let lastLabel = '最近估值';
+  let selected = false;
+  let pendingKind = '';
+  if (date) {
+    const idx = data.points.findIndex(p => p.date === date);
+    if (idx >= 0) {
+      point = data.points[idx];
+      chartPoints = data.points.slice(0, idx + 1);
+      lastLabel = '所选日估值';
+      selected = true;
+    } else if (date < data.inception_date) {
+      value.textContent = '未启用';
+      latest.textContent = `新策略于 ${formatDate(data.inception_date)} 启用`;
+      status.textContent = `模拟净值跟踪 · ${formatDate(data.inception_date)} 起`;
+      setRankingReturn('累计收益 未启用');
+      chart.innerHTML = '<div class="performance-empty" role="status">所选日期早于新策略启用日，暂无模拟净值。</div>';
+      return;
+    } else {
+      pendingKind = date > data.latest_date ? 'awaiting' : 'missing';
+    }
+  }
+  const stale = point.date === data.latest_date && isPossiblyStale(data.latest_date);
+  value.textContent = formatReturn(point.cumulative_return);
+  value.className = 'performance-value ' + (point.cumulative_return >= 0 ? 'gain' : 'loss');
+  const labelDate = formatDate(point.date);
+  latest.textContent = pendingKind === 'awaiting'
+    ? `所选日期 ${formatDate(date)} 待结算 · 最近估值 ${labelDate}`
+    : pendingKind === 'missing'
+      ? `所选日期无估值 · 最近估值 ${labelDate}`
+      : selected ? `估值日 ${labelDate}` : `最新估值 ${labelDate}`;
+  if (stale) latest.textContent += ' · 可能滞后';
   if (stale) latest.classList.add('stale');
   status.textContent = '模拟净值跟踪 · ' + formatDate(data.inception_date) + ' 起';
+  if (selected) status.textContent += ' · 截至 ' + formatDate(point.date);
+  if (pendingKind === 'awaiting') status.textContent += ' · 所选日期待结算';
+  if (pendingKind === 'missing') status.textContent += ' · 所选日期无估值';
   if (stale) status.textContent += ' · 请核对估值时效';
   if (stale) status.classList.add('stale');
-  chart.innerHTML = makePerformanceChart(data.points);
+  if (pendingKind === 'awaiting') setRankingReturn('累计收益 待结算');
+  else if (pendingKind === 'missing') setRankingReturn('累计收益 无估值');
+  else setRankingReturn('累计收益 ' + formatReturn(point.cumulative_return),
+    point.cumulative_return >= 0 ? 'gain' : 'loss');
+  chart.innerHTML = makePerformanceChart(chartPoints, 760, 180, lastLabel);
 }
 
 const TOP10_PROFILES = new Set([
@@ -805,6 +851,7 @@ function pageShell(dates) {
           </div>
           <div class="panel-note">
             <div id="ranking-date" class="ranking-date">—</div>
+            <div id="ranking-return" class="ranking-return">累计收益 —</div>
             <div id="artifact-status"></div>
           </div>
         </div>
@@ -914,7 +961,6 @@ async function main() {
   let dates = index.dates;
   let nameMap = index.nameMap;
   app.innerHTML = pageShell(dates);
-  forwardPromise.then(renderForwardPerformance);
 
   const indexCache = new Map([[currentPool.key, Promise.resolve(index)]]);
   const forwardCache = new Map([[currentPool.key, forwardPromise]]);
@@ -940,9 +986,28 @@ async function main() {
   }
 
   let latestDateRequest = 0;
+
+  function loadForwardFor(pool, date, request) {
+    let promise = forwardCache.get(pool.key);
+    if (!promise) {
+      promise = loadForwardPerformance(pool);
+      forwardCache.set(pool.key, promise);
+    }
+    promise.then(data => {
+      if (request !== latestDateRequest || currentPool.key !== pool.key) return;
+      renderForwardPerformance(data, date);
+    });
+  }
+
   async function renderDate(dateInfo) {
     const pool = currentPool;
     const request = ++latestDateRequest;
+    loadForwardFor(pool, dateInfo.date, request);
+    const rankingReturn = document.getElementById('ranking-return');
+    if (rankingReturn) {
+      rankingReturn.textContent = '累计收益 核对中…';
+      rankingReturn.className = 'ranking-return';
+    }
     const container = document.querySelector('.signal-table');
     if (container) container.setAttribute('aria-busy', 'true');
     document.getElementById('ranking-date').textContent = formatDate(dateInfo.date);
@@ -1068,9 +1133,6 @@ async function main() {
     if (!forwardCache.has(nextPool.key)) {
       forwardCache.set(nextPool.key, loadForwardPerformance(nextPool));
     }
-    forwardCache.get(nextPool.key).then(data => {
-      if (currentPool.key === nextPool.key) renderForwardPerformance(data);
-    });
     const poolIndex = await indexCache.get(nextPool.key);
     if (currentPool.key !== nextPool.key) return;
     if (!poolIndex || !poolIndex.dates.length) {

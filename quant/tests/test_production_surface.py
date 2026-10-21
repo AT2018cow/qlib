@@ -79,8 +79,8 @@ def test_public_site_uses_shared_stylesheet():
     methodology = (ROOT / "quant" / "website" / "methodology.html").read_text()
     styles = ROOT / "quant" / "website" / "styles.css"
     assert styles.is_file()
-    assert 'href="styles.css?v=18"' in index
-    assert 'href="styles.css?v=18"' in methodology
+    assert 'href="styles.css?v=19"' in index
+    assert 'href="styles.css?v=19"' in methodology
 
 
 def test_dashboard_dark_theme_and_responsive_layout():
@@ -93,7 +93,7 @@ def test_dashboard_dark_theme_and_responsive_layout():
     assert ".table-wrap { display: none; }" in styles
     assert ".mobile-cards { display: grid;" in styles
     assert ".doc-grid { grid-template-columns: 1fr;" in styles
-    assert 'src="app.js?v=40"' in index
+    assert 'src="app.js?v=42"' in index
 
 
 def test_rebalance_distinguishes_drop1_sells_from_ranked_out_holdings():
@@ -119,6 +119,10 @@ def test_forward_performance_panel_is_forward_only_from_20261012():
     assert "2026-10-12" in app
     assert "策略累计收益" in app
     assert "performance-panel" in app
+    assert "loadForwardFor(pool, dateInfo.date, request)" in app
+    assert "所选日估值" in app
+    assert 'id="ranking-return"' in app
+    assert ".ranking-return.gain" in (ROOT / "quant" / "website" / "styles.css").read_text()
     assert ".performance-chart" in styles
     assert "2026-10-12" in methodology
     assert "2026-10-15" in methodology

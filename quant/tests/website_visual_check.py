@@ -186,6 +186,7 @@ def inspect_viewport(browser, base_url, width: int):
     assert (actual["cards"] == "grid") == (width <= 860), actual
     assert not errors, errors
     assert page.locator("#forward-return").inner_text() == "待开始"
+    assert page.locator("#ranking-return").inner_text() == "累计收益 待开始"
     assert page.locator("#stat-lineage").inner_text() == "定型优选策略"
     assert page.locator("#ranking-date").inner_text() == page.locator("#stat-date").inner_text()
     # These must be actual visible labels, not title-only tooltips on touchscreens.
@@ -297,15 +298,17 @@ def main():
                 print("PASS delayed chart: Top20 visible before lineage/chart response")
 
                 # A separate synthetic active-series example covers chart layout.
+                pool_index = json.loads((root / "signals" / "available_dates_csi300.json").read_text())
+                latest_date, previous_date = pool_index["dates"][:2]
                 active = {
                     "start_date": "2026-10-12",
-                    "inception_date": "2026-10-12",
+                    "inception_date": previous_date,
                     "status": "active",
-                    "latest_date": "2026-10-13",
+                    "latest_date": latest_date,
                     "cumulative_return": -0.012,
                     "points": [
-                        {"date": "2026-10-12", "nav": 1.02, "daily_return": 0.02, "cumulative_return": 0.02},
-                        {"date": "2026-10-13", "nav": 0.988, "daily_return": 0.988 / 1.02 - 1, "cumulative_return": -0.012},
+                        {"date": previous_date, "nav": 1.02, "daily_return": 0.02, "cumulative_return": 0.02},
+                        {"date": latest_date, "nav": 0.988, "daily_return": 0.988 / 1.02 - 1, "cumulative_return": -0.012},
                     ],
                 }
                 performance_path.write_text(json.dumps(active))
@@ -313,12 +316,22 @@ def main():
                 page.goto(url + "/index.html")
                 page.locator("#signal-rows tr").first.wait_for(state="attached")
                 assert page.locator("#forward-return").inner_text() == "-1.20%"
+                assert page.locator("#ranking-return").inner_text() == "累计收益 -1.20%"
                 assert page.locator(".performance-svg").count() == 1
                 line_fill = page.locator(".performance-line").evaluate(
                     "(el) => getComputedStyle(el).fill"
                 )
                 assert line_fill == "none", f"Performance curve must not render as filled polygon: {line_fill}"
                 page.screenshot(path=str(OUT / "dashboard-fixture-active-390.png"), full_page=True)
+                # Selecting the previous ranking date must show that date's
+                # settled return and truncate the curve, not keep the latest.
+                page.locator(".date-btn").nth(1).click()
+                page.wait_for_function(
+                    "document.getElementById('forward-return')?.textContent === '+2.00%'"
+                )
+                assert page.locator("#ranking-return").inner_text() == "累计收益 +2.00%"
+                assert page.locator("#forward-latest").inner_text().startswith("估值日")
+                assert page.locator(".performance-svg").count() == 1
                 page.close()
                 for width in (1440, 320):
                     page = browser.new_page(viewport={"width": width, "height": 900})

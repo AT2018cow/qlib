@@ -778,6 +778,14 @@ body { background: #0c121b; }
   font-weight: 680;
   font-variant-numeric: tabular-nums;
 }
+.ranking-return {
+  margin-top: 3px;
+  color: var(--quiet);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.ranking-return.gain { color: var(--red); }
+.ranking-return.loss { color: var(--teal); }
 .ranking-note { margin-top: 6px; }
 
 
