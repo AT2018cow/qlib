@@ -37,3 +37,5 @@ quant/data/
 
 - `2026-10-16_2026-10-29_candidate_results.json`：逐单元日收益/净值结果
 - `2026-10-16_2026-10-29_candidate_summary.csv`：跨市场汇总（含外部指数与生产 paper 校验列）
+- `2026-10-08_2026-10-29_csi300_october_results.json`：早期 bank-heavy baseline 应用于 CSI300 的 2026 年 10 月逐日结果
+- `2026-10-08_2026-10-29_csi300_october_summary.csv`：上述回测的跨构造汇总

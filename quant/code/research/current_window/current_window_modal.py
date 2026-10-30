@@ -273,3 +273,39 @@ def current_window_driver(
     results.sort(key=lambda x: (x["market"], x["profile"], x["topk"]))
     print(_json.dumps(results, indent=2, ensure_ascii=False))
     return results
+
+
+@app.function(timeout=3 * 3600, cpu=1, memory=2048)
+def october_csi300_driver(
+    eval_start: str = "2026-09-30",
+    eval_end: str = "2026-10-29",
+):
+    """October 2026: the early baseline strategy on the CSI300 universe.
+
+    The first website used ``lgb158 + Alpha158 + 20d + csi1000 +
+    Top20/Drop2``.  Here the same model family is applied to CSI300, with
+    the current CSI300 profile and two construction controls for attribution.
+    """
+    import json as _json
+
+    specs = [
+        ("baseline_control", 20, 2),
+        ("baseline_control", 10, 1),
+        ("59b93929_top10_drop1", 10, 1),
+        ("59b93929_top10_drop1", 20, 2),
+    ]
+    jobs = [
+        {
+            "market": "csi300",
+            "profile": profile,
+            "topk": topk,
+            "nd": nd,
+            "eval_start": eval_start,
+            "eval_end": eval_end,
+        }
+        for profile, topk, nd in specs
+    ]
+    results = list(current_window_backtest.map(jobs))
+    results.sort(key=lambda x: (x["profile"], x["topk"], x["nd"]))
+    print(_json.dumps(results, indent=2, ensure_ascii=False))
+    return results

@@ -1,0 +1,26 @@
+{
+  "generated_at": "2026-10-30",
+  "study": "early bank-heavy baseline applied to CSI300, October 2026",
+  "window": {
+    "eval_start": "2026-10-08",
+    "eval_end": "2026-10-29",
+    "anchor_signal_bar": "2026-09-30",
+    "trading_sessions": 16
+  },
+  "market": "csi300",
+  "code": "quant/code/research/current_window/current_window_modal.py",
+  "driver": "october_csi300_driver",
+  "report": "quant/docs/08-current-window-backtest/02-csi300-october-2026-early-baseline-backtest-20261030.md",
+  "command": ".venv/bin/modal run quant/code/research/current_window/current_window_modal.py::october_csi300_driver",
+  "modal_profile": "at2018cow",
+  "modal_run": "https://modal.com/apps/at2018cow/main/ap-SuCGChvqKQjT65miuDyc7B",
+  "files": {
+    "results": "2026-10-08_2026-10-29_csi300_october_results.json",
+    "summary": "2026-10-08_2026-10-29_csi300_october_summary.csv"
+  },
+  "notes": [
+    "The early website strategy was trained on CSI1000; this study deliberately retrains it on the CSI300 universe.",
+    "Research-only Qlib backtest, net of 5bp buy / 15bp sell costs; not production paper NAV.",
+    "2026-10-30 was not yet in the provider package at run time and is excluded."
+  ]
+}
