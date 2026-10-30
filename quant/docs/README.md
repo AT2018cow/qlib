@@ -14,3 +14,5 @@
    - 每日信号四件套强校验合同、模拟组合统一会计核算、前向净值独立审计与 GitHub Pages 静态站点设计。
 6. **[`05-round2-layered-search/`](05-round2-layered-search/) — 阶段 5：第二轮预算受控分层策略搜索与终局报告（Doc 50 ~ 60）**
    - `P0 -> L1 -> L2 -> L3 -> L4` 完整实验方案、L1（132套策略）持仓规则筛选、L2 超参搜索、L3 重训周期验证、L4 五相位终审及 [`60-csi1000-two-round-strategy-research-final-report-20261015.md`](05-round2-layered-search/60-csi1000-two-round-strategy-research-final-report-20261015.md) 终局技术报告。
+7. **[`08-current-window-backtest/`](08-current-window-backtest/) — 当前短窗口候选策略同期回测**
+   - [`01-csi1000-csi300-csi500-current-window-candidate-backtest-20261030.md`](08-current-window-backtest/01-csi1000-csi300-csi500-current-window-candidate-backtest-20261030.md)：2026-10-16 ~ 10-29 三市场、13 个模型/组合构造单元的同期净收益、生产 paper 校验、历史风险收益权衡与“不因 10 天切换”的决策边界。

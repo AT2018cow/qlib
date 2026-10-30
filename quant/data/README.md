@@ -26,5 +26,14 @@ quant/data/
 ├── round1_stage_ab/                       # 第一轮 Stage-A (74 超参候选) 与 Stage-B (10 相位) 历史实验结果
 ├── round1_audit_evidence/                 # 第一轮独立审计证据 (含 28 模型 × 2 相位 = 56 套 Stage-B F1 修正重跑账本)
 ├── pre_tuner_experiments/                 # 早期调仓频率、重训相位归因、科创/创业板卫星池摸底数据
+├── current_window_backtest/               # 2026-10-16 ~ 10-29 三市场候选策略同期回测（研究记录，非生产切换）
 └── signals/                               # 线上每日自动发布的 CSI1000 信号四件套 (CSV + Chart + PaperPortfolio + Metadata)
 ```
+
+### `current_window_backtest/`
+
+2026-10-30 执行的三市场、13 单元短窗口回测；仅用于同期相对比较，不是生产 paper NAV。
+报告见 [`quant/docs/08-current-window-backtest/01-csi1000-csi300-csi500-current-window-candidate-backtest-20261030.md`](../docs/08-current-window-backtest/01-csi1000-csi300-csi500-current-window-candidate-backtest-20261030.md)。
+
+- `2026-10-16_2026-10-29_candidate_results.json`：逐单元日收益/净值结果
+- `2026-10-16_2026-10-29_candidate_summary.csv`：跨市场汇总（含外部指数与生产 paper 校验列）

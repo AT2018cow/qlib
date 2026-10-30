@@ -1,0 +1,32 @@
+{
+  "generated_at": "2026-10-30",
+  "window": {
+    "eval_start": "2026-10-16",
+    "eval_end": "2026-10-29",
+    "anchor_signal_bar": "2026-10-15",
+    "trading_sessions": 10
+  },
+  "markets": ["csi1000", "csi300", "csi500"],
+  "units": 13,
+  "code": "quant/code/research/current_window/current_window_modal.py",
+  "report": "quant/docs/08-current-window-backtest/01-csi1000-csi300-csi500-current-window-candidate-backtest-20261030.md",
+  "command": ".venv/bin/modal run quant/code/research/current_window/current_window_modal.py::current_window_driver --decompose",
+  "modal_profile": "at2018cow",
+  "modal_run": "https://modal.com/apps/at2018cow/main/ap-iPKvpnQIgHVJPaXBOh1qHI",
+  "resources": {
+    "cpu_physical_cores": 8,
+    "memory_gib": 32,
+    "max_containers": 4,
+    "nonpreemptible": true
+  },
+  "files": {
+    "results": "2026-10-16_2026-10-29_candidate_results.json",
+    "summary": "2026-10-16_2026-10-29_candidate_summary.csv"
+  },
+  "notes": [
+    "Research-only Qlib backtest; not production paper NAV and not a production switch approval.",
+    "Returns are net of 5bp buy / 15bp sell costs and board-aware execution.",
+    "The external benchmark column uses index open on 2026-10-16 to close on 2026-10-29.",
+    "Qlib's saved benchmark column differs in anchor alignment and is retained for audit."
+  ]
+}
