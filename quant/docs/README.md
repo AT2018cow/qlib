@@ -17,3 +17,4 @@
 7. **[`08-current-window-backtest/`](08-current-window-backtest/) — 当前短窗口候选策略同期回测**
    - [`01-csi1000-csi300-csi500-current-window-candidate-backtest-20261030.md`](08-current-window-backtest/01-csi1000-csi300-csi500-current-window-candidate-backtest-20261030.md)：2026-10-16 ~ 10-29 三市场、13 个模型/组合构造单元的同期净收益、生产 paper 校验、历史风险收益权衡与“不因 10 天切换”的决策边界。
    - [`02-csi300-october-2026-early-baseline-backtest-20261030.md`](08-current-window-backtest/02-csi300-october-2026-early-baseline-backtest-20261030.md)：第一版网站 bank-heavy baseline 应用于 CSI300 的 2026 年 10 月回测（16 个交易日）及与当前 CSI300 生产的对照。
+   - [`03-why-colleague-alpha158-csi300-bank-basket-was-not-selected-20261030.md`](08-current-window-backtest/03-why-colleague-alpha158-csi300-bank-basket-was-not-selected-20261030.md)：同事银行/价值组合的 10 月收益核验、默认 Alpha158 排序复现检查，以及“搜索空间/Top10 截断/风格暴露”三层原因。

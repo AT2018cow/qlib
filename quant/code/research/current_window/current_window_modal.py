@@ -275,6 +275,337 @@ def current_window_driver(
     return results
 
 
+@app.function(cpu=8, memory=32768, timeout=2 * 3600)
+def default_yaml_ranking(
+    market: str = "csi300",
+    asof: str = "2026-09-30",
+    topn: int = 40,
+):
+    """Rank with the literal Qlib example YAML (train 2008-2014 / valid 2015-16).
+
+    The test date is moved to 2026-09-30 without retraining, matching a
+    "use the default workflow as-is" interpretation.
+    """
+    from bisect import bisect_left
+    import json as _json
+
+    import qlib
+    from qlib.data.dataset import Dataset
+    from qlib.model.base import Model
+    from qlib.utils import init_instance_by_config
+
+    from qlib_audit_fixes import purge_cfg_splits, read_trading_calendar
+
+    data_dir = Path("/tmp/cn_data")
+    if not (data_dir / "calendars" / "day.txt").is_file():
+        data_dir = _load_latest_to_local()
+    cal = read_trading_calendar(data_dir)
+    if bisect_left(cal, asof) >= len(cal) or cal[bisect_left(cal, asof)] != asof:
+        raise ValueError(f"asof {asof} not in provider calendar")
+
+    qlib.init(
+        provider_uri=str(data_dir),
+        region="cn",
+        skip_if_reg=True,
+        exp_manager={
+            "class": "MLflowExpManager",
+            "module_path": "qlib.workflow.expm",
+            "kwargs": {"uri": "file:/tmp/mlruns", "default_exp_name": "qlib-default-yaml"},
+        },
+    )
+    cfg = _load_and_patch_cfg(
+        MODEL_CFG["lgb158"],
+        smoke=False,
+        recent=False,
+        long_train=False,
+        label20=False,
+        topk=7,
+        nd=7,
+        market=market,
+        provider_dir=str(data_dir),
+    )
+    seg = cfg["task"]["dataset"]["kwargs"]["segments"]
+    handler = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
+    seg["train"] = ["2008-01-01", "2014-12-31"]
+    seg["valid"] = ["2015-01-01", "2016-12-31"]
+    seg["test"] = [asof, asof]
+    handler["start_time"] = "2008-01-01"
+    handler["end_time"] = asof
+    handler["fit_start_time"] = "2008-01-01"
+    handler["fit_end_time"] = "2014-12-31"
+    purge_cfg_splits(cfg, cal, horizon=2)
+
+    model = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
+    dataset = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
+    model.fit(dataset)
+    pred = model.predict(dataset, segment="test")
+    day = pred.loc[asof].dropna().sort_values(ascending=False).head(topn)
+    result = {
+        "market": market,
+        "asof": asof,
+        "label_horizon": 2,
+        "train": seg["train"],
+        "valid": seg["valid"],
+        "top": [
+            {"rank": i, "instrument": inst, "score": float(score)} for i, (inst, score) in enumerate(day.items(), 1)
+        ],
+    }
+    print(_json.dumps(result, indent=2, ensure_ascii=False))
+    return result
+
+
+@app.function(cpu=8, memory=32768, timeout=2 * 3600)
+def profile_ranking(
+    profile: str = "baseline_control",
+    market: str = "csi300",
+    asof: str = "2026-09-30",
+    topn: int = 40,
+):
+    """Rank names at ``asof`` with one frozen production profile."""
+    from bisect import bisect_left
+    import json as _json
+
+    import qlib
+    from qlib.data.dataset import Dataset
+    from qlib.model.base import Model
+    from qlib.utils import init_instance_by_config
+
+    from csi1000_production_config import profile_manifest
+    from qlib_audit_fixes import last_matured_sample, purge_cfg_splits, read_trading_calendar
+
+    data_dir = Path("/tmp/cn_data")
+    if not (data_dir / "calendars" / "day.txt").is_file():
+        data_dir = _load_latest_to_local()
+    cal = read_trading_calendar(data_dir)
+    asof_i = bisect_left(cal, asof)
+    if asof_i >= len(cal) or cal[asof_i] != asof:
+        raise ValueError(f"asof {asof} not in provider calendar")
+    manifest = profile_manifest(profile)
+    horizon = int(manifest.get("label_horizon", 20))
+    valid_end_i = asof_i - horizon - 1
+    valid_start_i = valid_end_i - 252 + 1
+    if valid_start_i <= 0:
+        raise ValueError("insufficient history")
+    valid_start = cal[valid_start_i]
+    train_end = last_matured_sample(cal, valid_start, horizon)
+
+    qlib.init(
+        provider_uri=str(data_dir),
+        region="cn",
+        skip_if_reg=True,
+        exp_manager={
+            "class": "MLflowExpManager",
+            "module_path": "qlib.workflow.expm",
+            "kwargs": {"uri": "file:/tmp/mlruns", "default_exp_name": "qlib-profile-ranking"},
+        },
+    )
+    cfg = _load_and_patch_cfg(
+        MODEL_CFG["lgb158"],
+        smoke=False,
+        recent=True,
+        long_train=True,
+        label20=True,
+        topk=10,
+        nd=1,
+        market=market,
+        provider_dir=str(data_dir),
+        csi1000_profile=profile,
+    )
+    seg = cfg["task"]["dataset"]["kwargs"]["segments"]
+    handler = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
+    seg["train"] = ["2016-01-01", train_end]
+    seg["valid"] = [valid_start, cal[valid_end_i]]
+    seg["test"] = [asof, asof]
+    handler["start_time"] = "2015-01-01"
+    handler["end_time"] = asof
+    handler["fit_start_time"] = "2016-01-01"
+    handler["fit_end_time"] = train_end
+    purge_cfg_splits(cfg, cal, horizon=horizon)
+
+    model = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
+    dataset = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
+    model.fit(dataset)
+    pred = model.predict(dataset, segment="test")
+    day = pred.loc[asof].dropna().sort_values(ascending=False).head(topn)
+    result = {
+        "market": market,
+        "profile": profile,
+        "asof": asof,
+        "label_horizon": horizon,
+        "train_end": train_end,
+        "valid": [valid_start, cal[valid_end_i]],
+        "top": [
+            {"rank": i, "instrument": inst, "score": float(score)} for i, (inst, score) in enumerate(day.items(), 1)
+        ],
+    }
+    print(_json.dumps(result, indent=2, ensure_ascii=False))
+    return result
+
+
+@app.function(cpu=8, memory=32768, timeout=2 * 3600)
+def default_alpha158_ranking(
+    market: str = "csi300",
+    asof: str = "2026-09-30",
+    topn: int = 40,
+):
+    """Rank names with the raw Qlib default LGB + Alpha158 config.
+
+    Unlike the production profiles this keeps the YAML's default 2-day label
+    and default LightGBM parameters.  It is a diagnostic for the colleague's
+    "Qlib Alpha158 default" claim, not a production candidate.
+    """
+    from bisect import bisect_left
+    import json as _json
+
+    import qlib
+    from qlib.data.dataset import Dataset
+    from qlib.model.base import Model
+    from qlib.utils import init_instance_by_config
+
+    from qlib_audit_fixes import last_matured_sample, purge_cfg_splits, read_trading_calendar
+
+    data_dir = Path("/tmp/cn_data")
+    if not (data_dir / "calendars" / "day.txt").is_file():
+        data_dir = _load_latest_to_local()
+    cal = read_trading_calendar(data_dir)
+    asof_i = bisect_left(cal, asof)
+    if asof_i >= len(cal) or cal[asof_i] != asof:
+        raise ValueError(f"asof {asof} not in provider calendar")
+    horizon = 2
+    valid_end_i = asof_i - horizon - 1
+    valid_start_i = valid_end_i - 252 + 1
+    if valid_start_i <= 0:
+        raise ValueError("insufficient history")
+    valid_start = cal[valid_start_i]
+    train_end = last_matured_sample(cal, valid_start, horizon)
+
+    qlib.init(
+        provider_uri=str(data_dir),
+        region="cn",
+        skip_if_reg=True,
+        exp_manager={
+            "class": "MLflowExpManager",
+            "module_path": "qlib.workflow.expm",
+            "kwargs": {"uri": "file:/tmp/mlruns", "default_exp_name": "qlib-default-diagnostic"},
+        },
+    )
+    cfg = _load_and_patch_cfg(
+        MODEL_CFG["lgb158"],
+        smoke=False,
+        recent=True,
+        long_train=True,
+        label20=False,
+        topk=7,
+        nd=7,
+        market=market,
+        provider_dir=str(data_dir),
+    )
+    seg = cfg["task"]["dataset"]["kwargs"]["segments"]
+    handler = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
+    seg["train"] = ["2016-01-01", train_end]
+    seg["valid"] = [valid_start, cal[valid_end_i]]
+    seg["test"] = [asof, asof]
+    handler["start_time"] = "2015-01-01"
+    handler["end_time"] = asof
+    handler["fit_start_time"] = "2016-01-01"
+    handler["fit_end_time"] = train_end
+    purge_cfg_splits(cfg, cal, horizon=horizon)
+
+    model = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
+    dataset = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
+    model.fit(dataset)
+    pred = model.predict(dataset, segment="test")
+    day = pred.loc[asof].dropna().sort_values(ascending=False).head(topn)
+    result = {
+        "market": market,
+        "asof": asof,
+        "label_horizon": horizon,
+        "train_end": train_end,
+        "valid": [valid_start, cal[valid_end_i]],
+        "top": [
+            {"rank": i, "instrument": inst, "score": float(score)} for i, (inst, score) in enumerate(day.items(), 1)
+        ],
+    }
+    print(_json.dumps(result, indent=2, ensure_ascii=False))
+    return result
+
+
+@app.function(cpu=4, memory=16384, timeout=3600)
+def fixed_basket_diagnostic(
+    buy_date: str = "2026-10-08",
+    sell_date: str = "2026-10-29",
+):
+    """Equal-weight return of the colleague's reported 2026-10 CSI300 list."""
+    import json as _json
+
+    import numpy as np
+    import pandas as pd
+
+    import qlib
+    from qlib.data import D
+
+    codes = [
+        "SZ000651",  # 格力电器
+        "SH601166",  # 兴业银行
+        "SH601318",  # 中国平安
+        "SH601838",  # 成都银行
+        "SZ000001",  # 平安银行
+        "SH600926",  # 杭州银行
+        "SH601919",  # 中远海控
+    ]
+    data_dir = Path("/tmp/cn_data")
+    if not (data_dir / "calendars" / "day.txt").is_file():
+        data_dir = _load_latest_to_local()
+    qlib.init(provider_uri=str(data_dir), region="cn", skip_if_reg=True)
+    df = D.features(
+        codes,
+        ["$open", "$close", "$factor"],
+        start_time=buy_date,
+        end_time=sell_date,
+        freq="day",
+    )
+    per_stock = {}
+    daily = {}
+    for code in codes:
+        sub = df.loc[code].dropna()
+        if sub.empty:
+            raise RuntimeError(f"no price data for {code}")
+        entry = float(sub.iloc[0]["$open"]) * float(sub.iloc[0]["$factor"])
+        exit_ = float(sub.iloc[-1]["$close"]) * float(sub.iloc[-1]["$factor"])
+        per_stock[code] = {
+            "entry_open_adjusted": entry,
+            "exit_close_adjusted": exit_,
+            "return": exit_ / entry - 1.0,
+        }
+        close_adj = sub["$close"].astype(float) * sub["$factor"].astype(float)
+        daily[code] = close_adj.pct_change()
+    daily_df = pd.DataFrame(daily)
+    # First traded day is open-to-close; later days are close-to-close.
+    first = df.loc[(slice(None), pd.Timestamp(buy_date)), :]
+    first_ret = {}
+    for code in codes:
+        row = first.loc[code]
+        if isinstance(row, pd.DataFrame):
+            row = row.iloc[0]
+        first_ret[code] = (
+            float(row["$close"]) * float(row["$factor"]) / (float(row["$open"]) * float(row["$factor"])) - 1.0
+        )
+    daily_df.iloc[0] = pd.Series(first_ret)
+    ew_daily = daily_df.mean(axis=1)
+    cumulative = float((1.0 + ew_daily).prod() - 1.0)
+    result = {
+        "buy_date": buy_date,
+        "sell_date": sell_date,
+        "codes": codes,
+        "per_stock": per_stock,
+        "equal_weight_cumulative_return": cumulative,
+        "equal_weight_daily": [round(float(v), 8) for v in ew_daily.tolist()],
+        "mean_stock_return": float(np.mean([x["return"] for x in per_stock.values()])),
+    }
+    print(_json.dumps(result, indent=2, ensure_ascii=False))
+    return result
+
+
 @app.function(timeout=3 * 3600, cpu=1, memory=2048)
 def october_csi300_driver(
     eval_start: str = "2026-09-30",

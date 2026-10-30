@@ -39,3 +39,5 @@ quant/data/
 - `2026-10-16_2026-10-29_candidate_summary.csv`：跨市场汇总（含外部指数与生产 paper 校验列）
 - `2026-10-08_2026-10-29_csi300_october_results.json`：早期 bank-heavy baseline 应用于 CSI300 的 2026 年 10 月逐日结果
 - `2026-10-08_2026-10-29_csi300_october_summary.csv`：上述回测的跨构造汇总
+- `2026-09-30_csi300_colleague_basket_diagnostic.json`：同事 7 只价值/银行组合的收益、2026-09-30 排序与默认 Alpha158 复现检查
+- `2026-10-08_2026-10-29_colleague_basket_summary.csv`：上述 7 只股票的逐票收益与各模型排名
