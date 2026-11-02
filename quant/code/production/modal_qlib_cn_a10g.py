@@ -5180,7 +5180,13 @@ def emit_backfill_artifacts(
     return {"market": market, "days": written}
 
 
-@app.function(volumes={str(VOL_ROOT): vol}, cpu=CPU_COUNT, memory=32768, timeout=4 * 3600)
+@app.function(
+    volumes={str(VOL_ROOT): vol},
+    cpu=CPU_COUNT,
+    memory=32768,
+    timeout=4 * 3600,
+    nonpreemptible=True,
+)
 def backfill_signals(
     dates: str = "2026-09-16,2026-09-17",
     topk: int = 20,

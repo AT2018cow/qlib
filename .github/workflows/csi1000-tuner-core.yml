@@ -57,6 +57,7 @@ jobs:
           quant/code/production/name_map_sync.py
           quant/code/quant_bootstrap.py
           quant/code/ops/build_forward_performance.py
+          quant/code/ops/merge_forward_performance.py
           quant/code/ops/audit_paper_nav.py
           quant/code/production/modal_qlib_cn_a10g.py
       - name: Validate website JavaScript
@@ -64,6 +65,7 @@ jobs:
       - name: Frontend behavior and security tests (no npm dependencies)
         run: >-
           node --test
+          quant/tests/test_publication_e2e.cjs
           quant/tests/test_sparkline_frontend.cjs
           quant/tests/test_website_security.cjs
       - name: Run core contract, publication, security and CLI tests
@@ -75,6 +77,7 @@ jobs:
           quant/tests/test_csi1000_mvp_contract.py
           quant/tests/test_paper_portfolio.py
           quant/tests/test_forward_performance.py
+          quant/tests/test_forward_merge.py
           quant/tests/test_forward_nav_acceptance.py
           quant/tests/test_paper_nav_independent_audit.py
           quant/tests/test_chart_series.py

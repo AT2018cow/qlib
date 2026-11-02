@@ -93,7 +93,7 @@ def test_dashboard_dark_theme_and_responsive_layout():
     assert ".table-wrap { display: none; }" in styles
     assert ".mobile-cards { display: grid;" in styles
     assert ".doc-grid { grid-template-columns: 1fr;" in styles
-    assert 'src="app.js?v=43"' in index
+    assert 'src="app.js?v=44"' in index
 
 
 def test_rebalance_distinguishes_drop1_sells_from_ranked_out_holdings():
@@ -103,10 +103,10 @@ def test_rebalance_distinguishes_drop1_sells_from_ranked_out_holdings():
     assert "<h3>计划调入与调出</h3>" in app
     assert "pending_orders" in app
     assert "heldOutside" in app
-    assert "单日最多调出 1 只" in app
+    assert "单日最多调出 ${model.nd || 1} 只" in app
     assert "仍在模拟持仓" in app
-    assert "榜单新进只代表进入模型 Top 10" in app
-    assert "单日最多买入 1 只" in app
+    assert "榜单新进只代表进入模型 Top ${currentPool.topk}" in app
+    assert "单日最多买入 ${currentPool.nd} 只" in app
     assert ".rebalance-block[hidden]" in styles
     assert ".rebalance-grid" in styles
 
@@ -132,7 +132,8 @@ def test_forward_performance_panel_is_forward_only_from_20261012():
 def test_pages_builds_forward_performance_artifact():
     workflow = (ROOT / ".github" / "workflows" / "website-deploy.yml").read_text()
     assert "quant/code/ops/build_forward_performance.py" in workflow
-    assert "--output _site/signals/csi1000_forward_performance.json" in workflow
+    assert "quant/code/ops/merge_forward_performance.py" in workflow
+    assert '--output "_site/signals/${market}_forward_performance.json"' in workflow
     assert "test -s _site/signals/csi1000_forward_performance.json" in workflow
     assert "quant/website/build_index.py" in workflow
     assert "test -s _site/signals/available_dates.json" in workflow

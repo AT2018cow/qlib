@@ -4,6 +4,7 @@ Historical and forward sessions both settle via PaperPortfolio.execute_pending.
 This builder merely verifies and displays the resulting audited ledger; it
 never synthesizes orders, missing closes or backfilled forward returns.
 """
+
 from __future__ import annotations
 
 import math
@@ -51,23 +52,23 @@ def build_forward_performance(
         lineage = artifact.get("paper_lineage")
         if lineage != expected_lineage:
             if lineage in CANONICAL_LINEAGES:
-                raise ValueError(
-                    f"cross-market paper lineage mismatch for {market}: {lineage!r}"
-                )
+                raise ValueError(f"cross-market paper lineage mismatch for {market}: {lineage!r}")
             continue
         usage_day = artifact.get("usage_date")
         if isinstance(usage_day, str) and usage_day >= start_date:
             date.fromisoformat(usage_day)
             snapshot = artifact.get("trading_calendar")
-            if (not isinstance(snapshot, Mapping) or
-                snapshot.get("source") != "akshare.tool_trade_date_hist_sina" or
-                snapshot.get("through") != usage_day or
-                not isinstance(snapshot.get("dates"), list)):
+            if (
+                not isinstance(snapshot, Mapping)
+                or snapshot.get("source") != "akshare.tool_trade_date_hist_sina"
+                or snapshot.get("through") != usage_day
+                or not isinstance(snapshot.get("dates"), list)
+            ):
                 raise ValueError(f"unverified publication calendar for {usage_day}")
             dates = snapshot["dates"]
-            if (dates != sorted(set(dates)) or
-                any(not isinstance(d, str) or d < start_date or d > usage_day
-                    for d in dates)):
+            if dates != sorted(set(dates)) or any(
+                not isinstance(d, str) or d < start_date or d > usage_day for d in dates
+            ):
                 raise ValueError(f"invalid trading calendar dates for {usage_day}")
             for d in dates:
                 date.fromisoformat(d)
@@ -114,14 +115,8 @@ def build_forward_performance(
             "portfolio_value_close": closing,
             "cash": float(report["cash"]),
             "opening_cash": float(report["opening_cash"]),
-            "opening_shares": {
-                sym: float(pos["shares"])
-                for sym, pos in report["opening_positions"].items()
-            },
-            "position_shares": {
-                sym: float(mark["shares"])
-                for sym, mark in report["position_marks"].items()
-            },
+            "opening_shares": {sym: float(pos["shares"]) for sym, pos in report["opening_positions"].items()},
+            "position_shares": {sym: float(mark["shares"]) for sym, mark in report["position_marks"].items()},
         }
         if day in reports and reports[day] != item:
             raise ValueError(f"conflicting performance reports for {day}")
@@ -132,22 +127,18 @@ def build_forward_performance(
     prev_calendar = ()
     for usage in sorted(calendar_snapshots):
         snapshot = calendar_snapshots[usage]
-        if snapshot[:len(prev_calendar)] != prev_calendar:
+        if snapshot[: len(prev_calendar)] != prev_calendar:
             raise ValueError(f"calendar history drift at {usage}")
         prev_calendar = snapshot
 
     ordered = [reports[d] for d in sorted(reports)]
     if "UNSPECIFIED" in reported_st_policies and len(reported_st_policies) > 1:
         raise ValueError("mixed ST execution policies with unspecified legacy assumptions")
-    execution_st_policy = (
-        "MIXED_ST_MODES" if len(reported_st_policies) > 1
-        else next(iter(reported_st_policies), None)
-    )
+    execution_st_policy = "MIXED_ST_MODES" if len(reported_st_policies) > 1 else next(iter(reported_st_policies), None)
     if execution_st_policy == "UNSPECIFIED":
         execution_st_policy = None
     fallback_dates = sorted(
-        row["date"] for row in reports.values()
-        if row["execution_st_policy"] == REFERENCE_ST_POLICY
+        row["date"] for row in reports.values() if row["execution_st_policy"] == REFERENCE_ST_POLICY
     )
     if not ordered:
         return {
@@ -167,14 +158,12 @@ def build_forward_performance(
     reported_outside = sorted(set(reports).difference(calendar_dates))
     if reported_outside:
         raise ValueError(f"report dates outside observed trading calendar: {reported_outside}")
-    missing = sorted(
-        (day for day in scheduled if day <= latest and day not in reports)
-    )
+    missing = sorted((day for day in scheduled if day <= latest and day not in reports))
     # A completely absent daily artifact leaves no pending-order record.
     # Checking all known exchange sessions closes that silent-gap loophole.
-    missing += sorted(day for day in calendar_dates
-                      if first <= day <= latest and day not in reports
-                      and day not in missing)
+    missing += sorted(
+        day for day in calendar_dates if first <= day <= latest and day not in reports and day not in missing
+    )
     if missing:
         raise ValueError(f"missing scheduled/trading-calendar settlement(s): {missing}")
     baseline = ordered[0]["portfolio_value_pre_trade_open"]
@@ -188,13 +177,20 @@ def build_forward_performance(
                 raise ValueError(f"position discontinuity before {row['date']}")
         close = row["portfolio_value_close"]
         base = baseline if prev is None else prev["portfolio_value_close"]
-        points.append({
-            "date": row["date"],
-            "execution_st_policy": row["execution_st_policy"],
-            "nav": close / baseline,
-            "daily_return": close / base - 1,
-            "cumulative_return": close / baseline - 1,
-        })
+        points.append(
+            {
+                "date": row["date"],
+                "execution_st_policy": row["execution_st_policy"],
+                "nav": close / baseline,
+                "daily_return": close / base - 1,
+                "cumulative_return": close / baseline - 1,
+                # Absolute marks let the Pages publisher splice a later live
+                # ledger onto the disclosed backfill prefix without guessing the
+                # account value on the boundary date.
+                "portfolio_value_pre_trade_open": row["portfolio_value_pre_trade_open"],
+                "portfolio_value_close": close,
+            }
+        )
         prev = row
     return {
         "start_date": start_date,
@@ -204,8 +200,8 @@ def build_forward_performance(
         "st_fallback_dates": fallback_dates,
         "return_interpretation": (
             "PAPER_WITH_DISCLOSED_ST_FALLBACK"
-            if fallback_dates else "PAPER_WITH_VERIFIED_ST"
-            if execution_st_policy == VERIFIED_ST_POLICY else "PAPER_ONLY"
+            if fallback_dates
+            else "PAPER_WITH_VERIFIED_ST" if execution_st_policy == VERIFIED_ST_POLICY else "PAPER_ONLY"
         ),
         "latest_date": latest,
         "cumulative_return": points[-1]["cumulative_return"],

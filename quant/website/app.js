@@ -10,7 +10,9 @@ const POOLS = {
     label: '沪深300',
     code: '000300',
     expectedPitCount: 300,
-    horizonDays: 20,
+    horizonDays: 10,
+    topk: 10,
+    nd: 1,
     indexUrl: CSV_BASE + '/available_dates_csi300.json',
     forwardUrl: CSV_BASE + '/csi300_forward_performance.json',
     suffix: '_csi300',
@@ -20,7 +22,9 @@ const POOLS = {
     label: '中证500',
     code: '000905',
     expectedPitCount: 500,
-    horizonDays: 10,
+    horizonDays: 20,
+    topk: 20,
+    nd: 2,
     indexUrl: CSV_BASE + '/available_dates_csi500.json',
     forwardUrl: CSV_BASE + '/csi500_forward_performance.json',
     suffix: '_csi500',
@@ -31,6 +35,8 @@ const POOLS = {
     code: '000852',
     expectedPitCount: 1000,
     horizonDays: 20,
+    topk: 10,
+    nd: 1,
     indexUrl: DATE_INDEX_URL,
     forwardUrl: CSV_BASE + '/csi1000_forward_performance.json',
     suffix: '',
@@ -61,14 +67,14 @@ function savePool(poolKey) {
 let currentPool = getSavedPool();
 
 const PRODUCTION = {
-  pool: '中证1000 / 中证500 / 沪深300',
-  profile: 'Top10 低换手优选',
   model: 'LightGBM · Alpha158 量价模型',
-  target: '20 交易日前瞻收益',
-  portfolio: '等权 10 只 · 单日限换 1 只',
   execution: 'T+1 开盘前生成 → T+1 开盘调仓',
   retrain: '每 20 个交易日滚动重训',
 };
+
+function portfolioLabel(pool) {
+  return `等权 ${pool.topk} 只 · 单日最多换 ${pool.nd} 只`;
+}
 
 const qlibCode = inst => inst.replace(/^(SH|SZ|BJ)/, '');
 const thsUrl = inst => `https://stockpage.10jqka.com.cn/${qlibCode(inst)}/`;
@@ -587,7 +593,10 @@ function buildRows(rows, nameMap, prev, chartData) {
   return rows.map(r => {
     const rank = Number(r.rank);
     let tag = prev ? '<span class="tag tag-neutral" title="与上一期可用榜单排名相同">持平</span>' : '<span class="tag tag-neutral">无对照</span>';
-    if (prev && !prevCodes.has(r.instrument)) tag = '<span class="tag tag-new" title="进入本期 Top 10；受 Drop1 限制，不等于实际买入">新进</span>';
+    if (prev && !prevCodes.has(r.instrument)) {
+      const pool = (typeof currentPool !== 'undefined' && currentPool) ? currentPool : { topk: 10, nd: 1 };
+      tag = `<span class="tag tag-new" title="进入本期 Top ${pool.topk}；受 Drop${pool.nd} 限制，不等于实际买入">新进</span>`;
+    }
     else if (prev && rank < prevRank[r.instrument]) tag = '<span class="tag tag-up">上升</span>';
     else if (prev && rank > prevRank[r.instrument]) tag = '<span class="tag tag-dn">下降</span>';
 
@@ -606,11 +615,14 @@ function buildRows(rows, nameMap, prev, chartData) {
 }
 
 // Dropping out of the ranking is not the same as being sold. The production
-// paper artifact carries the actual planned Top10/Drop1 orders for the next
+// paper artifact carries the actual planned Top-k/Drop-n orders for the next
 // open plus the pre-trade holdings, so the page can separate a real sell from
-// a stock that left the Top 10 but is still held and will be re-evaluated on
+// a stock that left the ranking but is still held and will be re-evaluated on
 // later sessions.
-function buildRebalance(rows, nameMap, prev, paper, date) {
+function buildRebalance(rows, nameMap, prev, paper, date, pool = null) {
+  const configured = pool || ((typeof currentPool !== 'undefined' && currentPool) ? currentPool : { topk: 10, nd: 1 });
+  const topk = configured.topk || 10;
+  const nd = configured.nd || 1;
   const currentRank = new Map(rows.map(r => [r.instrument, Number(r.rank)]));
   const prevRank = new Map((prev || []).map(r => [r.instrument, Number(r.rank)]));
   const item = (instrument, rank, rankLabel, rankFallback) => ({
@@ -640,8 +652,8 @@ function buildRebalance(rows, nameMap, prev, paper, date) {
     ? new Set(Object.keys(paper.positions).filter(code => SIGNAL_INSTRUMENT.test(code)))
     : null;
   const sold = new Set(sell.map(r => r.instrument));
-  // Every held name outside the current Top 10 is still exposed to Drop1 on
-  // later sessions, not only the names that left the ranking today.
+  // Every held name outside the current Top-k is still exposed to the Drop-n
+  // rule on later sessions, not only the names that left the ranking today.
   const heldOutside = planAvailable && positions
     ? [...positions]
       .filter(code => !currentRank.has(code) && !sold.has(code))
@@ -652,6 +664,8 @@ function buildRebalance(rows, nameMap, prev, paper, date) {
     planAvailable,
     awaiting: Boolean(pending && pending.status === 'awaiting_execution_data'),
     positionsAvailable: Boolean(positionsAvailable),
+    topk,
+    nd,
     sell,
     buy,
     exits,
@@ -690,6 +704,8 @@ function heldOutsideHtml(items, title, note) {
 }
 
 function rebalanceBody(model) {
+  const topk = model.topk || 10;
+  const nd = model.nd || 1;
   const column = (title, cls, items, emptyText) => `
     <div class="trade-column ${cls}">
       <div class="trade-head">
@@ -710,20 +726,20 @@ function rebalanceBody(model) {
   if (model.planAvailable && model.heldOutside.length) {
     body += heldOutsideHtml(
       model.heldOutside,
-      '持仓中不在本期 Top 10',
-      '未触发 Drop1；仍在模拟持仓，后续每日最多调出 1 只'
+      `持仓中不在本期 Top ${topk}`,
+      `未触发 Drop${nd}；仍在模拟持仓，后续每日最多调出 ${nd} 只`
     );
   } else if (!model.planAvailable && model.exits.length) {
     body += heldOutsideHtml(
       model.exits,
       '榜单移出',
-      '调仓计划暂不可用；仅表示退出 Top 10，不代表实际调出'
+      `调仓计划暂不可用；仅表示退出 Top ${topk}，不代表实际调出`
     );
   } else if (model.planAvailable && !model.positionsAvailable && model.exits.length) {
     body += heldOutsideHtml(
       model.exits,
       '榜单移出',
-      '持仓数据暂不可用；仅表示退出 Top 10，不代表实际调出'
+      `持仓数据暂不可用；仅表示退出 Top ${topk}，不代表实际调出`
     );
   }
   return body;
@@ -745,7 +761,7 @@ function renderRebalance(model, prevDate) {
   if (note) {
     const compare = prevDate ? `对比上一期榜单（${formatDate(prevDate)}）· ` : '';
     if (model.planAvailable) {
-      note.textContent = compare + `T+1 开盘执行 · 单日最多调出 1 只${model.awaiting ? ' · 沿用待执行计划' : ''}`;
+      note.textContent = compare + `T+1 开盘执行 · 单日最多调出 ${model.nd || 1} 只${model.awaiting ? ' · 沿用待执行计划' : ''}`;
     } else {
       note.textContent = compare + '调仓计划暂不可用，不代表实际调出';
     }
@@ -813,10 +829,7 @@ function pageShell(dates) {
           <div class="eyebrow"><span class="status-dot"></span> A股主流宽基量化多因子选股</div>
           <div class="pool-switcher" role="tablist" aria-label="选择指数股票池">${poolTabs}</div>
           <h1><span id="hero-pool-name">${currentPool.label}</span><span>每日选股信号</span></h1>
-          <p class="hero-lede">
-            基于 LightGBM 与 158 维量价因子体系，经两轮模型超参筛选与持仓规则优选定型，
-            每个交易日开盘前基于前一交易日收盘数据生成指数成分股预测 Top 10，供当日开盘调仓参考。
-          </p>
+          <p class="hero-lede" id="hero-lede">基于 LightGBM 与 158 维量价因子体系，经两轮模型超参筛选与持仓规则优选定型，每个交易日开盘前基于前一交易日收盘数据生成指数成分股预测 Top ${currentPool.topk}，供当日开盘调仓参考。</p>
         </div>
         <aside class="protocol-card">
           <h2>当前策略配置</h2>
@@ -824,7 +837,7 @@ function pageShell(dates) {
             <div class="protocol-row"><span>股票池</span><strong id="protocol-pool">${currentPool.label} (${currentPool.code})</strong></div>
             <div class="protocol-row"><span>模型</span><strong>${PRODUCTION.model}</strong></div>
             <div class="protocol-row"><span>目标</span><strong id="protocol-target">${currentPool.horizonDays} 交易日前瞻收益</strong></div>
-            <div class="protocol-row"><span>组合</span><strong>${PRODUCTION.portfolio}</strong></div>
+            <div class="protocol-row"><span>组合</span><strong id="protocol-portfolio">${portfolioLabel(currentPool)}</strong></div>
             <div class="protocol-row"><span>执行</span><strong>${PRODUCTION.execution}</strong></div>
             <div class="protocol-row"><span>重训</span><strong>${PRODUCTION.retrain}</strong></div>
           </div>
@@ -858,7 +871,7 @@ function pageShell(dates) {
         <div class="panel-head">
           <div>
             <div class="panel-kicker">每日选股榜单</div>
-            <h2 id="ranking-title">Top 10</h2>
+            <h2 id="ranking-title">Top ${currentPool.topk}</h2>
           </div>
           <div class="panel-note">
             <div id="ranking-date" class="ranking-date">—</div>
@@ -878,13 +891,13 @@ function pageShell(dates) {
         <div id="rebalance" class="rebalance-block" hidden>
           <div class="rebalance-head">
             <div>
-              <div class="panel-kicker">本期调仓 · Top 10 / Drop1</div>
+              <div class="panel-kicker" id="rebalance-kicker">本期调仓 · Top ${currentPool.topk} / Drop${currentPool.nd}</div>
               <h3>计划调入与调出</h3>
             </div>
             <div class="panel-note" id="rebalance-note"></div>
           </div>
           <div id="rebalance-body"></div>
-          <div class="rebalance-foot">榜单新进只代表进入模型 Top 10；满仓时受 Drop1 限制，单日最多买入 1 只，未买入的新进股票继续观察。</div>
+          <div class="rebalance-foot" id="rebalance-foot">榜单新进只代表进入模型 Top ${currentPool.topk}；满仓时受 Drop${currentPool.nd} 限制，单日最多买入 ${currentPool.nd} 只，未买入的新进股票继续观察。</div>
         </div>
       </section>
 
@@ -914,10 +927,10 @@ function pageShell(dates) {
           </div>
         </div>
         <div id="forward-chart" class="performance-chart">
-          <div class="performance-empty">从新策略启用（2026.10.16）开始记录，首个收盘估值将在下一交易日数据更新后显示。</div>
+          <div class="performance-empty">从模拟账户启用（2026.09.30）开始记录，首个收盘估值将在下一交易日数据更新后显示。</div>
         </div>
         <div class="performance-foot">
-          <span>起点：2026.10.16 新策略启用日开盘前账户净值 = 1.0000</span>
+          <span>起点：2026.09.30 模拟账户收盘净值 = 1.0000</span>
           <span>T+1 开盘调仓 · 收盘估值结算（含交易成本与涨跌停约束）</span>
         </div>
       </section>
@@ -943,9 +956,9 @@ function pageShell(dates) {
             </div>
           </div>
           <ul class="governance-list">
-            <li><strong>Drop1 调仓口径：</strong>三个指数池均为 Top 10 / 单日最多调出 1 只。榜单移出但未触发 Drop1 的股票仍保留在模拟持仓中，之后每个交易日继续与最新候选比较，可能逐日调出，也可能因排名回升继续保留；受涨跌停或停牌限制未成交的，会在后续交易日重新评估。同理，新进 Top 10 也不等于立即买入；满仓时单日最多调入 1 只，未买入的新进股票继续留在候选池。</li>
+            <li><strong>调仓口径：</strong>CSI300 与 CSI1000 为 Top10 / 单日最多调出 1 只，CSI500 为 Top20 / 单日最多调出 2 只。榜单移出但未触发 Drop 的股票仍保留在模拟持仓中，之后每个交易日继续与最新候选比较，可能逐日调出，也可能因排名回升继续保留；受涨跌停或停牌限制未成交的，会在后续交易日重新评估。同理，新进榜单也不等于立即买入；满仓时受当日 Drop 上限约束，未买入的新进股票继续留在候选池。</li>
             <li><strong>排名与预测口径：</strong>排名变化对比上一期可用榜单，不代表实际持仓；预测分数仅用于横截面排序，不构成收益承诺。</li>
-            <li><strong>模拟收益与交易规则：</strong>旧策略信号已归档移除，累计收益自 2026.10.16 启用当前定型策略（等权 10 只 · 单日限换 1 只）起按 T+1 开盘调仓、收盘估值独立计算。模拟盘在开盘前自动核验 ST 快照（仅当外部接口连接故障时降级为不考虑 ST 的参考计算），仅作模拟参考，不代表实盘真实成交。</li>
+            <li><strong>模拟收益与交易规则：</strong>旧 100M 策略信号已归档移除；当前三个独立 1M 账户自 2026.09.30 收盘起算，10 月为 point-in-time 回补，2026.11.03 起为真实前向 paper，二者是同一账户的连续状态。CSI300/CSI1000 等权 10 只，CSI500 等权 20 只，按 T+1 开盘调仓、收盘估值独立计算。回补段仅用于账户连续性展示，不作为未来收益证明；模拟盘在开盘前自动核验 ST 快照（仅当外部接口连接故障时降级为不考虑 ST 的参考计算），仅作模拟参考，不代表实盘真实成交。</li>
           </ul>
         </div>
       </section>
@@ -1063,8 +1076,9 @@ async function main() {
       document.getElementById('stat-data-date').textContent = formatDate(paper?.signal_data_date || null);
       document.getElementById('stat-fit-date').textContent = formatDate(paper?.model_fit_asof || null);
       const winner = isWinnerCanonical(paper);
-      const lineageLabel = TOP10_PROFILES.has(paper?.production_lineage?.profile)
-        ? 'Top10 低换手优选'
+      const lineageTopk = Number(paper?.production_lineage?.topk);
+      const lineageLabel = Number.isInteger(lineageTopk)
+        ? `Top${lineageTopk} 低换手优选`
         : '定型优选策略';
       const contract = ctx ? evaluateMvpContract(ctx.metadata, paper, dateInfo.date, rows, pool) : null;
       document.getElementById('stat-lineage').textContent =
@@ -1126,10 +1140,28 @@ async function main() {
     });
     const heroPool = document.getElementById('hero-pool-name');
     if (heroPool) heroPool.textContent = nextPool.label;
+    const heroLede = document.getElementById('hero-lede');
+    if (heroLede) {
+      heroLede.textContent =
+        `基于 LightGBM 与 158 维量价因子体系，经两轮模型超参筛选与持仓规则优选定型，` +
+        `每个交易日开盘前基于前一交易日收盘数据生成指数成分股预测 Top ${nextPool.topk}，供当日开盘调仓参考。`;
+    }
     const protoPool = document.getElementById('protocol-pool');
     if (protoPool) protoPool.textContent = `${nextPool.label} (${nextPool.code})`;
     const protoTarget = document.getElementById('protocol-target');
     if (protoTarget) protoTarget.textContent = `${nextPool.horizonDays} 交易日前瞻收益`;
+    const protoPortfolio = document.getElementById('protocol-portfolio');
+    if (protoPortfolio) protoPortfolio.textContent = portfolioLabel(nextPool);
+    const rebalanceKicker = document.getElementById('rebalance-kicker');
+    if (rebalanceKicker) {
+      rebalanceKicker.textContent = `本期调仓 · Top ${nextPool.topk} / Drop${nextPool.nd}`;
+    }
+    const rebalanceFoot = document.getElementById('rebalance-foot');
+    if (rebalanceFoot) {
+      rebalanceFoot.textContent =
+        `榜单新进只代表进入模型 Top ${nextPool.topk}；满仓时受 Drop${nextPool.nd} 限制，` +
+        `单日最多买入 ${nextPool.nd} 只，未买入的新进股票继续观察。`;
+    }
     const thPred = document.getElementById('th-pred-horizon');
     if (thPred) thPred.textContent = `${nextPool.horizonDays}日预测`;
     const statPitSub = document.getElementById('stat-pit-sub');

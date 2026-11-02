@@ -379,9 +379,9 @@ test('rebalance separates Drop1 sells from ranked-out holdings', () => {
   const historyStart = source.indexOf('id="history"');
   assert.ok(rankingStart >= 0 && rebalanceStart > rankingStart && historyStart > rebalanceStart);
   assert.match(source, /renderRebalance\(rebalance, prevDateInfo \? prevDateInfo\.date : null\)/);
-  assert.match(source, /单日最多调出 1 只/);
-  assert.match(source, /榜单新进只代表进入模型 Top 10/);
-  assert.match(source, /单日最多买入 1 只/);
+  assert.match(source, /单日最多调出 \$\{model\.nd \|\| 1\} 只/);
+  assert.match(source, /榜单新进只代表进入模型 Top \$\{currentPool\.topk\}/);
+  assert.match(source, /单日最多买入 \$\{currentPool\.nd\} 只/);
   const css = fs.readFileSync(path.join(root, 'website', 'styles.css'), 'utf8');
   assert.match(css, /\.rebalance-block\[hidden\]\s*\{\s*display:\s*none;/);
   assert.match(css, /\.rebalance-grid\s*\{/);

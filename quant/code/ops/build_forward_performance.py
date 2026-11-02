@@ -28,11 +28,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    pattern = (
-        "*_paper_portfolio.json"
-        if args.market == "csi1000"
-        else f"*_paper_portfolio_{args.market}.json"
-    )
+    pattern = "*_paper_portfolio.json" if args.market == "csi1000" else f"*_paper_portfolio_{args.market}.json"
     artifacts = []
     for path in sorted(args.signals.glob(pattern)):
         try:
@@ -44,6 +40,11 @@ def main() -> None:
         if not isinstance(raw, dict):
             if path.name[:10] >= FORWARD_PERFORMANCE_START:
                 raise ValueError(f"unexpected post-start paper artifact: {path}")
+            continue
+        # October is a disclosed point-in-time backfill prefix published from
+        # the research replay.  It has no live execution report/calendar, so the
+        # live ledger builder must not treat it as a real-time publication.
+        if raw.get("data_mode") == "BACKFILL_RESEARCH":
             continue
         artifacts.append(raw)
 

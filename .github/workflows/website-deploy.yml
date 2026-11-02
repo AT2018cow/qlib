@@ -8,6 +8,8 @@ on:
       - 'quant/website/**'
       - 'quant/code/production/forward_performance.py'
       - 'quant/code/ops/build_forward_performance.py'
+      - 'quant/code/ops/merge_forward_performance.py'
+      - 'quant/tests/test_publication_e2e.cjs'
   workflow_dispatch:
 
 permissions:
@@ -34,6 +36,8 @@ jobs:
       - name: Setup Pages
         if: ${{ vars.GITHUB_PAGES_ENABLED == 'true' }}
         uses: actions/configure-pages@v5
+      - name: Verify committed publication artifacts
+        run: node --test quant/tests/test_publication_e2e.cjs
       - name: Build site
         run: |
           mkdir -p _site/signals
@@ -51,25 +55,20 @@ jobs:
             --signals quant/data/signals \
             --market csi300 \
             --output _site/signals/available_dates_csi300.json
-          # October is a disclosed BACKFILL_RESEARCH prefix; do not replace it
-          # with an empty forward builder until the live paper ledger is wired.
-          if [ -f quant/data/signals/csi1000_backfill_performance.json ]; then
-            cp quant/data/signals/csi1000_forward_performance.json _site/signals/
-            cp quant/data/signals/csi500_forward_performance.json _site/signals/
-            cp quant/data/signals/csi300_forward_performance.json _site/signals/
-          else
+          # October is a disclosed BACKFILL_RESEARCH prefix.  Build the live
+          # ledger separately and splice it onto the prefix, so the first live
+          # session continues the 10/30 account instead of resetting the
+          # dashboard to "awaiting first valuation".
+          for market in csi1000 csi500 csi300; do
             python3 quant/code/ops/build_forward_performance.py \
               --signals quant/data/signals \
-              --output _site/signals/csi1000_forward_performance.json
-            python3 quant/code/ops/build_forward_performance.py \
-              --signals quant/data/signals \
-              --market csi500 \
-              --output _site/signals/csi500_forward_performance.json
-            python3 quant/code/ops/build_forward_performance.py \
-              --signals quant/data/signals \
-              --market csi300 \
-              --output _site/signals/csi300_forward_performance.json
-          fi
+              --market "$market" \
+              --output "/tmp/${market}_live.json"
+            python3 quant/code/ops/merge_forward_performance.py \
+              --prefix "quant/data/signals/${market}_backfill_performance.json" \
+              --live "/tmp/${market}_live.json" \
+              --output "_site/signals/${market}_forward_performance.json"
+          done
           # Fail the deployment before uploading if a required site asset is missing.
           test -s _site/index.html
           test -s _site/methodology.html
