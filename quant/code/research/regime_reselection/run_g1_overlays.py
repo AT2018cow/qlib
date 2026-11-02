@@ -27,8 +27,9 @@ MARKETS = ("csi300", "csi500", "csi1000")
 BENCH = {"csi300": "SH000300", "csi500": "SH000905", "csi1000": "SH000852"}
 BEST = {"csi300": ("B", "S01"), "csi500": ("B", "S02"), "csi1000": ("A", "S01")}
 S01_BEST = {"csi300": ("B", "S01"), "csi500": ("B", "S01"), "csi1000": ("A", "S01")}
+S02_BEST = {"csi300": ("A", "S02"), "csi500": ("A", "S02"), "csi1000": ("A", "S02")}
 CURRENT = {"csi300": ("A", "S01"), "csi500": ("A", "S01"), "csi1000": ("A", "S01")}
-POLICY_BASES = {"best": BEST, "s01": S01_BEST, "current": CURRENT}
+POLICY_BASES = {"best": BEST, "s01": S01_BEST, "s02": S02_BEST, "current": CURRENT}
 
 
 def _args() -> argparse.Namespace:
@@ -38,6 +39,8 @@ def _args() -> argparse.Namespace:
     p.add_argument("--out", default="/tmp/opencode/g1_overlays")
     p.add_argument("--start", default="2021-02-19")
     p.add_argument("--end", default="2024-02-05")
+    p.add_argument("--bench-start", default="2016-01-01")
+    p.add_argument("--markets", default="csi300,csi500,csi1000")
     p.add_argument("--rebalance-every", type=int, default=20)
     p.add_argument("--roundtrip-bps", type=float, default=10.0)
     p.add_argument("--policy-base", choices=tuple(POLICY_BASES), default="s01")
@@ -62,7 +65,7 @@ def _benchmark_close(provider: str, benchmark: str, start: str, end: str):
     from qlib.data import D
 
     qlib.init(provider_uri=provider, region="cn", kernels=1, skip_if_reg=True)
-    frame = D.features([benchmark], ["$close"], start_time="2019-01-01", end_time=end, freq="day")
+    frame = D.features([benchmark], ["$close"], start_time=start, end_time=end, freq="day")
     series = frame["$close"]
     if isinstance(series.index, pd.MultiIndex):
         series = series.droplevel(0)
@@ -244,6 +247,10 @@ def combine_sleeves(reports, kind: str, rebalance_every: int, cost_bps: float):
 
 def main() -> None:
     args = _args()
+    markets = [x.strip() for x in args.markets.split(",") if x.strip()]
+    for market in markets:
+        if market not in MARKETS:
+            raise ValueError(f"unknown market {market}")
 
     from portfolio_performance import portfolio_performance
     from stage0_p0_core import apply_cost_stress
@@ -276,7 +283,7 @@ def main() -> None:
     reports_best = {}
     reports_current = {}
     reports_policy = {}
-    for market in MARKETS:
+    for market in markets:
         spine, cell = BEST[market]
         reports_best[market] = _load_report(root, market, spine, cell)
         spine_c, cell_c = CURRENT[market]
@@ -284,9 +291,9 @@ def main() -> None:
         spine_p, cell_p = POLICY_BASES[args.policy_base][market]
         reports_policy[market] = _load_report(root, market, spine_p, cell_p)
 
-    for market in MARKETS:
+    for market in markets:
         report = reports_policy[market]
-        close = _benchmark_close(args.provider, BENCH[market], args.start, args.end)
+        close = _benchmark_close(args.provider, BENCH[market], args.bench_start, args.end)
         trend, weight = apply_trend_gate(report, close)
         metrics = portfolio_performance(trend, backtest_start=args.start)
         metrics.update(
@@ -328,9 +335,9 @@ def main() -> None:
                     "overlay": f"S17_{label}_{kind}",
                     "market": "multi",
                     "base": (
-                        ";".join(f"{m}:{BEST[m][0]}/{BEST[m][1]}" for m in MARKETS)
+                        ";".join(f"{m}:{BEST[m][0]}/{BEST[m][1]}" for m in markets)
                         if label == "best"
-                        else ";".join(f"{m}:{CURRENT[m][0]}/{CURRENT[m][1]}" for m in MARKETS)
+                        else ";".join(f"{m}:{CURRENT[m][0]}/{CURRENT[m][1]}" for m in markets)
                     ),
                     "mean_turnover": round(float(combo["turnover"].mean()), 6),
                 }
