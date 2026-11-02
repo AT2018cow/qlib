@@ -81,3 +81,14 @@ def validate_assembly(calendar, start: str, end: str, signal_days) -> None:
         missing = sorted(set(expected) - set(actual))[:5]
         extra = sorted(set(actual) - set(expected))[:5]
         raise ValueError(f"spine coverage mismatch: missing={missing} extra={extra}")
+
+
+def failed_jobs(jobs, results) -> list[dict]:
+    """Return jobs whose mapped result is not a successful PASS receipt."""
+    failed = []
+    for job, result in zip(jobs, results):
+        if isinstance(result, BaseException):
+            failed.append(job)
+        elif not isinstance(result, dict) or result.get("status") != "PASS":
+            failed.append(job)
+    return failed

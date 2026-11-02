@@ -5,10 +5,10 @@ import unittest
 from pathlib import Path
 
 try:
-    from spine_jobs import build_jobs, expected_days, swapped_horizon, validate_assembly
+    from spine_jobs import build_jobs, expected_days, failed_jobs, swapped_horizon, validate_assembly
 except ImportError:  # pragma: no cover
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "code" / "research" / "regime_reselection"))
-    from spine_jobs import build_jobs, expected_days, swapped_horizon, validate_assembly
+    from spine_jobs import build_jobs, expected_days, failed_jobs, swapped_horizon, validate_assembly
 
 
 def calendar():
@@ -51,6 +51,16 @@ class SpineJobTests(unittest.TestCase):
             validate_assembly(cal, cal[0], cal[10], days[:-1])
         with self.assertRaises(ValueError):
             validate_assembly(cal, cal[0], cal[10], sorted(days + [cal[11]]))
+
+    def test_failed_jobs_classification(self):
+        jobs = [{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}]
+        results = [
+            {"status": "PASS"},
+            RuntimeError("boom"),
+            {"status": "FAIL"},
+            {"status": "PASS", "extra": 1},
+        ]
+        self.assertEqual(failed_jobs(jobs, results), [jobs[1], jobs[2]])
 
 
 if __name__ == "__main__":

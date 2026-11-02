@@ -399,7 +399,7 @@ def main(
     kernels: int = -1,
     joblib_backend: str = "",
 ):
-    from spine_jobs import build_jobs
+    from spine_jobs import build_jobs, failed_jobs
 
     import subprocess
 
@@ -454,10 +454,27 @@ def main(
         if not pending:
             break
         try:
-            list(fit_slice.map(pending))
+            results = list(fit_slice.map(pending, return_exceptions=True))
         except Exception as exc:  # noqa: BLE001
             last_error = exc
             print(f"[g1] attempt {attempt} aborted: {type(exc).__name__}: {exc}", flush=True)
+            time.sleep(5)
+            continue
+        for job, result in zip(pending, results):
+            if isinstance(result, BaseException):
+                print(
+                    f"[g1] slice failed: {job['market']}/{job['spine']}/{job['retrain_asof']}: "
+                    f"{type(result).__name__}: {result}",
+                    flush=True,
+                )
+            elif not isinstance(result, dict) or result.get("status") != "PASS":
+                print(
+                    f"[g1] slice incomplete: {job['market']}/{job['spine']}/{job['retrain_asof']}: {result}",
+                    flush=True,
+                )
+        pending = failed_jobs(pending, results)
+        if not pending:
+            break
         time.sleep(5)
     if pending:
         done = set(completed_jobs.remote(pending))
