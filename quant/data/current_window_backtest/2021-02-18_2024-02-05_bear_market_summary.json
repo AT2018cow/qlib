@@ -1,0 +1,49 @@
+{
+  "window": {
+    "start": "2021-02-18",
+    "end": "2024-02-05",
+    "n_days": 723
+  },
+  "method": "20-session rolling retrain; block-chained daily returns; T+1 open; board-aware; costs included",
+  "rows": [
+    {
+      "market": "csi300",
+      "profile": "59b93929_top10_drop1",
+      "strategy_cumulative_return": -0.5469233069339402,
+      "strategy_mdd": -0.5599646117327184,
+      "strategy_peak_date": "2021-12-31",
+      "strategy_trough_date": "2024-02-05",
+      "benchmark_cumulative_return": -0.44517900781421316,
+      "benchmark_mdd": -0.44978085161411163,
+      "benchmark_peak_date": "2021-02-19",
+      "benchmark_trough_date": "2024-02-02",
+      "n_days": 723
+    },
+    {
+      "market": "csi500",
+      "profile": "raw10d_c98856b4_top10_drop1",
+      "strategy_cumulative_return": -0.6062565520920313,
+      "strategy_mdd": -0.6571009996635707,
+      "strategy_peak_date": "2021-07-22",
+      "strategy_trough_date": "2024-02-05",
+      "benchmark_cumulative_return": -0.3256890865595433,
+      "benchmark_mdd": -0.4168643257282937,
+      "benchmark_peak_date": "2021-09-13",
+      "benchmark_trough_date": "2024-02-05",
+      "n_days": 723
+    },
+    {
+      "market": "csi1000",
+      "profile": "c98856b4_top10_drop1",
+      "strategy_cumulative_return": -0.02512758973041107,
+      "strategy_mdd": -0.4427010785218115,
+      "strategy_peak_date": "2022-01-17",
+      "strategy_trough_date": "2024-02-05",
+      "benchmark_cumulative_return": -0.3296880611662243,
+      "benchmark_mdd": -0.4670841987919101,
+      "benchmark_peak_date": "2021-12-01",
+      "benchmark_trough_date": "2024-02-05",
+      "n_days": 723
+    }
+  ]
+}

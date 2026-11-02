@@ -275,6 +275,250 @@ def current_window_driver(
     return results
 
 
+@app.function(
+    cpu=8,
+    memory=32768,
+    timeout=2 * 3600,
+    max_containers=16,
+    nonpreemptible=True,
+)
+def bear_block(job: dict):
+    """One 20-session rolling-retrain block for the 2021-2024 bear stress test."""
+    from bisect import bisect_left
+
+    import qlib
+    from qlib.backtest import backtest as normal_backtest
+    from qlib.data.dataset import Dataset
+    from qlib.model.base import Model
+    from qlib.utils import init_instance_by_config
+
+    from board_execution import research_exchange
+    from csi1000_production_config import profile_manifest
+    from qlib_audit_fixes import last_matured_sample, purge_cfg_splits, read_trading_calendar
+
+    market = job["market"]
+    profile = job["profile"]
+    topk = int(job["topk"])
+    nd = int(job["nd"])
+    retrain_asof = job["retrain_asof"]
+    eval_end = job["eval_end"]
+    manifest = profile_manifest(profile)
+    horizon = int(manifest.get("label_horizon", 20))
+
+    data_dir = Path("/tmp/cn_data")
+    if not (data_dir / "calendars" / "day.txt").is_file():
+        data_dir = _load_latest_to_local()
+    cal = read_trading_calendar(data_dir)
+    asof_i = bisect_left(cal, retrain_asof)
+    end_i = bisect_left(cal, eval_end)
+    if asof_i >= len(cal) or cal[asof_i] != retrain_asof:
+        raise ValueError(f"retrain_asof {retrain_asof} not in provider calendar")
+    if end_i >= len(cal) or cal[end_i] != eval_end:
+        raise ValueError(f"eval_end {eval_end} not in provider calendar")
+    valid_end_i = asof_i - horizon - 1
+    valid_start_i = valid_end_i - 252 + 1
+    if valid_start_i <= 0:
+        raise ValueError(f"insufficient history at {retrain_asof}")
+    valid_start = cal[valid_start_i]
+    train_end = last_matured_sample(cal, valid_start, horizon)
+
+    qlib.init(
+        provider_uri=str(data_dir),
+        region="cn",
+        skip_if_reg=True,
+        exp_manager={
+            "class": "MLflowExpManager",
+            "module_path": "qlib.workflow.expm",
+            "kwargs": {"uri": "file:/tmp/mlruns", "default_exp_name": "qlib-bear-block"},
+        },
+    )
+    cfg = _load_and_patch_cfg(
+        MODEL_CFG["lgb158"],
+        smoke=False,
+        recent=True,
+        long_train=True,
+        label20=True,
+        topk=topk,
+        nd=nd,
+        market=market,
+        provider_dir=str(data_dir),
+        csi1000_profile=profile,
+    )
+    seg = cfg["task"]["dataset"]["kwargs"]["segments"]
+    handler = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
+    seg["train"] = ["2016-01-01", train_end]
+    seg["valid"] = [valid_start, cal[valid_end_i]]
+    seg["test"] = [retrain_asof, eval_end]
+    handler["start_time"] = "2015-01-01"
+    handler["end_time"] = eval_end
+    handler["fit_start_time"] = "2016-01-01"
+    handler["fit_end_time"] = train_end
+    purge_cfg_splits(cfg, cal, horizon=horizon)
+
+    model = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
+    dataset = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
+    model.fit(dataset)
+    pred = model.predict(dataset, segment="test")
+    if pred.empty:
+        raise RuntimeError(f"empty predictions {retrain_asof}~{eval_end}")
+
+    benchmark = {"csi1000": "SH000852", "csi500": "SH000905", "csi300": "SH000300"}[market]
+    strategy = {
+        "class": "TopkDropoutStrategy",
+        "module_path": "qlib.contrib.strategy",
+        "kwargs": {
+            "signal": pred,
+            "topk": topk,
+            "n_drop": nd,
+            "forbid_all_trade_at_limit": False,
+        },
+    }
+    executor = {
+        "class": "SimulatorExecutor",
+        "module_path": "qlib.backtest.executor",
+        "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True},
+    }
+    pm, _ = normal_backtest(
+        strategy=strategy,
+        executor=executor,
+        start_time=retrain_asof,
+        end_time=eval_end,
+        account=100_000_000,
+        benchmark=benchmark,
+        exchange_kwargs=research_exchange(retrain_asof, eval_end, codes=market),
+    )
+    report = pm["1day"][0]
+    raw = report["return"].dropna()
+    ret = raw.iloc[1:]
+    bench = report["bench"].reindex(raw.index).fillna(0.0).iloc[1:]
+    dates = [str(x)[:10] for x in ret.index]
+    return {
+        "market": market,
+        "profile": profile,
+        "topk": topk,
+        "nd": nd,
+        "horizon": horizon,
+        "retrain_asof": retrain_asof,
+        "eval_end": eval_end,
+        "dates": dates,
+        "daily_return": [round(float(x), 8) for x in ret.tolist()],
+        "daily_benchmark": [round(float(x), 8) for x in bench.tolist()],
+    }
+
+
+@app.function(timeout=4 * 3600, cpu=2, memory=4096)
+def bear_market_driver(
+    start: str = "2021-02-18",
+    end: str = "2024-02-05",
+    smoke: bool = False,
+    only_market: str = "all",
+):
+    """Rolling 20-session retrain over the 2021-2024 CSI bear market."""
+    from bisect import bisect_left
+    import json as _json
+
+    import numpy as np
+    import pandas as pd
+
+    from qlib_audit_fixes import read_trading_calendar
+
+    data_dir = Path("/tmp/cn_data")
+    if not (data_dir / "calendars" / "day.txt").is_file():
+        data_dir = _load_latest_to_local()
+    cal = read_trading_calendar(data_dir)
+    start_i = bisect_left(cal, start)
+    end_i = bisect_left(cal, end)
+    if start_i >= len(cal) or cal[start_i] != start or end_i >= len(cal) or cal[end_i] != end:
+        raise ValueError(f"window {start}~{end} not in provider calendar")
+
+    specs = [
+        ("csi300", "59b93929_top10_drop1", 10, 1),
+        ("csi500", "raw10d_c98856b4_top10_drop1", 10, 1),
+        ("csi1000", "c98856b4_top10_drop1", 10, 1),
+    ]
+    if only_market != "all":
+        specs = [s for s in specs if s[0] == only_market]
+        if not specs:
+            raise ValueError(f"unknown market {only_market}")
+    jobs = []
+    for market, profile, topk, nd in specs:
+        i = start_i
+        while i < end_i:
+            block_end_i = min(i + 20, end_i)
+            jobs.append(
+                {
+                    "market": market,
+                    "profile": profile,
+                    "topk": topk,
+                    "nd": nd,
+                    "retrain_asof": cal[i],
+                    "eval_end": cal[block_end_i],
+                }
+            )
+            i = block_end_i
+    if smoke:
+        jobs = jobs[:1]
+    print(f"[bear] {len(jobs)} blocks")
+    blocks = list(bear_block.map(jobs))
+    blocks.sort(key=lambda x: (x["market"], x["dates"][0] if x["dates"] else ""))
+
+    summary = {}
+    for market, profile, topk, nd in specs:
+        rows = [b for b in blocks if b["market"] == market and b["profile"] == profile]
+        rows.sort(key=lambda x: x["dates"][0])
+        dates, ret, bench = [], [], []
+        for b in rows:
+            dates.extend(b["dates"])
+            ret.extend(b["daily_return"])
+            bench.extend(b["daily_benchmark"])
+        if not ret:
+            continue
+        # deduplicate dates defensively while keeping order
+        seen = set()
+        keep = [i for i, d in enumerate(dates) if not (d in seen or seen.add(d))]
+        dates = [dates[i] for i in keep]
+        ret = [ret[i] for i in keep]
+        bench = [bench[i] for i in keep]
+
+        def metrics(values):
+            nav = np.cumprod(1.0 + np.array(values, dtype=float))
+            peak = np.maximum.accumulate(np.r_[1.0, nav])[1:]
+            dd = nav / peak - 1.0
+            trough_i = int(np.argmin(dd))
+            peak_i = int(np.argmax(nav[: trough_i + 1])) if trough_i >= 0 else 0
+            return {
+                "cumulative_return": float(nav[-1] - 1.0),
+                "max_drawdown": float(dd[trough_i]),
+                "peak_date": dates[peak_i],
+                "trough_date": dates[trough_i],
+                "n_days": len(values),
+            }
+
+        summary[f"{market}|{profile}"] = {
+            "market": market,
+            "profile": profile,
+            "topk": topk,
+            "nd": nd,
+            "strategy": metrics(ret),
+            "benchmark": metrics(bench),
+            "daily": list(zip(dates, [round(float(x), 8) for x in ret], [round(float(x), 8) for x in bench])),
+        }
+    compact = {
+        k: {
+            "market": v["market"],
+            "profile": v["profile"],
+            "topk": v["topk"],
+            "nd": v["nd"],
+            "strategy": v["strategy"],
+            "benchmark": v["benchmark"],
+        }
+        for k, v in summary.items()
+    }
+    print("[bear] compact summary")
+    print(_json.dumps(compact, indent=2, ensure_ascii=False))
+    return summary
+
+
 @app.function(cpu=8, memory=32768, timeout=2 * 3600)
 def default_yaml_ranking(
     market: str = "csi300",

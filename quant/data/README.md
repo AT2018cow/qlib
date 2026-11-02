@@ -41,3 +41,4 @@ quant/data/
 - `2026-10-08_2026-10-29_csi300_october_summary.csv`：上述回测的跨构造汇总
 - `2026-09-30_csi300_colleague_basket_diagnostic.json`：同事 7 只价值/银行组合的收益、2026-09-30 排序与默认 Alpha158 复现检查
 - `2026-10-08_2026-10-29_colleague_basket_summary.csv`：上述 7 只股票的逐票收益与各模型排名
+- `2021-02-18_2024-02-05_bear_market_summary.json` / `.csv`：三市场当前策略在上一轮熊市的压力回撤与基准对照（20 日滚动块拼接近似）
