@@ -8,6 +8,7 @@ from csi1000_production_config import (
     CANONICAL_PROFILE,
     CANONICAL_TOPK,
     MODEL_NUM_THREADS,
+    PAPER_INITIAL_CASH,
     STAGE_B_RESULT_COMMIT,
     STAGE_B_SNAPSHOT_TOKEN,
     TOP10_CHAMPION_PROFILE,
@@ -121,11 +122,14 @@ class CSI1000ProductionConfigTests(unittest.TestCase):
         self.assertIn("CPU_COUNT = 8", modal_src)
         self.assertIn('RETRAIN_ORIGIN = "2026-09-18"', live_src)
         self.assertEqual(CANONICAL_PROFILE, TOP10_CHAMPION_PROFILE)
-        self.assertEqual(CANONICAL_PAPER_LINEAGE, "c98856b4_top10_drop1_canonical")
+        self.assertEqual(CANONICAL_PAPER_LINEAGE, "c98856b4_top10_drop1_canonical_1m")
+        self.assertEqual(PAPER_INITIAL_CASH, 1_000_000)
         self.assertEqual(CANONICAL_TOPK, 10)
         self.assertEqual(CANONICAL_ND, 1)
         self.assertIn("csi1000_profile=CANONICAL_PROFILE", modal_src)
         self.assertIn("lineage=CANONICAL_PAPER_LINEAGE", modal_src)
+        self.assertIn("initial_cash=PAPER_INITIAL_CASH", modal_src)
+        self.assertNotIn("initial_cash=100_000_000", modal_src)
         self.assertNotIn("csi1000_profile=BASELINE_PROFILE", modal_src)
         self.assertNotIn("stage_b_baseline_shadow", modal_src)
         self.assertNotIn("stage_b_winner_shadow", modal_src)

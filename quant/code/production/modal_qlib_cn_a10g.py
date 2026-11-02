@@ -1497,7 +1497,9 @@ def _apply_paper_portfolio(
                 f"requested={topk}/{nd}"
             )
     else:
-        pp = PaperPortfolio(topk=topk, nd=nd, initial_cash=100_000_000)
+        from csi1000_production_config import PAPER_INITIAL_CASH
+
+        pp = PaperPortfolio(topk=topk, nd=nd, initial_cash=PAPER_INITIAL_CASH)
 
     execution_report = None
     if pp.history and pp.history[-1].get("date") == res["date"]:

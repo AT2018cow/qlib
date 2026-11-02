@@ -15,8 +15,11 @@ from csi1000_mvp_contract import REFERENCE_ST_POLICY, VERIFIED_ST_POLICY
 from csi1000_production_config import CANONICAL_PAPER_LINEAGES_BY_MARKET
 
 FORWARD_PERFORMANCE_START = "2026-10-12"
-CANONICAL_LINEAGE = "c98856b4_top10_drop1_canonical"
+CANONICAL_LINEAGE = "c98856b4_top10_drop1_canonical_1m"
 CANONICAL_LINEAGES = (
+    "c98856b4_top10_drop1_canonical_1m",
+    "raw10d_c98856b4_top10_drop1_canonical_1m",
+    "59b93929_top10_drop1_canonical_1m",
     "c98856b4_top10_drop1_canonical",
     "raw10d_c98856b4_top10_drop1_canonical",
     "59b93929_top10_drop1_canonical",

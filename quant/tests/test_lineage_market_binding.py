@@ -60,7 +60,7 @@ def test_current_canonical_lineage_passes_for_its_own_market():
 
 def test_cross_market_canonical_lineage_is_rejected():
     # csi1000 canonical lineage smuggled into a csi500 artifact.
-    paper = make_paper("csi500", "c98856b4_top10_drop1_canonical", CANONICAL_PROFILE)
+    paper = make_paper("csi500", "c98856b4_top10_drop1_canonical_1m", CANONICAL_PROFILE)
     with pytest.raises(ValueError, match="not canonical for market"):
         summary(paper, "csi500")
 
@@ -94,7 +94,7 @@ def test_legacy_opt_in_is_limited_to_csi1000():
 
 
 def test_unknown_market_is_rejected():
-    paper = make_paper("chinext", "c98856b4_top10_drop1_canonical", CANONICAL_PROFILE)
+    paper = make_paper("chinext", "c98856b4_top10_drop1_canonical_1m", CANONICAL_PROFILE)
     with pytest.raises(ValueError, match="unknown paper market"):
         summarize_paper_state(
             paper,
@@ -108,7 +108,7 @@ def test_unknown_market_is_rejected():
 def test_forward_series_rejects_cross_market_lineage():
     artifact = {
         "market": "csi300",
-        "paper_lineage": "raw10d_c98856b4_top10_drop1_canonical",
+        "paper_lineage": "raw10d_c98856b4_top10_drop1_canonical_1m",
         "usage_date": "2026-10-16",
         "execution_report": None,
     }

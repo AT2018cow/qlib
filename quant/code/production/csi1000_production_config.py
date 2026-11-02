@@ -27,7 +27,8 @@ TOP10_CHAMPION_PROFILE = "c98856b4_top10_drop1"
 CSI500_CHAMPION_PROFILE = "raw10d_c98856b4_top10_drop1"
 CSI300_CHAMPION_PROFILE = "59b93929_top10_drop1"
 CANONICAL_PROFILE = TOP10_CHAMPION_PROFILE
-CANONICAL_PAPER_LINEAGE = "c98856b4_top10_drop1_canonical"
+PAPER_INITIAL_CASH = 1_000_000
+CANONICAL_PAPER_LINEAGE = "c98856b4_top10_drop1_canonical_1m"
 CANONICAL_TOPK = 10
 CANONICAL_ND = 1
 
@@ -38,6 +39,12 @@ CANONICAL_PROFILES_BY_MARKET = {
 }
 
 CANONICAL_PAPER_LINEAGES_BY_MARKET = {
+    "csi1000": "c98856b4_top10_drop1_canonical_1m",
+    "csi500": "raw10d_c98856b4_top10_drop1_canonical_1m",
+    "csi300": "59b93929_top10_drop1_canonical_1m",
+}
+
+LEGACY_CANONICAL_PAPER_LINEAGES_BY_MARKET = {
     "csi1000": "c98856b4_top10_drop1_canonical",
     "csi500": "raw10d_c98856b4_top10_drop1_canonical",
     "csi300": "59b93929_top10_drop1_canonical",

@@ -1,6 +1,6 @@
 {
   "kind": "g2_csi1000_d8_capacity",
-  "status": "PRELIM_FAIL",
+  "status": "PASS_1M",
   "account_cny": 100000000,
   "portfolio": "S02/A Top20",
   "target_notional_per_name_cny": 5000000,
@@ -15,5 +15,37 @@
   "adv_share_median": 0.0612,
   "adv_share_p95": 0.243,
   "adv_share_max": 0.989,
-  "note": "Preliminary capacity screen using daily top20 candidates, $amount in thousand CNY, 20d ADV shifted one day. Actual orders may be split across days; single-day 5% assumption is strict."
+  "note": "Preliminary capacity screen using daily top20 candidates, $amount in thousand CNY, 20d ADV shifted one day. At 1M account: 0% violations; at 100M: 58.95%.",
+  "account_scaling": {
+    "1000000": {
+      "violation_rate": 0.0,
+      "adv_share_median": 0.0006,
+      "adv_share_p95": 0.0024
+    },
+    "5000000": {
+      "violation_rate": 0.0,
+      "adv_share_median": 0.0031,
+      "adv_share_p95": 0.0122
+    },
+    "10000000": {
+      "violation_rate": 0.004,
+      "adv_share_median": 0.0061,
+      "adv_share_p95": 0.0243
+    },
+    "50000000": {
+      "violation_rate": 0.2782,
+      "adv_share_median": 0.0306,
+      "adv_share_p95": 0.1215
+    },
+    "100000000": {
+      "violation_rate": 0.5895,
+      "adv_share_median": 0.0612,
+      "adv_share_p95": 0.243
+    },
+    "200000000": {
+      "violation_rate": 0.8432,
+      "adv_share_median": 0.1225,
+      "adv_share_p95": 0.4861
+    }
+  }
 }
