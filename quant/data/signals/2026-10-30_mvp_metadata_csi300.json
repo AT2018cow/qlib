@@ -1,0 +1,157 @@
+{
+  "contract_version": "csi1000_mvp_daily_v1",
+  "market": "csi300",
+  "publication": {
+    "status": "PASS_BACKFILL",
+    "usage_date": "2026-10-30",
+    "signal_data_date": "2026-10-29"
+  },
+  "signal_lineage": {
+    "display_top20_instruments": [
+      "SH688072",
+      "SH688012",
+      "SH600183",
+      "SH688183",
+      "SZ300476",
+      "SH688521",
+      "SZ301165",
+      "SZ000988",
+      "SZ300502",
+      "SZ000938"
+    ]
+  },
+  "production_lineage": {
+    "candidate_id": "59b93929bff1e736228d31403a167781aff433d27da1870bcf9fe34e04b6bbb9",
+    "stage_a_rank": 1,
+    "topk": 10,
+    "nd": 1,
+    "label_horizon": 10,
+    "model_params": {
+      "learning_rate": 0.1,
+      "colsample_bytree": 0.8,
+      "lambda_l1": 10.0,
+      "lambda_l2": 400.0,
+      "max_depth": 6,
+      "num_leaves": 31,
+      "min_data_in_leaf": 100
+    },
+    "model_config_sha256": "b97bc44d1c02acb4d85c344d2d570e00ef9ff365228c8a9550fa45393859ae67",
+    "profile": "59b93929_top10_drop1_10d",
+    "contract_version": "csi1000_stage_b_forward_v1",
+    "stage_b_result_commit": "7a2676397b0f8e6f69c0bffc98d1764647f644ac",
+    "stage_b_snapshot_token": "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1",
+    "stage_b_result_path": "quant/data/round1_stage_ab/csi1000_stage_b/stage_b_full_51756897fc752304.json",
+    "lightgbm_num_threads": 20
+  },
+  "pit_universe": {
+    "status": "PASS",
+    "member_count": 300,
+    "asof": "2026-10-29"
+  },
+  "label_maturity": {
+    "status": "PASS",
+    "horizon_sessions": 10,
+    "signal_data_date": "2026-10-29"
+  },
+  "provider": {
+    "calendar_end": "2026-10-29"
+  },
+  "risk": {
+    "tradeability_certified": false,
+    "st": {
+      "status": "NOT_CHECKED_REFERENCE_ONLY"
+    },
+    "usage_day_suspension": {
+      "status": "NOT_INDEPENDENTLY_VERIFIED_PREOPEN"
+    },
+    "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY"
+  },
+  "paper": {
+    "state_version": 2,
+    "market": "csi300",
+    "paper_lineage": "59b93929_top10_drop1_10d_canonical_1m",
+    "production_lineage": {
+      "candidate_id": "59b93929bff1e736228d31403a167781aff433d27da1870bcf9fe34e04b6bbb9",
+      "stage_a_rank": 1,
+      "topk": 10,
+      "nd": 1,
+      "label_horizon": 10,
+      "model_params": {
+        "learning_rate": 0.1,
+        "colsample_bytree": 0.8,
+        "lambda_l1": 10.0,
+        "lambda_l2": 400.0,
+        "max_depth": 6,
+        "num_leaves": 31,
+        "min_data_in_leaf": 100
+      },
+      "model_config_sha256": "b97bc44d1c02acb4d85c344d2d570e00ef9ff365228c8a9550fa45393859ae67",
+      "profile": "59b93929_top10_drop1_10d",
+      "contract_version": "csi1000_stage_b_forward_v1",
+      "stage_b_result_commit": "7a2676397b0f8e6f69c0bffc98d1764647f644ac",
+      "stage_b_snapshot_token": "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1",
+      "stage_b_result_path": "quant/data/round1_stage_ab/csi1000_stage_b/stage_b_full_51756897fc752304.json",
+      "lightgbm_num_threads": 20
+    },
+    "signal_data_date": "2026-10-29",
+    "usage_date": "2026-10-30",
+    "model_fit_asof": "2026-10-26",
+    "execution_report": null,
+    "pending_orders": {
+      "signal_date": "2026-10-29",
+      "execution_date": "2026-10-30",
+      "sell": [
+        "SZ300750"
+      ],
+      "buy": [
+        "SH688012"
+      ]
+    },
+    "cash": 13398.986305174127,
+    "n_positions": 10,
+    "positions": {
+      "SH603986": {
+        "shares": 1184.2080684032462,
+        "last_price": 43.5395622253418
+      },
+      "SH688012": {
+        "shares": 16209.286501150622,
+        "last_price": 3.9549548625946045
+      },
+      "SH688072": {
+        "shares": 12583.518564918322,
+        "last_price": 9.720584869384766
+      },
+      "SH688521": {
+        "shares": 73999.99820813541,
+        "last_price": 0.6634459495544434
+      },
+      "SZ002353": {
+        "shares": 6889.388150517183,
+        "last_price": 11.548147201538086
+      },
+      "SZ002384": {
+        "shares": 10092.304899104636,
+        "last_price": 9.380048751831055
+      },
+      "SZ300274": {
+        "shares": 4190.3114189011785,
+        "last_price": 18.697580337524414
+      },
+      "SZ300308": {
+        "shares": 329.5743767815415,
+        "last_price": 167.79220581054688
+      },
+      "SZ301165": {
+        "shares": 20105.66140924903,
+        "last_price": 3.4904000759124756
+      },
+      "SZ301308": {
+        "shares": 29299.22071892945,
+        "last_price": 2.17252516746521
+      }
+    },
+    "data_mode": "BACKFILL_RESEARCH"
+  },
+  "data_mode": "BACKFILL_RESEARCH"
+}

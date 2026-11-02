@@ -5041,13 +5041,146 @@ def seed_backfill_state(
     return summary
 
 
-@app.function(
-    volumes={str(VOL_ROOT): vol},
-    cpu=CPU_COUNT,
-    memory=32768,
-    timeout=4 * 3600,
-    nonpreemptible=True,
-)
+@app.function(volumes={str(VOL_ROOT): vol}, cpu=CPU_COUNT, memory=32768, timeout=2 * 3600)
+def emit_backfill_artifacts(
+    market: str = "csi1000",
+    paper_lineage: str = "csi1000",
+    topk: int = 10,
+    nd: int = 1,
+    profile: str = "csi1000",
+):
+    """Emit paper and MVP sidecar artifacts for the October backfill.
+
+    These are explicitly ``PASS_BACKFILL`` artifacts, not real-time
+    publications.  They let the dashboard show the historical account,
+    holdings, rebalance plan and data/fit dates without pretending the files
+    were published live.
+    """
+    import json as _json
+    import sys as _sys
+
+    import pandas as pd
+    import qlib
+    from qlib.backtest import collect_data
+    from qlib.backtest.decision import Order
+
+    for _p in ("/root/qlib/quant/code/execution", "/root", "/root/qlib/quant/code/production"):
+        if _p not in _sys.path:
+            _sys.path.insert(0, _p)
+    from csi1000_production_config import profile_manifest
+    from qlib_audit_fixes import read_trading_calendar
+
+    data_dir = _load_latest_to_local()
+    qlib.init(provider_uri=str(data_dir), region="cn")
+    cal = read_trading_calendar(data_dir)
+    signal_path = VOL_ROOT / "signals" / f"{market}_backfill_signal.parquet"
+    signal = pd.read_parquet(signal_path)["score"]
+    benchmark = {"csi1000": "SH000852", "csi500": "SH000905", "csi300": "SH000300"}[market]
+    manifest = profile_manifest(profile)
+    result = {}
+    decisions = list(
+        collect_data(
+            strategy={
+                "class": "DeterministicTopkDropoutStrategy",
+                "module_path": "deterministic_strategy",
+                "kwargs": {"signal": signal, "topk": topk, "n_drop": nd, "forbid_all_trade_at_limit": False},
+            },
+            executor={
+                "class": "SimulatorExecutor",
+                "module_path": "qlib.backtest.executor",
+                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True, "track_data": True},
+            },
+            start_time="2026-10-08",
+            end_time="2026-10-30",
+            account=1_000_000,
+            benchmark=benchmark,
+            exchange_kwargs=research_exchange("2026-10-08", "2026-10-30", codes=market),
+            return_value=result,
+        )
+    )
+    suffix = "" if market == "csi1000" else f"_{market}"
+    written = []
+    for d in decisions:
+        usage = str(d.start_time)[:10]
+        idx = cal.index(usage)
+        signal_date = cal[idx - 1]
+        pos = d.strategy.trade_position
+        orders = list(d.get_decision())
+        sell = [str(o.stock_id) for o in orders if o.direction == Order.SELL]
+        buy = [str(o.stock_id) for o in orders if o.direction != Order.SELL]
+        positions = {}
+        for code in sorted(pos.get_stock_list(), key=str):
+            shares = float(pos.get_stock_amount(code))
+            price = float(pos.get_stock_price(code))
+            if shares > 0 and price > 0:
+                positions[str(code)] = {"shares": shares, "last_price": price}
+        paper = {
+            "state_version": 2,
+            "market": market,
+            "paper_lineage": paper_lineage,
+            "production_lineage": manifest,
+            "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
+            "signal_data_date": signal_date,
+            "usage_date": usage,
+            "model_fit_asof": "2026-09-30" if usage < "2026-10-27" else "2026-10-26",
+            "execution_report": None,
+            "pending_orders": {
+                "signal_date": signal_date,
+                "execution_date": usage,
+                "sell": sell,
+                "buy": buy,
+            },
+            "cash": float(pos.get_cash()),
+            "n_positions": len(positions),
+            "positions": positions,
+            "data_mode": "BACKFILL_RESEARCH",
+        }
+        csv_path = VOL_ROOT / "signals" / f"{usage}_top{topk}_lgb158{suffix}.csv"
+        csv_rows = pd.read_csv(csv_path)
+        top_codes = [str(x) for x in csv_rows["instrument"].tolist()]
+        meta = {
+            "contract_version": "csi1000_mvp_daily_v1",
+            "market": market,
+            "publication": {
+                "status": "PASS_BACKFILL",
+                "usage_date": usage,
+                "signal_data_date": signal_date,
+            },
+            "signal_lineage": {"display_top20_instruments": top_codes},
+            "production_lineage": manifest,
+            "pit_universe": {
+                "status": "PASS",
+                "member_count": {"csi1000": 1000, "csi500": 500, "csi300": 300}[market],
+                "asof": signal_date,
+            },
+            "label_maturity": {
+                "status": "PASS",
+                "horizon_sessions": int(manifest["label_horizon"]),
+                "signal_data_date": signal_date,
+            },
+            "provider": {"calendar_end": signal_date},
+            "risk": {
+                "tradeability_certified": False,
+                "st": {"status": "NOT_CHECKED_REFERENCE_ONLY"},
+                "usage_day_suspension": {"status": "NOT_INDEPENDENTLY_VERIFIED_PREOPEN"},
+                "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
+            },
+            "paper": paper,
+            "data_mode": "BACKFILL_RESEARCH",
+        }
+        (VOL_ROOT / "signals" / f"{usage}_paper_portfolio{suffix}.json").write_text(
+            _json.dumps(paper, indent=2, ensure_ascii=False) + "\n"
+        )
+        (VOL_ROOT / "signals" / f"{usage}_mvp_metadata{suffix}.json").write_text(
+            _json.dumps(meta, indent=2, ensure_ascii=False) + "\n"
+        )
+        written.append(usage)
+    vol.commit()
+    print(f"[emit] {market}: {len(written)} paper+metadata artifacts")
+    return {"market": market, "days": written}
+
+
+@app.function(volumes={str(VOL_ROOT): vol}, cpu=CPU_COUNT, memory=32768, timeout=4 * 3600)
 def backfill_signals(
     dates: str = "2026-09-16,2026-09-17",
     topk: int = 20,

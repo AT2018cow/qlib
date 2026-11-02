@@ -514,7 +514,7 @@ function evaluateMvpContract(metadata, paper, date, rows, pool = currentPool) {
 
   if (metadata.contract_version !== MVP_CONTRACT_VERSION) errors.push('contract version mismatch');
   if (metadata.market !== expectedMarket) errors.push('market mismatch');
-  if (metadata.publication?.status !== 'PASS' || metadata.publication?.usage_date !== date) {
+  if (!['PASS', 'PASS_BACKFILL'].includes(metadata.publication?.status) || metadata.publication?.usage_date !== date) {
     errors.push('publication gate not bound to selected date');
   }
   if (!paper || metadata.publication?.signal_data_date !== paper.signal_data_date ||
@@ -571,6 +571,7 @@ function evaluateMvpContract(metadata, paper, date, rows, pool = currentPool) {
   return {
     ok: errors.length === 0,
     legacy: false,
+    backfill: metadata.publication?.status === 'PASS_BACKFILL',
     errors,
     pitText: pit?.status === 'PASS' && label?.status === 'PASS'
       ? `${pit.member_count}只成分股 · 防泄漏校验通过` : '未通过',
@@ -1075,7 +1076,7 @@ async function main() {
       document.getElementById('artifact-status').innerHTML = !ctx
         ? '预测排名已载入 · 正在获取数据校验状态'
         : (contract.ok
-          ? '<span class="status-pill"><span class="status-dot"></span> 每日数据校验 · 已通过</span>'
+          ? (contract.backfill ? '<span class="status-pill"><span class="status-dot"></span> 回补数据校验 · 已通过</span>' : '<span class="status-pill"><span class="status-dot"></span> 每日数据校验 · 已通过</span>')
           : '<span class="status-pill history">历史记录 / 校验信息不完整</span>');
       const health = document.getElementById('mvp-health');
       if (health) {

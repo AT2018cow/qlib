@@ -1,0 +1,146 @@
+{
+  "kind": "backfill_research",
+  "market": "csi1000",
+  "profile": "c98856b4_top10_drop1",
+  "horizon": 20,
+  "topk": 10,
+  "nd": 1,
+  "start": "2026-09-30",
+  "end": "2026-10-30",
+  "first_trade": "2026-10-08",
+  "initial_cash": 1000000,
+  "points": [
+    {
+      "date": "2026-09-30",
+      "nav": 1.0,
+      "daily_return": 0.0,
+      "cumulative_return": 0.0
+    },
+    {
+      "date": "2026-10-08",
+      "nav": 0.98786545,
+      "daily_return": -0.01213455,
+      "cumulative_return": -0.01213455
+    },
+    {
+      "date": "2026-10-09",
+      "nav": 0.97612879,
+      "daily_return": -0.01188083,
+      "cumulative_return": -0.02387121
+    },
+    {
+      "date": "2026-10-12",
+      "nav": 0.96424674,
+      "daily_return": -0.01217263,
+      "cumulative_return": -0.03575326
+    },
+    {
+      "date": "2026-10-13",
+      "nav": 0.96693236,
+      "daily_return": 0.00278521,
+      "cumulative_return": -0.03306764
+    },
+    {
+      "date": "2026-10-14",
+      "nav": 0.94215741,
+      "daily_return": -0.02562222,
+      "cumulative_return": -0.05784259
+    },
+    {
+      "date": "2026-10-15",
+      "nav": 0.89875158,
+      "daily_return": -0.04607068,
+      "cumulative_return": -0.10124842
+    },
+    {
+      "date": "2026-10-16",
+      "nav": 0.89366446,
+      "daily_return": -0.0056602,
+      "cumulative_return": -0.10633554
+    },
+    {
+      "date": "2026-10-19",
+      "nav": 0.88481091,
+      "daily_return": -0.00990703,
+      "cumulative_return": -0.11518909
+    },
+    {
+      "date": "2026-10-20",
+      "nav": 0.90295074,
+      "daily_return": 0.02050137,
+      "cumulative_return": -0.09704926
+    },
+    {
+      "date": "2026-10-21",
+      "nav": 0.89945664,
+      "daily_return": -0.00386965,
+      "cumulative_return": -0.10054336
+    },
+    {
+      "date": "2026-10-22",
+      "nav": 0.85836192,
+      "daily_return": -0.04568838,
+      "cumulative_return": -0.14163808
+    },
+    {
+      "date": "2026-10-23",
+      "nav": 0.87603881,
+      "daily_return": 0.02059375,
+      "cumulative_return": -0.12396119
+    },
+    {
+      "date": "2026-10-26",
+      "nav": 0.84627571,
+      "daily_return": -0.03397464,
+      "cumulative_return": -0.15372429
+    },
+    {
+      "date": "2026-10-27",
+      "nav": 0.80933171,
+      "daily_return": -0.0436548,
+      "cumulative_return": -0.19066829
+    },
+    {
+      "date": "2026-10-28",
+      "nav": 0.83712444,
+      "daily_return": 0.03434034,
+      "cumulative_return": -0.16287556
+    },
+    {
+      "date": "2026-10-29",
+      "nav": 0.78800428,
+      "daily_return": -0.05867725,
+      "cumulative_return": -0.21199572
+    },
+    {
+      "date": "2026-10-30",
+      "nav": 0.73152072,
+      "daily_return": -0.07167926,
+      "cumulative_return": -0.26847928
+    }
+  ],
+  "metrics": {
+    "metric_version": "portfolio_compound_v1",
+    "start": "2026-10-08",
+    "end": "2026-10-30",
+    "years": 0.060234,
+    "n_days": 17,
+    "strategy_total_return": -0.268479,
+    "strategy_cagr": -0.994429,
+    "benchmark_total_return": -0.155859,
+    "benchmark_cagr": -0.939974,
+    "relative_total_return": -0.133414,
+    "relative_excess_cagr": -0.907198,
+    "strategy_max_drawdown": -0.268479,
+    "benchmark_max_drawdown": -0.155859,
+    "relative_max_drawdown": -0.142028,
+    "sharpe": -9.380117,
+    "information_ratio": -9.186697,
+    "annual_volatility": 0.451892,
+    "mean_daily_net_return": -0.01781008,
+    "mean_daily_active_return": -0.00806933,
+    "account_return_max_error": 0.0
+  },
+  "n_decisions": 17,
+  "signal_sha256": "e871969092dbe7d727711d02a95edac9a809e789c4d06cc6598e0ae34429ddbe"
+}
