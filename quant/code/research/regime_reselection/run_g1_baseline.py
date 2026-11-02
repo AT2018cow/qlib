@@ -35,6 +35,7 @@ MARKETS = {
 COMBOS = {
     "S01": {"topk": 10, "dropn": 1},
     "S02": {"topk": 20, "dropn": 2},
+    "T50D5": {"topk": 50, "dropn": 5},
 }
 
 

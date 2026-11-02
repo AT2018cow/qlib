@@ -191,9 +191,9 @@ def fit_slice(job: dict) -> dict:
     handler = dk["handler"]["kwargs"]
     handler["instruments"] = job["market"]
     handler["label"] = [f"Ref($close, -{horizon})/$close - 1"]
-    handler["start_time"] = "2015-01-01"
+    handler["start_time"] = job.get("data_start", "2015-01-01")
     handler["end_time"] = signal_end
-    handler["fit_start_time"] = "2016-01-01"
+    handler["fit_start_time"] = job.get("fit_start", "2016-01-01")
     handler["fit_end_time"] = train_end
     dk["segments"] = {
         "train": ["2016-01-01", train_end],
@@ -419,6 +419,9 @@ def main(
     max_attempts: int = 3,
     kernels: int = -1,
     joblib_backend: str = "",
+    data_start: str = "2015-01-01",
+    fit_start: str = "2016-01-01",
+    max_containers: int = 12,
 ):
     from spine_jobs import build_jobs, failed_jobs
 
@@ -440,8 +443,13 @@ def main(
         markets=tuple(x.strip() for x in markets.split(",") if x.strip()),
         spines=tuple(x.strip() for x in spines.split(",") if x.strip()),
         num_threads=8,
+        data_start=data_start,
+        fit_start=fit_start,
     )
-    print(f"[g1] calendar {start}..{end} | jobs={len(jobs)} | run_id={run_id}")
+    print(
+        f"[g1] calendar {start}..{end} | jobs={len(jobs)} | run_id={run_id} | "
+        f"data_start={data_start} fit_start={fit_start} max_containers={max_containers}"
+    )
     overrides = {}
     if kernels and kernels > 0:
         overrides["kernels"] = int(kernels)
@@ -475,7 +483,10 @@ def main(
         if not pending:
             break
         try:
-            results = list(fit_slice.map(pending, return_exceptions=True))
+            runner = fit_slice
+            if max_containers > 0 and int(max_containers) != 12:
+                runner = fit_slice.with_options(max_containers=int(max_containers))
+            results = list(runner.map(pending, return_exceptions=True))
         except Exception as exc:  # noqa: BLE001
             last_error = exc
             print(f"[g1] attempt {attempt} aborted: {type(exc).__name__}: {exc}", flush=True)

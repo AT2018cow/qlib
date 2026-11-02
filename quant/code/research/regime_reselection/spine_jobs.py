@@ -33,6 +33,8 @@ def build_jobs(
     markets=("csi300", "csi500", "csi1000"),
     spines=("A", "B"),
     num_threads: int = 8,
+    data_start: str = "2015-01-01",
+    fit_start: str = "2016-01-01",
 ) -> list[dict]:
     """Return deterministic fit jobs; each job predicts [asof, signal_end]."""
     if start not in calendar or end not in calendar:
@@ -62,6 +64,8 @@ def build_jobs(
                         "retrain_asof": calendar[index],
                         "signal_end": calendar[signal_end_i],
                         "num_threads": int(num_threads),
+                        "data_start": data_start,
+                        "fit_start": fit_start,
                     }
                 )
                 index += RETRAIN_EVERY
