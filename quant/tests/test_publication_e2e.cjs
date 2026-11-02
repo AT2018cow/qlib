@@ -43,7 +43,7 @@ const EXPECTED_DATES = [
   '2026-10-08', '2026-10-09', '2026-10-12', '2026-10-13', '2026-10-14',
   '2026-10-15', '2026-10-16', '2026-10-19', '2026-10-20', '2026-10-21',
   '2026-10-22', '2026-10-23', '2026-10-26', '2026-10-27', '2026-10-28',
-  '2026-10-29', '2026-10-30',
+  '2026-10-29', '2026-10-30', '2026-11-02',
 ].reverse();
 
 function readJSON(file) {
@@ -84,7 +84,10 @@ for (const market of MARKETS) {
     for (const date of EXPECTED_DATES) {
       assert.ok(manifestDates.has(date), `${market.key} index missing ${date}`);
     }
-    assert.ok(!manifestDates.has('2026-11-02'), 'legacy 100M date must stay archived');
+    assert.ok(
+      fs.existsSync(path.join(signals, 'archive', 'legacy_100m_2026-10', '2026-11-02_paper_portfolio.json')),
+      'legacy 100M 11/02 artifacts must remain archived'
+    );
 
     const forward = normalizeForwardPerformance(
       readJSON(path.join(signals, `${market.key}_forward_performance.json`))
@@ -92,7 +95,7 @@ for (const market of MARKETS) {
     assert.equal(forward.status, 'active', `${market.key} forward series`);
     assert.equal(forward.start_date, '2026-09-30');
     assert.equal(forward.inception_date, '2026-09-30');
-    assert.ok(forward.latest_date >= '2026-10-30', `${market.key} latest valuation`);
+    assert.ok(forward.latest_date >= '2026-11-02', `${market.key} latest valuation`);
     assert.ok(forward.points.length >= EXPECTED_DATES.length + 1);
     const forwardDates = new Set(forward.points.map(p => p.date));
     for (const date of EXPECTED_DATES) {

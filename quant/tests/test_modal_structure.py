@@ -32,7 +32,7 @@ EXPECTED_FUNCTIONS = [
     "p2_rolling", "topk_grid", "batch_a", "batch_b", "daily_standalone",
     "daily_cron", "daily_cron_second_chance", "attest_paper_state_bootstrap",
     "freq_window", "freq_driver", "backfill_signals",
-    "seed_backfill_state", "emit_backfill_artifacts",
+    "seed_backfill_state", "emit_backfill_artifacts", "reanchor_paper_state_backfill",
     # Satellite/universe-expansion batch functions (kept in the cron image).
     "verify_universe", "build_star_chn_bench", "batch_a_star_chn", "batch_b_one",
 ]

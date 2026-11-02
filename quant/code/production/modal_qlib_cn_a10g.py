@@ -4772,6 +4772,85 @@ def attest_paper_state_bootstrap(note: str = "", approve: bool = False):
 # ===================== 第六步：重训频率对比实验（freq 5/20/60） =====================
 
 
+@app.function(volumes={str(VOL_ROOT): vol}, cpu=2, memory=4096, timeout=600)
+def reanchor_paper_state_backfill(note: str = "", approve: bool = False):
+    """Re-anchor canonical states after an intentional pre-journal backfill.
+
+    This is *only* valid before the first journaled publication of the path
+    being re-anchored.  It refuses if that canonical 1M path already has journal
+    history, preserves the superseded anchors for audit, and requires explicit
+    operator approval.  Legacy 100M journal history is left untouched.
+    """
+    import hashlib
+    import json as _json
+    from datetime import datetime, timezone
+
+    from csi1000_production_config import CANONICAL_PAPER_LINEAGES_BY_MARKET
+    from publication_journal import ANCHOR_FILE, FilesystemStorage, PublicationJournal
+
+    if not approve:
+        print("[reanchor] 拒绝执行：请独立审阅后显式传入 --approve")
+        return {"status": "REFUSED_WITHOUT_APPROVE", "anchored": 0}
+    vol.reload()
+    storage = FilesystemStorage(VOL_ROOT, reload_fn=vol.reload, commit_fn=vol.commit)
+    journal = PublicationJournal(storage)
+    old = journal.load_anchors()
+    current = {}
+    for market in ("csi1000", "csi500", "csi300"):
+        path = str(
+            _paper_state_path(market, CANONICAL_PAPER_LINEAGES_BY_MARKET[market]).relative_to(VOL_ROOT)
+        )
+        if journal._path_records(path):
+            raise RuntimeError(
+                f"journal history already exists for {path}; refusing to rewrite its bootstrap anchor"
+            )
+        raw = storage.read(path)
+        if raw is None:
+            print(f"[reanchor] {market}: state 不存在，跳过")
+            continue
+        current[path] = hashlib.sha256(raw).hexdigest()
+    if not current:
+        print("[reanchor] Volume 上未发现任何 canonical paper state")
+        return {"status": "NO_STATE", "anchored": 0}
+
+    now = datetime.now(timezone.utc).isoformat()
+    anchors = dict(old)
+    superseded = []
+    for path, sha in current.items():
+        prior = old.get(path)
+        if prior is not None and prior.get("sha256") != sha:
+            superseded.append(
+                {
+                    **prior,
+                    "path": path,
+                    "superseded_at": now,
+                    "superseded_by": sha,
+                    "reason": note or "pre-journal backfill re-anchor",
+                }
+            )
+        anchors[path] = {
+            "sha256": sha,
+            "note": note or "pre-journal backfill re-anchor",
+            "attested_at": now,
+            "holder": "operator-reanchor",
+        }
+    payload = {
+        "anchors": anchors,
+        "updated_at": now,
+        "superseded": superseded,
+    }
+    storage.write(ANCHOR_FILE, _json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2).encode())
+    storage.commit()
+    for path in sorted(current):
+        print(f"[reanchor] anchor {path} sha256={current[path]}")
+    return {
+        "status": "REANCHORED",
+        "anchored": len(current),
+        "superseded": len(superseded),
+        "anchors": {path: current[path] for path in sorted(current)},
+    }
+
+
 @app.function(
     volumes={str(VOL_ROOT): vol},
     cpu=8,
@@ -4952,8 +5031,9 @@ def seed_backfill_state(
     paper_lineage: str = "csi1000",
     topk: int = 10,
     nd: int = 1,
+    end_date: str = "2026-10-30",
 ):
-    """Seed the 1M paper state at 2026-10-30 from the October backfill.
+    """Seed the 1M paper state at ``end_date`` from the October backfill.
 
     Replays the frozen backfill signal with the production execution contract,
     then persists the final cash/positions so the next live session continues
@@ -4997,10 +5077,10 @@ def seed_backfill_state(
                 "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True, "track_data": True},
             },
             start_time="2026-10-08",
-            end_time="2026-10-30",
+            end_time=end_date,
             account=1_000_000,
             benchmark=benchmark,
-            exchange_kwargs=research_exchange("2026-10-08", "2026-10-30", codes=market),
+            exchange_kwargs=research_exchange("2026-10-08", end_date, codes=market),
             return_value=result,
         )
     )
@@ -5017,11 +5097,11 @@ def seed_backfill_state(
             "shares": shares,
             "entry_price": price,
             "last_price": price,
-            "entry_date": "2026-10-30",
+            "entry_date": end_date,
             "cost_basis": shares * price,
             "holding_days": 1,
         }
-    pp.last_execution_date = "2026-10-30"
+    pp.last_execution_date = end_date
     pp.pending_signal = None
     pp.history = []
     state = pp.to_dict()
@@ -5048,6 +5128,7 @@ def emit_backfill_artifacts(
     topk: int = 10,
     nd: int = 1,
     profile: str = "csi1000",
+    end_date: str = "2026-10-30",
 ):
     """Emit paper and MVP sidecar artifacts for the October backfill.
 
@@ -5078,34 +5159,9 @@ def emit_backfill_artifacts(
     benchmark = {"csi1000": "SH000852", "csi500": "SH000905", "csi300": "SH000300"}[market]
     manifest = profile_manifest(profile)
     result = {}
-    decisions = list(
-        collect_data(
-            strategy={
-                "class": "DeterministicTopkDropoutStrategy",
-                "module_path": "deterministic_strategy",
-                "kwargs": {"signal": signal, "topk": topk, "n_drop": nd, "forbid_all_trade_at_limit": False},
-            },
-            executor={
-                "class": "SimulatorExecutor",
-                "module_path": "qlib.backtest.executor",
-                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True, "track_data": True},
-            },
-            start_time="2026-10-08",
-            end_time="2026-10-30",
-            account=1_000_000,
-            benchmark=benchmark,
-            exchange_kwargs=research_exchange("2026-10-08", "2026-10-30", codes=market),
-            return_value=result,
-        )
-    )
     suffix = "" if market == "csi1000" else f"_{market}"
-    written = []
-    for d in decisions:
-        usage = str(d.start_time)[:10]
-        idx = cal.index(usage)
-        signal_date = cal[idx - 1]
-        pos = d.strategy.trade_position
-        orders = list(d.get_decision())
+
+    def _snapshot(pos, orders):
         sell = [str(o.stock_id) for o in orders if o.direction == Order.SELL]
         buy = [str(o.stock_id) for o in orders if o.direction != Order.SELL]
         positions = {}
@@ -5114,6 +5170,53 @@ def emit_backfill_artifacts(
             price = float(pos.get_stock_price(code))
             if shares > 0 and price > 0:
                 positions[str(code)] = {"shares": shares, "last_price": price}
+        return {
+            "cash": float(pos.get_cash()),
+            "positions": positions,
+            "sell": sell,
+            "buy": buy,
+        }
+
+    # ``collect_data`` yields each decision *before* that day executes, and the
+    # strategy object is reused.  Snapshot the live position at the following
+    # yield (end of the previous day) instead of reading every decision's
+    # position after the loop, which would stamp the final day's holdings onto
+    # every historical date.
+    snapshots = {}
+    pending = None
+    for decision in collect_data(
+        strategy={
+            "class": "DeterministicTopkDropoutStrategy",
+            "module_path": "deterministic_strategy",
+            "kwargs": {"signal": signal, "topk": topk, "n_drop": nd, "forbid_all_trade_at_limit": False},
+        },
+        executor={
+            "class": "SimulatorExecutor",
+            "module_path": "qlib.backtest.executor",
+            "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True, "track_data": True},
+        },
+        start_time="2026-10-08",
+        end_time=end_date,
+        account=1_000_000,
+        benchmark=benchmark,
+        exchange_kwargs=research_exchange("2026-10-08", end_date, codes=market),
+        return_value=result,
+    ):
+        usage = str(decision.start_time)[:10]
+        if pending is not None:
+            snapshots[pending[0]] = _snapshot(decision.strategy.trade_position, pending[1])
+        pending = (usage, list(decision.get_decision()))
+    if pending is not None:
+        snapshots[pending[0]] = _snapshot(decision.strategy.trade_position, pending[1])
+
+    written = []
+    for usage in sorted(snapshots):
+        idx = cal.index(usage)
+        signal_date = cal[idx - 1]
+        snap = snapshots[usage]
+        sell = snap["sell"]
+        buy = snap["buy"]
+        positions = snap["positions"]
         paper = {
             "state_version": 2,
             "market": market,
@@ -5130,7 +5233,7 @@ def emit_backfill_artifacts(
                 "sell": sell,
                 "buy": buy,
             },
-            "cash": float(pos.get_cash()),
+            "cash": snap["cash"],
             "n_positions": len(positions),
             "positions": positions,
             "data_mode": "BACKFILL_RESEARCH",
@@ -5193,6 +5296,7 @@ def backfill_signals(
     nd: int = 2,
     market: str = "csi1000",
     csi1000_profile: str = None,
+    end_date: str = "2026-10-30",
 ):
     """生产同源回放（推荐的历史信号生成方式）：
 
@@ -5249,6 +5353,8 @@ def backfill_signals(
     for d in want:
         if bisect_left(cal, d) >= len(cal) or cal[bisect_left(cal, d)] != d:
             raise RuntimeError(f"{d} not in calendar")
+    if bisect_left(cal, end_date) >= len(cal) or cal[bisect_left(cal, end_date)] != end_date:
+        raise RuntimeError(f"end_date {end_date} not in calendar")
     first_i, last_i = bisect_left(cal, want[0]), bisect_left(cal, want[-1])
 
     suffix = "" if market == "csi1000" else f"_{market}"
@@ -5354,11 +5460,11 @@ def backfill_signals(
         results[usage_day] = {"csv_content": csv_content, "chart_json": chart_json, "topk": topk, "n_stocks": len(top)}
         print(f"[lineage] {usage_day}: top{topk} {len(top)} 只已生成")
 
-    # ---- 连续账户回补：9/30 收盘初始化 1M，10/8 开盘首笔，10/30 收盘结束 ----
+    # ---- 连续账户回补：9/30 收盘初始化 1M，10/8 开盘首笔，end_date 收盘结束 ----
     signal = pd.concat(score_frames).sort_index()
     signal_path = out / f"{market}_backfill_signal.parquet"
     signal.to_parquet(signal_path)
-    bt_start, bt_end = cal[cal.index("2026-10-08")], cal[cal.index("2026-10-30")]
+    bt_start, bt_end = cal[cal.index("2026-10-08")], cal[cal.index(end_date)]
     benchmark = {"csi1000": "SH000852", "csi500": "SH000905", "csi300": "SH000300"}[market]
     from qlib.backtest import collect_data
 
@@ -5419,7 +5525,7 @@ def backfill_signals(
         "topk": topk,
         "nd": nd,
         "start": "2026-09-30",
-        "end": "2026-10-30",
+        "end": end_date,
         "first_trade": "2026-10-08",
         "initial_cash": 1_000_000,
         "points": points,

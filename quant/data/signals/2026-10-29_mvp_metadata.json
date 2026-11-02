@@ -95,6 +95,7 @@
       "stage_b_result_path": "quant/data/round1_stage_ab/csi1000_stage_b/stage_b_full_51756897fc752304.json",
       "lightgbm_num_threads": 20
     },
+    "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
     "signal_data_date": "2026-10-28",
     "usage_date": "2026-10-29",
     "model_fit_asof": "2026-10-26",
@@ -109,48 +110,48 @@
         "SH688147"
       ]
     },
-    "cash": 7554.517618666498,
+    "cash": 8054.879211508625,
     "n_positions": 10,
     "positions": {
-      "SH605376": {
-        "shares": 14494.129854833669,
-        "last_price": 4.3975043296813965
-      },
       "SH688068": {
         "shares": 63195.32427130917,
-        "last_price": 1.4827196598052979
+        "last_price": 1.5572012662887573
+      },
+      "SH688141": {
+        "shares": 50740.00035157949,
+        "last_price": 1.3190776109695435
       },
       "SH688146": {
         "shares": 24099.08623200135,
-        "last_price": 2.6453452110290527
+        "last_price": 2.8009777069091797
       },
       "SH688147": {
         "shares": 43685.289550744994,
-        "last_price": 1.9209471940994263
+        "last_price": 2.1814208030700684
       },
       "SH688362": {
         "shares": 62901.5163596656,
-        "last_price": 1.1621171236038208
+        "last_price": 1.272303581237793
       },
       "SH688409": {
         "shares": 56216.52198491776,
-        "last_price": 1.435761570930481
+        "last_price": 1.5715231895446777
       },
       "SZ000811": {
         "shares": 2701.9754750473517,
-        "last_price": 27.06903839111328
+        "last_price": 28.878660202026367
       },
       "SZ002484": {
         "shares": 11060.598542054104,
-        "last_price": 6.71446418762207
+        "last_price": 6.980408668518066
       },
       "SZ300870": {
         "shares": 35269.83556165937,
-        "last_price": 1.6412941217422485
+        "last_price": 1.794705867767334
       },
       "SZ301345": {
         "shares": 26687.405596079017,
-        "last_price": 2.239004373550415
+        "last_price": 2.431980848312378
       }
     },
     "data_mode": "BACKFILL_RESEARCH"

@@ -26,6 +26,7 @@
     "stage_b_result_path": "quant/data/round1_stage_ab/csi1000_stage_b/stage_b_full_51756897fc752304.json",
     "lightgbm_num_threads": 20
   },
+  "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
   "signal_data_date": "2026-10-08",
   "usage_date": "2026-10-09",
   "model_fit_asof": "2026-09-30",
@@ -40,50 +41,49 @@
       "SH688372"
     ]
   },
-  "cash": 7554.517618666498,
+  "cash": 13168.05498765444,
   "n_positions": 10,
   "positions": {
-    "SH605376": {
-      "shares": 14494.129854833669,
-      "last_price": 4.3975043296813965
+    "SH600908": {
+      "shares": 75348.78743117454,
+      "last_price": 1.2546583414077759
     },
-    "SH688068": {
-      "shares": 63195.32427130917,
-      "last_price": 1.4827196598052979
+    "SH601107": {
+      "shares": 104724.6010317457,
+      "last_price": 0.9394495487213135
+    },
+    "SH601326": {
+      "shares": 71823.59043822248,
+      "last_price": 1.3590503931045532
+    },
+    "SH603883": {
+      "shares": 60250.83001040708,
+      "last_price": 1.616589069366455
+    },
+    "SH605376": {
+      "shares": 12877.691153615444,
+      "last_price": 6.502673625946045
+    },
+    "SH688141": {
+      "shares": 50740.00035157949,
+      "last_price": 1.7079226970672607
     },
     "SH688146": {
       "shares": 24099.08623200135,
-      "last_price": 2.6453452110290527
+      "last_price": 3.688938617706299
     },
-    "SH688147": {
-      "shares": 43685.289550744994,
-      "last_price": 1.9209471940994263
+    "SH688372": {
+      "shares": 90515.60559932324,
+      "last_price": 1.4449220895767212
     },
-    "SH688362": {
-      "shares": 62901.5163596656,
-      "last_price": 1.1621171236038208
+    "SZ300685": {
+      "shares": 16935.80246941904,
+      "last_price": 5.274048328399658
     },
-    "SH688409": {
-      "shares": 56216.52198491776,
-      "last_price": 1.435761570930481
-    },
-    "SZ000811": {
-      "shares": 2701.9754750473517,
-      "last_price": 27.06903839111328
-    },
-    "SZ002484": {
-      "shares": 11060.598542054104,
-      "last_price": 6.71446418762207
-    },
-    "SZ300870": {
-      "shares": 35269.83556165937,
-      "last_price": 1.6412941217422485
-    },
-    "SZ301345": {
-      "shares": 26687.405596079017,
-      "last_price": 2.239004373550415
+    "SZ301175": {
+      "shares": 124445.28839306907,
+      "last_price": 0.7683686017990112
     }
   },
-  "data_mode": "BACKFILL_RESEARCH",
-  "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY"
+  "data_mode": "BACKFILL_RESEARCH"
 }

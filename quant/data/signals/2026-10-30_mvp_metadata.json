@@ -95,6 +95,7 @@
       "stage_b_result_path": "quant/data/round1_stage_ab/csi1000_stage_b/stage_b_full_51756897fc752304.json",
       "lightgbm_num_threads": 20
     },
+    "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
     "signal_data_date": "2026-10-29",
     "usage_date": "2026-10-30",
     "model_fit_asof": "2026-10-26",

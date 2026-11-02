@@ -6,7 +6,7 @@
   "topk": 10,
   "nd": 1,
   "start": "2026-09-30",
-  "end": "2026-10-30",
+  "end": "2026-11-02",
   "first_trade": "2026-10-08",
   "initial_cash": 1000000,
   "points": [
@@ -117,30 +117,36 @@
       "nav": 0.74218482,
       "daily_return": -0.05288326,
       "cumulative_return": -0.25781518
+    },
+    {
+      "date": "2026-11-02",
+      "nav": 0.75398849,
+      "daily_return": 0.01590396,
+      "cumulative_return": -0.24601151
     }
   ],
   "metrics": {
     "metric_version": "portfolio_compound_v1",
     "start": "2026-10-08",
-    "end": "2026-10-30",
-    "years": 0.060234,
-    "n_days": 17,
-    "strategy_total_return": -0.257815,
-    "strategy_cagr": -0.992916,
+    "end": "2026-11-02",
+    "years": 0.068448,
+    "n_days": 18,
+    "strategy_total_return": -0.246012,
+    "strategy_cagr": -0.983844,
     "benchmark_total_return": -0.085395,
-    "benchmark_cagr": -0.772804,
-    "relative_total_return": -0.188519,
-    "relative_excess_cagr": -0.968822,
+    "benchmark_cagr": -0.728586,
+    "relative_total_return": -0.175613,
+    "relative_excess_cagr": -0.940475,
     "strategy_max_drawdown": -0.257815,
     "benchmark_max_drawdown": -0.085395,
     "relative_max_drawdown": -0.188519,
-    "sharpe": -9.944941,
-    "information_ratio": -9.051088,
-    "annual_volatility": 0.408077,
-    "mean_daily_net_return": -0.01705169,
-    "mean_daily_active_return": -0.01185441,
+    "sharpe": -8.757917,
+    "information_ratio": -7.698454,
+    "annual_volatility": 0.413632,
+    "mean_daily_net_return": -0.01522082,
+    "mean_daily_active_return": -0.01031227,
     "account_return_max_error": 0.0
   },
-  "n_decisions": 17,
-  "signal_sha256": "03932ab11fceb8447f5b9ba46e5ea65e046274d0671b60c0a865a52c5c35db5e"
+  "n_decisions": 18,
+  "signal_sha256": "da5c2fff29cb123cecf0e655aedb907dc2d96049cae6a0b2401de69ae4bf0acc"
 }

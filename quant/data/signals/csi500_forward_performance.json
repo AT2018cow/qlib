@@ -2,8 +2,8 @@
   "start_date": "2026-09-30",
   "inception_date": "2026-09-30",
   "status": "active",
-  "latest_date": "2026-10-30",
-  "cumulative_return": -0.21050383,
+  "latest_date": "2026-11-02",
+  "cumulative_return": -0.18272328,
   "points": [
     {
       "date": "2026-09-30",
@@ -112,6 +112,12 @@
       "nav": 0.78949617,
       "daily_return": -0.04747089,
       "cumulative_return": -0.21050383
+    },
+    {
+      "date": "2026-11-02",
+      "nav": 0.81727672,
+      "daily_return": 0.03518768,
+      "cumulative_return": -0.18272328
     }
   ],
   "data_mode": "BACKFILL_RESEARCH",
