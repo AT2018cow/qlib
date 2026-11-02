@@ -27,29 +27,34 @@ TOP10_CHAMPION_PROFILE = "c98856b4_top10_drop1"
 CSI500_CHAMPION_PROFILE = "raw10d_c98856b4_top10_drop1"
 CSI300_CHAMPION_PROFILE = "59b93929_top10_drop1"
 CANONICAL_PROFILE = TOP10_CHAMPION_PROFILE
-PAPER_INITIAL_CASH = 100_000_000
-FUTURE_PAPER_INITIAL_CASH = 1_000_000
-CANONICAL_PAPER_LINEAGE = "c98856b4_top10_drop1_canonical"
+PAPER_INITIAL_CASH = 1_000_000
+CANONICAL_PAPER_LINEAGE = "c98856b4_top10_drop1_canonical_1m"
 CANONICAL_TOPK = 10
 CANONICAL_ND = 1
 
+CSI300_B_PROFILE = "59b93929_top10_drop1_10d"
+CSI500_B_PROFILE = "raw10d_c98856b4_top20_drop2_20d"
+
+# New-strategy production mapping (cut over together with 1M accounts).
 CANONICAL_PROFILES_BY_MARKET = {
     "csi1000": TOP10_CHAMPION_PROFILE,
-    "csi500": CSI500_CHAMPION_PROFILE,
-    "csi300": CSI300_CHAMPION_PROFILE,
+    "csi500": CSI500_B_PROFILE,
+    "csi300": CSI300_B_PROFILE,
 }
 
+CANONICAL_TOPK_BY_MARKET = {"csi1000": 10, "csi500": 20, "csi300": 10}
+CANONICAL_ND_BY_MARKET = {"csi1000": 1, "csi500": 2, "csi300": 1}
+
 CANONICAL_PAPER_LINEAGES_BY_MARKET = {
+    "csi1000": "c98856b4_top10_drop1_canonical_1m",
+    "csi500": "raw10d_c98856b4_top20_drop2_20d_canonical_1m",
+    "csi300": "59b93929_top10_drop1_10d_canonical_1m",
+}
+
+LEGACY_CANONICAL_PAPER_LINEAGES_BY_MARKET = {
     "csi1000": "c98856b4_top10_drop1_canonical",
     "csi500": "raw10d_c98856b4_top10_drop1_canonical",
     "csi300": "59b93929_top10_drop1_canonical",
-}
-
-# Dormant future mapping; activate together with the new strategy cutover.
-FUTURE_CANONICAL_PAPER_LINEAGES_BY_MARKET = {
-    "csi1000": "c98856b4_top10_drop1_canonical_1m",
-    "csi500": "raw10d_c98856b4_top10_drop1_canonical_1m",
-    "csi300": "59b93929_top10_drop1_canonical_1m",
 }
 
 _MODEL_PROFILES = {
@@ -134,6 +139,40 @@ _MODEL_PROFILES = {
             "min_data_in_leaf": 100,
         },
         "model_config_sha256": "b97bc44d1c02acb4d85c344d2d570e00ef9ff365228c8a9550fa45393859ae67",
+    },
+    CSI300_B_PROFILE: {
+        "candidate_id": "59b93929bff1e736228d31403a167781aff433d27da1870bcf9fe34e04b6bbb9",
+        "stage_a_rank": 1,
+        "topk": 10,
+        "nd": 1,
+        "label_horizon": 10,
+        "model_params": {
+            "learning_rate": 0.1,
+            "colsample_bytree": 0.8,
+            "lambda_l1": 10.0,
+            "lambda_l2": 400.0,
+            "max_depth": 6,
+            "num_leaves": 31,
+            "min_data_in_leaf": 100,
+        },
+        "model_config_sha256": "b97bc44d1c02acb4d85c344d2d570e00ef9ff365228c8a9550fa45393859ae67",
+    },
+    CSI500_B_PROFILE: {
+        "candidate_id": "99627a9d20842f5ac43874593b71b175cc533fe2f09666a9417a589f35c7eb1f",
+        "stage_a_rank": 8,
+        "topk": 20,
+        "nd": 2,
+        "label_horizon": 20,
+        "model_params": {
+            "learning_rate": 0.05,
+            "colsample_bytree": 1.0,
+            "lambda_l1": 205.6999,
+            "lambda_l2": 200.0,
+            "max_depth": 10,
+            "num_leaves": 250,
+            "min_data_in_leaf": 200,
+        },
+        "model_config_sha256": "d49e893ad37c821a6a092fb17baf7ee29c9ff71289bbeb1205132e34e3854c50",
     },
 }
 

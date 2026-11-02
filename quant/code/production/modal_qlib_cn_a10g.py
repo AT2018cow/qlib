@@ -3921,7 +3921,7 @@ def daily_standalone(
 
         label_maturity = validate_label_maturity(calendar, training_contract, asof)
         print(
-            "[daily] 20-session label maturity PASS: "
+            f"[daily] {label_maturity['horizon_sessions']}-session label maturity PASS: "
             f"train_end={label_maturity['train_end']} "
             f"valid_end={label_maturity['valid_end']} fit_asof={label_maturity['fit_asof']}"
         )
@@ -3986,7 +3986,10 @@ def daily_standalone(
     csv_content = "rank,instrument,score\n" + "\n".join(
         f"{i},{inst},{score}" for i, (inst, score) in enumerate(top.items(), 1)
     )
-    print(f"[daily] {predict_date} top{topk}（{market}，20日横截面相对强弱评分）:")
+    print(
+        f"[daily] {predict_date} top{topk}（{market}，"
+        f"{int((production_lineage or {}).get('label_horizon', 20))}日横截面相对强弱评分）:"
+    )
     for rank, (inst, score) in enumerate(top.items(), 1):
         print(f"  {rank:>2}. {inst}  score={score:.4f}")
 
@@ -4265,12 +4268,12 @@ def daily_cron():
     # 平台已以 max_containers=1 串行化本函数（含 07:45 补跑转发的调用），
     # 因此这里无需、也不允许再加任何跨容器锁；invocation_id 仅作审计标识。
     from csi1000_production_config import (
-        CANONICAL_ND,
+        CANONICAL_ND_BY_MARKET,
         CANONICAL_PAPER_LINEAGE,
         CANONICAL_PAPER_LINEAGES_BY_MARKET,
         CANONICAL_PROFILE,
         CANONICAL_PROFILES_BY_MARKET,
-        CANONICAL_TOPK,
+        CANONICAL_TOPK_BY_MARKET,
         profile_manifest,
     )
     from publication_journal import FilesystemStorage, PublicationJournal
@@ -4336,22 +4339,22 @@ def daily_cron():
 
     try:
         res = daily_standalone.remote(
-            topk=CANONICAL_TOPK,
-            nd=CANONICAL_ND,
+            topk=CANONICAL_TOPK_BY_MARKET["csi1000"],
+            nd=CANONICAL_ND_BY_MARKET["csi1000"],
             market="csi1000",
             csi1000_profile=CANONICAL_PROFILE,
             paper_lineage=CANONICAL_PAPER_LINEAGE,
         )
         res_csi500 = daily_standalone.remote(
-            topk=CANONICAL_TOPK,
-            nd=CANONICAL_ND,
+            topk=CANONICAL_TOPK_BY_MARKET["csi500"],
+            nd=CANONICAL_ND_BY_MARKET["csi500"],
             market="csi500",
             csi1000_profile=CANONICAL_PROFILES_BY_MARKET["csi500"],
             paper_lineage=CANONICAL_PAPER_LINEAGES_BY_MARKET["csi500"],
         )
         res_csi300 = daily_standalone.remote(
-            topk=CANONICAL_TOPK,
-            nd=CANONICAL_ND,
+            topk=CANONICAL_TOPK_BY_MARKET["csi300"],
+            nd=CANONICAL_ND_BY_MARKET["csi300"],
             market="csi300",
             csi1000_profile=CANONICAL_PROFILES_BY_MARKET["csi300"],
             paper_lineage=CANONICAL_PAPER_LINEAGES_BY_MARKET["csi300"],
@@ -4420,8 +4423,8 @@ def daily_cron():
         paper_proposals["csi1000"] = _apply_paper_portfolio(
             res,
             signal_date,
-            topk=CANONICAL_TOPK,
-            nd=CANONICAL_ND,
+            topk=CANONICAL_TOPK_BY_MARKET["csi1000"],
+            nd=CANONICAL_ND_BY_MARKET["csi1000"],
             lineage=CANONICAL_PAPER_LINEAGE,
             verified_calendar=cal,
         )
@@ -4471,8 +4474,8 @@ def daily_cron():
             paper_proposals[extra_mkt] = _apply_paper_portfolio(
                 extra_res,
                 signal_date,
-                topk=CANONICAL_TOPK,
-                nd=CANONICAL_ND,
+                topk=CANONICAL_TOPK_BY_MARKET[extra_mkt],
+                nd=CANONICAL_ND_BY_MARKET[extra_mkt],
                 lineage=extra_lineage,
                 verified_calendar=cal,
             )

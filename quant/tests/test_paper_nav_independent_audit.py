@@ -7,7 +7,7 @@ from audit_paper_nav import reconcile
 def fixture():
     initial = {
         "market": "csi1000",
-        "paper_lineage": "c98856b4_top10_drop1_canonical",
+        "paper_lineage": "c98856b4_top10_drop1_canonical_1m",
         "production_lineage": {"profile": "c98856b4_top10_drop1"},
         "usage_date": "2026-10-09",
         "cash": 2000.0,
@@ -130,11 +130,11 @@ def test_cross_market_lineage_mapping_is_rejected():
     import pytest
 
     with pytest.raises(ValueError, match="does not match market"):
-        reconcile([], market="csi500", lineage="c98856b4_top10_drop1_canonical")
+        reconcile([], market="csi500", lineage="c98856b4_top10_drop1_canonical_1m")
     with pytest.raises(ValueError, match="unknown audit market"):
         reconcile([], market="chinext")
     resolved = reconcile([], market="csi300")
-    assert resolved["target"]["lineage"] == "59b93929_top10_drop1_canonical"
+    assert resolved["target"]["lineage"] == "59b93929_top10_drop1_10d_canonical_1m"
     assert resolved["status"] == "NOT_STARTED"
 
 

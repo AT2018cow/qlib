@@ -458,29 +458,30 @@ const TOP10_PROFILES = new Set([
   'c98856b4_top10_drop1',
   'raw10d_c98856b4_top10_drop1',
   '59b93929_top10_drop1',
+  '59b93929_top10_drop1_10d',
 ]);
 
 const CANONICAL_PAIR_BY_PROFILE = {
-  c98856b4_top10_drop1: 'c98856b4_top10_drop1_canonical',
-  raw10d_c98856b4_top10_drop1: 'raw10d_c98856b4_top10_drop1_canonical',
-  '59b93929_top10_drop1': '59b93929_top10_drop1_canonical',
+  c98856b4_top10_drop1: 'c98856b4_top10_drop1_canonical_1m',
+  '59b93929_top10_drop1_10d': '59b93929_top10_drop1_10d_canonical_1m',
+  'raw10d_c98856b4_top20_drop2_20d': 'raw10d_c98856b4_top20_drop2_20d_canonical_1m',
   stage_b_winner: 'stage_b_winner_canonical',
 };
 
-// Dormant future mapping, activated with the 1M/new-strategy cutover.
-const FUTURE_PAIR_BY_PROFILE = {
-  c98856b4_top10_drop1: 'c98856b4_top10_drop1_canonical_1m',
-  raw10d_c98856b4_top10_drop1: 'raw10d_c98856b4_top10_drop1_canonical_1m',
-  '59b93929_top10_drop1': '59b93929_top10_drop1_canonical_1m',
+// Legacy read-only artifacts remain displayable during migration.
+const LEGACY_PAIR_BY_PROFILE = {
+  c98856b4_top10_drop1: 'c98856b4_top10_drop1_canonical',
+  raw10d_c98856b4_top10_drop1: 'raw10d_c98856b4_top10_drop1_canonical',
+  '59b93929_top10_drop1': '59b93929_top10_drop1_canonical',
 };
 
 function isWinnerCanonical(paper) {
   const prof = paper?.production_lineage?.profile;
   const expected = prof ? CANONICAL_PAIR_BY_PROFILE[prof] : null;
-  const future = prof ? FUTURE_PAIR_BY_PROFILE[prof] : null;
+  const legacy = prof ? LEGACY_PAIR_BY_PROFILE[prof] : null;
   return Boolean(
     paper &&
-    ((expected && (paper.paper_lineage === expected || paper.paper_lineage === future)) ||
+    ((expected && (paper.paper_lineage === expected || paper.paper_lineage === legacy)) ||
      (paper.paper_lineage === 'stage_b_winner_canonical' &&
       paper.production_lineage &&
       paper.production_lineage.profile === 'stage_b_winner'))

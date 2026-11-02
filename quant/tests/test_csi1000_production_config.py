@@ -6,7 +6,10 @@ from csi1000_production_config import (
     CANONICAL_ND,
     CANONICAL_PAPER_LINEAGE,
     CANONICAL_PROFILE,
+    CANONICAL_PROFILES_BY_MARKET,
     CANONICAL_TOPK,
+    CSI300_B_PROFILE,
+    CSI500_B_PROFILE,
     MODEL_NUM_THREADS,
     PAPER_INITIAL_CASH,
     STAGE_B_RESULT_COMMIT,
@@ -122,8 +125,14 @@ class CSI1000ProductionConfigTests(unittest.TestCase):
         self.assertIn("CPU_COUNT = 8", modal_src)
         self.assertIn('RETRAIN_ORIGIN = "2026-09-18"', live_src)
         self.assertEqual(CANONICAL_PROFILE, TOP10_CHAMPION_PROFILE)
-        self.assertEqual(CANONICAL_PAPER_LINEAGE, "c98856b4_top10_drop1_canonical")
-        self.assertEqual(PAPER_INITIAL_CASH, 100_000_000)
+        self.assertEqual(CANONICAL_PAPER_LINEAGE, "c98856b4_top10_drop1_canonical_1m")
+        self.assertEqual(PAPER_INITIAL_CASH, 1_000_000)
+        self.assertEqual(CANONICAL_PROFILES_BY_MARKET["csi300"], CSI300_B_PROFILE)
+        self.assertEqual(CANONICAL_PROFILES_BY_MARKET["csi500"], CSI500_B_PROFILE)
+        self.assertEqual(profile_manifest(CSI300_B_PROFILE)["label_horizon"], 10)
+        self.assertEqual(profile_manifest(CSI500_B_PROFILE)["label_horizon"], 20)
+        self.assertEqual(profile_manifest(CSI500_B_PROFILE)["topk"], 20)
+        self.assertEqual(profile_manifest(CSI300_B_PROFILE)["nd"], 1)
         self.assertEqual(CANONICAL_TOPK, 10)
         self.assertEqual(CANONICAL_ND, 1)
         self.assertIn("csi1000_profile=CANONICAL_PROFILE", modal_src)
