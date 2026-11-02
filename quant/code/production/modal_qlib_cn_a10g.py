@@ -4946,6 +4946,101 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
     return results
 
 
+@app.function(volumes={str(VOL_ROOT): vol}, cpu=CPU_COUNT, memory=32768, timeout=2 * 3600)
+def seed_backfill_state(
+    market: str = "csi1000",
+    paper_lineage: str = "csi1000",
+    topk: int = 10,
+    nd: int = 1,
+):
+    """Seed the 1M paper state at 2026-10-30 from the October backfill.
+
+    Replays the frozen backfill signal with the production execution contract,
+    then persists the final cash/positions so the next live session continues
+    the same account. No model is trained here.
+    """
+    import json as _json
+    import sys as _sys
+
+    import pandas as pd
+    import qlib
+    from qlib.backtest import collect_data
+
+    for _p in ("/root/qlib/quant/code/execution", "/root"):
+        if _p not in _sys.path:
+            _sys.path.insert(0, _p)
+    from paper_portfolio import PaperPortfolio
+
+    data_dir = _load_latest_to_local()
+    qlib.init(provider_uri=str(data_dir), region="cn")
+    signal_path = VOL_ROOT / "signals" / f"{market}_backfill_signal.parquet"
+    if not signal_path.is_file():
+        raise RuntimeError(f"missing backfill signal: {signal_path}")
+    signal = pd.read_parquet(signal_path)
+    benchmark = {"csi1000": "SH000852", "csi500": "SH000905", "csi300": "SH000300"}[market]
+    result = {}
+    decisions = list(
+        collect_data(
+            strategy={
+                "class": "DeterministicTopkDropoutStrategy",
+                "module_path": "deterministic_strategy",
+                "kwargs": {
+                    "signal": signal["score"],
+                    "topk": topk,
+                    "n_drop": nd,
+                    "forbid_all_trade_at_limit": False,
+                },
+            },
+            executor={
+                "class": "SimulatorExecutor",
+                "module_path": "qlib.backtest.executor",
+                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True, "track_data": True},
+            },
+            start_time="2026-10-08",
+            end_time="2026-10-30",
+            account=1_000_000,
+            benchmark=benchmark,
+            exchange_kwargs=research_exchange("2026-10-08", "2026-10-30", codes=market),
+            return_value=result,
+        )
+    )
+    pos = decisions[-1].strategy.trade_position
+    pp = PaperPortfolio(topk=topk, nd=nd, initial_cash=1_000_000)
+    pp.cash = float(pos.get_cash())
+    pp.positions = {}
+    for code in sorted(pos.get_stock_list(), key=str):
+        shares = float(pos.get_stock_amount(code))
+        price = float(pos.get_stock_price(code))
+        if shares <= 0 or price <= 0:
+            continue
+        pp.positions[str(code)] = {
+            "shares": shares,
+            "entry_price": price,
+            "last_price": price,
+            "entry_date": "2026-10-30",
+            "cost_basis": shares * price,
+            "holding_days": 1,
+        }
+    pp.last_execution_date = "2026-10-30"
+    pp.pending_signal = None
+    pp.history = []
+    state = pp.to_dict()
+    path = VOL_ROOT / "paper_portfolio" / f"{market}__{paper_lineage}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(_json.dumps(state, indent=2, ensure_ascii=False) + "\n")
+    vol.commit()
+    summary = {
+        "market": market,
+        "paper_lineage": paper_lineage,
+        "cash": pp.cash,
+        "n_positions": len(pp.positions),
+        "positions": {k: {"shares": v["shares"], "last_price": v["last_price"]} for k, v in pp.positions.items()},
+        "state_path": str(path),
+    }
+    print("[seed]", _json.dumps(summary, ensure_ascii=False))
+    return summary
+
+
 @app.function(
     volumes={str(VOL_ROOT): vol},
     cpu=CPU_COUNT,
@@ -4953,7 +5048,13 @@ def freq_driver(freqs="60,20", eval_from="2021-01-04", market="csi1000", topk=20
     timeout=4 * 3600,
     nonpreemptible=True,
 )
-def backfill_signals(dates: str = "2026-09-16,2026-09-17", topk: int = 20, nd: int = 2, market: str = "csi1000"):
+def backfill_signals(
+    dates: str = "2026-09-16,2026-09-17",
+    topk: int = 20,
+    nd: int = 2,
+    market: str = "csi1000",
+    csi1000_profile: str = None,
+):
     """生产同源回放（推荐的历史信号生成方式）：
 
     与 daily_standalone 的 20-session 缓存策略同一套数学（qlib_live_retrain.configure_asof
@@ -4985,6 +5086,16 @@ def backfill_signals(dates: str = "2026-09-16,2026-09-17", topk: int = 20, nd: i
         rep = build_ew_bench_files(data_dir, market)
         print(f"[lineage] 合成基准 {rep['bench']} 已构建: {rep['n_symbols']} 只成分，最新 {rep['latest']:.4f}")
     cal = read_trading_calendar(data_dir)
+    from csi1000_production_config import profile_manifest
+
+    if csi1000_profile:
+        profile = profile_manifest(csi1000_profile)
+        horizon = int(profile.get("label_horizon", 20))
+        topk = int(profile.get("topk", topk))
+        nd = int(profile.get("nd", nd))
+    else:
+        profile = None
+        horizon = 20
     qlib.init(
         provider_uri=str(data_dir),
         region="cn",
@@ -5007,6 +5118,7 @@ def backfill_signals(dates: str = "2026-09-16,2026-09-17", topk: int = 20, nd: i
 
     model_obj, snapshot, prev_fit_bar = None, None, None
     results = {}
+    score_frames = []
     for i in range(first_i, last_i + 1):
         usage_day, data_bar = cal[i], cal[i - 1]
         # 同源节律（与 daily_standalone 完全一致）：无模型 → bootstrap；全局锚定 due
@@ -5022,14 +5134,15 @@ def backfill_signals(dates: str = "2026-09-16,2026-09-17", topk: int = 20, nd: i
                 smoke=False,
                 recent=True,
                 long_train=True,
-                label20=True,
+                label20=(horizon == 20),
                 topk=topk,
                 nd=nd,
                 market=market,
                 provider_dir=str(data_dir),
+                csi1000_profile=csi1000_profile,
             )
             # 截断日历使 asof=末位：configure_asof 的生产守卫（asof==latest bar）对回放同样成立
-            configure_asof(cfg, cal[:i], data_bar, horizon=20)
+            configure_asof(cfg, cal[:i], data_bar, horizon=horizon)
             snapshot = {
                 "train": list(cfg["task"]["dataset"]["kwargs"]["segments"]["train"]),
                 "valid": list(cfg["task"]["dataset"]["kwargs"]["segments"]["valid"]),
@@ -5056,6 +5169,14 @@ def backfill_signals(dates: str = "2026-09-16,2026-09-17", topk: int = 20, nd: i
         if pred.empty:
             raise RuntimeError(f"empty predictions for {usage_day}")
         day = pred.loc[data_bar].dropna()
+        score_frames.append(
+            pd.DataFrame(
+                {"score": day.to_numpy(dtype=float)},
+                index=pd.MultiIndex.from_product(
+                    [[pd.Timestamp(data_bar)], day.index], names=["datetime", "instrument"]
+                ),
+            )
+        )
         day_df = D.features(
             [str(x) for x in day.index], ["$close", "Ref($close,1)"], start_time=data_bar, end_time=data_bar, freq="day"
         )
@@ -5093,8 +5214,85 @@ def backfill_signals(dates: str = "2026-09-16,2026-09-17", topk: int = 20, nd: i
         (out / f"{usage_day}_chart{suffix}.json").write_text(chart_json)
         results[usage_day] = {"csv_content": csv_content, "chart_json": chart_json, "topk": topk, "n_stocks": len(top)}
         print(f"[lineage] {usage_day}: top{topk} {len(top)} 只已生成")
+
+    # ---- 连续账户回补：9/30 收盘初始化 1M，10/8 开盘首笔，10/30 收盘结束 ----
+    signal = pd.concat(score_frames).sort_index()
+    signal_path = out / f"{market}_backfill_signal.parquet"
+    signal.to_parquet(signal_path)
+    bt_start, bt_end = cal[cal.index("2026-10-08")], cal[cal.index("2026-10-30")]
+    benchmark = {"csi1000": "SH000852", "csi500": "SH000905", "csi300": "SH000300"}[market]
+    from qlib.backtest import collect_data
+
+    import sys as _sys
+
+    for _p in ("/root/qlib/quant/code/execution", "/root"):
+        if _p not in _sys.path:
+            _sys.path.insert(0, _p)
+    from portfolio_performance import portfolio_performance
+
+    result = {}
+    decisions = list(
+        collect_data(
+            strategy={
+                "class": "DeterministicTopkDropoutStrategy",
+                "module_path": "deterministic_strategy",
+                "kwargs": {
+                    "signal": signal,
+                    "topk": topk,
+                    "n_drop": nd,
+                    "forbid_all_trade_at_limit": False,
+                },
+            },
+            executor={
+                "class": "SimulatorExecutor",
+                "module_path": "qlib.backtest.executor",
+                "kwargs": {"time_per_step": "day", "generate_portfolio_metrics": True, "track_data": True},
+            },
+            start_time=bt_start,
+            end_time=bt_end,
+            account=1_000_000,
+            benchmark=benchmark,
+            exchange_kwargs=research_exchange(bt_start, bt_end, codes=market),
+            return_value=result,
+        )
+    )
+    report = result["portfolio_dict"]["1day"][0]
+    perf = portfolio_performance(report, initial_cash=1_000_000, backtest_start=bt_start)
+    points = [{"date": "2026-09-30", "nav": 1.0, "daily_return": 0.0, "cumulative_return": 0.0}]
+    account = report["account"].astype(float)
+    prev = 1_000_000.0
+    for day, value in account.items():
+        nav = float(value) / 1_000_000.0
+        points.append(
+            {
+                "date": str(day)[:10],
+                "nav": round(nav, 8),
+                "daily_return": round(float(value) / prev - 1.0, 8),
+                "cumulative_return": round(nav - 1.0, 8),
+            }
+        )
+        prev = float(value)
+    backfill = {
+        "kind": "backfill_research",
+        "market": market,
+        "profile": csi1000_profile,
+        "horizon": horizon,
+        "topk": topk,
+        "nd": nd,
+        "start": "2026-09-30",
+        "end": "2026-10-30",
+        "first_trade": "2026-10-08",
+        "initial_cash": 1_000_000,
+        "points": points,
+        "metrics": perf,
+        "n_decisions": len(decisions),
+        "signal_sha256": __import__("hashlib").sha256(signal_path.read_bytes()).hexdigest(),
+    }
+    (out / f"{market}_backfill_performance.json").write_text(
+        __import__("json").dumps(backfill, indent=2, ensure_ascii=False)
+    )
     vol.commit()
-    return results
+    return {"results": results, "backfill": backfill}
 
 
 @app.local_entrypoint()

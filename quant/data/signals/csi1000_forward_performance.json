@@ -1,0 +1,119 @@
+{
+  "start_date": "2026-09-30",
+  "inception_date": "2026-09-30",
+  "status": "active",
+  "latest_date": "2026-10-30",
+  "cumulative_return": -0.26847928,
+  "points": [
+    {
+      "date": "2026-09-30",
+      "nav": 1.0,
+      "daily_return": 0.0,
+      "cumulative_return": 0.0
+    },
+    {
+      "date": "2026-10-08",
+      "nav": 0.98786545,
+      "daily_return": -0.01213455,
+      "cumulative_return": -0.01213455
+    },
+    {
+      "date": "2026-10-09",
+      "nav": 0.97612879,
+      "daily_return": -0.01188083,
+      "cumulative_return": -0.02387121
+    },
+    {
+      "date": "2026-10-12",
+      "nav": 0.96424674,
+      "daily_return": -0.01217263,
+      "cumulative_return": -0.03575326
+    },
+    {
+      "date": "2026-10-13",
+      "nav": 0.96693236,
+      "daily_return": 0.00278521,
+      "cumulative_return": -0.03306764
+    },
+    {
+      "date": "2026-10-14",
+      "nav": 0.94215741,
+      "daily_return": -0.02562222,
+      "cumulative_return": -0.05784259
+    },
+    {
+      "date": "2026-10-15",
+      "nav": 0.89875158,
+      "daily_return": -0.04607068,
+      "cumulative_return": -0.10124842
+    },
+    {
+      "date": "2026-10-16",
+      "nav": 0.89366446,
+      "daily_return": -0.0056602,
+      "cumulative_return": -0.10633554
+    },
+    {
+      "date": "2026-10-19",
+      "nav": 0.88481091,
+      "daily_return": -0.00990703,
+      "cumulative_return": -0.11518909
+    },
+    {
+      "date": "2026-10-20",
+      "nav": 0.90295074,
+      "daily_return": 0.02050137,
+      "cumulative_return": -0.09704926
+    },
+    {
+      "date": "2026-10-21",
+      "nav": 0.89945664,
+      "daily_return": -0.00386965,
+      "cumulative_return": -0.10054336
+    },
+    {
+      "date": "2026-10-22",
+      "nav": 0.85836192,
+      "daily_return": -0.04568838,
+      "cumulative_return": -0.14163808
+    },
+    {
+      "date": "2026-10-23",
+      "nav": 0.87603881,
+      "daily_return": 0.02059375,
+      "cumulative_return": -0.12396119
+    },
+    {
+      "date": "2026-10-26",
+      "nav": 0.84627571,
+      "daily_return": -0.03397464,
+      "cumulative_return": -0.15372429
+    },
+    {
+      "date": "2026-10-27",
+      "nav": 0.80933171,
+      "daily_return": -0.0436548,
+      "cumulative_return": -0.19066829
+    },
+    {
+      "date": "2026-10-28",
+      "nav": 0.83712444,
+      "daily_return": 0.03434034,
+      "cumulative_return": -0.16287556
+    },
+    {
+      "date": "2026-10-29",
+      "nav": 0.78800428,
+      "daily_return": -0.05867725,
+      "cumulative_return": -0.21199572
+    },
+    {
+      "date": "2026-10-30",
+      "nav": 0.73152072,
+      "daily_return": -0.07167926,
+      "cumulative_return": -0.26847928
+    }
+  ],
+  "data_mode": "BACKFILL_RESEARCH",
+  "return_interpretation": "SIMULATED_ACCOUNT_2026_09_30_INCEPTION"
+}

@@ -70,29 +70,24 @@ const {
   { document: doc }
 );
 const firstPoint = {
-  date: '2026-10-12', nav: 1.03,
+  date: '2026-09-30', nav: 1.03,
   daily_return: 0.03, cumulative_return: 0.03,
 };
 const validForward = {
-  start_date: '2026-10-12', inception_date: '2026-10-12', status: 'active',
-  latest_date: '2026-10-12', cumulative_return: 0.03,
+  start_date: '2026-09-30', inception_date: '2026-09-30', status: 'active',
+  latest_date: '2026-09-30', cumulative_return: 0.03,
   points: [firstPoint],
 };
 
 test('forward panel rejects pre-inception, malformed and contradictory data', () => {
   const validate = normalizeForwardPerformance;
   assert.equal(validate(validForward).status, 'active');
-  assert.equal(validate({ ...validForward, start_date: '2026-09-30' }).status, 'invalid');
-  assert.equal(validate({ ...validForward, points: [{ ...firstPoint, date: '2026-10-08' }] }).status, 'invalid');
+  assert.equal(validate({ ...validForward, start_date: '2026-10-11' }).status, 'invalid');
+  assert.equal(validate({ ...validForward, points: [{ ...firstPoint, date: '2026-09-29' }] }).status, 'invalid');
   assert.equal(validate({ ...validForward, points: [{ ...firstPoint, nav: null }] }).status, 'invalid');
   assert.equal(validate({ ...validForward, points: [{ ...firstPoint, cumulative_return: NaN }] }).status, 'invalid');
   assert.equal(validate({ ...validForward, points: [{ ...firstPoint, nav: 2 }] }).status, 'invalid');
   assert.equal(validate({ ...validForward, cumulative_return: 0 }).status, 'invalid');
-  assert.equal(validate({
-    ...validForward,
-    latest_date: '2026-10-13',
-    points: [{ ...firstPoint, date: '2026-10-13' }],
-  }).status, 'invalid', 'no return without the 2026-10-12 inception report');
   assert.equal(validate({
     ...validForward, points: [{ ...firstPoint, daily_return: 0.99 }],
   }).status, 'invalid', 'daily return must reconcile to NAV');
@@ -109,7 +104,7 @@ test('forward panel rejects pre-inception, malformed and contradictory data', ()
 
 test('forward awaiting state is not confused with a zero return', () => {
   const waiting = {
-    start_date: '2026-10-12', status: 'awaiting_first_valuation',
+    start_date: '2026-09-30', status: 'awaiting_first_valuation',
     latest_date: null, cumulative_return: null, points: [],
   };
   assert.equal(normalizeForwardPerformance(waiting).status, 'awaiting_first_valuation');
@@ -129,17 +124,17 @@ test('forward awaiting state is not confused with a zero return', () => {
 
 test('validated forward curve labels dates and flags possibly stale valuations', () => {
   const chart = makePerformanceChart(validForward.points);
-  assert.match(chart, /2026\.10\.12 · 首次已核验估值/);
-  assert.match(chart, /2026\.10\.12 · 最近估值/);
-  assert.ok(isPossiblyStale('2026-10-12', new Date('2026-10-24T00:00:00Z')));
-  assert.equal(isPossiblyStale('2026-10-12', new Date('2026-10-13T00:00:00Z')), false);
+  assert.match(chart, /2026\.09\.30 · 首次已核验估值/);
+  assert.match(chart, /2026\.09\.30 · 最近估值/);
+  assert.ok(isPossiblyStale('2026-09-30', new Date('2026-10-24T00:00:00Z')));
+  assert.equal(isPossiblyStale('2026-09-30', new Date('2026-10-01T00:00:00Z')), false);
   assert.equal(makePerformanceChart([{ cumulative_return: NaN }]).includes('<svg'), false);
 });
 
 test('forward return follows the selected historical ranking date', () => {
   const multiForward = {
     ...validForward,
-    inception_date: '2026-10-12',
+    inception_date: '2026-09-30',
     latest_date: '2026-10-14',
     cumulative_return: 0.06,
     points: [
@@ -157,11 +152,11 @@ test('forward return follows the selected historical ranking date', () => {
   assert.match(nodes.get('forward-chart').innerHTML, /2026\.10\.13 · 所选日估值/);
   assert.doesNotMatch(nodes.get('forward-chart').innerHTML, /2026\.10\.14/);
 
-  renderForwardPerformance(multiForward, '2026-10-12');
+  renderForwardPerformance(multiForward, '2026-09-30');
   assert.equal(nodes.get('forward-return').textContent, '+3.00%');
-  assert.match(nodes.get('forward-chart').innerHTML, /2026\.10\.12 · 所选日估值/);
+  assert.match(nodes.get('forward-chart').innerHTML, /2026\.09\.30 · 所选日估值/);
 
-  renderForwardPerformance(multiForward, '2026-10-11');
+  renderForwardPerformance(multiForward, '2026-09-29');
   assert.equal(nodes.get('forward-return').textContent, '未启用');
   assert.equal(nodes.get('ranking-return').textContent, '累计收益 未启用');
   assert.match(nodes.get('forward-chart').innerHTML, /早于新策略启用日/);
@@ -399,7 +394,7 @@ test('rebalance separates Drop1 sells from ranked-out holdings', () => {
 test('ST-free forward NAV is explicitly shown as research reference', () => {
   const ref = {
     ...validForward, execution_st_policy: 'ST_IGNORED_REFERENCE_ONLY',
-    st_fallback_dates: ['2026-10-12'],
+    st_fallback_dates: ['2026-09-30'],
     points: [{ ...firstPoint, execution_st_policy: 'ST_IGNORED_REFERENCE_ONLY' }],
   };
   const verified = {
@@ -416,9 +411,9 @@ test('ST-free forward NAV is explicitly shown as research reference', () => {
     ...ref, st_fallback_dates: [],
   }).status, 'invalid', 'outage date may not be hidden');
   renderForwardPerformance(ref);
-  assert.match(nodes.get('forward-status').textContent, /模拟净值跟踪 · 2026\.10\.12 起/);
+  assert.match(nodes.get('forward-status').textContent, /模拟净值跟踪 · 2026\.09\.30 起/);
   renderForwardPerformance(verified);
-  assert.match(nodes.get('forward-status').textContent, /模拟净值跟踪 · 2026\.10\.12 起/);
+  assert.match(nodes.get('forward-status').textContent, /模拟净值跟踪 · 2026\.09\.30 起/);
   assert.equal(nodes.get('forward-return').textContent, '+3.00%');
 });
 
@@ -432,7 +427,7 @@ test('mixed ST modes disclose exactly which forward dates skipped ST', () => {
   const mixed = {
     ...validForward, execution_st_policy: 'MIXED_ST_MODES',
     latest_date: '2026-10-13', cumulative_return: 0.04,
-    st_fallback_dates: ['2026-10-12'],
+    st_fallback_dates: ['2026-09-30'],
     points: [
       { ...firstPoint, execution_st_policy: 'ST_IGNORED_REFERENCE_ONLY' },
       extra,
@@ -440,7 +435,7 @@ test('mixed ST modes disclose exactly which forward dates skipped ST', () => {
   };
   assert.equal(normalizeForwardPerformance(mixed).status, 'active');
   renderForwardPerformance(mixed);
-  assert.match(nodes.get('forward-status').textContent, /模拟净值跟踪 · 2026\.10\.12 起/);
+  assert.match(nodes.get('forward-status').textContent, /模拟净值跟踪 · 2026\.09\.30 起/);
   assert.equal(normalizeForwardPerformance({
     ...mixed, st_fallback_dates: [],
   }).status, 'invalid');

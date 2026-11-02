@@ -251,7 +251,8 @@ async function loadDateContext(date, fresh = false, pool = currentPool) {
 
 // Frontend trust boundary: only a validated forward-only artifact may
 // produce a numerical return. Never silently turn missing/null data into 0%.
-const FORWARD_START = '2026-10-12';
+const FORWARD_START = '2026-09-30';
+const LEGACY_FORWARD_START = '2026-10-12';
 
 function dateKeyToUTC(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return NaN;
@@ -261,7 +262,8 @@ function dateKeyToUTC(value) {
 
 function normalizeForwardPerformance(raw) {
   const invalid = { status: 'invalid' };
-  if (!raw || raw.start_date !== FORWARD_START || !Array.isArray(raw.points)) return invalid;
+  const allowedStart = raw && (raw.start_date === FORWARD_START || raw.start_date === LEGACY_FORWARD_START);
+  if (!allowedStart || !Array.isArray(raw.points)) return invalid;
   const stModes = ['ST_IGNORED_REFERENCE_ONLY', 'ST_VERIFIED_PREOPEN'];
   if (raw.execution_st_policy != null &&
       ![...stModes, 'MIXED_ST_MODES'].includes(raw.execution_st_policy)) return invalid;
@@ -270,7 +272,7 @@ function normalizeForwardPerformance(raw) {
       ? raw : invalid;
   }
   if (raw.status !== 'active' || raw.points.length === 0 ||
-      raw.points[0]?.date < FORWARD_START ||
+      raw.points[0]?.date < raw.start_date ||
       raw.inception_date !== raw.points[0]?.date) return invalid;
   let previousDate = '';
   let previousNav = 1;
@@ -278,7 +280,7 @@ function normalizeForwardPerformance(raw) {
   const fallbackDates = [];
   for (const point of raw.points) {
     if (!point || !Number.isFinite(dateKeyToUTC(point.date)) ||
-        point.date < FORWARD_START || point.date <= previousDate ||
+        point.date < raw.start_date || point.date <= previousDate ||
         typeof point.nav !== 'number' || !Number.isFinite(point.nav) || point.nav <= 0 ||
         typeof point.daily_return !== 'number' || !Number.isFinite(point.daily_return) ||
         typeof point.cumulative_return !== 'number' || !Number.isFinite(point.cumulative_return) ||
@@ -335,7 +337,7 @@ function formatReturn(value, digits = 2) {
 function makePerformanceChart(points, w = 760, h = 180, lastLabel = '最近估值') {
   const rows = Array.isArray(points) ? points : [];
   if (!rows.length) {
-    return '<div class="performance-empty">从新策略启用（2026.10.15）开始记录，首个收盘估值将在下一交易日数据更新后显示。</div>';
+    return '<div class="performance-empty">从模拟账户启用（2026.09.30）开始记录，首个收盘估值将在下一交易日数据更新后显示。</div>';
   }
 
   if (rows.some(p => !p || typeof p.cumulative_return !== 'number' || !Number.isFinite(p.cumulative_return))) {
@@ -395,11 +397,11 @@ function renderForwardPerformance(data, date = null) {
     value.textContent = unavailable ? '暂不可用' : invalid ? '数据异常' : '待开始';
     latest.textContent = unavailable ? '收益文件加载失败' :
       invalid ? '估值数据校验未通过' : '等待首个交易日收盘结算';
-    status.textContent = '模拟净值跟踪 · 2026.10.15 新策略上线起';
+    status.textContent = '模拟净值跟踪 · 2026.09.30 模拟账户起';
     setRankingReturn(unavailable ? '累计收益 暂不可用' : invalid ? '累计收益 数据异常' : '累计收益 待开始');
     const message = unavailable ? '暂时无法读取累计收益数据，请稍后重试。' :
       invalid ? '累计收益数据不完整或不符合前向跟踪约定，已停止展示。' :
-      '从新策略启用（2026.10.15）开始记录，首个收盘估值将在下一交易日数据更新后显示。';
+      '从模拟账户启用（2026.09.30）开始记录，首个收盘估值将在下一交易日数据更新后显示。';
     chart.innerHTML = '<div class="performance-empty" role="status">' + message + '</div>';
     return;
   }
@@ -903,7 +905,7 @@ function pageShell(dates) {
           <div>
             <div class="panel-kicker">模拟组合表现</div>
             <h2>策略累计收益 · 模拟盘参考</h2>
-            <p id="forward-status" class="performance-status">模拟净值跟踪 · 2026.10.16 新策略上线起</p>
+            <p id="forward-status" class="performance-status">模拟净值跟踪 · 2026.09.30 模拟账户起</p>
           </div>
           <div class="performance-summary">
             <div id="forward-return" class="performance-value">待开始</div>
