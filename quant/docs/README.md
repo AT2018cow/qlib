@@ -19,3 +19,4 @@
    - [`02-csi300-october-2026-early-baseline-backtest-20261030.md`](08-current-window-backtest/02-csi300-october-2026-early-baseline-backtest-20261030.md)：第一版网站 bank-heavy baseline 应用于 CSI300 的 2026 年 10 月回测（16 个交易日）及与当前 CSI300 生产的对照。
    - [`03-why-colleague-alpha158-csi300-bank-basket-was-not-selected-20261030.md`](08-current-window-backtest/03-why-colleague-alpha158-csi300-bank-basket-was-not-selected-20261030.md)：同事银行/价值组合的 10 月收益核验、默认 Alpha158 排序复现检查，以及“搜索空间/Top10 截断/风格暴露”三层原因。
    - [`04-csi300-csi500-csi1000-bear-market-drawdown-20261102.md`](08-current-window-backtest/04-csi300-csi500-csi1000-bear-market-drawdown-20261102.md)：2021-02-18～2024-02-05 熊市压力测试；当前三套策略的熊市最大回撤与基准对照。
+   - [`05-balanced-strategy-reselection-plan-20261102.md`](08-current-window-backtest/05-balanced-strategy-reselection-plan-20261102.md)：2018–2026 全周期信号脊柱 + 16 套候选策略（含 Qlib 官方默认 YAML、默认模型滚动/月度变体、日频/月度/低波防御/板块上限/趋势门控）的均衡重选方案。
