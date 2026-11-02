@@ -109,7 +109,8 @@ def _receipt_dir(job: dict) -> Path:
     cpu=8,
     memory=16384,
     timeout=3600,
-    max_containers=24,
+    # 12-way concurrency is the level validated by the all-combination smoke.
+    max_containers=12,
     retries=modal.Retries(max_retries=3, initial_delay=10, backoff_coefficient=1.5, max_delay=60),
 )
 def fit_slice(job: dict) -> dict:
