@@ -91,7 +91,6 @@ jobs:
           quant/tests/test_cli_standalone.py
           quant/tests/test_regime_reselection_gate0.py
           quant/tests/test_regime_reselection_spine_jobs.py
-          quant/tests/test_regime_reselection_overlays.py
           quant/tests/test_regime_reselection_gate_v2.py
           quant/tests/test_modal_structure.py
           quant/tests/test_production_surface.py
@@ -121,6 +120,7 @@ jobs:
           quant/tests/test_portfolio_performance.py
           quant/tests/test_phase_attribution.py
           quant/tests/test_phase_regime_age.py
+          quant/tests/test_regime_reselection_overlays.py
           quant/tests/test_independent_stage_b_metrics.py
           quant/tests/test_verify_stage_b_fixed_ledger.py
           quant/tests/test_data_health_wrapper.py
