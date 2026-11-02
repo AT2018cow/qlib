@@ -51,17 +51,25 @@ jobs:
             --signals quant/data/signals \
             --market csi300 \
             --output _site/signals/available_dates_csi300.json
-          python3 quant/code/ops/build_forward_performance.py \
-            --signals quant/data/signals \
-            --output _site/signals/csi1000_forward_performance.json
-          python3 quant/code/ops/build_forward_performance.py \
-            --signals quant/data/signals \
-            --market csi500 \
-            --output _site/signals/csi500_forward_performance.json
-          python3 quant/code/ops/build_forward_performance.py \
-            --signals quant/data/signals \
-            --market csi300 \
-            --output _site/signals/csi300_forward_performance.json
+          # October is a disclosed BACKFILL_RESEARCH prefix; do not replace it
+          # with an empty forward builder until the live paper ledger is wired.
+          if [ -f quant/data/signals/csi1000_backfill_performance.json ]; then
+            cp quant/data/signals/csi1000_forward_performance.json _site/signals/
+            cp quant/data/signals/csi500_forward_performance.json _site/signals/
+            cp quant/data/signals/csi300_forward_performance.json _site/signals/
+          else
+            python3 quant/code/ops/build_forward_performance.py \
+              --signals quant/data/signals \
+              --output _site/signals/csi1000_forward_performance.json
+            python3 quant/code/ops/build_forward_performance.py \
+              --signals quant/data/signals \
+              --market csi500 \
+              --output _site/signals/csi500_forward_performance.json
+            python3 quant/code/ops/build_forward_performance.py \
+              --signals quant/data/signals \
+              --market csi300 \
+              --output _site/signals/csi300_forward_performance.json
+          fi
           # Fail the deployment before uploading if a required site asset is missing.
           test -s _site/index.html
           test -s _site/methodology.html
