@@ -49,6 +49,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--spines", default="A")
     parser.add_argument("--cells", default="S01,S02")
     parser.add_argument("--only", default="")
+    parser.add_argument("--rebalance-every", type=int, default=1)
     return parser.parse_args()
 
 
@@ -111,18 +112,26 @@ def main() -> None:
                 if only and key not in only:
                     continue
                 spec = COMBOS[cell]
+                strategy_kwargs = {
+                    "signal": signal,
+                    "topk": spec["topk"],
+                    "n_drop": spec["dropn"],
+                    "forbid_all_trade_at_limit": False,
+                }
+                if args.rebalance_every > 1:
+                    strategy_class = "PeriodicTopkDropoutStrategy"
+                    strategy_module = "periodic_strategy"
+                    strategy_kwargs["rebalance_every"] = args.rebalance_every
+                else:
+                    strategy_class = "DeterministicTopkDropoutStrategy"
+                    strategy_module = "deterministic_strategy"
                 result = {}
                 decisions = list(
                     collect_data(
                         strategy={
-                            "class": "DeterministicTopkDropoutStrategy",
-                            "module_path": "deterministic_strategy",
-                            "kwargs": {
-                                "signal": signal,
-                                "topk": spec["topk"],
-                                "n_drop": spec["dropn"],
-                                "forbid_all_trade_at_limit": False,
-                            },
+                            "class": strategy_class,
+                            "module_path": strategy_module,
+                            "kwargs": strategy_kwargs,
                         },
                         executor={
                             "class": "SimulatorExecutor",
@@ -158,6 +167,7 @@ def main() -> None:
                         "exec_end": args.exec_end,
                         "codes": len(codes),
                         "decisions": len(decisions),
+                        "rebalance_every": args.rebalance_every,
                         "mean_turnover": round(float(report["turnover"].mean()), 6),
                         "total_turnover": round(float(report["turnover"].sum()), 6),
                         "total_cost": round(float(report["cost"].sum()), 6),
