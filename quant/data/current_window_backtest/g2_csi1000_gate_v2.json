@@ -10,13 +10,14 @@
   "kind": "g2_csi1000_gate_v2",
   "candidate": "S02/A",
   "baseline": "S01/A",
-  "status": "PASS_V2_D8_1M_D6_PENDING",
+  "status": "D6_FAIL_RISK_UNSTABLE",
   "d4_drop_best_year_cagr": 0.1248,
   "d4_benchmark_cagr": -0.056,
   "d5_monthly_excess_q05": 0.000529,
-  "d6": "NOT_RUN",
+  "d6": "DIRECTION_PASS_RISK_UNSTABLE",
   "d8": "PASS_PRELIM_1M",
   "holdout": "SEALED",
   "production": "S01/A unchanged",
-  "d8_note": "At 1M: 0% ADV violations; historical 100M screen failed."
+  "d8_note": "At 1M: 0% ADV violations; historical 100M screen failed.",
+  "d6_detail": "v2 D2 passes only 1/5 phase/seed variants; all variants D3 positive"
 }

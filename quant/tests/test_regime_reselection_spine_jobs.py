@@ -52,6 +52,14 @@ class SpineJobTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_assembly(cal, cal[0], cal[10], sorted(days + [cal[11]]))
 
+    def test_jobs_carry_seed_and_history(self):
+        cal = calendar()
+        jobs = build_jobs(cal, cal[0], cal[44], "run", "sha", markets=("csi300",), spines=("A",), seed=1)
+        self.assertTrue(jobs)
+        self.assertTrue(all(job["seed"] == 1 for job in jobs))
+        self.assertTrue(all(job["data_start"] == "2015-01-01" for job in jobs))
+        self.assertTrue(all(job["fit_start"] == "2016-01-01" for job in jobs))
+
     def test_failed_jobs_classification(self):
         jobs = [{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}]
         results = [

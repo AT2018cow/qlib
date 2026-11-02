@@ -206,6 +206,13 @@ def fit_slice(job: dict) -> dict:
     model_kwargs["num_threads"] = int(job.get("num_threads", 8))
     model_kwargs.pop("n_jobs", None)
     apply_lgb_reproducibility(cfg)
+    seed = int(job.get("seed", 0))
+    model_kwargs["seed"] = seed
+    for offset, key in enumerate(
+        ("data_random_seed", "feature_fraction_seed", "bagging_seed", "drop_seed", "objective_seed", "extra_seed"),
+        start=1,
+    ):
+        model_kwargs[key] = seed + offset
     purge_cfg_splits(cfg, calendar, horizon=horizon)
     cfg["qlib_init"] = {"provider_uri": str(DATA_DIR), "region": "cn"}
     init_kwargs = {"provider_uri": str(DATA_DIR), "region": "cn", "skip_if_reg": True}
@@ -245,6 +252,7 @@ def fit_slice(job: dict) -> dict:
         "spine": job["spine"],
         "profile": job["profile"],
         "label_horizon": horizon,
+        "seed": seed,
         "retrain_asof": asof,
         "signal_end": signal_end,
         "train_end": train_end,
@@ -422,6 +430,7 @@ def main(
     data_start: str = "2015-01-01",
     fit_start: str = "2016-01-01",
     max_containers: int = 12,
+    seed: int = 0,
 ):
     from spine_jobs import build_jobs, failed_jobs
 
@@ -445,10 +454,11 @@ def main(
         num_threads=8,
         data_start=data_start,
         fit_start=fit_start,
+        seed=seed,
     )
     print(
         f"[g1] calendar {start}..{end} | jobs={len(jobs)} | run_id={run_id} | "
-        f"data_start={data_start} fit_start={fit_start} max_containers={max_containers}"
+        f"data_start={data_start} fit_start={fit_start} max_containers={max_containers} seed={seed}"
     )
     overrides = {}
     if kernels and kernels > 0:
