@@ -86,6 +86,7 @@ jobs:
           quant/tests/test_name_map_sync.py
           quant/tests/test_lineage_market_binding.py
           quant/tests/test_cli_standalone.py
+          quant/tests/test_regime_reselection_gate0.py
           quant/tests/test_modal_structure.py
           quant/tests/test_production_surface.py
           quant/tests/test_website_index.py
