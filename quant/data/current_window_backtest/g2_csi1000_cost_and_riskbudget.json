@@ -1,0 +1,72 @@
+{
+  "kind": "g2_csi1000_cost_and_riskbudget",
+  "actual_cost_replay": {
+    "S01": {
+      "cagr": 0.170061,
+      "mdd": -0.503191,
+      "sharpe": 0.692619,
+      "calmar": 0.337965,
+      "2018_cagr": -0.042583,
+      "2018_mdd": -0.208128
+    },
+    "S02": {
+      "cagr": 0.209836,
+      "mdd": -0.397574,
+      "sharpe": 0.862784,
+      "calmar": 0.527791,
+      "2018_cagr": -0.089561,
+      "2018_mdd": -0.227523
+    },
+    "S01_cost10": {
+      "cagr": 0.114795,
+      "mdd": -0.55412,
+      "sharpe": 0.522184,
+      "calmar": 0.207166,
+      "2018_cagr": -0.089051,
+      "2018_mdd": -0.216285
+    },
+    "S02_cost10": {
+      "cagr": 0.154505,
+      "mdd": -0.455839,
+      "sharpe": 0.682049,
+      "calmar": 0.338946,
+      "2018_cagr": -0.124091,
+      "2018_mdd": -0.241064
+    },
+    "S01_cost20": {
+      "cagr": 0.062152,
+      "mdd": -0.59981,
+      "sharpe": 0.351802,
+      "calmar": 0.103619,
+      "2018_cagr": -0.133229,
+      "2018_mdd": -0.230679
+    },
+    "S02_cost20": {
+      "cagr": 0.101753,
+      "mdd": -0.50839,
+      "sharpe": 0.50146,
+      "calmar": 0.200148,
+      "2018_cagr": -0.157343,
+      "2018_mdd": -0.256378
+    }
+  },
+  "risk_budget_blend": {
+    "avg_weight_s01": 0.472957,
+    "avg_weight_s02": 0.527043,
+    "cagr": 0.191324,
+    "mdd": -0.446837,
+    "sharpe": 0.786817,
+    "calmar": 0.428174,
+    "cagr10": 0.191104,
+    "cagr20": 0.190883,
+    "2018_cagr": -0.069393,
+    "2018_mdd": -0.201283,
+    "2018_excess": 0.502064,
+    "d1": false,
+    "d2": true,
+    "d3": true,
+    "d7_10": true,
+    "d7_20": true
+  },
+  "note": "Risk budget: 60d inverse-vol, 20-80% cap, 20-session rebalance, 10bp rebalance cost. Return-based blend."
+}

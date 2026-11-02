@@ -51,6 +51,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--cells", default="S01,S02")
     parser.add_argument("--only", default="")
     parser.add_argument("--rebalance-every", type=int, default=1)
+    parser.add_argument("--open-cost", type=float, default=0.0005)
+    parser.add_argument("--close-cost", type=float, default=0.0015)
     return parser.parse_args()
 
 
@@ -126,6 +128,9 @@ def main() -> None:
                 else:
                     strategy_class = "DeterministicTopkDropoutStrategy"
                     strategy_module = "deterministic_strategy"
+                exchange_kwargs = research_exchange(exec_start, args.exec_end, codes=codes)
+                exchange_kwargs["exchange"]["kwargs"]["open_cost"] = float(args.open_cost)
+                exchange_kwargs["exchange"]["kwargs"]["close_cost"] = float(args.close_cost)
                 result = {}
                 decisions = list(
                     collect_data(
@@ -147,7 +152,7 @@ def main() -> None:
                         end_time=args.exec_end,
                         account=100_000_000,
                         benchmark=benchmark,
-                        exchange_kwargs=research_exchange(exec_start, args.exec_end, codes=codes),
+                        exchange_kwargs=exchange_kwargs,
                         return_value=result,
                     )
                 )
@@ -169,6 +174,8 @@ def main() -> None:
                         "codes": len(codes),
                         "decisions": len(decisions),
                         "rebalance_every": args.rebalance_every,
+                        "open_cost": args.open_cost,
+                        "close_cost": args.close_cost,
                         "mean_turnover": round(float(report["turnover"].mean()), 6),
                         "total_turnover": round(float(report["turnover"].sum()), 6),
                         "total_cost": round(float(report["cost"].sum()), 6),

@@ -62,7 +62,7 @@ def _candidate(
     calmar = _calmar(cagr, mdd)
     calmar10 = _calmar(cagr10, mdd10)
     d1_abs = (float(mdd) - float(baseline_mdd)) * 100.0 >= 12.0 if mdd is not None else False
-    d1_bench = float(mdd) >= float(benchmark_mdd) - 0.03
+    d1_bench = float(mdd) >= float(benchmark_mdd) + 0.03
     d1 = bool(d1_abs or d1_bench)
     d3 = (
         cagr is not None
