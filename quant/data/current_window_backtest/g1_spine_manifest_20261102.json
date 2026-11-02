@@ -1,0 +1,115 @@
+{
+  "run_id": "regime_g1_20261102_a1",
+  "kind": "g1_spine_manifest",
+  "status": "PASS",
+  "calendar": {
+    "start": "2021-02-18",
+    "end": "2024-02-05",
+    "sessions": 724
+  },
+  "fit": {
+    "slices_expected": 222,
+    "slices_pass": 222,
+    "slices_failed": 0,
+    "code_sha_counts": {
+      "fa3f1327": 108,
+      "1dca5c08": 103,
+      "2efd232e": 11
+    },
+    "total_fit_hours": 6.151
+  },
+  "spines": [
+    {
+      "market": "csi1000",
+      "spine": "A",
+      "start": "2021-02-18",
+      "end": "2024-02-05",
+      "n_rows": 723976,
+      "n_days": 724,
+      "n_instruments": 1596,
+      "slices": 37,
+      "signal_sha256": "83091880e6427d5c21127d16f9e6426647877932118c59b1918050e2380c465f"
+    },
+    {
+      "market": "csi1000",
+      "spine": "B",
+      "start": "2021-02-18",
+      "end": "2024-02-05",
+      "n_rows": 723976,
+      "n_days": 724,
+      "n_instruments": 1596,
+      "slices": 37,
+      "signal_sha256": "baebcc457722df4f354fd73467c4723da0aa0103baa03529f3b2901dfb4d895c"
+    },
+    {
+      "market": "csi300",
+      "spine": "A",
+      "start": "2021-02-18",
+      "end": "2024-02-05",
+      "n_rows": 217200,
+      "n_days": 724,
+      "n_instruments": 412,
+      "slices": 37,
+      "signal_sha256": "709f0362ccedb8f7447dc9a4d12f493412589e5504942af28ebfaa6e90ef3fd7"
+    },
+    {
+      "market": "csi300",
+      "spine": "B",
+      "start": "2021-02-18",
+      "end": "2024-02-05",
+      "n_rows": 217200,
+      "n_days": 724,
+      "n_instruments": 412,
+      "slices": 37,
+      "signal_sha256": "b0f97f236dd4770ba28588e265d0cca325aad9c032ff6ec292edf6f5efb34280"
+    },
+    {
+      "market": "csi500",
+      "spine": "A",
+      "start": "2021-02-18",
+      "end": "2024-02-05",
+      "n_rows": 361893,
+      "n_days": 724,
+      "n_instruments": 772,
+      "slices": 37,
+      "signal_sha256": "40af1bfc77cf0af4c526ed1fd87856f3b8b2404d921b108629e4db2fca0ef6de"
+    },
+    {
+      "market": "csi500",
+      "spine": "B",
+      "start": "2021-02-18",
+      "end": "2024-02-05",
+      "n_rows": 361893,
+      "n_days": 724,
+      "n_instruments": 772,
+      "slices": 37,
+      "signal_sha256": "e46686cd8f4cd02f6b7f9bf91161bdc4aed1ec6042c7a85c00737495344962a9"
+    }
+  ],
+  "resource_profile": {
+    "cpu": 8,
+    "memory_mb": 16384,
+    "max_containers": 12,
+    "container_joblib": 8
+  },
+  "peak_memory_mb": {
+    "n": 11,
+    "min": 4120.5,
+    "median": 7308.6,
+    "max": 7740.0,
+    "csi1000": {
+      "n": 10,
+      "max": 7740.0
+    },
+    "csi500": {
+      "n": 1,
+      "max": 4120.5
+    }
+  },
+  "baseline_file": "g1_baseline_summary.json",
+  "notes": [
+    "Continuous account, T-close signal -> T+1 open, board-aware, 5bp buy/15bp sell.",
+    "R3 stress window only; 2018 and 2025-2026 holdout not used for selection.",
+    "D7 +20bp cost gate not passed by any candidate in this manifest."
+  ]
+}
