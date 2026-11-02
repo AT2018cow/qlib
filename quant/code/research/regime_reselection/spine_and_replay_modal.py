@@ -104,6 +104,26 @@ def _receipt_dir(job: dict) -> Path:
     return RUN_ROOT / job["run_id"] / job["market"] / job["spine"] / f"asof_{job['retrain_asof']}"
 
 
+def _read_peak_memory_mb() -> float | None:
+    """Best-effort container peak RSS from cgroup v2/v1, then getrusage."""
+    candidates = (
+        ("/sys/fs/cgroup/memory.peak", 1024 * 1024),
+        ("/sys/fs/cgroup/memory/memory.max_usage_in_bytes", 1024 * 1024),
+    )
+    for path, divisor in candidates:
+        try:
+            return round(int(Path(path).read_text().strip()) / divisor, 1)
+        except (OSError, ValueError):
+            continue
+    try:
+        import resource
+
+        # Linux reports ru_maxrss in KiB.
+        return round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024, 1)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 @app.function(
     volumes={str(VOL_ROOT): vol},
     cpu=8,
@@ -232,6 +252,7 @@ def fit_slice(job: dict) -> dict:
         "n_rows": int(len(prediction)),
         "n_days": int(prediction.index.get_level_values(0).nunique()),
         "n_instruments": int(prediction.index.get_level_values(1).nunique()),
+        "peak_memory_mb": _read_peak_memory_mb(),
         "prediction_sha256": hashlib.sha256(prediction_path.read_bytes()).hexdigest(),
         "elapsed_s": round(time.time() - started, 1),
     }
