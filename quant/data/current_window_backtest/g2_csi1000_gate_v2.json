@@ -10,12 +10,13 @@
   "kind": "g2_csi1000_gate_v2",
   "candidate": "S02/A",
   "baseline": "S01/A",
-  "status": "PASS_V2_PENDING_D6_D8_SHADOW",
+  "status": "PASS_V2_D6_PENDING_D8_PRELIM_FAIL",
   "d4_drop_best_year_cagr": 0.1248,
   "d4_benchmark_cagr": -0.056,
   "d5_monthly_excess_q05": 0.000529,
   "d6": "NOT_RUN",
-  "d8": "NOT_RUN",
+  "d8": "PRELIM_FAIL",
   "holdout": "SEALED",
-  "production": "S01/A unchanged"
+  "production": "S01/A unchanged",
+  "d8_note": "See g2_csi1000_d8_capacity.json"
 }

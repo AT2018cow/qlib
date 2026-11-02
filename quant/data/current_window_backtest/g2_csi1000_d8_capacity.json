@@ -1,0 +1,19 @@
+{
+  "kind": "g2_csi1000_d8_capacity",
+  "status": "PRELIM_FAIL",
+  "account_cny": 100000000,
+  "portfolio": "S02/A Top20",
+  "target_notional_per_name_cny": 5000000,
+  "adv_window": 20,
+  "max_adv_share": 0.05,
+  "positions_checked": 33854,
+  "violations": 19958,
+  "violation_rate": 0.5895,
+  "days_with_any_violation": 1699,
+  "days_checked": 1699,
+  "max_violations_per_day": 20,
+  "adv_share_median": 0.0612,
+  "adv_share_p95": 0.243,
+  "adv_share_max": 0.989,
+  "note": "Preliminary capacity screen using daily top20 candidates, $amount in thousand CNY, 20d ADV shifted one day. Actual orders may be split across days; single-day 5% assumption is strict."
+}
