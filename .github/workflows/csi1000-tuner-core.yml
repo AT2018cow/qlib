@@ -89,6 +89,7 @@ jobs:
           quant/tests/test_regime_reselection_gate0.py
           quant/tests/test_regime_reselection_spine_jobs.py
           quant/tests/test_regime_reselection_overlays.py
+          quant/tests/test_regime_reselection_gate_v2.py
           quant/tests/test_modal_structure.py
           quant/tests/test_production_surface.py
           quant/tests/test_website_index.py

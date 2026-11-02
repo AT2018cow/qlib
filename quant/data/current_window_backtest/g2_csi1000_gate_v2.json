@@ -1,0 +1,21 @@
+{
+  "d2_v2": true,
+  "d7_v2": true,
+  "d1": true,
+  "d3": true,
+  "d2_margin_pp": 0.0605,
+  "d7_calmar_margin": 0.000981,
+  "d7_sharpe_margin": 0.00943,
+  "d7_cagr20": 0.101753,
+  "kind": "g2_csi1000_gate_v2",
+  "candidate": "S02/A",
+  "baseline": "S01/A",
+  "status": "PASS_V2_PENDING_D6_D8_SHADOW",
+  "d4_drop_best_year_cagr": 0.1248,
+  "d4_benchmark_cagr": -0.056,
+  "d5_monthly_excess_q05": 0.000529,
+  "d6": "NOT_RUN",
+  "d8": "NOT_RUN",
+  "holdout": "SEALED",
+  "production": "S01/A unchanged"
+}
