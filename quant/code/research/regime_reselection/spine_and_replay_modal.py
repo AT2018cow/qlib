@@ -137,9 +137,20 @@ def fit_slice(job: dict) -> dict:
     receipt_dir = _receipt_dir(job)
     receipt_path = receipt_dir / "receipt.json"
     prediction_path = receipt_dir / "prediction.parquet"
+    import hashlib as _hashlib
+
     vol.reload()
     if receipt_path.is_file() and prediction_path.is_file():
-        return json.loads(receipt_path.read_text())
+        try:
+            existing = json.loads(receipt_path.read_text())
+        except ValueError:
+            existing = None
+        if (
+            isinstance(existing, dict)
+            and existing.get("status") == "PASS"
+            and existing.get("prediction_sha256") == _hashlib.sha256(prediction_path.read_bytes()).hexdigest()
+        ):
+            return existing
 
     calendar = read_trading_calendar(DATA_DIR)
     asof = job["retrain_asof"]
@@ -176,7 +187,12 @@ def fit_slice(job: dict) -> dict:
     apply_lgb_reproducibility(cfg)
     purge_cfg_splits(cfg, calendar, horizon=horizon)
     cfg["qlib_init"] = {"provider_uri": str(DATA_DIR), "region": "cn"}
-    qlib.init(provider_uri=str(DATA_DIR), region="cn", skip_if_reg=True)
+    init_kwargs = {"provider_uri": str(DATA_DIR), "region": "cn", "skip_if_reg": True}
+    if job.get("kernels") is not None:
+        init_kwargs["kernels"] = int(job["kernels"])
+    if job.get("joblib_backend"):
+        init_kwargs["joblib_backend"] = job["joblib_backend"]
+    qlib.init(**init_kwargs)
 
     started = time.time()
     model = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
@@ -229,6 +245,31 @@ def read_calendar() -> list[str]:
     return [line.strip() for line in (DATA_DIR / "calendars" / "day.txt").read_text().splitlines() if line.strip()]
 
 
+@app.function(volumes={str(VOL_ROOT): vol}, cpu=1, memory=2048, timeout=900)
+def completed_jobs(jobs: list[dict]) -> list[str]:
+    """Return keys of slices whose receipt and prediction hash are still valid."""
+    import hashlib
+
+    vol.reload()
+    done = []
+    for job in jobs:
+        directory = _receipt_dir(job)
+        receipt_path = directory / "receipt.json"
+        prediction_path = directory / "prediction.parquet"
+        if not (receipt_path.is_file() and prediction_path.is_file()):
+            continue
+        try:
+            receipt = json.loads(receipt_path.read_text())
+        except ValueError:
+            continue
+        if (
+            receipt.get("status") == "PASS"
+            and receipt.get("prediction_sha256") == hashlib.sha256(prediction_path.read_bytes()).hexdigest()
+        ):
+            done.append(f"{job['market']}/{job['spine']}/{job['retrain_asof']}")
+    return done
+
+
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=8, memory=16384, timeout=1800)
 def assemble_spine(run_id: str, market: str, spine: str, start: str, end: str) -> dict:
     """Concatenate slice predictions, validate coverage, persist the spine."""
@@ -241,6 +282,19 @@ def assemble_spine(run_id: str, market: str, spine: str, start: str, end: str) -
     vol.reload()
     root = RUN_ROOT / run_id / market / spine
     paths = sorted(root.glob("asof_*/prediction.parquet"))
+    existing_receipt = root / "spine_receipt.json"
+    if existing_receipt.is_file() and (root / "signal.parquet").is_file():
+        try:
+            prior = json.loads(existing_receipt.read_text())
+        except ValueError:
+            prior = None
+        if (
+            isinstance(prior, dict)
+            and prior.get("status") == "PASS"
+            and prior.get("slices") == len(paths)
+            and hashlib.sha256((root / "signal.parquet").read_bytes()).hexdigest() == prior.get("signal_sha256")
+        ):
+            return prior
     if not paths:
         raise RuntimeError(f"no slices for {market}/{spine}")
     frames = []
@@ -283,6 +337,54 @@ def assemble_spine(run_id: str, market: str, spine: str, start: str, end: str) -
 
 
 @app.local_entrypoint()
+def debug_modal(
+    start: str = "2021-02-18",
+    end: str = "2024-02-05",
+    run_id: str = "regime_g1_debug_20261102",
+    mode: str = "default",
+):
+    """Run one first and one last slice per (market, spine) sequentially."""
+    import traceback
+
+    from spine_jobs import build_jobs
+
+    if mode == "kernels1":
+        overrides = {"kernels": 1}
+    elif mode == "loky6":
+        overrides = {"kernels": 6, "joblib_backend": "loky"}
+    else:
+        overrides = {}
+    calendar = read_calendar.remote()
+    jobs = build_jobs(calendar, start, end, run_id, "debug", num_threads=8)
+    grouped = {}
+    for job in jobs:
+        grouped.setdefault((job["market"], job["spine"]), []).append(job)
+    probes = []
+    for key in sorted(grouped):
+        probes.append(grouped[key][0])
+        if len(grouped[key]) > 1:
+            probes.append(grouped[key][-1])
+    failures = 0
+    for job in probes:
+        job.update(overrides)
+        label = f"{job['market']}/{job['spine']}/{job['retrain_asof']}"
+        print(f"[debug] PROBE {label} kernels={job.get('kernels')} backend={job.get('joblib_backend')}", flush=True)
+        try:
+            out = fit_slice.remote(job)
+            print(
+                f"[debug] OK {label} rows={out.get('n_rows')} days={out.get('n_days')} elapsed={out.get('elapsed_s')}",
+                flush=True,
+            )
+        except Exception:
+            failures += 1
+            print(f"[debug] FAIL {label}", flush=True)
+            traceback.print_exc()
+    print(f"[debug] DONE mode={mode} failures={failures}/{len(probes)}", flush=True)
+    if failures:
+        raise SystemExit(1)
+
+
+@app.local_entrypoint()
 def main(
     start: str = "2021-02-18",
     end: str = "2024-02-05",
@@ -291,6 +393,10 @@ def main(
     spines: str = "A,B",
     max_jobs: int = 0,
     smoke: bool = False,
+    smoke_all: bool = False,
+    max_attempts: int = 3,
+    kernels: int = -1,
+    joblib_backend: str = "",
 ):
     from spine_jobs import build_jobs
 
@@ -314,17 +420,55 @@ def main(
         num_threads=8,
     )
     print(f"[g1] calendar {start}..{end} | jobs={len(jobs)} | run_id={run_id}")
-    if smoke:
+    overrides = {}
+    if kernels and kernels > 0:
+        overrides["kernels"] = int(kernels)
+    if joblib_backend:
+        overrides["joblib_backend"] = joblib_backend
+    if overrides:
+        for job in jobs:
+            job.update(overrides)
+        print(f"[g1] overrides: {overrides}")
+    if smoke_all:
+        grouped = {}
+        for job in jobs:
+            grouped.setdefault((job["market"], job["spine"]), []).append(job)
+        probes = []
+        for key in sorted(grouped):
+            probes.append(grouped[key][0])
+            if len(grouped[key]) > 1:
+                probes.append(grouped[key][-1])
+        jobs = probes
+        print(f"[g1] SMOKE-ALL mode: running {len(jobs)} probes (first+last per market/spine)")
+    elif smoke:
         jobs = jobs[: max(1, int(max_jobs or 2))]
         print(f"[g1] SMOKE mode: running {len(jobs)} job(s)")
     started = time.time()
-    results = list(fit_slice.map(jobs))
-    print(f"[g1] fits finished: {len(results)} in {round(time.time() - started, 1)}s")
-    failed = [row for row in results if row.get("status") != "PASS"]
-    if failed:
-        raise RuntimeError(f"{len(failed)} slice(s) failed; first={failed[0]}")
+    pending = list(jobs)
+    last_error = None
+    for attempt in range(1, max(1, int(max_attempts)) + 1):
+        done = set(completed_jobs.remote(pending))
+        pending = [job for job in pending if f"{job['market']}/{job['spine']}/{job['retrain_asof']}" not in done]
+        print(f"[g1] attempt {attempt}: pending={len(pending)} (already valid={len(done)})", flush=True)
+        if not pending:
+            break
+        try:
+            list(fit_slice.map(pending))
+        except Exception as exc:  # noqa: BLE001
+            last_error = exc
+            print(f"[g1] attempt {attempt} aborted: {type(exc).__name__}: {exc}", flush=True)
+        time.sleep(5)
+    if pending:
+        done = set(completed_jobs.remote(pending))
+        pending = [job for job in pending if f"{job['market']}/{job['spine']}/{job['retrain_asof']}" not in done]
+        if pending:
+            raise RuntimeError(f"{len(pending)} slice(s) still missing after retries; last_error={last_error}")
+    print(f"[g1] fits finished: all {len(jobs)} valid in {round(time.time() - started, 1)}s")
     if smoke:
-        print("[g1] SMOKE PASS", results[0])
+        print("[g1] SMOKE PASS")
+        return
+    if smoke_all:
+        print(f"[g1] SMOKE-ALL PASS ({len(jobs)} probes)")
         return
     summaries = []
     for market in {job["market"] for job in jobs}:
