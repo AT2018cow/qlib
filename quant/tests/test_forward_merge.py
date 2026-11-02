@@ -31,9 +31,11 @@ def test_live_marks_splice_onto_the_same_one_million_account():
     assert merged["live_start_date"] == "2026-11-03"
     assert [p["date"] for p in merged["points"]] == ["2026-09-30", "2026-10-30", "2026-11-03"]
     last = merged["points"][-1]
-    assert abs(last["nav"] - 1.05) < 1e-12
-    assert abs(last["cumulative_return"] - 0.05) < 1e-12
-    assert abs(last["daily_return"] - (1.05 / 0.8 - 1)) < 1e-12
+    # NAV stays relative to the original 1M account, not to the splice point.
+    # Rebasing here would invent a ~31% one-day return.
+    assert abs(last["nav"] - 0.84) < 1e-12
+    assert abs(last["cumulative_return"] + 0.16) < 1e-12
+    assert abs(last["daily_return"] - (0.84 / 0.8 - 1)) < 1e-12
     assert merged["latest_date"] == "2026-11-03"
 
 
@@ -58,3 +60,8 @@ def test_live_date_must_follow_the_backfill():
 def test_account_value_discontinuity_fails_closed():
     with pytest.raises(ValueError, match="discontinuity"):
         merge_forward_performance(_prefix(), _live(close=84_000_000.0))
+
+
+def test_reset_to_initial_cash_is_rejected_not_shown_as_a_gain():
+    with pytest.raises(ValueError, match="discontinuity"):
+        merge_forward_performance(_prefix(), _live(close=1_000_000.0))

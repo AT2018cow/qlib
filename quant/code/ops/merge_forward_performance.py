@@ -56,7 +56,7 @@ def _prefix_series(prefix: Mapping[str, Any]) -> tuple[list[dict], float]:
             }
         )
         previous_date = day
-    return cleaned, initial_cash * cleaned[-1]["nav"]
+    return cleaned, initial_cash
 
 
 def merge_forward_performance(
@@ -75,8 +75,9 @@ def merge_forward_performance(
             return dict(live)
         return dict(live)
 
-    prefix_points, base_value = _prefix_series(prefix)
+    prefix_points, initial_cash = _prefix_series(prefix)
     prefix_last_date = prefix_points[-1]["date"]
+    prefix_last_value = prefix_points[-1]["nav"] * initial_cash
     result = {
         "start_date": str(prefix.get("start") or prefix_points[0]["date"]),
         "inception_date": prefix_points[0]["date"],
@@ -94,7 +95,7 @@ def merge_forward_performance(
     previous_nav = prefix_points[-1]["nav"]
     previous_date = prefix_last_date
     merged = result["points"]
-    for point in live_points:
+    for index, point in enumerate(live_points):
         if not isinstance(point, Mapping):
             raise ValueError("invalid live point")
         day = point.get("date")
@@ -103,7 +104,14 @@ def merge_forward_performance(
         close = _number(point.get("portfolio_value_close"), f"live close value {day}")
         if close <= 0:
             raise ValueError(f"live close value must be positive: {day}")
-        nav = close / base_value
+        if index == 0:
+            # The 1M account is continuous: the first live close must be in the
+            # same value range as the 10/30 backfill close.  Allow a generous
+            # overnight gap, but fail closed on a reset or a unit mix-up.
+            gap = abs(close - prefix_last_value) / prefix_last_value
+            if gap >= 0.25:
+                raise ValueError(f"live/backfill account value discontinuity at {day}: gap={gap:.1%}")
+        nav = close / initial_cash
         if not 0.05 < nav < 20:
             raise ValueError(f"live/backfill account value discontinuity at {day}: nav={nav}")
         merged.append(
