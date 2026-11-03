@@ -53,6 +53,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--rebalance-every", type=int, default=1)
     parser.add_argument("--open-cost", type=float, default=0.0005)
     parser.add_argument("--close-cost", type=float, default=0.0015)
+    parser.add_argument("--account", type=float, default=100_000_000.0)
     return parser.parse_args()
 
 
@@ -150,7 +151,7 @@ def main() -> None:
                         },
                         start_time=exec_start,
                         end_time=args.exec_end,
-                        account=100_000_000,
+                        account=float(args.account),
                         benchmark=benchmark,
                         exchange_kwargs=exchange_kwargs,
                         return_value=result,
@@ -159,7 +160,7 @@ def main() -> None:
                 report = result["portfolio_dict"]["1day"][0]
                 if len(report) != len(expected_days) - 1 or not report.index.is_unique:
                     raise ValueError(f"report coverage mismatch for {key}: {len(report)}")
-                metrics = portfolio_performance(report, backtest_start=exec_start)
+                metrics = portfolio_performance(report, initial_cash=float(args.account), backtest_start=exec_start)
                 metrics.update(
                     {
                         "market": market,
@@ -182,7 +183,21 @@ def main() -> None:
                     }
                 )
                 for bps in (10.0, 20.0):
-                    stressed = portfolio_performance(apply_cost_stress(report, bps), backtest_start=exec_start)
+                    try:
+                        stressed = portfolio_performance(
+                            apply_cost_stress(report, bps),
+                            initial_cash=float(args.account),
+                            backtest_start=exec_start,
+                        )
+                    except ValueError as exc:
+                        # At a 1M account, a large cost stress can exhaust the
+                        # NAV.  Record the failure instead of aborting the base
+                        # metrics; the gate analysis treats it as failed.
+                        metrics[f"cagr_cost_plus_{int(bps)}bp"] = None
+                        metrics[f"maxdd_cost_plus_{int(bps)}bp"] = None
+                        metrics[f"sharpe_cost_plus_{int(bps)}bp"] = None
+                        metrics[f"cost_stress_{int(bps)}bp_error"] = str(exc)
+                        continue
                     metrics[f"cagr_cost_plus_{int(bps)}bp"] = stressed["strategy_cagr"]
                     metrics[f"maxdd_cost_plus_{int(bps)}bp"] = stressed["strategy_max_drawdown"]
                     metrics[f"sharpe_cost_plus_{int(bps)}bp"] = stressed["sharpe"]

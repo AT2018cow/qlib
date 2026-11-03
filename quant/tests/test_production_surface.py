@@ -316,7 +316,7 @@ def test_centered_boot_loader_and_consolidated_bottom_governance_card():
     assert 'id="stat-risk"' not in app
 
     # Methodology includes the current per-market full-cycle research metrics
-    for metric in ("12.19%", "-46.22%", "0.563", "5.72%", "-42.05%", "17.01%", "-50.32%"):
+    for metric in ("13.69%", "-43.28%", "0.615", "5.62%", "-41.92%", "17.72%", "-50.08%"):
         assert metric in method, f"methodology missing full-cycle metric: {metric}"
 
     # Pool switcher supports CSI1000, CSI500, and CSI300, defaults to CSI300 and persists selection
