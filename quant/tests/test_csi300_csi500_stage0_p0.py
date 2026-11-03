@@ -239,6 +239,18 @@ def _synthetic_report() -> pd.DataFrame:
     return frame
 
 
+def test_cost_stress_uses_requested_initial_cash():
+    report = _synthetic_report()
+    small = report.copy()
+    for col in ("account", "value", "cash"):
+        small[col] = small[col] * 0.01
+    big = core.apply_cost_stress(report, 10.0)
+    one_m = core.apply_cost_stress(small, 10.0, initial_cash=1_000_000.0)
+    expected = (big["account"] - report["account"]) * 0.01
+    actual = one_m["account"] - small["account"]
+    assert (actual - expected).abs().max() < 1e-6
+
+
 def test_stage0_cost_stress_is_conservative_and_reconciled():
     report = _synthetic_report()
     stressed = core.apply_cost_stress(report, 10.0)

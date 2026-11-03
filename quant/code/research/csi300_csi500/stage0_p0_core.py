@@ -417,7 +417,7 @@ def backtest_market_signal(
     return result["portfolio_dict"]["1day"][0], _audit_decisions(decisions)
 
 
-def apply_cost_stress(report: Any, extra_bps: float) -> Any:
+def apply_cost_stress(report: Any, extra_bps: float, *, initial_cash: float = 100_000_000.0) -> Any:
     """Arithmetic cost stress on frozen fills' notional (established method).
 
     Stressed NAV = NAV minus cumulative daily notional * bps/10000, with costs
@@ -430,10 +430,12 @@ def apply_cost_stress(report: Any, extra_bps: float) -> Any:
 
     if not isinstance(extra_bps, (int, float)) or extra_bps < 0:
         raise ValueError(f"STAGE0_P0_BLOCKED: invalid stress {extra_bps!r}")
+    if not isinstance(initial_cash, (int, float)) or initial_cash <= 0:
+        raise ValueError(f"STAGE0_P0_BLOCKED: invalid initial cash {initial_cash!r}")
     stressed = report.copy()
     nav = report["account"].to_numpy(dtype=float)
     turnover_rate = report["turnover"].to_numpy(dtype=float)
-    prior = [100_000_000.0] + list(nav[:-1])
+    prior = [float(initial_cash)] + list(nav[:-1])
     notionals = [float(t) * float(p) for t, p in zip(turnover_rate, prior)]
     adjustment = 0.0
     stressed_nav, stressed_cash, stressed_cost, stressed_total = [], [], [], []

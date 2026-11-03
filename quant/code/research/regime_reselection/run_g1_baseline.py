@@ -1,9 +1,9 @@
-"""S01/S02 continuous-account baseline replay for G1 spines (2021-2024).
+"""S01/S02 continuous-account replay for G1/G2 spines (configurable window).
 
 S01 = current production profile + Top10/Drop1.
 S02 = current production profile + Top20/Drop2.
 
-This script never trains. It replays the frozen G1 signal with the same
+This script never trains. It replays a frozen G1/G2 signal with the same
 board-aware, next-open execution contract used by the production research
 stack, then computes compounded metrics with ``portfolio_performance``.
 """
@@ -185,7 +185,7 @@ def main() -> None:
                 for bps in (10.0, 20.0):
                     try:
                         stressed = portfolio_performance(
-                            apply_cost_stress(report, bps),
+                            apply_cost_stress(report, bps, initial_cash=float(args.account)),
                             initial_cash=float(args.account),
                             backtest_start=exec_start,
                         )
