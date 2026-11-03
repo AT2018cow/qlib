@@ -4500,7 +4500,7 @@ def daily_cron():
                 expected_lineage=profile_manifest(extra_profile),
                 paper=paper_proposals[extra_mkt]["artifact"],
                 risk=extra_risk,
-                publication_detail=csi_detail,
+                publication_detail=multi_detail,
                 market=extra_mkt,
             )
             files[f"quant/data/signals/{signal_date}_mvp_metadata_{extra_mkt}.json"] = (

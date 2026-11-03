@@ -6,6 +6,7 @@ forward-MVP concerns: provider identity, point-in-time CSI1000 membership,
 20-session label maturity, frozen model lineage, published Top20 lineage and
 paper/risk state.  It does not score historical candidates or tune parameters.
 """
+
 from __future__ import annotations
 
 from bisect import bisect_left
@@ -78,9 +79,11 @@ def validate_verified_st_snapshot(snapshot: dict, execution_date: str) -> set[st
     if type(count) is not int or count <= 0:
         raise ValueError("verified ST source must include positive row count")
     symbols = snapshot.get("st_symbols")
-    if not isinstance(symbols, list) or any(
-        not isinstance(x, str) or not _SYMBOL.fullmatch(x) for x in symbols
-    ) or len(set(symbols)) != len(symbols):
+    if (
+        not isinstance(symbols, list)
+        or any(not isinstance(x, str) or not _SYMBOL.fullmatch(x) for x in symbols)
+        or len(set(symbols)) != len(symbols)
+    ):
         raise ValueError("verified ST matched symbols missing or invalid")
     try:
         at = datetime.fromisoformat(snapshot["fetched_at_cst"])
@@ -184,9 +187,7 @@ def pit_universe_snapshot(
     if expected_count < 1:
         raise ValueError("expected_count must be positive")
     if len(active) != expected_count:
-        raise ValueError(
-            f"CSI1000 PIT membership count {len(active)} != expected {expected_count} on {asof}"
-        )
+        raise ValueError(f"CSI1000 PIT membership count {len(active)} != expected {expected_count} on {asof}")
     members = sorted(active)
     membership_sha = _sha256_bytes(("\n".join(members) + "\n").encode("utf-8"))
     return {
@@ -229,8 +230,12 @@ def validate_label_maturity(
         raise ValueError(f"CSI1000/500/300 MVP requires 10 or 20-session label horizon, got {horizon}")
     days = {k: _iso_day(training[k], k) for k in required if k != "horizon"}
     if not (
-        days["train_start"] <= days["train_end"] < days["valid_start"]
-        <= days["valid_end"] < days["fit_asof"] <= signal_data_date
+        days["train_start"]
+        <= days["train_end"]
+        < days["valid_start"]
+        <= days["valid_end"]
+        < days["fit_asof"]
+        <= signal_data_date
     ):
         raise ValueError("training split order is invalid")
 
@@ -247,8 +252,7 @@ def validate_label_maturity(
         start_i = bisect_left(normalized, days["train_start"])
         if start_i >= len(normalized) or normalized[start_i] != "2016-01-04":
             raise ValueError(
-                "frozen train_start=2016-01-01 must resolve to verified "
-                "first trading session 2016-01-04"
+                "frozen train_start=2016-01-01 must resolve to verified " "first trading session 2016-01-04"
             )
         resolved_days["train_start"] = normalized[start_i]
 
@@ -276,9 +280,7 @@ def validate_label_maturity(
         "train_start": days["train_start"],
         "train_start_effective": resolved_days["train_start"],
         "train_start_resolution": (
-            "FROZEN_HOLIDAY_TO_NEXT_SESSION"
-            if resolved_days["train_start"] != days["train_start"]
-            else "EXACT_SESSION"
+            "FROZEN_HOLIDAY_TO_NEXT_SESSION" if resolved_days["train_start"] != days["train_start"] else "EXACT_SESSION"
         ),
         "train_end": days["train_end"],
         "train_label_last_observation": normalized[train_obs_i],
@@ -334,8 +336,10 @@ def validate_production_lineage(actual: dict, expected: dict) -> dict:
         "c98856b4_top10_drop1",
         "raw10d_c98856b4_top10_drop1",
         "59b93929_top10_drop1",
+        "59b93929_top10_drop1_10d",
+        "raw10d_c98856b4_top20_drop2_20d",
     ):
-        raise ValueError("canonical CSI1000 MVP profile must be a frozen canonical profile")
+        raise ValueError("production lineage must use a frozen canonical profile")
     return {key: actual[key] for key in _REQUIRED_LINEAGE}
 
 
@@ -401,9 +405,7 @@ def summarize_paper_state(
         "real_fill_execution": "NOT_CERTIFIED_PAPER_ONLY",
         "execution_st_policy": paper.get("execution_st_policy"),
         "return_interpretation": (
-            "REFERENCE_ONLY_ST_NOT_MODELED"
-            if paper.get("execution_st_policy") == REFERENCE_ST_POLICY
-            else "PAPER_ONLY"
+            "REFERENCE_ONLY_ST_NOT_MODELED" if paper.get("execution_st_policy") == REFERENCE_ST_POLICY else "PAPER_ONLY"
         ),
     }
 
@@ -546,10 +548,13 @@ def build_mvp_metadata(
 
 
 def dumps_metadata(metadata: dict) -> str:
-    return json.dumps(
-        metadata,
-        ensure_ascii=False,
-        indent=2,
-        sort_keys=True,
-        allow_nan=False,
-    ) + "\n"
+    return (
+        json.dumps(
+            metadata,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+            allow_nan=False,
+        )
+        + "\n"
+    )

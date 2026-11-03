@@ -1,4 +1,5 @@
 """MVP publication-contract gates; no historical re-ranking or tuning."""
+
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -228,13 +229,9 @@ def test_frozen_holiday_start_rejects_truncated_or_corrupted_calendar():
     cal = _frozen_holiday_calendar()
     training = _frozen_holiday_training(cal)
     with pytest.raises(ValueError, match="first trading session 2016-01-04"):
-        validate_label_maturity(
-            [d for d in cal if d != "2016-01-04"], training, cal[-1]
-        )
+        validate_label_maturity([d for d in cal if d != "2016-01-04"], training, cal[-1])
     with pytest.raises(ValueError, match="incorrectly includes"):
-        validate_label_maturity(
-            sorted(cal + ["2016-01-01"]), training, cal[-1]
-        )
+        validate_label_maturity(sorted(cal + ["2016-01-01"]), training, cal[-1])
 
 
 def test_no_generic_non_session_snapping_of_split_boundaries():
@@ -294,9 +291,7 @@ def test_reference_pending_requires_same_date_before_market_open():
 
     shanghai = ZoneInfo("Asia/Shanghai")
     ok = datetime(2026, 10, 13, 9, 29, 59, tzinfo=shanghai)
-    assert require_reference_preopen("2026-10-13", observed_at=ok).startswith(
-        "2026-10-13T09:29:59"
-    )
+    assert require_reference_preopen("2026-10-13", observed_at=ok).startswith("2026-10-13T09:29:59")
     for bad in (
         datetime(2026, 10, 13, 9, 30, tzinfo=shanghai),
         datetime(2026, 10, 13, 11, 0, tzinfo=shanghai),
@@ -316,7 +311,8 @@ def test_verified_st_metadata_requires_real_preopen_source_evidence(tmp_path):
     kw["paper"]["execution_st_policy"] = VERIFIED_ST_POLICY
     kw["risk"]["execution_st_policy"] = VERIFIED_ST_POLICY
     kw["risk"]["st"] = {
-        "date": usage, "status": "SOURCE_SNAPSHOT_AVAILABLE",
+        "date": usage,
+        "status": "SOURCE_SNAPSHOT_AVAILABLE",
         "source": "akshare.stock_zh_a_st_em",
         "fetched_at_cst": usage + "T07:02:00+08:00",
         "source_row_count": 230,
@@ -334,10 +330,12 @@ def test_verified_st_snapshot_rejects_wrong_date_source_and_corrupt_symbols():
     from csi1000_mvp_contract import validate_verified_st_snapshot
 
     snapshot = {
-        "date": "2026-10-13", "status": "SOURCE_SNAPSHOT_AVAILABLE",
+        "date": "2026-10-13",
+        "status": "SOURCE_SNAPSHOT_AVAILABLE",
         "source": "akshare.stock_zh_a_st_em",
         "fetched_at_cst": "2026-10-13T07:00:00+08:00",
-        "source_row_count": 240, "st_symbols": ["SH600000"],
+        "source_row_count": 240,
+        "st_symbols": ["SH600000"],
     }
     assert validate_verified_st_snapshot(snapshot, "2026-10-13") == {"SH600000"}
     for key, value in (
@@ -377,3 +375,21 @@ def test_mvp_contract_top10_champion_happy_path(tmp_path):
     assert meta["publication"]["status"] == "PASS"
     assert len(meta["signal_lineage"]["display_top20_instruments"]) == 10
     assert meta["production_lineage"]["profile"] == "c98856b4_top10_drop1"
+
+
+def test_all_current_market_profiles_are_frozen_canonical_profiles():
+    from csi1000_mvp_contract import validate_production_lineage
+    from csi1000_production_config import profile_manifest
+
+    for profile in (
+        "c98856b4_top10_drop1",
+        "59b93929_top10_drop1_10d",
+        "raw10d_c98856b4_top20_drop2_20d",
+    ):
+        manifest = profile_manifest(profile)
+        assert validate_production_lineage(manifest, manifest)["profile"] == profile
+
+    unknown = profile_manifest("c98856b4_top10_drop1")
+    unknown["profile"] = "not_a_frozen_profile"
+    with pytest.raises(ValueError, match="frozen canonical profile"):
+        validate_production_lineage(unknown, unknown)
