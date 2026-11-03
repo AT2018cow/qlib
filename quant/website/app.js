@@ -256,7 +256,6 @@ async function loadDateContext(date, fresh = false, pool = currentPool) {
 // Frontend trust boundary: only a validated forward-only artifact may
 // produce a numerical return. Never silently turn missing/null data into 0%.
 const FORWARD_START = '2026-09-30';
-const LEGACY_FORWARD_START = '2026-10-12';
 
 function dateKeyToUTC(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return NaN;
@@ -266,7 +265,7 @@ function dateKeyToUTC(value) {
 
 function normalizeForwardPerformance(raw) {
   const invalid = { status: 'invalid' };
-  const allowedStart = raw && (raw.start_date === FORWARD_START || raw.start_date === LEGACY_FORWARD_START);
+  const allowedStart = raw && raw.start_date === FORWARD_START;
   if (!allowedStart || !Array.isArray(raw.points)) return invalid;
   const stModes = ['ST_IGNORED_REFERENCE_ONLY', 'ST_VERIFIED_PREOPEN'];
   if (raw.execution_st_policy != null &&

@@ -60,13 +60,11 @@ def test_historical_chinext_files_are_not_deleted_by_runtime():
 def test_methodology_tracks_current_frozen_stage_b_contract():
     page = (ROOT / "quant" / "website" / "methodology.html").read_text()
     for marker in (
-        "2025-01-02",
         "2026-09-30",
+        "2026-11-03",
         "研究账本口径",
         "不因事后局部行情波动回溯修改参数或重选模型",
         "2026-09-18",
-        "2026-10-12",
-        "2026-10-15",
         "1000 只成分股",
         "涨跌停与 ST 规则",
         "自动化数据校验与免责声明",
@@ -109,12 +107,12 @@ def test_rebalance_distinguishes_drop1_sells_from_ranked_out_holdings():
     assert ".rebalance-grid" in styles
 
 
-def test_forward_performance_panel_is_forward_only_from_20261012():
+def test_forward_performance_panel_is_forward_only_from_current_inception():
     app = (ROOT / "quant" / "website" / "app.js").read_text()
     methodology = (ROOT / "quant" / "website" / "methodology.html").read_text()
     styles = (ROOT / "quant" / "website" / "styles.css").read_text()
     assert "csi1000_forward_performance.json" in app
-    assert "2026-10-12" in app
+    assert "LEGACY_FORWARD_START" not in app
     assert "策略累计收益" in app
     assert "performance-panel" in app
     assert "loadForwardFor(pool, dateInfo.date, request)" in app
@@ -123,9 +121,6 @@ def test_forward_performance_panel_is_forward_only_from_20261012():
     assert 'id="ranking-date"' not in app
     assert ".ranking-return" not in styles
     assert ".performance-chart" in styles
-    assert "2026-10-12" in methodology
-    assert "2026-10-15" in methodology
-    assert "历史回测收益拼接或回填" in methodology
 
 
 def test_pages_builds_forward_performance_artifact():
@@ -328,3 +323,19 @@ def test_centered_boot_loader_and_consolidated_bottom_governance_card():
     assert ".pool-switcher {" in styles
 
 
+
+
+def test_public_site_does_not_mention_legacy_strategy_or_account():
+    for filename in ("index.html", "methodology.html", "app.js"):
+        text = (ROOT / "quant" / "website" / filename).read_text()
+        for phrase in (
+            "旧 100M",
+            "旧版策略",
+            "旧策略",
+            "旧账户",
+            "上一代",
+            "五起点",
+            "2026-10-12",
+            "2026-10-15",
+        ):
+            assert phrase not in text, f"{filename} exposes legacy copy: {phrase}"
