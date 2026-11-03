@@ -1,29 +1,34 @@
 # 网站交接文档（当前状态）
 
-> 2026-10-08：旧的双池网站交接已被当前 CSI1000-only 页面取代。
-> 当前网站专用交接请读 [23-web-ui-handoff-20261008.md](23-web-ui-handoff-20261008.md)。原 [21 综合交接](21-next-conversation-handoff-star-chinext-20261008.md) 只作历史背景参考；STAR/ChiNext 模型研究另有 [22 研究交接](22-handoff-star-chinext-research-20261008.md)。
+> 2026-11-03 更新：网站已从 CSI1000-only 切换为 **CSI300 / CSI500 / CSI1000 三市场**；每市场独立 100 万账户，分市场 TopK/DropN。
+> 旧的 `23-web-ui-handoff-20261008.md` 只作历史背景；当前以本文件、`AGENTS.md` 和 `quant/website/methodology.html` 为准。
 
 ## 当前公开页面
 
-- 只展示 CSI1000 每日榜单。
-- ChiNext 旧模型的每日更新和公开 tab 已暂停。
-- 历史 signal artifacts 保留为只读记录。
-- `website/index.html` + `website/app.js` + `website/styles.css` 为纯静态前端。
-- `website/methodology.html` 只展示当前生产方法、Stage-B 证据和风险边界；不展示私有环境/凭据信息或不必要的内部运行标识。
-- 深色响应式布局：桌面显示表格，窄屏显示移动卡片。
+- 同时展示沪深300、中证500、中证1000 三个股票池，默认沪深300；
+- 每个市场独立榜单、独立 1M 模拟账户、独立累计收益；
+- 当前生产规则：CSI300 10d Top10/Drop1、CSI500 20d Top20/Drop2、CSI1000 20d Top10/Drop1；
+- 账户口径：2026-09-30 起算，2026-10-08–2026-11-02 为 point-in-time 回补，2026-11-03 起真实前向 paper；
+- ChiNext 日更与公开入口继续暂停；历史 ChiNext artifacts 保留只读；
+- `quant/website/index.html` + `app.js` + `styles.css` 为纯静态前端；
+- `quant/website/methodology.html` 展示当前 1M 全周期表、2025–2026 扩展观察、执行规则与风险边界；
+- 深色响应式布局：桌面表格，窄屏移动卡片。
 
-## Pages 发布链路
+## 数据与发布链路
 
-`.github/workflows/website-deploy.yml` 在 `website/**` 或 `results/signals/**` 变化时构建静态站点。
-构建必须把 HTML、JavaScript 和 CSS 一起复制到 Pages artifact，并在上传前检查关键文件存在。
-PR #31 修复了曾经遗漏 `styles.css`、导致线上退化为浏览器默认白底页面的问题。
+- 公开信号：`quant/data/signals/`（CSV、chart、paper、metadata、forward/backfill JSON、日期索引）；
+- 旧 100M 数据：`quant/data/signals/archive/legacy_100m_2026-10/`，不进入公开索引；
+- Pages workflow：`.github/workflows/website-deploy.yml`，在 `quant/data/signals/**` 或 `quant/website/**` 变化时构建；
+- 构建必须把 HTML、JS、CSS、图标和 signals 一起复制到 `_site`，并在上传前检查关键文件存在；
+- forward performance 由回补前缀 + live ledger 合并生成，不能再退回“等待首个估值”。
 
 ## 不应回退的行为
 
-- 不恢复旧 `?pool=chinext` 公共入口，除非 ChiNext 新模型已经通过明确的 production gate。
-- 不把旧 ChiNext 历史榜单自动解释为当前有效信号。
-- 不把内部审计 hash、运行环境名或部署凭据展示在公共方法论页面。
-- 不删除历史 artifacts；当前页面只控制展示范围。
+- 不恢复 CSI1000-only 页面或旧 `?pool=chinext` 公共入口；
+- 不把旧 100M 账户或旧 profile 数据重新拼接到当前 1M 曲线；
+- 不把内部审计 hash、运行环境名或部署凭据展示在公共方法论页面；
+- 不删除历史 artifacts；当前页面只控制展示范围；
+- 不把 2025–2026 扩展观察写成选型依据；它只用于策略锁定后的近期表现说明。
 
 ## 后续启用新 pool 时
 

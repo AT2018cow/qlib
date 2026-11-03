@@ -1,48 +1,49 @@
-# 13 — 生产账户 1M 切换方案（已随新策略激活）
+# 13 — 生产账户 1M 切换（已激活）
 
-> **状态：已激活。** v21 已部署；当前生产为 CSI300 B/S01 10d、CSI500 B/S02 20d、CSI1000 S01 20d，三市场各 1M；下一个交易日 2026-11-03 首次发布。
+> **状态：已激活。** 2026-11-02 切换；三市场各 100 万；`2026-10-08`–`2026-11-02` 为 point-in-time 回补，`2026-11-03` 首次真实前向发布并已成功完成。
 
 ## 1. 决策
 
-- 生产/网站/后续研究统一使用 **100 万元/市场**（仅在新策略上线时激活）；
-- 生产已随新策略切换为 **1M**；旧 100M/S01 账户归档只读；
+- 生产/网站/后续研究统一使用 **100 万元/市场**；
 - 三个市场仍是独立账户，不合并、不等权；
-- 旧 100M 账户历史**不缩放**，新策略上线时归档只读；
+- 旧 100M 账户历史**不缩放**，归档只读；
 - 新账户使用新 lineage，从 **NAV=1.0000** 重新开始；
-- 切换日：与新策略上线同日，日期未定。
+- 新账户从 `2026-09-30` 收盘起算，`2026-10-08` 开盘首次建仓。
 
 ## 2. 新 lineage
 
 | 市场 | 旧 100M lineage（归档） | 新 1M lineage |
 |---|---|---|
 | CSI1000 | `c98856b4_top10_drop1_canonical` | `c98856b4_top10_drop1_canonical_1m` |
-| CSI500 | `raw10d_c98856b4_top10_drop1_canonical` | `raw10d_c98856b4_top10_drop1_canonical_1m` |
-| CSI300 | `59b93929_top10_drop1_canonical` | `59b93929_top10_drop1_canonical_1m` |
+| CSI500 | `raw10d_c98856b4_top10_drop1_canonical` | `raw10d_c98856b4_top20_drop2_20d_canonical_1m` |
+| CSI300 | `59b93929_top10_drop1_canonical` | `59b93929_top10_drop1_10d_canonical_1m` |
 
 旧 lineage 的 `paper_portfolio/<market>.json` 保留在 Volume，不删除、不缩放；新 lineage 写入 `<market>__..._1m.json`。
 
 ## 3. 代码变更
 
 - `csi1000_production_config.py`：
-  - 新增 `PAPER_INITIAL_CASH = 1_000_000`；
+  - `PAPER_INITIAL_CASH = 1_000_000`；
   - canonical lineages 改为 `_1m`；
-  - 新增 `LEGACY_CANONICAL_PAPER_LINEAGES_BY_MARKET` 供归档/审计识别。
+  - 新增 `LEGACY_CANONICAL_PAPER_LINEAGES_BY_MARKET` 供归档/审计识别；
+  - 新增按市场 profile/topk/nd 映射。
 - `modal_qlib_cn_a10g.py`：
-  - 新 paper account 使用 `PAPER_INITIAL_CASH`，不再硬编码 100M。
+  - 新 paper account 使用 `PAPER_INITIAL_CASH`，不再硬编码 100M；
+  - 三市场按各自 profile/topk/nd 生成信号与 paper。
 - `forward_performance.py`：
   - canonical lineage 改为 `_1m`，旧 lineage 保留在 `CANONICAL_LINEAGES` 中作为 legacy。
 - `website/app.js`：
-  - profile → lineage 映射改为 `_1m`。
+  - profile → lineage 映射改为 `_1m`；
+  - 按市场显示 Top10/Top20 与 DropN。
 - 审计/lineage 测试更新到 `_1m`。
 
 ## 4. 网站口径
 
-- 网站仍展示归一化 NAV，起点 1.0000；
-- 切换后不再拼接旧 100M 历史；
-- 方法论页应注明：
-  - 2026-10-15～2026-11-02 为旧 100M 账户；
-  - 2026-11-03 起为新的 1M 账户；
-  - 两段不连续，不能直接比较累计收益。
+- 网站展示归一化 NAV，起点 1.0000；
+- 当前展示 `2026-09-30` 起的三市场 1M 连续账户；
+- `2026-10-08`–`2026-11-02` 为回补，`2026-11-03` 起为真实前向 paper；
+- 旧 100M 账户归档只读，不展示、不拼接；
+- 方法论页展示 1M 全周期表与 2025–2026 扩展观察。
 
 ## 5. D8 容量
 
@@ -66,15 +67,17 @@
 
 1. 代码 review + 测试通过；
 2. 归档旧 100M state（只读副本/SHA 记录）；
-3. 部署 `quant/code/production/modal_qlib_cn_a10g.py`；
-4. 下一个交易日运行，创建新 1M lineage 状态；
-5. 确认新 `paper_portfolio` artifact 的 lineage、initial_cash、NAV=1.0；
-6. 网站切换到新 lineage；旧历史标记为 archived；
+3. 部署 `quant/code/production/modal_qlib_cn_a10g.py`（v21 → v22 修复 profile gate）；
+4. `2026-11-02` 回补并入同一 1M 账户；
+5. `2026-11-03` 首个真实前向 paper 发布成功；
+6. 网站切换到新 lineage；旧历史归档；
 7. 观察 4 周，不回溯、不拼接旧曲线。
 
 ## 7. 研究口径
 
 - 历史 G1/G2 结果仍在 100M 口径下，保留可复现记录；
+- 当前 1M 全周期复核见 `19-g2-1m-account-replay-20261103.md`；
+- 2025–2026 1M 扩展见 `20-g2-1m-2026-holdout-20261103.md`；
 - 新研究默认使用 1M；
 - 收益率在忽略整手/最低佣金时近似不变，但容量、成交和成本不同；
 - 不应把 1M 的 D8 通过写成 1 亿容量通过。
@@ -84,7 +87,8 @@
 - [x] 配置/lineage 代码
 - [x] 审计/lineage 测试
 - [x] 网站 lineage 映射
-- [ ] 部署（需操作员确认时点）
-- [ ] 首个 1M artifact 校验
-- [ ] 网站 cutover 公告
-- [ ] D6 相位/seed（S02 仍是 v2 候选）
+- [x] 部署
+- [x] 首个 1M artifact 校验
+- [x] 网站 cutover
+- [x] 1M 全周期与 2025–2026 扩展复核
+- [x] CSI1000 D6 相位/seed 复核（S02 不采用）

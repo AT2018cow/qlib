@@ -1,5 +1,8 @@
 # 42 — CSI1000 研究型选股 MVP：独立账本 PASS 后的新对话交接（2026-10-11）
 
+> **历史文档（2026-10-11）：** 本文的 CSI1000-only / Stage-B / Top20 口径已被 2026-11-02 三市场独立 1M 新 profile 取代；当前口径见 `AGENTS.md`、`HANDOVER-website.md` 与 `quant/docs/08-current-window-backtest/16-production-cutover-20261102.md`、`19-g2-1m-account-replay-20261103.md`、`20-g2-1m-2026-holdout-20261103.md`。
+
+
 > **这是当前唯一的新对话启动入口**，取代第 40/41 号文档中已过时的“账本尚未通过”状态说明。那些文档和 PR #52–55 仍是审计过程/实验手册，不是当前结论。**主目标是尽快交付可靠的每日 CSI1000 Top20 研究选股 + paper + 网站链路**，不是自动实盘交易，也不是继续无期限审计历史收益。
 
 ## 0. 先核对当前 GitHub main，不依赖旧 SHA

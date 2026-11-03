@@ -1,5 +1,8 @@
 # 45 — CSI1000 Audit Residual & Strategy Decision：独立新会话交接（2026-10-11）
 
+> **历史文档（2026-10-11）：** 本文的 CSI1000-only / Stage-B / Top20 口径已被 2026-11-02 三市场独立 1M 新 profile 取代；当前口径见 `AGENTS.md`、`HANDOVER-website.md` 与 `quant/docs/08-current-window-backtest/16-production-cutover-20261102.md`、`19-g2-1m-account-replay-20261103.md`、`20-g2-1m-2026-holdout-20261103.md`。
+
+
 > **工作线 B / 审计遗留与策略决策交接入口。** 本文不替代 [42](42-csi1000-mvp-handoff-after-ledger-pass-20261011.md) 的 Audit Closure Register；不阻塞 [44](44-csi1000-mvp-forward-operations-handoff-20261011.md) 的每日 MVP 运行。目标是将遗留风险整理为可判定的证据，再决定**是否需要**新策略研究，而非预设重调参。
 
 ## 冻结事实与禁止事项

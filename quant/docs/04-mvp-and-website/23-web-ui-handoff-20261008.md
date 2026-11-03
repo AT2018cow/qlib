@@ -1,3 +1,5 @@
+> **历史文档（2026-10-08）：** 本文的 CSI1000-only、Top20、2026-10-12 forward 口径已失效。2026-11-02 起网站为 CSI300/CSI500/CSI1000 三市场、每市场独立 1M、分市场 TopK/DropN；当前口径见 `HANDOVER-website.md`、`AGENTS.md` 与 `quant/website/methodology.html`。
+
 # 23 — 独立对话交接：网页体验与数据展示优化（2026-10-08）
 
 > **本文件是“继续优化网页”对话的唯一启动入口。**

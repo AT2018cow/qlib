@@ -1,5 +1,8 @@
 # 46 — CSI1000 forward MVP actual-verification checkpoint (2026-10-11 CST)
 
+> **历史文档（2026-10-11）：** 本文的 CSI1000-only / Stage-B / Top20 口径已被 2026-11-02 三市场独立 1M 新 profile 取代；当前口径见 `AGENTS.md`、`HANDOVER-website.md` 与 `quant/docs/08-current-window-backtest/16-production-cutover-20261102.md`、`19-g2-1m-account-replay-20261103.md`、`20-g2-1m-2026-holdout-20261103.md`。
+
+
 > **Working line A only.** The entry is [44](44-csi1000-mvp-forward-operations-handoff-20261011.md), bounded by [42](42-csi1000-mvp-handoff-after-ledger-pass-20261011.md) Audit Closure and [43](43-csi1000-mvp-daily-publication-contract-20261011.md) publication runbook. This checkpoint records *observed* results vs things not accessible from this session. It is not a production Modal attestation. All times below are Asia/Shanghai unless stated otherwise.
 
 ## Verified GitHub baseline

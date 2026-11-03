@@ -28,13 +28,13 @@
 - **Clean separation from upstream Qlib**: All custom code, docs, historical strategy data, website, and tests live under **`quant/`** (`quant/code/`, `quant/docs/`, `quant/data/`, `quant/website/`, `quant/tests/`), leaving `qlib/`, `docs/`, `scripts/`, `tests/`, `examples/` pure upstream Qlib.
 - **Read the strategy handbook & handoffs first**: `quant/docs/00-strategy-handbook/STRATEGY_ATLAS.md` for the full strategy comparison & data guide; `quant/docs/05-round2-layered-search/60-csi1000-two-round-strategy-research-final-report-20261015.md` for the Round-1 & Round-2 retrospective; `quant/docs/04-mvp-and-website/` for MVP/website contracts.
 - **Current CSI300 / CSI500 / CSI1000 production profiles**:
-  - CSI300 (`csi300`): `59b93929_top10_drop1` (`m01_59b93929` 20d + `Top10/Drop1`, lineage `59b93929_top10_drop1_canonical`)
-  - CSI500 (`csi500`): `raw10d_c98856b4_top10_drop1` (`m10_raw10d_c98856b4` 10d + `Top10/Drop1`, lineage `raw10d_c98856b4_top10_drop1_canonical`)
-  - CSI1000 (`csi1000`): `c98856b4_top10_drop1` (`c98856b4` 20d + `Top10/Drop1`, lineage `c98856b4_top10_drop1_canonical`)
+  - CSI300 (`csi300`): `59b93929_top10_drop1_10d` (`m01_59b93929` 10d + `Top10/Drop1`, lineage `59b93929_top10_drop1_10d_canonical_1m`)
+  - CSI500 (`csi500`): `raw10d_c98856b4_top20_drop2_20d` (`m10_raw10d_c98856b4` 20d + `Top20/Drop2`, lineage `raw10d_c98856b4_top20_drop2_20d_canonical_1m`)
+  - CSI1000 (`csi1000`): `c98856b4_top10_drop1` (`c98856b4` 20d + `Top10/Drop1`, lineage `c98856b4_top10_drop1_canonical_1m`)
   - Defined in `quant/code/production/csi1000_production_config.py`.
 - **ChiNext is paused in production**: research code/history remain, but scheduled daily publication and the public website entry are disabled until a new model passes a separately versioned validation gate.
 - **STAR is not rejected**: its corrected prediction reproducibility gate has not passed, so alpha is unknown. Repair reproducibility/data lineage before interpreting profitability.
-- **Current execution contract**: T-close scoring -> T+1-open execution, continuous account, Top10/Drop1 across CSI300/CSI500/CSI1000, board/date-aware CNY tick limits, no 5% high-open overlay, canonical geometric portfolio metrics, deterministic LightGBM.
+- **Current account/execution contract**: three independent 1M accounts (2026-09-30 start; 2026-10-08–2026-11-02 point-in-time backfill; 2026-11-03 live paper), T-close scoring -> T+1-open execution, per-market TopK/DropN (CSI300/CSI1000 Top10/Drop1, CSI500 Top20/Drop2), board/date-aware CNY tick limits, 5bp buy / 15bp sell with CNY 5 minimum, no 5% high-open overlay, 20-session retrain, deterministic LightGBM.
 - `quant/code/production/modal_qlib_cn_a10g.py` contains the production daily path and historical research helpers. Current scheduled production publishes CSI300, CSI500, and CSI1000 daily signals to `quant/data/signals/`.
 - `quant/code/execution/qlib_audit_fixes.py` / `quant/code/execution/qlib_live_retrain.py` contain audited label-maturity/purge and 20-session retrain logic. Re-run `pytest -q quant/tests` after any change.
 - `quant/code/execution/board_rules.py` / `quant/code/execution/board_execution.py` contain STAR/ChiNext board-aware rules and universe utilities. Preserve date-sensitive limit rules and listing-day exemptions.

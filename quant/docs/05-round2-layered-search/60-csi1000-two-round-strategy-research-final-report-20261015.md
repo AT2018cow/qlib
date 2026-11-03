@@ -1,5 +1,8 @@
 # 60 — CSI1000 两轮策略择优、收益审计纠错与分层研究终局报告（2026-10-15）
 
+> **历史记录（2026-10-15）：** 本文的“生产不切换”是当时结论；2026-11-02 已切换为三市场独立 1M 新 profile（CSI300 10d Top10/Drop1、CSI500 20d Top20/Drop2、CSI1000 20d Top10/Drop1）。当前口径见 `quant/docs/08-current-window-backtest/16-production-cutover-20261102.md`、`19-g2-1m-account-replay-20261103.md`、`20-g2-1m-2026-holdout-20261103.md`。
+
+
 > **性质：最终工作总结 / 历史实验与方法学报告 / 只读研究归档。** 贯穿 2026-10-06～2026-10-15 的首轮 Stage-A/Stage-B 选优、2026-10-09～11 的交易收益复盘及其后 P0、L1、L2、L3、L4 第二轮分层搜索。这里归纳既有合并代码、原始审计、操作者正式执行评论和审查裁决；**不是新的策略研究、统计检验、重新训练或生产切换批准**。报告写入 GitHub 不重新执行 Modal，不重写原始数据、排名或历史结果。
 
 **最终研究状态：`TWO_ROUNDS_DOCUMENTED / OLD_STAGE_B_EXECUTION_ASSUMPTION_INVALID / SECOND_ROUND_L4_0_OF_3_QUALIFIED / RESEARCH_CLOSED_NEGATIVE / KEEP_EXISTING_PRODUCTION_WINNER`。**

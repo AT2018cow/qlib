@@ -1,5 +1,8 @@
 # CSI1000 research MVP daily publication contract
 
+> **历史文档（2026-10-11）：** 本文的 CSI1000-only / Stage-B / Top20 口径已被 2026-11-02 三市场独立 1M 新 profile 取代；当前口径见 `AGENTS.md`、`HANDOVER-website.md` 与 `quant/docs/08-current-window-backtest/16-production-cutover-20261102.md`、`19-g2-1m-account-replay-20261103.md`、`20-g2-1m-2026-holdout-20261103.md`。
+
+
 Status: implementation runbook for the forward research MVP.  The sole
 handoff entry remains
 `docs/experiments/42-csi1000-mvp-handoff-after-ledger-pass-20261011.md`.
