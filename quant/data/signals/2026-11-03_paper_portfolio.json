@@ -1,0 +1,161 @@
+{
+  "state_version": 2,
+  "trading_calendar": {
+    "source": "akshare.tool_trade_date_hist_sina",
+    "through": "2026-11-03",
+    "dates": [
+      "2026-10-12",
+      "2026-10-13",
+      "2026-10-14",
+      "2026-10-15",
+      "2026-10-16",
+      "2026-10-19",
+      "2026-10-20",
+      "2026-10-21",
+      "2026-10-22",
+      "2026-10-23",
+      "2026-10-26",
+      "2026-10-27",
+      "2026-10-28",
+      "2026-10-29",
+      "2026-10-30",
+      "2026-11-02",
+      "2026-11-03"
+    ]
+  },
+  "market": "csi1000",
+  "paper_lineage": "c98856b4_top10_drop1_canonical_1m",
+  "production_lineage": {
+    "candidate_id": "c98856b460aba687640d422e85a82a545bf5b6ca932e906a180699e0f6cad19b",
+    "stage_a_rank": 8,
+    "topk": 10,
+    "nd": 1,
+    "label_horizon": 20,
+    "model_params": {
+      "learning_rate": 0.05,
+      "colsample_bytree": 1.0,
+      "lambda_l1": 205.6999,
+      "lambda_l2": 200.0,
+      "max_depth": 10,
+      "num_leaves": 250,
+      "min_data_in_leaf": 200
+    },
+    "model_config_sha256": "d49e893ad37c821a6a092fb17baf7ee29c9ff71289bbeb1205132e34e3854c50",
+    "config_sha256": "1ca6fae56e8c4e40c73b1a45866825930aecba36ec529544a50da5408c93d317",
+    "profile": "c98856b4_top10_drop1",
+    "contract_version": "csi1000_stage_b_forward_v1",
+    "stage_b_result_commit": "7a2676397b0f8e6f69c0bffc98d1764647f644ac",
+    "stage_b_snapshot_token": "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1",
+    "stage_b_result_path": "quant/data/round1_stage_ab/csi1000_stage_b/stage_b_full_51756897fc752304.json",
+    "lightgbm_num_threads": 20
+  },
+  "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
+  "signal_data_date": "2026-11-02",
+  "usage_date": "2026-11-03",
+  "execution_report": null,
+  "pending_orders": {
+    "signal_date": "2026-11-02",
+    "execution_date": "2026-11-03",
+    "sell": [
+      "SH688068"
+    ],
+    "buy": [
+      "SH601020"
+    ]
+  },
+  "cash": 6803.3,
+  "n_positions": 10,
+  "positions": {
+    "SH603516": {
+      "shares": 16121.818726166177,
+      "entry_price": 4.19059419631958,
+      "last_price": 4.19059419631958,
+      "entry_date": "2026-11-02",
+      "cost_basis": 67559.99998798831,
+      "holding_days": 1
+    },
+    "SH605376": {
+      "shares": 14494.129854833669,
+      "entry_price": 4.450386047363281,
+      "last_price": 4.450386047363281,
+      "entry_date": "2026-11-02",
+      "cost_basis": 64504.47327462334,
+      "holding_days": 1
+    },
+    "SH688068": {
+      "shares": 63195.32427130917,
+      "entry_price": 1.501622200012207,
+      "last_price": 1.501622200012207,
+      "entry_date": "2026-11-02",
+      "cost_basis": 94895.5018627681,
+      "holding_days": 1
+    },
+    "SH688147": {
+      "shares": 43685.289550744994,
+      "entry_price": 2.0714025497436523,
+      "last_price": 2.0714025497436523,
+      "entry_date": "2026-11-02",
+      "cost_basis": 90489.82016170291,
+      "holding_days": 1
+    },
+    "SH688362": {
+      "shares": 62901.5163596656,
+      "entry_price": 1.2416777610778809,
+      "last_price": 1.2416777610778809,
+      "entry_date": "2026-11-02",
+      "cost_basis": 78103.41400187327,
+      "holding_days": 1
+    },
+    "SH688409": {
+      "shares": 56216.52198491776,
+      "entry_price": 1.5550614595413208,
+      "last_price": 1.5550614595413208,
+      "entry_date": "2026-11-02",
+      "cost_basis": 87420.14672820296,
+      "holding_days": 1
+    },
+    "SZ000811": {
+      "shares": 2701.9754750473517,
+      "entry_price": 27.53504180908203,
+      "last_price": 27.53504180908203,
+      "entry_date": "2026-11-02",
+      "cost_basis": 74399.00767254311,
+      "holding_days": 1
+    },
+    "SZ002484": {
+      "shares": 11060.598542054104,
+      "entry_price": 6.928720474243164,
+      "last_price": 6.928720474243164,
+      "entry_date": "2026-11-02",
+      "cost_basis": 76635.79557571436,
+      "holding_days": 1
+    },
+    "SZ300870": {
+      "shares": 35269.83556165937,
+      "entry_price": 1.698235273361206,
+      "last_price": 1.698235273361206,
+      "entry_date": "2026-11-02",
+      "cost_basis": 59896.478836459384,
+      "holding_days": 1
+    },
+    "SZ301345": {
+      "shares": 26687.405596079017,
+      "entry_price": 2.2451415061950684,
+      "last_price": 2.2451415061950684,
+      "entry_date": "2026-11-02",
+      "cost_basis": 59917.00199641954,
+      "holding_days": 1
+    }
+  },
+  "model_fit_asof": "2026-11-02",
+  "training_contract": {
+    "fit_asof": "2026-11-02",
+    "horizon": 20,
+    "train_start": "2016-01-01",
+    "train_end": "2025-08-13",
+    "valid_start": "2025-09-11",
+    "valid_end": "2026-09-24"
+  },
+  "provider_calendar_end": "2026-11-02",
+  "note": "Orders are planned before the execution-day open and settled on a later data refresh using the recorded open. If provider data is stale, the prior pending order remains frozen and no new paper order is invented."
+}
