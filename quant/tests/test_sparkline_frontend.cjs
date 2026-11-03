@@ -111,14 +111,11 @@ test('forward awaiting state is not confused with a zero return', () => {
   assert.equal(normalizeForwardPerformance({ ...waiting, cumulative_return: 0 }).status, 'invalid');
   renderForwardPerformance(waiting);
   assert.equal(nodes.get('forward-return').textContent, '待开始');
-  assert.equal(nodes.get('ranking-return').textContent, '累计收益 待开始');
   renderForwardPerformance({ status: 'unavailable' });
   assert.equal(nodes.get('forward-return').textContent, '暂不可用');
-  assert.equal(nodes.get('ranking-return').textContent, '累计收益 暂不可用');
   assert.match(nodes.get('forward-chart').innerHTML, /无法读取/);
   renderForwardPerformance({ status: 'invalid' });
   assert.equal(nodes.get('forward-return').textContent, '数据异常');
-  assert.equal(nodes.get('ranking-return').textContent, '累计收益 数据异常');
   assert.doesNotMatch(nodes.get('forward-chart').innerHTML, /\+0\.00%/);
 });
 
@@ -145,8 +142,6 @@ test('forward return follows the selected historical ranking date', () => {
   };
   renderForwardPerformance(multiForward, '2026-10-13');
   assert.equal(nodes.get('forward-return').textContent, '+5.00%');
-  assert.equal(nodes.get('ranking-return').textContent, '累计收益 +5.00%');
-  assert.match(nodes.get('ranking-return').className, /gain/);
   assert.match(nodes.get('forward-latest').textContent, /估值日 2026\.10\.13/);
   assert.match(nodes.get('forward-status').textContent, /截至 2026\.10\.13/);
   assert.match(nodes.get('forward-chart').innerHTML, /2026\.10\.13 · 所选日估值/);
@@ -158,19 +153,16 @@ test('forward return follows the selected historical ranking date', () => {
 
   renderForwardPerformance(multiForward, '2026-09-29');
   assert.equal(nodes.get('forward-return').textContent, '未启用');
-  assert.equal(nodes.get('ranking-return').textContent, '累计收益 未启用');
-  assert.match(nodes.get('forward-chart').innerHTML, /早于新策略启用日/);
+  assert.match(nodes.get('forward-chart').innerHTML, /早于启用日/);
 
   renderForwardPerformance(multiForward, '2026-10-15');
   assert.equal(nodes.get('forward-return').textContent, '+6.00%');
-  assert.equal(nodes.get('ranking-return').textContent, '累计收益 待结算');
   assert.match(nodes.get('forward-latest').textContent, /待结算/);
-  assert.match(nodes.get('forward-latest').textContent, /最近估值 2026\.10\.14/);
+  assert.match(nodes.get('forward-latest').textContent, /最近 2026\.10\.14/);
   assert.match(nodes.get('forward-chart').innerHTML, /2026\.10\.14 · 最近估值/);
 
   renderForwardPerformance(multiForward);
   assert.equal(nodes.get('forward-return').textContent, '+6.00%');
-  assert.equal(nodes.get('ranking-return').textContent, '累计收益 +6.00%');
   assert.match(nodes.get('forward-latest').textContent, /最新估值 2026\.10\.14/);
 });
 
@@ -180,7 +172,8 @@ test('date selection is latest-request-wins and the daily ranking leads the arch
   assert.ok(source.indexOf('id="ranking"') < source.indexOf('id="history"'));
   assert.ok(source.indexOf('id="history"') < source.indexOf('id="performance"'));
   assert.ok(source.indexOf('id="signal-rows"') < source.indexOf('id="history"'));
-  assert.match(source, /document.getElementById\('ranking-date'\).textContent = formatDate\(dateInfo.date\)/);
+  assert.doesNotMatch(source, /id="ranking-date"/);
+  assert.doesNotMatch(source, /id="ranking-return"/);
   assert.doesNotMatch(source, /getElementById\('ranking'\).scrollIntoView/);
   const css = fs.readFileSync(path.join(root, 'website', 'styles.css'), 'utf8');
   assert.match(css, /@media \(min-width: 701px\) and \(max-width: 860px\)/);
@@ -269,7 +262,7 @@ test('ranking change labels reflect position, not paper account holdings', () =>
   assert.match(css, /\.tag-neutral\s*\{/);
   assert.doesNotMatch(css, /\.tag-hold\s*\{/);
   assert.match(source, /<th>排名变化<\/th>/);
-  assert.match(source, /排名变化对比上一期可用榜单，不代表实际持仓/);
+  assert.match(source, /与上一期可用榜单排名相同/);
 });
 
 
@@ -364,10 +357,10 @@ test('rebalance separates Drop1 sells from ranked-out holdings', () => {
   assert.match(body, /SH600004/);
   assert.match(body, /SH600005/);
   assert.match(body, /上期未在榜/);
-  assert.match(nodes.get('rebalance-note').textContent, /单日最多调出 1 只/);
+  assert.match(nodes.get('rebalance-note').textContent, /最多调出 1 只/);
   assert.match(nodes.get('rebalance-note').textContent, /2026-10-16/);
   renderRebalance(fallback, '2026-10-16');
-  assert.match(nodes.get('rebalance-body').innerHTML, /调仓计划暂不可用/);
+  assert.match(nodes.get('rebalance-body').innerHTML, /退出 Top 10/);
   assert.doesNotMatch(nodes.get('rebalance-body').innerHTML, /计划调出/);
   renderRebalance(buildRebalance(current, {}, null, null, '2026-10-19'), null);
   assert.equal(nodes.get('rebalance').hidden, true);
@@ -379,9 +372,7 @@ test('rebalance separates Drop1 sells from ranked-out holdings', () => {
   const historyStart = source.indexOf('id="history"');
   assert.ok(rankingStart >= 0 && rebalanceStart > rankingStart && historyStart > rebalanceStart);
   assert.match(source, /renderRebalance\(rebalance, prevDateInfo \? prevDateInfo\.date : null\)/);
-  assert.match(source, /单日最多调出 \$\{model\.nd \|\| 1\} 只/);
-  assert.match(source, /榜单新进只代表进入模型 Top \$\{currentPool\.topk\}/);
-  assert.match(source, /单日最多买入 \$\{currentPool\.nd\} 只/);
+  assert.match(source, /最多调出 \$\{model\.nd \|\| 1\} 只/);
   const css = fs.readFileSync(path.join(root, 'website', 'styles.css'), 'utf8');
   assert.match(css, /\.rebalance-block\[hidden\]\s*\{\s*display:\s*none;/);
   assert.match(css, /\.rebalance-grid\s*\{/);
@@ -411,9 +402,9 @@ test('ST-free forward NAV is explicitly shown as research reference', () => {
     ...ref, st_fallback_dates: [],
   }).status, 'invalid', 'outage date may not be hidden');
   renderForwardPerformance(ref);
-  assert.match(nodes.get('forward-status').textContent, /模拟净值跟踪 · 2026\.09\.30 起/);
+  assert.match(nodes.get('forward-status').textContent, /模拟账户 · 2026\.09\.30 起/);
   renderForwardPerformance(verified);
-  assert.match(nodes.get('forward-status').textContent, /模拟净值跟踪 · 2026\.09\.30 起/);
+  assert.match(nodes.get('forward-status').textContent, /模拟账户 · 2026\.09\.30 起/);
   assert.equal(nodes.get('forward-return').textContent, '+3.00%');
 });
 
@@ -435,7 +426,7 @@ test('mixed ST modes disclose exactly which forward dates skipped ST', () => {
   };
   assert.equal(normalizeForwardPerformance(mixed).status, 'active');
   renderForwardPerformance(mixed);
-  assert.match(nodes.get('forward-status').textContent, /模拟净值跟踪 · 2026\.09\.30 起/);
+  assert.match(nodes.get('forward-status').textContent, /模拟账户 · 2026\.09\.30 起/);
   assert.equal(normalizeForwardPerformance({
     ...mixed, st_fallback_dates: [],
   }).status, 'invalid');

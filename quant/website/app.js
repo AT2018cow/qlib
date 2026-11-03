@@ -68,8 +68,6 @@ let currentPool = getSavedPool();
 
 const PRODUCTION = {
   model: 'LightGBM · Alpha158 量价模型',
-  execution: 'T+1 开盘前生成 → T+1 开盘调仓',
-  retrain: '每 20 个交易日滚动重训',
 };
 
 function portfolioLabel(pool) {
@@ -386,13 +384,7 @@ function renderForwardPerformance(data, date = null) {
   const latest = document.getElementById('forward-latest');
   const chart = document.getElementById('forward-chart');
   const status = document.getElementById('forward-status');
-  const rankingReturn = document.getElementById('ranking-return');
   if (!value || !latest || !chart || !status) return;
-  const setRankingReturn = (text, klass = '') => {
-    if (!rankingReturn) return;
-    rankingReturn.textContent = text;
-    rankingReturn.className = 'ranking-return' + (klass ? ' ' + klass : '');
-  };
 
   value.className = 'performance-value';
   latest.className = 'performance-latest';
@@ -402,12 +394,11 @@ function renderForwardPerformance(data, date = null) {
     const invalid = data?.status === 'invalid';
     value.textContent = unavailable ? '暂不可用' : invalid ? '数据异常' : '待开始';
     latest.textContent = unavailable ? '收益文件加载失败' :
-      invalid ? '估值数据校验未通过' : '等待首个交易日收盘结算';
-    status.textContent = '模拟净值跟踪 · 2026.09.30 模拟账户起';
-    setRankingReturn(unavailable ? '累计收益 暂不可用' : invalid ? '累计收益 数据异常' : '累计收益 待开始');
-    const message = unavailable ? '暂时无法读取累计收益数据，请稍后重试。' :
-      invalid ? '累计收益数据不完整或不符合前向跟踪约定，已停止展示。' :
-      '从模拟账户启用（2026.09.30）开始记录，首个收盘估值将在下一交易日数据更新后显示。';
+      invalid ? '估值数据校验未通过' : '等待首个估值';
+    status.textContent = '模拟账户 · 2026.09.30 起';
+    const message = unavailable ? '暂时无法读取累计收益数据。' :
+      invalid ? '估值数据校验未通过，已停止展示。' :
+      '等待首个估值。';
     chart.innerHTML = '<div class="performance-empty" role="status">' + message + '</div>';
     return;
   }
@@ -429,10 +420,9 @@ function renderForwardPerformance(data, date = null) {
       selected = true;
     } else if (date < data.inception_date) {
       value.textContent = '未启用';
-      latest.textContent = `新策略于 ${formatDate(data.inception_date)} 启用`;
-      status.textContent = `模拟净值跟踪 · ${formatDate(data.inception_date)} 起`;
-      setRankingReturn('累计收益 未启用');
-      chart.innerHTML = '<div class="performance-empty" role="status">所选日期早于新策略启用日，暂无模拟净值。</div>';
+      latest.textContent = `${formatDate(data.inception_date)} 启用`;
+      status.textContent = `模拟账户 · ${formatDate(data.inception_date)} 起`;
+      chart.innerHTML = '<div class="performance-empty" role="status">所选日期早于启用日。</div>';
       return;
     } else {
       pendingKind = date > data.latest_date ? 'awaiting' : 'missing';
@@ -443,22 +433,18 @@ function renderForwardPerformance(data, date = null) {
   value.className = 'performance-value ' + (point.cumulative_return >= 0 ? 'gain' : 'loss');
   const labelDate = formatDate(point.date);
   latest.textContent = pendingKind === 'awaiting'
-    ? `所选日期 ${formatDate(date)} 待结算 · 最近估值 ${labelDate}`
+    ? `所选日 ${formatDate(date)} 待结算 · 最近 ${labelDate}`
     : pendingKind === 'missing'
-      ? `所选日期无估值 · 最近估值 ${labelDate}`
+      ? `所选日无估值 · 最近 ${labelDate}`
       : selected ? `估值日 ${labelDate}` : `最新估值 ${labelDate}`;
   if (stale) latest.textContent += ' · 可能滞后';
   if (stale) latest.classList.add('stale');
-  status.textContent = '模拟净值跟踪 · ' + formatDate(data.inception_date) + ' 起';
+  status.textContent = '模拟账户 · ' + formatDate(data.inception_date) + ' 起';
   if (selected) status.textContent += ' · 截至 ' + formatDate(point.date);
-  if (pendingKind === 'awaiting') status.textContent += ' · 所选日期待结算';
-  if (pendingKind === 'missing') status.textContent += ' · 所选日期无估值';
-  if (stale) status.textContent += ' · 请核对估值时效';
+  if (pendingKind === 'awaiting') status.textContent += ' · 待结算';
+  if (pendingKind === 'missing') status.textContent += ' · 无估值';
+  if (stale) status.textContent += ' · 可能滞后';
   if (stale) status.classList.add('stale');
-  if (pendingKind === 'awaiting') setRankingReturn('累计收益 待结算');
-  else if (pendingKind === 'missing') setRankingReturn('累计收益 无估值');
-  else setRankingReturn('累计收益 ' + formatReturn(point.cumulative_return),
-    point.cumulative_return >= 0 ? 'gain' : 'loss');
   chart.innerHTML = makePerformanceChart(chartPoints, 760, 180, lastLabel);
 }
 
@@ -727,19 +713,19 @@ function rebalanceBody(model) {
     body += heldOutsideHtml(
       model.heldOutside,
       `持仓中不在本期 Top ${topk}`,
-      `未触发 Drop${nd}；仍在模拟持仓，后续每日最多调出 ${nd} 只`
+      `未触发 Drop${nd} · 继续持有`
     );
   } else if (!model.planAvailable && model.exits.length) {
     body += heldOutsideHtml(
       model.exits,
       '榜单移出',
-      `调仓计划暂不可用；仅表示退出 Top ${topk}，不代表实际调出`
+      `退出 Top ${topk}，未调出`
     );
   } else if (model.planAvailable && !model.positionsAvailable && model.exits.length) {
     body += heldOutsideHtml(
       model.exits,
       '榜单移出',
-      `持仓数据暂不可用；仅表示退出 Top ${topk}，不代表实际调出`
+      '持仓数据不可用'
     );
   }
   return body;
@@ -759,11 +745,11 @@ function renderRebalance(model, prevDate) {
   section.hidden = false;
   if (body) body.innerHTML = rebalanceBody(model);
   if (note) {
-    const compare = prevDate ? `对比上一期榜单（${formatDate(prevDate)}）· ` : '';
+    const compare = prevDate ? `${formatDate(prevDate)} 对比 · ` : '';
     if (model.planAvailable) {
-      note.textContent = compare + `T+1 开盘执行 · 单日最多调出 ${model.nd || 1} 只${model.awaiting ? ' · 沿用待执行计划' : ''}`;
+      note.textContent = compare + `T+1 开盘 · 最多调出 ${model.nd || 1} 只${model.awaiting ? ' · 沿用待执行' : ''}`;
     } else {
-      note.textContent = compare + '调仓计划暂不可用，不代表实际调出';
+      note.textContent = compare + '调仓计划暂不可用';
     }
   }
 }
@@ -829,17 +815,15 @@ function pageShell(dates) {
           <div class="eyebrow"><span class="status-dot"></span> A股主流宽基量化多因子选股</div>
           <div class="pool-switcher" role="tablist" aria-label="选择指数股票池">${poolTabs}</div>
           <h1><span id="hero-pool-name">${currentPool.label}</span><span>每日选股信号</span></h1>
-          <p class="hero-lede" id="hero-lede">基于 LightGBM 与 158 维量价因子体系，经两轮模型超参筛选与持仓规则优选定型，每个交易日开盘前基于前一交易日收盘数据生成指数成分股预测 Top ${currentPool.topk}，供当日开盘调仓参考。</p>
+          <p class="hero-lede" id="hero-lede">LightGBM + Alpha158 量价模型，每日开盘前生成指数成分股 Top ${currentPool.topk} 信号。</p>
         </div>
         <aside class="protocol-card">
-          <h2>当前策略配置</h2>
+          <h2>当前策略</h2>
           <div class="protocol-list">
             <div class="protocol-row"><span>股票池</span><strong id="protocol-pool">${currentPool.label} (${currentPool.code})</strong></div>
             <div class="protocol-row"><span>模型</span><strong>${PRODUCTION.model}</strong></div>
             <div class="protocol-row"><span>目标</span><strong id="protocol-target">${currentPool.horizonDays} 交易日前瞻收益</strong></div>
             <div class="protocol-row"><span>组合</span><strong id="protocol-portfolio">${portfolioLabel(currentPool)}</strong></div>
-            <div class="protocol-row"><span>执行</span><strong>${PRODUCTION.execution}</strong></div>
-            <div class="protocol-row"><span>重训</span><strong>${PRODUCTION.retrain}</strong></div>
           </div>
         </aside>
       </section>
@@ -848,34 +832,27 @@ function pageShell(dates) {
         <div class="stat-card">
           <div class="stat-label">榜单日期</div>
           <div class="stat-value" id="stat-date">—</div>
-          <div class="stat-sub">T+1 信号生效日</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">数据截止</div>
           <div class="stat-value" id="stat-data-date">—</div>
-          <div class="stat-sub">T 日收盘行情</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">模型重训日</div>
           <div class="stat-value" id="stat-fit-date">—</div>
-          <div class="stat-sub">最近一次参数更新</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">当前策略</div>
           <div class="stat-value" id="stat-lineage">—</div>
-          <div class="stat-sub" id="stat-lineage-sub">版本说明</div>
         </div>
       </section>
 
       <section class="panel" id="ranking">
         <div class="panel-head">
           <div>
-            <div class="panel-kicker">每日选股榜单</div>
             <h2 id="ranking-title">Top ${currentPool.topk}</h2>
           </div>
           <div class="panel-note">
-            <div id="ranking-date" class="ranking-date">—</div>
-            <div id="ranking-return" class="ranking-return">累计收益 —</div>
             <div id="artifact-status"></div>
           </div>
         </div>
@@ -891,23 +868,20 @@ function pageShell(dates) {
         <div id="rebalance" class="rebalance-block" hidden>
           <div class="rebalance-head">
             <div>
-              <div class="panel-kicker" id="rebalance-kicker">本期调仓 · Top ${currentPool.topk} / Drop${currentPool.nd}</div>
-              <h3>计划调入与调出</h3>
+              <div class="panel-kicker" id="rebalance-kicker">Top ${currentPool.topk} · Drop${currentPool.nd}</div>
+              <h3>本期调仓</h3>
             </div>
             <div class="panel-note" id="rebalance-note"></div>
           </div>
           <div id="rebalance-body"></div>
-          <div class="rebalance-foot" id="rebalance-foot">榜单新进只代表进入模型 Top ${currentPool.topk}；满仓时受 Drop${currentPool.nd} 限制，单日最多买入 ${currentPool.nd} 只，未买入的新进股票继续观察。</div>
         </div>
       </section>
 
       <section class="panel" id="history">
         <div class="panel-head">
           <div>
-            <div class="panel-kicker">历史记录</div>
             <h2>历史榜单</h2>
           </div>
-          <div class="panel-note">新策略上线以来存档 · 按日期查看</div>
         </div>
         <div class="history-wrap">
           <div id="history-buttons" class="history-buttons">${history}</div>
@@ -917,9 +891,8 @@ function pageShell(dates) {
       <section class="panel performance-panel" id="performance">
         <div class="performance-head">
           <div>
-            <div class="panel-kicker">模拟组合表现</div>
             <h2>策略累计收益 · 模拟盘参考</h2>
-            <p id="forward-status" class="performance-status">模拟净值跟踪 · 2026.09.30 模拟账户起</p>
+            <p id="forward-status" class="performance-status">模拟账户 · 2026.09.30 起</p>
           </div>
           <div class="performance-summary">
             <div id="forward-return" class="performance-value">待开始</div>
@@ -927,38 +900,30 @@ function pageShell(dates) {
           </div>
         </div>
         <div id="forward-chart" class="performance-chart">
-          <div class="performance-empty">从模拟账户启用（2026.09.30）开始记录，首个收盘估值将在下一交易日数据更新后显示。</div>
-        </div>
-        <div class="performance-foot">
-          <span>起点：2026.09.30 模拟账户收盘净值 = 1.0000</span>
-          <span>T+1 开盘调仓 · 收盘估值结算（含交易成本与涨跌停约束）</span>
+          <div class="performance-empty">从 2026.09.30 起记录，首个估值将在下一交易日显示。</div>
         </div>
       </section>
 
-      <section class="panel governance-panel" id="governance-notes" aria-label="运行核验与口径说明">
+      <section class="panel governance-panel" id="governance-notes" aria-label="数据核验与口径">
         <div class="panel-head governance-head">
           <div>
-            <div class="panel-kicker">风控核验与口径说明</div>
-            <h2>运行核验与口径说明</h2>
+            <h2>数据核验与口径</h2>
           </div>
-          <div class="panel-note">自动化数据校验与策略口径汇总</div>
         </div>
         <div class="governance-body">
           <div class="governance-meta-grid">
             <div class="governance-meta-item">
-              <span class="governance-meta-label">成分股与样本校验</span>
+              <span class="governance-meta-label">成分与防泄漏</span>
               <strong class="governance-meta-value" id="stat-pit">—</strong>
-              <span class="governance-meta-sub" id="stat-pit-sub">当日指数成分与 ${currentPool.horizonDays} 日样本防泄漏校验</span>
             </div>
             <div class="governance-meta-item governance-meta-wide">
-              <span class="governance-meta-label">每日数据完整性核验</span>
-              <div id="mvp-health" class="governance-health" role="status">正在核对每日数据完整性与发布校验…</div>
+              <span class="governance-meta-label">每日核验</span>
+              <div id="mvp-health" class="governance-health" role="status">核验中…</div>
             </div>
           </div>
           <ul class="governance-list">
-            <li><strong>调仓口径：</strong>CSI300 与 CSI1000 为 Top10 / 单日最多调出 1 只，CSI500 为 Top20 / 单日最多调出 2 只。榜单移出但未触发 Drop 的股票仍保留在模拟持仓中，之后每个交易日继续与最新候选比较，可能逐日调出，也可能因排名回升继续保留；受涨跌停或停牌限制未成交的，会在后续交易日重新评估。同理，新进榜单也不等于立即买入；满仓时受当日 Drop 上限约束，未买入的新进股票继续留在候选池。</li>
-            <li><strong>排名与预测口径：</strong>排名变化对比上一期可用榜单，不代表实际持仓；预测分数仅用于横截面排序，不构成收益承诺。</li>
-            <li><strong>模拟收益与交易规则：</strong>旧 100M 策略信号已归档移除；当前三个独立 1M 账户自 2026.09.30 收盘起算，2026.10.08–2026.11.02 为 point-in-time 回补，2026.11.03 起为真实前向 paper，二者是同一账户的连续状态。CSI300/CSI1000 等权 10 只，CSI500 等权 20 只，按 T+1 开盘调仓、收盘估值独立计算。回补段仅用于账户连续性展示，不作为未来收益证明；模拟盘在开盘前自动核验 ST 快照（仅当外部接口连接故障时降级为不考虑 ST 的参考计算），仅作模拟参考，不代表实盘真实成交。</li>
+            <li>CSI300/CSI1000 为 Top10/Drop1，CSI500 为 Top20/Drop2；新进榜单不等于立即买入。</li>
+            <li>2026.10.08–11.02 为回补，11.03 起为真实 paper；模拟收益不代表实盘成交，ST 核验失败时按参考口径计算。</li>
           </ul>
         </div>
       </section>
@@ -1027,15 +992,9 @@ async function main() {
     const pool = currentPool;
     const request = ++latestDateRequest;
     loadForwardFor(pool, dateInfo.date, request);
-    const rankingReturn = document.getElementById('ranking-return');
-    if (rankingReturn) {
-      rankingReturn.textContent = '累计收益 核对中…';
-      rankingReturn.className = 'ranking-return';
-    }
     const container = document.querySelector('.signal-table');
     if (container) container.setAttribute('aria-busy', 'true');
-    document.getElementById('ranking-date').textContent = formatDate(dateInfo.date);
-    document.getElementById('artifact-status').textContent = '正在加载日期记录…';
+    document.getElementById('artifact-status').textContent = '加载中…';
     const idx = dates.findIndex(d => d.date === dateInfo.date);
     const prevDateInfo = idx >= 0 && idx + 1 < dates.length ? dates[idx + 1] : null;
     const previousPromise = prevDateInfo
@@ -1054,10 +1013,8 @@ async function main() {
       document.getElementById('stat-data-date').textContent = '—';
       document.getElementById('stat-fit-date').textContent = '—';
       document.getElementById('stat-lineage').textContent = '未核验';
-      document.getElementById('stat-lineage-sub').textContent = '信号文件缺失或读取失败';
       document.getElementById('stat-pit').textContent = '—';
-      document.getElementById('mvp-health').textContent =
-        '该日信号文件缺失或读取失败，无法完成每日数据完整性校验。';
+      document.getElementById('mvp-health').textContent = '信号文件缺失，无法核验。';
       if (container) container.setAttribute('aria-busy', 'false');
       return;
     }
@@ -1083,25 +1040,23 @@ async function main() {
       const contract = ctx ? evaluateMvpContract(ctx.metadata, paper, dateInfo.date, rows, pool) : null;
       document.getElementById('stat-lineage').textContent =
         ctx ? (winner ? lineageLabel : '历史 / 未核验') : '核验中';
-      document.getElementById('stat-lineage-sub').textContent = ctx
-        ? (winner ? '定型主策略 · 参数已锁定' : '历史记录未包含当前版本标识') : '正在加载版本资料';
       document.getElementById('stat-pit').textContent =
         !ctx ? '核验中' : contract.pitText;
       document.getElementById('artifact-status').innerHTML = !ctx
-        ? '预测排名已载入 · 正在获取数据校验状态'
+        ? '校验中…'
         : (contract.ok
-          ? (contract.backfill ? '<span class="status-pill"><span class="status-dot"></span> 回补数据校验 · 已通过</span>' : '<span class="status-pill"><span class="status-dot"></span> 每日数据校验 · 已通过</span>')
-          : '<span class="status-pill history">历史记录 / 校验信息不完整</span>');
+          ? (contract.backfill ? '<span class="status-pill"><span class="status-dot"></span> 回补校验 · 通过</span>' : '<span class="status-pill"><span class="status-dot"></span> 校验 · 通过</span>')
+          : '<span class="status-pill history">校验信息不完整</span>');
       const health = document.getElementById('mvp-health');
       if (health) {
         const horizonDays = ctx?.metadata?.label_maturity?.horizon_sessions || 20;
         health.textContent = !ctx
-          ? '正在核对行情时效、成分股完整性、样本防泄漏与模拟盘账本状态。'
+          ? '核验中…'
           : contract.ok
-            ? `已完成最新收盘行情、当日 ${pool.expectedPitCount} 只${pool.label}成分股、${horizonDays} 日样本防泄漏、策略参数锁定与模拟账本核验。`
+            ? `收盘行情、${pool.expectedPitCount} 只成分股、${horizonDays} 日防泄漏与账本核验通过。`
             : contract.legacy
-              ? '该历史日期缺少完整校验文件，仅作只读展示，因此不会把旧版本标识单独解释为“已核验”。'
-              : '每日数据校验未通过：' + escapeHtml(contract.errors.join('；'));
+              ? '缺少校验文件，仅只读展示。'
+              : '校验未通过：' + escapeHtml(contract.errors.join('；'));
       }
       document.querySelectorAll('.date-btn').forEach(btn => {
         const active = btn.dataset.date === dateInfo.date;
@@ -1143,8 +1098,7 @@ async function main() {
     const heroLede = document.getElementById('hero-lede');
     if (heroLede) {
       heroLede.textContent =
-        `基于 LightGBM 与 158 维量价因子体系，经两轮模型超参筛选与持仓规则优选定型，` +
-        `每个交易日开盘前基于前一交易日收盘数据生成指数成分股预测 Top ${nextPool.topk}，供当日开盘调仓参考。`;
+        `LightGBM + Alpha158 量价模型，每日开盘前生成指数成分股 Top ${nextPool.topk} 信号。`;
     }
     const protoPool = document.getElementById('protocol-pool');
     if (protoPool) protoPool.textContent = `${nextPool.label} (${nextPool.code})`;
@@ -1154,18 +1108,10 @@ async function main() {
     if (protoPortfolio) protoPortfolio.textContent = portfolioLabel(nextPool);
     const rebalanceKicker = document.getElementById('rebalance-kicker');
     if (rebalanceKicker) {
-      rebalanceKicker.textContent = `本期调仓 · Top ${nextPool.topk} / Drop${nextPool.nd}`;
-    }
-    const rebalanceFoot = document.getElementById('rebalance-foot');
-    if (rebalanceFoot) {
-      rebalanceFoot.textContent =
-        `榜单新进只代表进入模型 Top ${nextPool.topk}；满仓时受 Drop${nextPool.nd} 限制，` +
-        `单日最多买入 ${nextPool.nd} 只，未买入的新进股票继续观察。`;
+      rebalanceKicker.textContent = `Top ${nextPool.topk} · Drop${nextPool.nd}`;
     }
     const thPred = document.getElementById('th-pred-horizon');
     if (thPred) thPred.textContent = `${nextPool.horizonDays}日预测`;
-    const statPitSub = document.getElementById('stat-pit-sub');
-    if (statPitSub) statPitSub.textContent = `当日指数成分与 ${nextPool.horizonDays} 日样本防泄漏校验`;
 
     if (!indexCache.has(nextPool.key)) {
       indexCache.set(nextPool.key, loadAvailableDates(nextPool));
@@ -1178,7 +1124,7 @@ async function main() {
     if (!poolIndex || !poolIndex.dates.length) {
       document.getElementById('signal-rows').innerHTML = '';
       document.getElementById('mobile-cards').innerHTML = '';
-      document.getElementById('artifact-status').textContent = '该指数暂无可用信号';
+      document.getElementById('artifact-status').textContent = '暂无信号';
       return;
     }
     dates = poolIndex.dates;

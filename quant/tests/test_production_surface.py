@@ -45,7 +45,7 @@ def test_methodology_marks_chinext_production_paused():
     assert "创业板旧模型" not in app
     assert "双账本" not in page
     assert "双账本" not in app
-    assert "T+1 开盘前生成 → T+1 开盘调仓" in app
+    assert "T+1 开盘调仓" in page
     assert "定型主策略 · 参数已锁定" in page
 
 
@@ -79,8 +79,8 @@ def test_public_site_uses_shared_stylesheet():
     methodology = (ROOT / "quant" / "website" / "methodology.html").read_text()
     styles = ROOT / "quant" / "website" / "styles.css"
     assert styles.is_file()
-    assert 'href="styles.css?v=19"' in index
-    assert 'href="styles.css?v=19"' in methodology
+    assert 'href="styles.css?v=20"' in index
+    assert 'href="styles.css?v=20"' in methodology
 
 
 def test_dashboard_dark_theme_and_responsive_layout():
@@ -93,20 +93,18 @@ def test_dashboard_dark_theme_and_responsive_layout():
     assert ".table-wrap { display: none; }" in styles
     assert ".mobile-cards { display: grid;" in styles
     assert ".doc-grid { grid-template-columns: 1fr;" in styles
-    assert 'src="app.js?v=44"' in index
+    assert 'src="app.js?v=45"' in index
 
 
 def test_rebalance_distinguishes_drop1_sells_from_ranked_out_holdings():
     app = (ROOT / "quant" / "website" / "app.js").read_text()
     styles = (ROOT / "quant" / "website" / "styles.css").read_text()
     assert 'id="rebalance"' in app
-    assert "<h3>计划调入与调出</h3>" in app
+    assert "<h3>本期调仓</h3>" in app
     assert "pending_orders" in app
     assert "heldOutside" in app
-    assert "单日最多调出 ${model.nd || 1} 只" in app
-    assert "仍在模拟持仓" in app
-    assert "榜单新进只代表进入模型 Top ${currentPool.topk}" in app
-    assert "单日最多买入 ${currentPool.nd} 只" in app
+    assert "最多调出 ${model.nd || 1} 只" in app
+    assert "继续持有" in app
     assert ".rebalance-block[hidden]" in styles
     assert ".rebalance-grid" in styles
 
@@ -121,8 +119,9 @@ def test_forward_performance_panel_is_forward_only_from_20261012():
     assert "performance-panel" in app
     assert "loadForwardFor(pool, dateInfo.date, request)" in app
     assert "所选日估值" in app
-    assert 'id="ranking-return"' in app
-    assert ".ranking-return.gain" in (ROOT / "quant" / "website" / "styles.css").read_text()
+    assert 'id="ranking-return"' not in app
+    assert 'id="ranking-date"' not in app
+    assert ".ranking-return" not in styles
     assert ".performance-chart" in styles
     assert "2026-10-12" in methodology
     assert "2026-10-15" in methodology
@@ -145,7 +144,7 @@ def test_missing_history_metadata_is_not_fabricated():
     assert "_mvp_metadata.json" in app
     assert "evaluateMvpContract" in app
     assert "MVP metadata sidecar missing" in app
-    assert "不会把旧版本标识单独解释为“已核验”" in app
+    assert "缺少校验文件，仅只读展示。" in app
     assert "paper.paper_lineage === 'stage_b_winner_canonical'" in app
 
 
@@ -153,8 +152,8 @@ def test_dashboard_exposes_forward_mvp_contract_without_tradeability_claim():
     app = (ROOT / "quant" / "website" / "app.js").read_text()
     styles = (ROOT / "quant" / "website" / "styles.css").read_text()
     for marker in (
-        "每日数据校验 · 已通过",
-        "成分股与样本校验",
+        "校验 · 通过",
+        "成分与防泄漏",
         "防泄漏校验通过",
         "停牌待执行后确认",
         "risk.tradeability_certified !== false",
@@ -291,7 +290,7 @@ def test_st_free_reference_return_is_explicit_not_certified():
     app = (ROOT / "quant" / "website" / "app.js").read_text()
     method = (ROOT / "quant" / "website" / "methodology.html").read_text()
     for phrase in ("策略累计收益 · 模拟盘参考",
-                   "开盘前自动核验 ST 快照（仅当外部接口连接故障时降级为不考虑 ST 的参考计算）",
+                   "ST 核验失败时按参考口径计算",
                    "ST_IGNORED_REFERENCE_ONLY"):
         assert phrase in app, f"site missing reference-only disclosure: {phrase}"
     assert "外部接口连接故障时降级为不考虑 ST" in method

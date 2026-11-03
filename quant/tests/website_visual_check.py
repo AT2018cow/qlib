@@ -186,9 +186,7 @@ def inspect_viewport(browser, base_url, width: int):
     assert (actual["cards"] == "grid") == (width <= 860), actual
     assert not errors, errors
     assert page.locator("#forward-return").inner_text() == "待开始"
-    assert page.locator("#ranking-return").inner_text() == "累计收益 待开始"
     assert page.locator("#stat-lineage").inner_text() == "定型优选策略"
-    assert page.locator("#ranking-date").inner_text() == page.locator("#stat-date").inner_text()
     # These must be actual visible labels, not title-only tooltips on touchscreens.
     ranking = page.locator("#ranking")
     history = page.locator("#history")
@@ -207,7 +205,7 @@ def inspect_viewport(browser, base_url, width: int):
     # shown explicitly, and the other ranked-out name is marked as still held.
     rebalance = page.locator("#rebalance")
     rebalance.wait_for(state="visible", timeout=20000)
-    assert rebalance.locator("h3").inner_text() == "计划调入与调出"
+    assert rebalance.locator("h3").inner_text() == "本期调仓"
     assert page.evaluate("document.getElementById('rebalance').previousElementSibling.id === 'mobile-cards'")
     trade_text = rebalance.text_content()
     assert "计划调出" in trade_text and "SH609999" in trade_text
@@ -215,8 +213,7 @@ def inspect_viewport(browser, base_url, width: int):
     assert "持仓中不在本期 Top 10" in trade_text and "SH609998" in trade_text
     assert "未触发 Drop1" in trade_text
     assert page.locator("#rebalance a[href='https://stockpage.10jqka.com.cn/609999/']").count() == 1
-    assert "单日最多调出 1 只" in page.locator("#rebalance-note").inner_text()
-    assert "单日最多买入 1 只" in page.locator(".rebalance-foot").inner_text()
+    assert "最多调出 1 只" in page.locator("#rebalance-note").inner_text()
     assert page.locator(".trade-column").nth(0).inner_text().startswith("计划调入")
     assert page.locator(".trade-column").nth(1).inner_text().startswith("计划调出")
     trade_colors = page.evaluate(
@@ -245,7 +242,6 @@ def inspect_viewport(browser, base_url, width: int):
     )
     date_button.click()
     page.wait_for_function("document.getElementById('stat-lineage')?.textContent === '历史 / 未核验'")
-    assert page.locator("#ranking-date").inner_text() == page.locator("#stat-date").inner_text()
     assert page.locator("#signal-rows tr").first.locator(".tag").inner_text() == "无对照"
     assert page.locator("#rebalance").is_hidden(), "the oldest visible date has no comparison date"
     # Selecting an archive date must not scroll the page back up to #ranking.
@@ -328,7 +324,6 @@ def main():
                 page.goto(url + "/index.html")
                 page.locator("#signal-rows tr").first.wait_for(state="attached")
                 assert page.locator("#forward-return").inner_text() == "-1.20%"
-                assert page.locator("#ranking-return").inner_text() == "累计收益 -1.20%"
                 assert page.locator(".performance-svg").count() == 1
                 line_fill = page.locator(".performance-line").evaluate(
                     "(el) => getComputedStyle(el).fill"
@@ -341,7 +336,6 @@ def main():
                 page.wait_for_function(
                     "document.getElementById('forward-return')?.textContent === '+2.00%'"
                 )
-                assert page.locator("#ranking-return").inner_text() == "累计收益 +2.00%"
                 assert page.locator("#forward-latest").inner_text().startswith("估值日")
                 assert page.locator(".performance-svg").count() == 1
                 page.close()
