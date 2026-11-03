@@ -315,9 +315,9 @@ def test_centered_boot_loader_and_consolidated_bottom_governance_card():
     assert app.index('id="performance"') < app.index('id="mvp-health"')
     assert 'id="stat-risk"' not in app
 
-    # Methodology includes 5-phase audited metrics for c98856b4 Top10/Drop1
-    for metric in ("+52.45%", "1.757", "1.464", "-20.50%", "+49.04%"):
-        assert metric in method, f"methodology missing 5-phase metric: {metric}"
+    # Methodology includes the current per-market full-cycle research metrics
+    for metric in ("12.19%", "-46.22%", "0.563", "5.72%", "-42.05%", "17.01%", "-50.32%"):
+        assert metric in method, f"methodology missing full-cycle metric: {metric}"
 
     # Pool switcher supports CSI1000, CSI500, and CSI300, defaults to CSI300 and persists selection
     for pool in ("csi1000", "csi500", "csi300", "中证1000", "中证500", "沪深300"):
