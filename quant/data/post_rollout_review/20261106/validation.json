@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "completed_at_utc": "2026-11-06T15:28:26.428895+00:00",
-  "status": "LOCAL_ACCEPTED_NOT_COMMITTED_NOT_DEPLOYED",
+  "completed_at_utc": "2026-11-06T15:29:45.736919+00:00",
+  "status": "COMMITTED_NOT_DEPLOYED",
   "base_commit": "33bef4b646612c5b6fe86587aaf49c1b4f641508",
   "verification_source_sha256": "1aa5400c7a670738b504ce09fa5437fa4ff343110eab4b3a008052fb67b8f00a",
   "python": {
@@ -40,7 +40,7 @@
   "upstream_code_changed": false,
   "cloud_training_or_replay_started": false,
   "production_deployed": false,
-  "git_commit_created": false,
+  "git_commit_created": true,
   "tag_or_release_created": false,
   "findings": {
     "F01": "AUTO_LIVE_START_CANONICAL_AUDIT_PASS_ALIAS_CONTRACT_DOCUMENTED",
@@ -73,5 +73,6 @@
     "start_date": "2026-11-03",
     "audited_reports": 2,
     "issues": 0
-  }
+  },
+  "commit_sha": "5ca4b892c9bd1b8656a6d3aac3f03db886ffd66e"
 }

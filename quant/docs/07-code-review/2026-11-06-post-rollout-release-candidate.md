@@ -1,6 +1,6 @@
 # 下一版本发布候选说明
 
-状态：`DRAFT / NOT_RELEASED / NOT_DEPLOYED`。此文件是 F20 的具体发布准备，不是 tag、GitHub Release 或部署回执。
+状态：`RELEASED_AS_CODE / NOT_DEPLOYED`。此文件是 F20 的具体发布准备，不是 tag、GitHub Release 或部署回执。
 
 建议下一版本 `quant-v1.3.0`。从上一个 `quant-v1.2.0` 到当前待合并修复，包含新增的 10/08 连续网站模拟账户、统一调度、板块执行纠错与本轮发布/审计加固，不能将整个累计发布范围描述为纯 patch。本轮保持三市场的候选模型、TopK/DropN、标签期限和 1M 本金不变；此前累计范围中的执行规则修正仍须在正式说明中列明。
 

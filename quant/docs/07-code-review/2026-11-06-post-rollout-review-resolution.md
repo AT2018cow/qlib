@@ -1,6 +1,6 @@
 # 上线后审查逐项复核与处理
 
-状态：`LOCAL_ACCEPTED / NOT_COMMITTED / NOT_DEPLOYED`。对应[审查原文](2026-11-06-post-rollout-review-findings.md)。已完成确认代码缺陷的本地修补、行为回归和现有工件对账；不将 F19 外部证据、F20 正式发布管理记作已完成。原审查文档保留原样。
+状态：`COMMITTED / NOT_DEPLOYED`。对应[审查原文](2026-11-06-post-rollout-review-findings.md)。已完成确认代码缺陷的本地修补、行为回归和现有工件对账；不将 F19 外部证据、F20 正式发布管理记作已完成。原审查文档保留原样。
 
 ## 逐项结论
 
