@@ -149,7 +149,7 @@ from pathlib import Path
 import os, sys
 os.environ["MLFLOW_ALLOW_FILE_STORE"] = "true"
 os.environ["MLFLOW_DISABLE_AGENT_HINT"] = "1"
-sys.path.insert(0, str(Path.cwd() / "quant/code"))
+sys.path.insert(0, str(Path(sys.argv[2]) / "quant/code"))
 from quant_bootstrap import ensure_quant_import_paths
 ensure_quant_import_paths()
 import qlib
@@ -172,7 +172,7 @@ for i in range(3):
     else: fit_website_model(Model(), None)
 print("REUSED_WORKER_PASS")
 '''
-    result = subprocess.run([sys.executable, "-c", script, str(tmp_path)], cwd=ROOT,
+    result = subprocess.run([sys.executable, "-c", script, str(tmp_path), str(ROOT)], cwd=tmp_path,
                             capture_output=True, text=True, timeout=60)
     assert result.returncode == 0, result.stdout + result.stderr
     assert "REUSED_WORKER_PASS" in result.stdout

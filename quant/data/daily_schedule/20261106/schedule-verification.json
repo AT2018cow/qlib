@@ -1,0 +1,39 @@
+{
+  "status": "PASS",
+  "checked_at_utc": "2026-11-06T11:35:41.855231+00:00",
+  "total_scheduled_functions": 2,
+  "apps": [
+    {
+      "app": "qlib-cn-daily-a10g",
+      "app_id": "ap-wtDdZUJxCO0CrswJRl3WAq",
+      "state": "deployed",
+      "version": 30,
+      "deployed_at": "2026-11-06 19:24:00+08:00",
+      "scheduled_functions": {
+        "daily_cron": {
+          "cron": {
+            "cron_string": "0 7 * * 1-5",
+            "timezone": "Asia/Shanghai"
+          }
+        },
+        "daily_cron_second_chance": {
+          "cron": {
+            "cron_string": "0 8 * * 1-5",
+            "timezone": "Asia/Shanghai"
+          }
+        }
+      }
+    },
+    {
+      "app": "qlib-website-nav",
+      "app_id": "ap-41Fw1KIPH1L1ughZkOLYIt",
+      "state": "deployed",
+      "version": 5,
+      "deployed_at": "2026-11-06 19:33:58+08:00",
+      "scheduled_functions": {}
+    }
+  ],
+  "website_function_schedule": null,
+  "website_function_id": "fu-2g8o72lESQ2yFJKtcRzJ8x",
+  "app_and_function_configs_agree": true
+}

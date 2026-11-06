@@ -1,0 +1,17 @@
+{
+  "status": "RESTORED_VALIDATED_WORKERS",
+  "idle_checks": {
+    "daily": {
+      "backlog": 0,
+      "running_inputs": 0
+    },
+    "build_market": {
+      "backlog": 0,
+      "running_inputs": 0
+    }
+  },
+  "source_sha256": "0f322f8c9be595a4da2dd9a96a4ea2d3a0a677d98d6b3e6188acf275e04aa7a1",
+  "restore_exit_code": 0,
+  "schedule": null,
+  "simulation_volume_changed": false
+}

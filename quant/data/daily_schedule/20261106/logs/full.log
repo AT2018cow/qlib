@@ -1,0 +1,348 @@
+✓ Initialized. View run at
+Modal app ap-FYlg4aE7w9qEZNyjKFxPes
+✓ Created objects.
+├── ✓ Uploaded
+│   <control-root>/frozen-source/quant/code/ops/website_
+│   simulation_modal.py
+├── ✓ Uploaded <control-root>/frozen-source
+├── ✓ Created Function build_market.
+└── ✓ Created Function daily.
+[provider] downloaded 64MiB
+[provider] downloaded 128MiB
+[provider] downloaded 192MiB
+[provider] downloaded 256MiB
+[provider] downloaded 320MiB
+[provider] downloaded 384MiB
+[provider] downloaded 448MiB
+[provider] downloaded 512MiB
+[provider] digest passed; extracting to container scratch
+[provider] downloaded 64MiB
+[provider] downloaded 128MiB
+[provider] downloaded 64MiB
+[provider] downloaded 192MiB
+[provider] downloaded 256MiB
+[provider] downloaded 320MiB
+[provider] downloaded 384MiB
+[provider] downloaded 128MiB
+[provider] downloaded 448MiB
+[provider] downloaded 512MiB
+[provider] digest passed; extracting to container scratch
+[provider] downloaded 192MiB
+[2:MainThread](2026-11-06 11:16:27,411) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+[2:MainThread](2026-11-06 11:16:29,221) INFO - qlib.Initialization - [__init__.py:82] - qlib successfully initialized based on client settings.
+[2:MainThread](2026-11-06 11:16:29,222) INFO - qlib.Initialization - [__init__.py:84] - data_path={'__DEFAULT_FREQ': PosixPath('/tmp/october-provider-dc91729392563518/qlib_bin')}
+[provider] downloaded 256MiB
+[provider] downloaded 320MiB
+[provider] downloaded 384MiB
+[provider] downloaded 448MiB
+[provider] downloaded 512MiB
+[provider] digest passed; extracting to container scratch
+[2:MainThread](2026-11-06 11:16:49,452) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+[2:MainThread](2026-11-06 11:16:50,880) INFO - qlib.Initialization - [__init__.py:82] - qlib successfully initialized based on client settings.
+[2:MainThread](2026-11-06 11:16:50,881) INFO - qlib.Initialization - [__init__.py:84] - data_path={'__DEFAULT_FREQ': PosixPath('/tmp/october-provider-dc91729392563518/qlib_bin')}
+[2:MainThread](2026-11-06 11:17:00,970) INFO - qlib.timer - [log.py:127] - Time cost: 30.154s | Loading data Done
+[2:MainThread](2026-11-06 11:17:01,469) INFO - qlib.timer - [log.py:127] - Time cost: 0.188s | DropnaLabel Done
+[2:MainThread](2026-11-06 11:17:02,578) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+[2:MainThread](2026-11-06 11:17:04,153) INFO - qlib.Initialization - [__init__.py:82] - qlib successfully initialized based on client settings.
+[2:MainThread](2026-11-06 11:17:04,153) INFO - qlib.Initialization - [__init__.py:84] - data_path={'__DEFAULT_FREQ': PosixPath('/tmp/october-provider-dc91729392563518/qlib_bin')}
+[2:MainThread](2026-11-06 11:17:04,305) INFO - qlib.timer - [log.py:127] - Time cost: 2.835s | CSZScoreNorm Done
+[2:MainThread](2026-11-06 11:17:04,306) INFO - qlib.timer - [log.py:127] - Time cost: 3.335s | fit & process data Done
+[2:MainThread](2026-11-06 11:17:04,306) INFO - qlib.timer - [log.py:127] - Time cost: 33.492s | Init data Done
+ModuleNotFoundError. CatBoostModel are skipped. (optional: maybe installing CatBoostModel can fix it.)
+ModuleNotFoundError. XGBModel is skipped(optional: maybe installing xgboost can fix it).
+[website] cached model csi300 2026-09-30
+[2:MainThread](2026-11-06 11:17:38,519) INFO - qlib.timer - [log.py:127] - Time cost: 28.147s | Loading data Done
+[2:MainThread](2026-11-06 11:17:38,967) INFO - qlib.timer - [log.py:127] - Time cost: 0.160s | DropnaLabel Done
+[2:MainThread](2026-11-06 11:17:41,245) INFO - qlib.timer - [log.py:127] - Time cost: 2.276s | CSZScoreNorm Done
+[2:MainThread](2026-11-06 11:17:41,246) INFO - qlib.timer - [log.py:127] - Time cost: 2.726s | fit & process data Done
+[2:MainThread](2026-11-06 11:17:41,247) INFO - qlib.timer - [log.py:127] - Time cost: 30.877s | Init data Done
+[website] fit csi300 2026-10-26..2026-11-04
+[2:MainThread](2026-11-06 11:17:41,265) WARNING - qlib.workflow - [expm.py:230] - No valid experiment found. Create a new experiment with name website-simulation.
+[2:MainThread](2026-11-06 11:17:41,273) INFO - qlib.workflow - [exp.py:258] - Experiment 446071362742605578 starts running ...
+2026/11/06 11:17:41 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git SHA is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+2026/11/06 11:17:41 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git branch is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+2026/11/06 11:17:41 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git repository URL is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+[2:MainThread](2026-11-06 11:17:41,487) INFO - qlib.workflow - [recorder.py:345] - Recorder 13058acbc7fd42f69111025154183614 starts running under Experiment 446071362742605578 ...
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 11:17:41,493) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git diff.
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 11:17:41,497) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git status.
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 11:17:41,500) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git diff --cached.
+Training until validation scores don't improve for 50 rounds
+[20]    train's l2: 0.982802    valid's l2: 0.991408
+[40]    train's l2: 0.97623     valid's l2: 0.990712
+[60]    train's l2: 0.970859    valid's l2: 0.991397
+[80]    train's l2: 0.965897    valid's l2: 0.992661
+Early stopping, best iteration is:
+[45]    train's l2: 0.974902    valid's l2: 0.990516
+[2:MainThread](2026-11-06 11:17:45,931) INFO - qlib.timer - [log.py:127] - Time cost: 0.186s | waiting `async_log` Done
+[2:MainThread](2026-11-06 11:17:47,555) WARNING - qlib.Initialization - [__init__.py:51] - Skip initialization because `skip_if_reg is True`
+[inputs] csi300 frozen signal loaded, names=299 dates=2026-09-30..2026-11-04
+[inputs] csi300 quotes loaded: 6300 rows
+[replay] 59b93929_top10_drop1_10d extra=0bp 20/20 date=2026-11-04 elapsed=0.1s
+[website] csi300 COMPLETED days=20 return=-20.8447%
+[batch] csi300 COMPLETED seconds=111.9
+[2:MainThread](2026-11-06 11:17:55,603) INFO - qlib.timer - [log.py:127] - Time cost: 49.140s | Loading data Done
+[2:MainThread](2026-11-06 11:17:56,254) INFO - qlib.timer - [log.py:127] - Time cost: 0.249s | DropnaLabel Done
+[2:MainThread](2026-11-06 11:17:58,726) INFO - qlib.timer - [log.py:127] - Time cost: 2.472s | CSZScoreNorm Done
+[2:MainThread](2026-11-06 11:17:58,728) INFO - qlib.timer - [log.py:127] - Time cost: 3.124s | fit & process data Done
+[2:MainThread](2026-11-06 11:17:58,728) INFO - qlib.timer - [log.py:127] - Time cost: 52.267s | Init data Done
+[website] fit csi500 2026-09-30..2026-10-23
+ModuleNotFoundError. CatBoostModel are skipped. (optional: maybe installing CatBoostModel can fix it.)
+ModuleNotFoundError. XGBModel is skipped(optional: maybe installing xgboost can fix it).
+[2:MainThread](2026-11-06 11:18:02,795) WARNING - qlib.workflow - [expm.py:230] - No valid experiment found. Create a new experiment with name website-simulation.
+[2:MainThread](2026-11-06 11:18:02,803) INFO - qlib.workflow - [exp.py:258] - Experiment 630912735956103658 starts running ...
+2026/11/06 11:18:02 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git SHA is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+2026/11/06 11:18:02 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git branch is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+2026/11/06 11:18:02 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git repository URL is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+[2:MainThread](2026-11-06 11:18:02,987) INFO - qlib.workflow - [recorder.py:345] - Recorder 20b2071eee504a2daebbe1d6a2660e2a starts running under Experiment 630912735956103658 ...
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 11:18:02,991) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git diff.
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 11:18:02,994) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git status.
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 11:18:02,997) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git diff --cached.
+Training until validation scores don't improve for 50 rounds
+[20]    train's l2: 0.984125    valid's l2: 0.995122
+[2:MainThread](2026-11-06 11:18:12,167) INFO - qlib.timer - [log.py:127] - Time cost: 77.449s | Loading data Done
+[40]    train's l2: 0.976441    valid's l2: 0.994353
+[2:MainThread](2026-11-06 11:18:13,359) INFO - qlib.timer - [log.py:127] - Time cost: 0.472s | DropnaLabel Done
+[60]    train's l2: 0.970923    valid's l2: 0.994551
+[2:MainThread](2026-11-06 11:18:16,096) INFO - qlib.timer - [log.py:127] - Time cost: 2.737s | CSZScoreNorm Done
+[2:MainThread](2026-11-06 11:18:16,097) INFO - qlib.timer - [log.py:127] - Time cost: 3.930s | fit & process data Done
+[2:MainThread](2026-11-06 11:18:16,098) INFO - qlib.timer - [log.py:127] - Time cost: 81.382s | Init data Done
+[website] fit csi1000 2026-09-30..2026-10-23
+ModuleNotFoundError. CatBoostModel are skipped. (optional: maybe installing CatBoostModel can fix it.)
+[80]    train's l2: 0.966599    valid's l2: 0.99502
+ModuleNotFoundError. XGBModel is skipped(optional: maybe installing xgboost can fix it).
+Early stopping, best iteration is:
+[41]    train's l2: 0.976185    valid's l2: 0.994335
+[2:MainThread](2026-11-06 11:18:17,688) INFO - qlib.timer - [log.py:127] - Time cost: 0.186s | waiting `async_log` Done
+[2:MainThread](2026-11-06 11:18:20,259) WARNING - qlib.workflow - [expm.py:230] - No valid experiment found. Create a new experiment with name website-simulation.
+[2:MainThread](2026-11-06 11:18:20,267) INFO - qlib.workflow - [exp.py:258] - Experiment 657446449700360715 starts running ...
+2026/11/06 11:18:20 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git SHA is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+2026/11/06 11:18:20 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git branch is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+2026/11/06 11:18:20 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git repository URL is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+[2:MainThread](2026-11-06 11:18:20,463) INFO - qlib.workflow - [recorder.py:345] - Recorder 4863dbfba74244bf970860862cdb2b6d starts running under Experiment 657446449700360715 ...
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 11:18:20,468) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git diff.
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 11:18:20,472) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git status.
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 11:18:20,476) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git diff --cached.
+Training until validation scores don't improve for 50 rounds
+[20]    train's l2: 0.984028    valid's l2: 0.995202
+[40]    train's l2: 0.977156    valid's l2: 0.995577
+[60]    train's l2: 0.9731      valid's l2: 0.99641
+Early stopping, best iteration is:
+[26]    train's l2: 0.981536    valid's l2: 0.995186
+[2:MainThread](2026-11-06 11:18:39,640) INFO - qlib.timer - [log.py:127] - Time cost: 0.238s | waiting `async_log` Done
+[2:MainThread](2026-11-06 11:19:13,971) INFO - qlib.timer - [log.py:127] - Time cost: 51.574s | Loading data Done
+[2:MainThread](2026-11-06 11:19:15,571) INFO - qlib.timer - [log.py:127] - Time cost: 0.545s | DropnaLabel Done
+[2:MainThread](2026-11-06 11:19:18,011) INFO - qlib.timer - [log.py:127] - Time cost: 2.439s | CSZScoreNorm Done
+[2:MainThread](2026-11-06 11:19:18,027) INFO - qlib.timer - [log.py:127] - Time cost: 4.055s | fit & process data Done
+[2:MainThread](2026-11-06 11:19:18,028) INFO - qlib.timer - [log.py:127] - Time cost: 55.633s | Init data Done
+[website] fit csi500 2026-10-26..2026-11-04
+[2:MainThread](2026-11-06 11:19:18,044) INFO - qlib.workflow - [exp.py:258] - Experiment 630912735956103658 starts running ...
+[2:MainThread](2026-11-06 11:19:18,059) INFO - qlib.workflow - [recorder.py:345] - Recorder 6983668e2ea949bda98f37627b49e3ee starts running under Experiment 630912735956103658 ...
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 11:19:18,063) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git diff.
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 11:19:18,066) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git status.
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 11:19:18,068) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git diff --cached.
+Training until validation scores don't improve for 50 rounds
+[20]    train's l2: 0.984467    valid's l2: 0.993302
+[40]    train's l2: 0.976739    valid's l2: 0.991817
+[60]    train's l2: 0.970868    valid's l2: 0.991265
+[80]    train's l2: 0.966366    valid's l2: 0.991475
+[100]   train's l2: 0.962241    valid's l2: 0.991859
+Early stopping, best iteration is:
+[63]    train's l2: 0.970179    valid's l2: 0.99119
+[2:MainThread](2026-11-06 11:19:32,923) INFO - qlib.timer - [log.py:127] - Time cost: 0.276s | waiting `async_log` Done
+[2:MainThread](2026-11-06 11:19:35,178) WARNING - qlib.Initialization - [__init__.py:51] - Skip initialization because `skip_if_reg is True`
+[inputs] csi500 frozen signal loaded, names=499 dates=2026-09-30..2026-11-04
+[inputs] csi500 quotes loaded: 10497 rows
+[inputs] csi500 quote hashes 500/500
+[replay] raw10d_c98856b4_top20_drop2_20d extra=0bp 20/20 date=2026-11-04 elapsed=0.1s
+[website] csi500 COMPLETED days=20 return=-10.7026%
+[batch] csi500 COMPLETED seconds=200.7
+[2:MainThread](2026-11-06 11:20:12,925) INFO - qlib.timer - [log.py:127] - Time cost: 83.910s | Loading data Done
+[2:MainThread](2026-11-06 11:20:14,351) INFO - qlib.timer - [log.py:127] - Time cost: 0.554s | DropnaLabel Done
+[2:MainThread](2026-11-06 11:20:17,389) INFO - qlib.timer - [log.py:127] - Time cost: 3.037s | CSZScoreNorm Done
+[2:MainThread](2026-11-06 11:20:17,390) INFO - qlib.timer - [log.py:127] - Time cost: 4.465s | fit & process data Done
+[2:MainThread](2026-11-06 11:20:17,391) INFO - qlib.timer - [log.py:127] - Time cost: 88.378s | Init data Done
+[website] fit csi1000 2026-10-26..2026-11-04
+[2:MainThread](2026-11-06 11:20:17,402) INFO - qlib.workflow - [exp.py:258] - Experiment 657446449700360715 starts running ...
+[2:MainThread](2026-11-06 11:20:17,418) INFO - qlib.workflow - [recorder.py:345] - Recorder 1e31c4c9a64848c5ab1c93ba2723dd96 starts running under Experiment 657446449700360715 ...
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 11:20:17,422) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git diff.
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 11:20:17,425) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git status.
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 11:20:17,429) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git diff --cached.
+Training until validation scores don't improve for 50 rounds
+[20]    train's l2: 0.984291    valid's l2: 0.993363
+[40]    train's l2: 0.977416    valid's l2: 0.992921
+[60]    train's l2: 0.973277    valid's l2: 0.99337
+[80]    train's l2: 0.970045    valid's l2: 0.993686
+Early stopping, best iteration is:
+[38]    train's l2: 0.977907    valid's l2: 0.992866
+[2:MainThread](2026-11-06 11:20:36,869) INFO - qlib.timer - [log.py:127] - Time cost: 0.215s | waiting `async_log` Done
+[2:MainThread](2026-11-06 11:20:39,018) WARNING - qlib.Initialization - [__init__.py:51] - Skip initialization because `skip_if_reg is True`
+[inputs] csi1000 frozen signal loaded, names=1000 dates=2026-09-30..2026-11-04
+[inputs] csi1000 quotes loaded: 21021 rows
+[inputs] csi1000 quote hashes 500/1001
+[inputs] csi1000 quote hashes 1000/1001
+[replay] c98856b4_top10_drop1 extra=0bp 20/20 date=2026-11-04 elapsed=0.2s
+[batch] csi1000 COMPLETED seconds=264.7
+[website] csi1000 COMPLETED days=20 return=-20.1349%
+Stopping app - local entrypoint completed.
+Runner terminated.
+✓ App completed. View run at
+Modal app ap-FYlg4aE7w9qEZNyjKFxPes

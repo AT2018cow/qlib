@@ -1,0 +1,9 @@
+{
+  "status": "PASS",
+  "before_function_id": "fu-V9vO6OOCzUUpPW1nxtzimp",
+  "before_schedule": "Cron('0 0 1 1 *', UTC)",
+  "empty_deployment_unregistered_old_function": true,
+  "after_function_id": "fu-DuUJnVecSMxNQb4Vc0iamT",
+  "after_schedule": null,
+  "production_io_performed": false
+}

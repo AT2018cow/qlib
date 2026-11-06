@@ -1,0 +1,348 @@
+✓ Initialized. View run at
+Modal app ap-AIp6N8rvt8z1OAqmhjUUw9
+✓ Created objects.
+├── ✓ Uploaded
+│   <control-root>/frozen-source/quant/code/ops/website_
+│   simulation_modal.py
+├── ✓ Uploaded <control-root>/frozen-source
+├── ✓ Created Function build_market.
+└── ✓ Created Function daily.
+[provider] downloaded 64MiB
+[provider] downloaded 128MiB
+[provider] downloaded 192MiB
+[provider] downloaded 256MiB
+[provider] downloaded 320MiB
+[provider] downloaded 384MiB
+[provider] downloaded 448MiB
+[provider] downloaded 512MiB
+[provider] digest passed; extracting to container scratch
+[2:MainThread](2026-11-06 11:07:49,117) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+[2:MainThread](2026-11-06 11:07:50,511) INFO - qlib.Initialization - [__init__.py:82] - qlib successfully initialized based on client settings.
+[2:MainThread](2026-11-06 11:07:50,512) INFO - qlib.Initialization - [__init__.py:84] - data_path={'__DEFAULT_FREQ': PosixPath('/tmp/october-provider-dc91729392563518/qlib_bin')}
+[2:MainThread](2026-11-06 11:08:12,724) INFO - qlib.timer - [log.py:127] - Time cost: 21.128s | Loading data Done
+[2:MainThread](2026-11-06 11:08:13,078) INFO - qlib.timer - [log.py:127] - Time cost: 0.126s | DropnaLabel Done
+[2:MainThread](2026-11-06 11:08:14,579) INFO - qlib.timer - [log.py:127] - Time cost: 1.501s | CSZScoreNorm Done
+[2:MainThread](2026-11-06 11:08:14,580) INFO - qlib.timer - [log.py:127] - Time cost: 1.856s | fit & process data Done
+[2:MainThread](2026-11-06 11:08:14,581) INFO - qlib.timer - [log.py:127] - Time cost: 22.986s | Init data Done
+ModuleNotFoundError. CatBoostModel are skipped. (optional: maybe installing CatBoostModel can fix it.)
+ModuleNotFoundError. XGBModel is skipped(optional: maybe installing xgboost can fix it).
+[website] cached model csi300 2026-09-30
+[2:MainThread](2026-11-06 11:08:39,941) INFO - qlib.timer - [log.py:127] - Time cost: 21.051s | Loading data Done
+[2:MainThread](2026-11-06 11:08:40,306) INFO - qlib.timer - [log.py:127] - Time cost: 0.125s | DropnaLabel Done
+[2:MainThread](2026-11-06 11:08:41,705) INFO - qlib.timer - [log.py:127] - Time cost: 1.399s | CSZScoreNorm Done
+[2:MainThread](2026-11-06 11:08:41,706) INFO - qlib.timer - [log.py:127] - Time cost: 1.764s | fit & process data Done
+[2:MainThread](2026-11-06 11:08:41,707) INFO - qlib.timer - [log.py:127] - Time cost: 22.819s | Init data Done
+[website] fit csi300 2026-10-26..2026-11-04
+Training until validation scores don't improve for 50 rounds
+[20]    train's l2: 0.982802    valid's l2: 0.991408
+[40]    train's l2: 0.97623     valid's l2: 0.990712
+[60]    train's l2: 0.970859    valid's l2: 0.991397
+[80]    train's l2: 0.965897    valid's l2: 0.992661
+Early stopping, best iteration is:
+[45]    train's l2: 0.974902    valid's l2: 0.990516
+[2:MainThread](2026-11-06 11:08:45,029) WARNING - qlib.workflow - [expm.py:230] - No valid experiment found. Create a new experiment with name website-simulation.
+[2:MainThread](2026-11-06 11:08:45,036) INFO - qlib.workflow - [exp.py:258] - Experiment 780783092315403072 starts running ...
+2026/11/06 11:08:45 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git SHA is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+2026/11/06 11:08:45 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git branch is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+2026/11/06 11:08:45 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git repository URL is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+[2:MainThread](2026-11-06 11:08:45,187) INFO - qlib.workflow - [recorder.py:345] - Recorder cc44123d22df42d0aa8afbc8c96bedcd starts running under Experiment 780783092315403072 ...
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 11:08:45,190) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git diff.
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 11:08:45,193) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git status.
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 11:08:45,195) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git diff --cached.
+[2:MainThread](2026-11-06 11:08:45,934) WARNING - qlib.Initialization - [__init__.py:51] - Skip initialization because `skip_if_reg is True`
+[inputs] csi300 frozen signal loaded, names=299 dates=2026-09-30..2026-11-04
+[inputs] csi300 quotes loaded: 6300 rows
+[replay] 59b93929_top10_drop1_10d extra=0bp 20/20 date=2026-11-04 elapsed=0.1s
+[website] csi300 COMPLETED days=20 return=-20.8447%
+[batch] csi300 COMPLETED seconds=80.9
+[2:MainThread](2026-11-06 11:08:50,043) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+Traceback (most recent call last):
+  File "/pkg/modal/_runtime/container_io_manager.py", line 987, in handle_input_exception
+    yield
+  File "/pkg/modal/_container_entrypoint.py", line 189, in run_input_sync
+    values = io_context.call_function_sync()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pkg/modal/_runtime/container_io_manager.py", line 266, in call_function_sync
+    expected_value_or_values = self.finalized_function.callable(*args, **kwargs)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/website_simulation_modal.py", line 160, in build_market
+    qlib.init(
+  File "/root/qlib/qlib/__init__.py", line 78, in init
+    C.register()
+  File "/root/qlib/qlib/config.py", line 515, in register
+    R.register(qr)
+  File "/root/qlib/qlib/workflow/__init__.py", line 665, in register
+    raise RecorderInitializationError(
+qlib.utils.exceptions.RecorderInitializationError: Please don't reinitialize Qlib if QlibRecorder is already activated. Otherwise, the experiment stored location will be modified.
+[2:MainThread](2026-11-06 11:08:50,277) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+Stopping app - uncaught exception raised locally: RecorderInitializationError("Please don't reinitialize Qlib if QlibRecorder is already activated. Otherwise, the experiment stored location will be modified.").
+Traceback (most recent call last):
+  File "/pkg/modal/_runtime/container_io_manager.py", line 987, in handle_input_exception
+    yield
+  File "/pkg/modal/_container_entrypoint.py", line 189, in run_input_sync
+    values = io_context.call_function_sync()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pkg/modal/_runtime/container_io_manager.py", line 266, in call_function_sync
+    expected_value_or_values = self.finalized_function.callable(*args, **kwargs)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/website_simulation_modal.py", line 160, in build_market
+    qlib.init(
+  File "/root/qlib/qlib/__init__.py", line 78, in init
+    C.register()
+  File "/root/qlib/qlib/config.py", line 515, in register
+    R.register(qr)
+  File "/root/qlib/qlib/workflow/__init__.py", line 665, in register
+    raise RecorderInitializationError(
+qlib.utils.exceptions.RecorderInitializationError: Please don't reinitialize Qlib if QlibRecorder is already activated. Otherwise, the experiment stored location will be modified.
+[modal-client] 2026-11-06T11:08:50+0000 Detected 1 background thread(s) [Thread-15 (run)] still running after container exit. This will prevent runner shutdown for up to 30 seconds.
+[2:MainThread](2026-11-06 11:08:51,437) INFO - qlib.timer - [log.py:127] - Time cost: 0.000s | waiting `async_log` Done
+╭───────────────────── Traceback (most recent call last) ──────────────────────╮
+│ <control-root>/frozen-source/quant/code/ops/website_ │
+│ simulation_modal.py:443 in main                                              │
+│                                                                              │
+│   442 │   results = []                                                       │
+│ ❱ 443 │   for result in build_market.map([make_job(asset, source, m, mode) f │
+│   444 │   │   results.append(result)                                         │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_utils/asyn │
+│ c_utils.py:856 in __iter__                                                   │
+│                                                                              │
+│    855 │   │   │   with Runner() as runner:                                  │
+│ ❱  856 │   │   │   │   yield from run_async_gen(runner, self._async_iterable │
+│    857 │   │   except NestedEventLoops:                                      │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_utils/asyn │
+│ c_utils.py:934 in run_async_gen                                              │
+│                                                                              │
+│    933 │   │   │   else:                                                     │
+│ ❱  934 │   │   │   │   next_yield = runner.run(gen.asend(next_send))  # type │
+│    935 │   │   except KeyboardInterrupt as e:                                │
+│                                                                              │
+│ /usr/lib/python3.12/asyncio/base_events.py:687 in run_until_complete         │
+│                                                                              │
+│    686 │   │                                                                 │
+│ ❱  687 │   │   return future.result()                                        │
+│    688                                                                       │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_utils/asyn │
+│ c_utils.py:766 in asend                                                      │
+│                                                                              │
+│    765 │   │   self.iterated = True                                          │
+│ ❱  766 │   │   return await self.gen.asend(value)                            │
+│    767                                                                       │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/parallel_ma │
+│ p.py:1042 in _map_async                                                      │
+│                                                                              │
+│   1041 │   async_input_gen = async_zip(*[sync_or_async_iter(it) for it in in │
+│ ❱ 1042 │   async for output in _map_helper(                                  │
+│   1043 │   │   self,                                                         │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/parallel_ma │
+│ p.py:1015 in _map_helper                                                     │
+│                                                                              │
+│   1014 │   ) as map_output_stream:                                           │
+│ ❱ 1015 │   │   async for output in map_output_stream:                        │
+│   1016 │   │   │   yield output                                              │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_utils/asyn │
+│ c_utils.py:1108 in async_merge                                               │
+│                                                                              │
+│   1107 │   │   │   │   │   assert_type(item, ExceptionWrapper)               │
+│ ❱ 1108 │   │   │   │   │   raise item.value                                  │
+│   1109                                                                       │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_utils/asyn │
+│ c_utils.py:1087 in producer                                                  │
+│                                                                              │
+│   1086 │   │   │   async with aclosing(generator) as stream:                 │
+│ ❱ 1087 │   │   │   │   async for item in stream:                             │
+│   1088 │   │   │   │   │   await queue.put(ValueWrapper(item))               │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_object.py: │
+│ 61 in wrapped                                                                │
+│                                                                              │
+│    60 │   │   async with aclosing(method(self, *args, **kwargs)) as stream:  │
+│ ❱  61 │   │   │   async for item in stream:                                  │
+│    62 │   │   │   │   yield item                                             │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_functions. │
+│ py:1948 in _map                                                              │
+│                                                                              │
+│   1947 │   │   │   ) as stream:                                              │
+│ ❱ 1948 │   │   │   │   async for item in stream:                             │
+│   1949 │   │   │   │   │   yield item                                        │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/parallel_ma │
+│ p.py:971 in _map_invocation_inputplane                                       │
+│                                                                              │
+│    970 │   ) as merged:                                                      │
+│ ❱  971 │   │   async for maybe_output in merged:                             │
+│    972 │   │   │   if maybe_output is not None:  # ignore None sentinels     │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_utils/asyn │
+│ c_utils.py:1108 in async_merge                                               │
+│                                                                              │
+│   1107 │   │   │   │   │   assert_type(item, ExceptionWrapper)               │
+│ ❱ 1108 │   │   │   │   │   raise item.value                                  │
+│   1109                                                                       │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_utils/asyn │
+│ c_utils.py:1087 in producer                                                  │
+│                                                                              │
+│   1086 │   │   │   async with aclosing(generator) as stream:                 │
+│ ❱ 1087 │   │   │   │   async for item in stream:                             │
+│   1088 │   │   │   │   │   await queue.put(ValueWrapper(item))               │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/parallel_ma │
+│ p.py:926 in poll_outputs                                                     │
+│                                                                              │
+│    925 │   │   ) as streamer:                                                │
+│ ❱  926 │   │   │   async for idx, output in streamer:                        │
+│    927 │   │   │   │   if not order_outputs:                                 │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_utils/asyn │
+│ c_utils.py:1237 in async_map_ordered                                         │
+│                                                                              │
+│   1236 │   async with aclosing(async_map(async_zip(counter(), input_generato │
+│ ❱ 1237 │   │   async for output_idx, output_item in stream:                  │
+│   1238 │   │   │   buffer[output_idx] = output_item                          │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_utils/asyn │
+│ c_utils.py:1213 in async_map                                                 │
+│                                                                              │
+│   1212 │   ) as stream:                                                      │
+│ ❱ 1213 │   │   async for item in stream:                                     │
+│   1214 │   │   │   yield item                                                │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_utils/asyn │
+│ c_utils.py:1108 in async_merge                                               │
+│                                                                              │
+│   1107 │   │   │   │   │   assert_type(item, ExceptionWrapper)               │
+│ ❱ 1108 │   │   │   │   │   raise item.value                                  │
+│   1109                                                                       │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_utils/asyn │
+│ c_utils.py:1087 in producer                                                  │
+│                                                                              │
+│   1086 │   │   │   async with aclosing(generator) as stream:                 │
+│ ❱ 1087 │   │   │   │   async for item in stream:                             │
+│   1088 │   │   │   │   │   await queue.put(ValueWrapper(item))               │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_utils/asyn │
+│ c_utils.py:1202 in worker                                                    │
+│                                                                              │
+│   1201 │   │   │   if isinstance(item, ValueWrapper):                        │
+│ ❱ 1202 │   │   │   │   res = await prevent_cancellation_abortion(async_mappe │
+│   1203 │   │   │   │   yield res                                             │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_utils/asyn │
+│ c_utils.py:1167 in prevent_cancellation_abortion                             │
+│                                                                              │
+│   1166 │   try:                                                              │
+│ ❱ 1167 │   │   return await asyncio.shield(t)                                │
+│   1168 │   except asyncio.CancelledError:                                    │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_utils/asyn │
+│ c_utils.py:1226 in mapper_func_wrapper                                       │
+│                                                                              │
+│   1225 │   async def mapper_func_wrapper(tup: tuple[int, T]) -> tuple[int, V │
+│ ❱ 1226 │   │   return (tup[0], await async_mapper_func(tup[1]))              │
+│   1227                                                                       │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/parallel_ma │
+│ p.py:915 in fetch_output                                                     │
+│                                                                              │
+│    914 │   │   │   else:                                                     │
+│ ❱  915 │   │   │   │   raise e                                               │
+│    916 │   │   return (item.idx, output)                                     │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/parallel_ma │
+│ p.py:910 in fetch_output                                                     │
+│                                                                              │
+│    909 │   │   try:                                                          │
+│ ❱  910 │   │   │   output = await _process_result(item.result, item.data_for │
+│    911 │   │   except Exception as e:                                        │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_utils/func │
+│ tion_utils.py:572 in _process_result                                         │
+│                                                                              │
+│   571 │   │   │                                                              │
+│ ❱ 572 │   │   │   raise exc_with_hints(exc)                                  │
+│   573                                                                        │
+│                                                                              │
+│     ...Remote call to Modal Function (ta-01M6R8NCAEV4XYYV37PTMX65CR)...      │
+│                                                                              │
+│ /root/website_simulation_modal.py:160 in build_market                        │
+│                                                                              │
+│ ❱ 160 qlib.init(                                                             │
+│                                                                              │
+│                                                                              │
+│ /root/qlib/qlib/__init__.py:78 in init                                       │
+│                                                                              │
+│ ❱ 78 C.register()                                                            │
+│                                                                              │
+│                                                                              │
+│ /root/qlib/qlib/config.py:515 in register                                    │
+│                                                                              │
+│ ❱ 515 R.register(qr)                                                         │
+│                                                                              │
+│                                                                              │
+│ /root/qlib/qlib/workflow/__init__.py:665 in register                         │
+│                                                                              │
+│ ❱ 665 raise RecorderInitializationError(                                     │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+RecorderInitializationError: Please don't reinitialize Qlib if QlibRecorder is
+already activated. Otherwise, the experiment stored location will be modified.

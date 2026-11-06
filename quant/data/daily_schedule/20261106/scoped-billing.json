@@ -1,0 +1,169 @@
+{
+  "scope": "ONLY_THIS_TASK_RESEARCH_APP_IDS",
+  "observed_at_utc": "2026-11-06T11:35:41.856087+00:00",
+  "owned_app_ids": [
+    "ap-4X6oWlQNGGp2IP8b4a1xkD",
+    "ap-7FPReSkMgQv1CdO7WVwKFU",
+    "ap-AIp6N8rvt8z1OAqmhjUUw9",
+    "ap-D1Qmr4gAWljZc5XwoWUP8U",
+    "ap-FYlg4aE7w9qEZNyjKFxPes",
+    "ap-SE9VVbhPu7lr2vAVAlA2ku",
+    "ap-YUTXJehHO2yqdVIK8PqlPn",
+    "ap-ZOwN32VDn2yItIKocqQT2f",
+    "ap-jHhVhZzsojDvDtwhUQbIAB"
+  ],
+  "observed_billed_usd": "0.32308972",
+  "not_final_invoice": true,
+  "production_app_cost_not_included": true,
+  "registration_control_plane_smoke_cost_not_yet_reported": true,
+  "rows": [
+    {
+      "app_id": "ap-4X6oWlQNGGp2IP8b4a1xkD",
+      "resource": "CPU",
+      "cost_usd": "0.00005255"
+    },
+    {
+      "app_id": "ap-4X6oWlQNGGp2IP8b4a1xkD",
+      "resource": "Memory",
+      "cost_usd": "0.00000889"
+    },
+    {
+      "app_id": "ap-7FPReSkMgQv1CdO7WVwKFU",
+      "resource": "CPU",
+      "cost_usd": "0.00005256"
+    },
+    {
+      "app_id": "ap-7FPReSkMgQv1CdO7WVwKFU",
+      "resource": "Memory",
+      "cost_usd": "0.00000889"
+    },
+    {
+      "app_id": "ap-AIp6N8rvt8z1OAqmhjUUw9",
+      "resource": "CPU",
+      "cost_usd": "0.02364987"
+    },
+    {
+      "app_id": "ap-AIp6N8rvt8z1OAqmhjUUw9",
+      "resource": "Network Egress",
+      "cost_usd": "0.00003869"
+    },
+    {
+      "app_id": "ap-AIp6N8rvt8z1OAqmhjUUw9",
+      "resource": "Memory",
+      "cost_usd": "0.00639996"
+    },
+    {
+      "app_id": "ap-D1Qmr4gAWljZc5XwoWUP8U",
+      "resource": "CPU",
+      "cost_usd": "0.03393762"
+    },
+    {
+      "app_id": "ap-D1Qmr4gAWljZc5XwoWUP8U",
+      "resource": "Network Egress",
+      "cost_usd": "0.00002389"
+    },
+    {
+      "app_id": "ap-D1Qmr4gAWljZc5XwoWUP8U",
+      "resource": "Memory",
+      "cost_usd": "0.00912151"
+    },
+    {
+      "app_id": "ap-FYlg4aE7w9qEZNyjKFxPes",
+      "resource": "CPU",
+      "cost_usd": "0.16816247"
+    },
+    {
+      "app_id": "ap-FYlg4aE7w9qEZNyjKFxPes",
+      "resource": "Network Egress",
+      "cost_usd": "0.00020461"
+    },
+    {
+      "app_id": "ap-FYlg4aE7w9qEZNyjKFxPes",
+      "resource": "Memory",
+      "cost_usd": "0.04549986"
+    },
+    {
+      "app_id": "ap-YUTXJehHO2yqdVIK8PqlPn",
+      "resource": "CPU",
+      "cost_usd": "0.00002629"
+    },
+    {
+      "app_id": "ap-YUTXJehHO2yqdVIK8PqlPn",
+      "resource": "Memory",
+      "cost_usd": "0.00000445"
+    },
+    {
+      "app_id": "ap-ZOwN32VDn2yItIKocqQT2f",
+      "resource": "CPU",
+      "cost_usd": "0.00002627"
+    },
+    {
+      "app_id": "ap-ZOwN32VDn2yItIKocqQT2f",
+      "resource": "Memory",
+      "cost_usd": "0.00000444"
+    },
+    {
+      "app_id": "ap-jHhVhZzsojDvDtwhUQbIAB",
+      "resource": "CPU",
+      "cost_usd": "0.02819421"
+    },
+    {
+      "app_id": "ap-jHhVhZzsojDvDtwhUQbIAB",
+      "resource": "Network Egress",
+      "cost_usd": "0.00011259"
+    },
+    {
+      "app_id": "ap-jHhVhZzsojDvDtwhUQbIAB",
+      "resource": "Memory",
+      "cost_usd": "0.00756010"
+    }
+  ],
+  "visible_task_app_states": [
+    {
+      "app_id": "ap-SE9VVbhPu7lr2vAVAlA2ku",
+      "state": "stopped",
+      "tasks": "0"
+    },
+    {
+      "app_id": "ap-4X6oWlQNGGp2IP8b4a1xkD",
+      "state": "stopped",
+      "tasks": "0"
+    },
+    {
+      "app_id": "ap-FYlg4aE7w9qEZNyjKFxPes",
+      "state": "stopped",
+      "tasks": "0"
+    },
+    {
+      "app_id": "ap-7FPReSkMgQv1CdO7WVwKFU",
+      "state": "stopped",
+      "tasks": "0"
+    },
+    {
+      "app_id": "ap-D1Qmr4gAWljZc5XwoWUP8U",
+      "state": "stopped",
+      "tasks": "0"
+    },
+    {
+      "app_id": "ap-AIp6N8rvt8z1OAqmhjUUw9",
+      "state": "stopped",
+      "tasks": "0"
+    },
+    {
+      "app_id": "ap-ZOwN32VDn2yItIKocqQT2f",
+      "state": "stopped",
+      "tasks": "0"
+    },
+    {
+      "app_id": "ap-YUTXJehHO2yqdVIK8PqlPn",
+      "state": "stopped",
+      "tasks": "0"
+    },
+    {
+      "app_id": "ap-jHhVhZzsojDvDtwhUQbIAB",
+      "state": "stopped",
+      "tasks": "0"
+    }
+  ],
+  "owned_ids_not_in_recent_list": []
+}

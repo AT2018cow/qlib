@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "phase": "after",
+  "state_sha256": {
+    "paper_portfolio/csi500__raw10d_c98856b4_top20_drop2_20d_canonical_1m.json": "92bcf983f1e4b128de80e9ea8619d04cebaeaed3decc2a30b31adcc8b428d607",
+    "paper_portfolio/csi300__59b93929_top10_drop1_10d_canonical_1m.json": "99f951ca3ff3553a92072cde230e735d8738b5bcb5b99a2cbf81ce32898bf487",
+    "paper_portfolio/csi1000__c98856b4_top10_drop1_canonical_1m.json": "474d20bc19230f998fc027bb0ed6221b40d3cae8c72ba46841b8f45c01549038"
+  },
+  "production_accounts_checked": 3,
+  "cash_inventory_pending_history_bytes_unchanged": true
+}

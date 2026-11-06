@@ -1,0 +1,15 @@
+{
+  "training_source_sha256": "0f322f8c9be595a4da2dd9a96a4ea2d3a0a677d98d6b3e6188acf275e04aa7a1",
+  "deployed_code_tag": "9c12bc32f",
+  "files": {
+    "quant/code/production/daily_pipeline.py": "0f46f722d3f692ee61bcc8ecf2e4f219f3d8e7d9b8867353d14bb94cdcd247f4",
+    "quant/code/production/modal_qlib_cn_a10g.py": "e6b0acb7cd42667957df14f50f7049708c69bd42b1187a8d716503d3c73952aa",
+    "quant/code/ops/website_simulation_modal.py": "3a59404a6e65cf9ff06baaa72c93e8c63a139e7e6c79bb9a258af4fd9ace2cfe",
+    "quant/tests/test_daily_pipeline.py": "4473b8a9f0b364157f2dc27b93c662a461d7d3b9b17eb2f88b212a85d470b63f",
+    "quant/tests/test_cron_gate.py": "f229ffbcb8796e07132301c1363a900cd80d4596b04683cace4e98e999ae28ec",
+    "quant/tests/test_modal_structure.py": "210839b037bcb4a02b557d14cf352177a72f98fb83c0a04a2ea2db4d2f908069",
+    "quant/tests/test_review_regressions.py": "8ff5f249f4d2759cf56e0624c483c4baa6f9c7dd18c75af0cb042cf95ce55965",
+    "quant/docs/07-code-review/2026-11-06-unified-daily-schedule.md": "77df6d6a4dcda8afd82237743a6bcd7b88c12440329b3007fe7f155732de84eb",
+    "quant/docs/README.md": "aad0f07d6b637ee995e0b7cb2f80b90412d428e60f829d888ceb781816f13fda"
+  }
+}

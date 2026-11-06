@@ -1,0 +1,10 @@
+✓ Created objects.
+├── ✓ Uploaded
+│   <control-root>/frozen-source/quant/code/ops/website_
+│   simulation_modal.py
+├── ✓ Uploaded <control-root>/frozen-source
+├── ✓ Created Function build_market.
+└── ✓ Created Function daily.
+✓ App deployed in 9.830s! 🎉
+
+View Deployment: Modal deployed app qlib-website-nav

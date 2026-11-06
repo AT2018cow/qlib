@@ -1,0 +1,26 @@
+{
+  "status": "PASS",
+  "invocation_type": "MANUAL_DEPLOYED_FUNCTION_CALL",
+  "result": {
+    "status": "COMPLETED",
+    "stages": {
+      "signals": {
+        "status": "SUCCEEDED",
+        "result": {
+          "status": "ALREADY_PUBLISHED",
+          "signal_date": "2026-11-06"
+        }
+      },
+      "website": {
+        "status": "SUCCEEDED",
+        "result": {
+          "status": "PUBLISHED",
+          "commit": "5f22018b5f16d5dcdc8cd664eea5f2d72f3cfd40",
+          "source_sha256": "0f322f8c9be595a4da2dd9a96a4ea2d3a0a677d98d6b3e6188acf275e04aa7a1",
+          "asset_digest": "sha256:dc917293925635189e982f47d35b960c3db8a9c3f11312c937673c8afdec21aa",
+          "files": 12
+        }
+      }
+    }
+  }
+}

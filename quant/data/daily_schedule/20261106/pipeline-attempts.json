@@ -1,0 +1,18 @@
+{
+  "initial_harness": {
+    "app_id": "ap-YUTXJehHO2yqdVIK8PqlPn",
+    "status": "APP_STOPPED_AFTER_STARTUP_PATH_ERROR",
+    "launcher_exit": 124
+  },
+  "final_probe": {
+    "app_id": "ap-4X6oWlQNGGp2IP8b4a1xkD",
+    "status": "PASS",
+    "actual_cli_exit": 0,
+    "source_sha256": "0f322f8c9be595a4da2dd9a96a4ea2d3a0a677d98d6b3e6188acf275e04aa7a1",
+    "repeated_for_unique_exit_log": true
+  },
+  "earlier_same_source_probe": {
+    "app_id": "ap-7FPReSkMgQv1CdO7WVwKFU",
+    "actual_cli_exit": 0
+  }
+}

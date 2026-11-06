@@ -1,0 +1,30 @@
+{
+  "status": "PASS",
+  "baseline_evidence": "quant/data/website_rollout/20261106",
+  "markets": [
+    {
+      "market": "csi300",
+      "sessions": 20,
+      "end": "2026-11-04",
+      "cumulative_return": -0.20844659999999993,
+      "all_points_identical": true,
+      "total_fees_identical": true
+    },
+    {
+      "market": "csi500",
+      "sessions": 20,
+      "end": "2026-11-04",
+      "cumulative_return": -0.10702575999999997,
+      "all_points_identical": true,
+      "total_fees_identical": true
+    },
+    {
+      "market": "csi1000",
+      "sessions": 20,
+      "end": "2026-11-04",
+      "cumulative_return": -0.20134920999999995,
+      "all_points_identical": true,
+      "total_fees_identical": true
+    }
+  ]
+}
