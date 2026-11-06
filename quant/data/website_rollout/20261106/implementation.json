@@ -4,5 +4,7 @@
   "training_source_manifest_sha256": "202c66c42a3385de3d7bb051c709b41576c0df3d08d9aa73498a276dbb20716b",
   "git_committed_source_verified": true,
   "integration_commit": "a6b039ede",
-  "final_implementation_commit": "a5ef8c6f40af5f44c4cd3adf5151a0697d68ccf4"
+  "final_implementation_commit": "a5ef8c6f40af5f44c4cd3adf5151a0697d68ccf4",
+  "publication_recovery_commit": "fe23abc0f6a9d565e3bbd42b6fe56aebeac5bef7",
+  "verified_site_deployment_commit": "afbeeec0e00c1e5d3af3951acc98a9a6c3839c5c"
 }

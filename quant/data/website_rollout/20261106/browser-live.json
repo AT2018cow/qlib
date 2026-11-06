@@ -1,0 +1,40 @@
+{
+  "status": "PASS",
+  "url": "https://qliba158.pages.dev",
+  "markets": [
+    {
+      "market": "csi300",
+      "value": "-20.84%",
+      "status": "模拟账户 · 2026.10.08 起 · 历史重建参考 · 含交易费用 · 待结算",
+      "latest": "所选日 2026.11.06 待结算 · 最近 2026.11.04",
+      "ranking_title": "Top 10",
+      "ranking_rows": 10,
+      "ranking_status": " 校验 · 通过",
+      "signal_date": "2026.11.06",
+      "signal_data_date": "2026.11.04"
+    },
+    {
+      "market": "csi500",
+      "value": "-10.70%",
+      "status": "模拟账户 · 2026.10.08 起 · 历史重建参考 · 含交易费用 · 待结算",
+      "latest": "所选日 2026.11.06 待结算 · 最近 2026.11.04",
+      "ranking_title": "Top 20",
+      "ranking_rows": 20,
+      "ranking_status": " 校验 · 通过",
+      "signal_date": "2026.11.06",
+      "signal_data_date": "2026.11.04"
+    },
+    {
+      "market": "csi1000",
+      "value": "-20.13%",
+      "status": "模拟账户 · 2026.10.08 起 · 历史重建参考 · 含交易费用 · 待结算",
+      "latest": "所选日 2026.11.06 待结算 · 最近 2026.11.04",
+      "ranking_title": "Top 10",
+      "ranking_rows": 10,
+      "ranking_status": " 校验 · 通过",
+      "signal_date": "2026.11.06",
+      "signal_data_date": "2026.11.04"
+    }
+  ],
+  "javascript_errors": []
+}

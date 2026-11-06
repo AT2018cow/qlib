@@ -13,4 +13,4 @@
 - `final-account-audit.json`：包括本轮新报告在内的 515 份报告，本金、指标、数量、费用压力无错误。
 - `logs/`：真实测试、云端 smoke/full、恢复演练和部署日志；个人路径与私有 workspace 标识已脱敏。
 
-当前网站的 `*_website_performance.json`、`*_forward_performance.json`、`*_backfill_performance.json` 三组文件均使用纠正后的同一系列；不会继续将旧前缀与不同 bootstrap 的账户拼接。版本快照位于 `quant/data/website_simulation/`。后续上线验收、浏览器结果与校验清单在实际执行后追加。
+当前网站的 `*_website_performance.json`、`*_forward_performance.json`、`*_backfill_performance.json` 三组文件均使用纠正后的同一系列；不会继续将旧前缀与不同 bootstrap 的账户拼接。版本快照位于 `quant/data/website_simulation/`。`website-publish-receipt.json`、`public-http-verification.json`、`browser-live.json` 和 `live-website.png` 记录已完成的实际发布与线上验收；`deployed-website-verification.json` 记录两次幂等调用，`postdeploy-state-check.json` 确认原账户状态未重复更新。首轮身份的证据位于 `attempts/initial-source/`，当前验收使用 `release-*` 日志。

@@ -1,0 +1,12 @@
+{
+  "status": "SUCCESS",
+  "workflow_run": 42197254752,
+  "deployment_commit": "afbeeec0e00c1e5d3af3951acc98a9a6c3839c5c",
+  "url": "https://github.com/AT2018cow/qlib/actions/runs/42197254752",
+  "site": "https://qliba158.pages.dev",
+  "earlier_failed_run": 42195004742,
+  "earlier_failure": "Cloudflare returned Unknown internal error occurred after successful file uploads",
+  "bounded_retry_limit": 3,
+  "wrangler_version": "4.158.0",
+  "skip_asset_caching": true
+}

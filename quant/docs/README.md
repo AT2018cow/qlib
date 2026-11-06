@@ -4,9 +4,9 @@
 
 **最新扩展层审查与修复**：[`计算与逻辑审查`](07-code-review/2026-11-06-extension-calculation-and-logic-audit.md)记录修复前 Q01–Q16；[`2026-11-06 修复与验收`](07-code-review/2026-11-06-extension-repair-acceptance.md)记录实现、回归、380 份历史账本影响及外部证据待办。代码已修复；后续生产部署与网站收益修正见下方“网站模拟收益上线”。
 
-**使用前复验与择优**：[`已批准方案`](07-code-review/2026-11-06-prelive-revalidation-plan.md)、[`输入与候选登记`](07-code-review/2026-11-06-prelive-execution-register.json)、[`执行与结果`](07-code-review/2026-11-06-prelive-revalidation-results.md)、[`具体使用与部署审核包`](07-code-review/2026-11-06-limited-use-review-package.md)。已完成 72 个登记场景与 10/08 起四账户回填；按三市场独立 1M、实盘人工确认、用户不设回撤/单股上限的合同准备使用包，正式迁移和部署待审核。
+**使用前复验与择优**：[`已批准方案`](07-code-review/2026-11-06-prelive-revalidation-plan.md)、[`输入与候选登记`](07-code-review/2026-11-06-prelive-execution-register.json)、[`执行与结果`](07-code-review/2026-11-06-prelive-revalidation-results.md)、[`具体使用与部署审核包`](07-code-review/2026-11-06-limited-use-review-package.md)。已完成 72 个登记场景与 10/08 起四账户回填；实盘使用包保留为历史审核记录。用户随后明确本轮用途为三个独立 1M 网站模拟账户，已批准并完成下方网站部署，未实施券商账户迁移或下单。
 
-**网站模拟收益上线**：[`10/08 起连续账户修正与部署记录`](07-code-review/2026-11-06-website-rollout.md)跟踪当前版本的源码绑定、生产备份与恢复演练、三市场核算及部署；采用各 100 万元的独立历史重建账户，修正网站旧派生收益。
+**网站模拟收益上线**：[`10/08 起连续账户修正与部署记录`](07-code-review/2026-11-06-website-rollout.md)记录已完成的源码绑定、生产备份与恢复演练、三市场核算及线上部署验收；网站已使用自 10/08 起、各 100 万元的独立历史重建账户替换旧收益。
 
 **四项复审修复**：[`修复与验收`](07-code-review/2026-11-06-review-followup-fixes.md)记录行情身份强校验、共享源码身份 v2、归因对照数量隔离和按报告本金审计；最终 836 项 Python 测试、25 项前端测试通过，511 份报告审计无误报，原策略择优结论不变。旧使用包的源码清单保留为历史冻结记录，部署前须重新绑定当前版本。
 

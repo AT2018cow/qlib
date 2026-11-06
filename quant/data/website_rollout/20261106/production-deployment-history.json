@@ -1,0 +1,23 @@
+[
+  {
+    "version": "v29",
+    "time_deployed": "2026-11-06 13:13:49+08:00",
+    "client": "1.6.1",
+    "commit": null,
+    "tag": "a5ef8c6f4"
+  },
+  {
+    "version": "v28",
+    "time_deployed": "2026-11-06 13:02:37+08:00",
+    "client": "1.6.1",
+    "commit": null,
+    "tag": "b68296066"
+  },
+  {
+    "version": "v27",
+    "time_deployed": "2026-11-06 09:04:05+08:00",
+    "client": "1.6.1",
+    "commit": "33e4dcf",
+    "tag": null
+  }
+]

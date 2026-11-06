@@ -1,5 +1,5 @@
 {
-  "status": "DEPLOYED_CALCULATION_VERIFIED_ONLINE_ACCEPTANCE_PENDING",
+  "status": "COMPLETE_VERIFIED_SIMULATION_WEBSITE",
   "implementation_commit": "a5ef8c6f40af5f44c4cd3adf5151a0697d68ccf4",
   "training_source_manifest_sha256": "202c66c42a3385de3d7bb051c709b41576c0df3d08d9aa73498a276dbb20716b",
   "python_tests": {
@@ -22,5 +22,18 @@
   "production_paper_accounts_overwritten": false,
   "broker_orders_sent": false,
   "browser_local_pass": true,
-  "live_website_verified": false
+  "live_website_verified": true,
+  "verified_at_utc": "2026-11-06T10:08:19.863228+00:00",
+  "public_current_outputs_verified": 9,
+  "website_browser_js_errors": 0,
+  "deployed_website_invocations": 2,
+  "duplicate_publication_blocked": true,
+  "postdeploy_paper_state_hashes_unchanged": true,
+  "accounting_reports_audited": 515,
+  "accounting_audit_errors": 0,
+  "website_publish_workflow": 42197254752,
+  "site": "https://qliba158.pages.dev",
+  "browser_rankings_fully_loaded": true,
+  "source_manifest_matches_checkout": true,
+  "deployment_manifest_files_verified": 132
 }

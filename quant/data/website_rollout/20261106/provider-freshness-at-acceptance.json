@@ -1,0 +1,21 @@
+{
+  "checked_at_utc": "2026-11-06T10:08:19.863228+00:00",
+  "latest_public_release": {
+    "assets": [
+      {
+        "digest": "sha256:df06bcfd1e5e6ed299cd0bb7fbef6f7d07f745bbe1afcfb5265eada10a342aa4",
+        "name": "qlib_bin.manifest.json",
+        "size": 511
+      },
+      {
+        "digest": "sha256:dc917293925635189e982f47d35b960c3db8a9c3f11312c937673c8afdec21aa",
+        "name": "qlib_bin.tar.gz",
+        "size": 570637931
+      }
+    ],
+    "html_url": "https://github.com/chenditc/investment_data/releases/tag/2026-11-04",
+    "published_at": "2026-11-04T15:58:24Z",
+    "tag_name": "2026-11-04"
+  },
+  "conclusion": "NO_LATER_COMPLETE_PROVIDER_RELEASE_AVAILABLE"
+}

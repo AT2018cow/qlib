@@ -1,8 +1,10 @@
 {
   "schema_version": 1,
-  "scope": "QUANT_IMPLEMENTATION_AND_WEBSITE",
+  "scope": "QUANT_IMPLEMENTATION_WEBSITE_AND_PUBLICATION_WORKFLOW",
   "training_source_manifest_sha256": "202c66c42a3385de3d7bb051c709b41576c0df3d08d9aa73498a276dbb20716b",
   "files": {
+    ".github/workflows/website-deploy.yml": "9064771829fda8f268e275877db6c2f3440592b738351de0b23022d9b4ffd4d0",
+    "examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158.yaml": "0cbe1f729f43a2b8cd735759e6244c2e9f8db967555bfe24a7143fce4605d680",
     "quant/code/audit/__init__.py": "c8d62f2609d7bd358b87b7450e2a12612a63eea3425c33bf18299ddcb4eed293",
     "quant/code/audit/audit_repair_impact.py": "79e3f1cda0b6f222bc34e75487c1784fa237eaf8a7dcdd7aec194da428cad2b0",
     "quant/code/audit/csi1000_residual_evidence.py": "2518150c5aec750377106ea00f52a78f8463040741ff722fc31f52242355f379",
@@ -126,13 +128,13 @@
     "quant/website/app.js": "cebbab15f781d78ca3fb2f500a9fba263e91db63a52629ec7f0931ea8dde4516",
     "quant/website/apple-touch-icon.png": "7e664f42bbaff98d53ea8e82e2f0459ccdc0d45afe8d96f2b1b4a2d2bfd59f19",
     "quant/website/build_index.py": "d0560da93cdfa367c81e2c6192d264c3046f55585823982c886b462c6912b92d",
+    "quant/website/deploy_cloudflare.sh": "15246d01516ae12a64901a0bbf740567e48aef4bce932a05db0db14a8064808b",
     "quant/website/favicon-32.png": "7e60447e4354c6c8527f9528ffce31aeaa0bb1b2e93253ace33f52993e95e963",
     "quant/website/favicon.ico": "5e45bef42688d923a3caa44847f92e130b481114c9c0d72707a523edee2e6d97",
     "quant/website/favicon.svg": "5d9171b83c93b8130e46dfa6697c5dcf7bafa61a995ed7c69c9b8644a7ad7364",
     "quant/website/index.html": "ab0c14571213c367319dd16d4e4a54bc81c22cbe520d91f5526c742a23181ad4",
     "quant/website/methodology.html": "b13dd3b3cbe6a8d132210fe9b709a02eff5670c41b7f4221d19b313190e250da",
-    "quant/website/styles.css": "5e2aab1330771d17bbd3f78c6c0ea3ce8dcf33393e9162e72c6283569c7f596e",
-    "examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158.yaml": "0cbe1f729f43a2b8cd735759e6244c2e9f8db967555bfe24a7143fce4605d680"
+    "quant/website/styles.css": "5e2aab1330771d17bbd3f78c6c0ea3ce8dcf33393e9162e72c6283569c7f596e"
   },
-  "sha256": "fd73e87219ce235b42933087529d88aff4261c17e60601e8d8a35420827fc33a"
+  "sha256": "7c1ac2bd16ec0f15c051676a63ff64227921a5913c188dbd8d1cf9acf88d22a8"
 }

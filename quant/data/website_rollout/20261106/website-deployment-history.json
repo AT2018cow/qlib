@@ -1,0 +1,16 @@
+[
+  {
+    "version": "v2",
+    "time_deployed": "2026-11-06 13:14:52+08:00",
+    "client": "1.6.1",
+    "commit": null,
+    "tag": "a5ef8c6f4"
+  },
+  {
+    "version": "v1",
+    "time_deployed": "2026-11-06 13:03:19+08:00",
+    "client": "1.6.1",
+    "commit": null,
+    "tag": "b68296066"
+  }
+]

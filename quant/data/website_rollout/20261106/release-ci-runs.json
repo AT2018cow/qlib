@@ -1,0 +1,31 @@
+[
+  {
+    "id": 42195004693,
+    "name": "CSI1000 MVP publication contract",
+    "status": "completed",
+    "conclusion": "success",
+    "html_url": "https://github.com/AT2018cow/qlib/actions/runs/42195004693"
+  },
+  {
+    "id": 42195004633,
+    "name": "Quant extension checks",
+    "status": "completed",
+    "conclusion": "success",
+    "html_url": "https://github.com/AT2018cow/qlib/actions/runs/42195004633"
+  },
+  {
+    "id": 42195004742,
+    "name": "Deploy signal website to GitHub Pages",
+    "status": "completed",
+    "conclusion": "failure",
+    "html_url": "https://github.com/AT2018cow/qlib/actions/runs/42195004742"
+  },
+  {
+    "id": 42197254752,
+    "head_sha": "afbeeec0e00c1e5d3af3951acc98a9a6c3839c5c",
+    "status": "completed",
+    "conclusion": "success",
+    "html_url": "https://github.com/AT2018cow/qlib/actions/runs/42197254752",
+    "name": "Deploy signal website to GitHub Pages"
+  }
+]

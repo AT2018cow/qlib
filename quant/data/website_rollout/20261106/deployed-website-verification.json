@@ -1,0 +1,17 @@
+{
+  "status": "PASS",
+  "invocations": [
+    {
+      "status": "ALREADY_PUBLISHED",
+      "source_sha256": "202c66c42a3385de3d7bb051c709b41576c0df3d08d9aa73498a276dbb20716b",
+      "files": 12
+    },
+    {
+      "status": "ALREADY_PUBLISHED",
+      "source_sha256": "202c66c42a3385de3d7bb051c709b41576c0df3d08d9aa73498a276dbb20716b",
+      "files": 12
+    }
+  ],
+  "duplicate_publication_blocked": true,
+  "source_sha256": "202c66c42a3385de3d7bb051c709b41576c0df3d08d9aa73498a276dbb20716b"
+}

@@ -1,0 +1,71 @@
+{
+  "status": "PASS",
+  "site": "https://qliba158.pages.dev",
+  "current_outputs_verified": 9,
+  "files": [
+    {
+      "market": "csi300",
+      "kind": "website",
+      "sha256": "7b83d4cb04276db1eac514b0243eb97a69adf4ec4d8706a67b4d272c6fac76a2",
+      "latest_date": "2026-11-04",
+      "cumulative_return": -0.20844659999999993
+    },
+    {
+      "market": "csi300",
+      "kind": "forward",
+      "sha256": "7b83d4cb04276db1eac514b0243eb97a69adf4ec4d8706a67b4d272c6fac76a2",
+      "latest_date": "2026-11-04",
+      "cumulative_return": -0.20844659999999993
+    },
+    {
+      "market": "csi300",
+      "kind": "backfill",
+      "sha256": "7b83d4cb04276db1eac514b0243eb97a69adf4ec4d8706a67b4d272c6fac76a2",
+      "latest_date": "2026-11-04",
+      "cumulative_return": -0.20844659999999993
+    },
+    {
+      "market": "csi500",
+      "kind": "website",
+      "sha256": "c13bca8300ab0f89302e55d0d847f2e27fe76dd84f22ac612045d9aec85220a4",
+      "latest_date": "2026-11-04",
+      "cumulative_return": -0.10702575999999997
+    },
+    {
+      "market": "csi500",
+      "kind": "forward",
+      "sha256": "c13bca8300ab0f89302e55d0d847f2e27fe76dd84f22ac612045d9aec85220a4",
+      "latest_date": "2026-11-04",
+      "cumulative_return": -0.10702575999999997
+    },
+    {
+      "market": "csi500",
+      "kind": "backfill",
+      "sha256": "c13bca8300ab0f89302e55d0d847f2e27fe76dd84f22ac612045d9aec85220a4",
+      "latest_date": "2026-11-04",
+      "cumulative_return": -0.10702575999999997
+    },
+    {
+      "market": "csi1000",
+      "kind": "website",
+      "sha256": "8022f2dabd4451d7609de86aea2c5ce10b7ff8b24513cc93509556236cd9d8d2",
+      "latest_date": "2026-11-04",
+      "cumulative_return": -0.20134920999999995
+    },
+    {
+      "market": "csi1000",
+      "kind": "forward",
+      "sha256": "8022f2dabd4451d7609de86aea2c5ce10b7ff8b24513cc93509556236cd9d8d2",
+      "latest_date": "2026-11-04",
+      "cumulative_return": -0.20134920999999995
+    },
+    {
+      "market": "csi1000",
+      "kind": "backfill",
+      "sha256": "8022f2dabd4451d7609de86aea2c5ce10b7ff8b24513cc93509556236cd9d8d2",
+      "latest_date": "2026-11-04",
+      "cumulative_return": -0.20134920999999995
+    }
+  ],
+  "wrong_previous_series_replaced": true
+}
