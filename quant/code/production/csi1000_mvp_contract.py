@@ -387,7 +387,7 @@ def summarize_paper_state(
         pending.get("status") == "awaiting_execution_data"
         and isinstance(pending_signal_date, str)
         and isinstance(pending_execution_date, str)
-        and pending_signal_date < signal_data_date
+        and pending_signal_date <= signal_data_date
         and pending_execution_date < usage_date
     )
     if not awaiting_execution_data and (
