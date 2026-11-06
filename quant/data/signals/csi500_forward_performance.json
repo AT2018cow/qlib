@@ -1198,14 +1198,14 @@
   "execution_st_policy": "ST_HISTORY_UNVERIFIED_REFERENCE_ONLY",
   "auction_liquidity_verified": false,
   "return_interpretation": "CAUSAL_HISTORICAL_SIMULATION_REFERENCE_ONLY",
-  "source_manifest_sha256": "202c66c42a3385de3d7bb051c709b41576c0df3d08d9aa73498a276dbb20716b",
+  "source_manifest_sha256": "0f322f8c9be595a4da2dd9a96a4ea2d3a0a677d98d6b3e6188acf275e04aa7a1",
   "provider_archive_sha256": "dc917293925635189e982f47d35b960c3db8a9c3f11312c937673c8afdec21aa",
   "fit_receipts": [
     {
       "fit_asof": "2026-09-30",
       "signal_end": "2026-10-23",
       "profile": "raw10d_c98856b4_top20_drop2_20d",
-      "model_sha256": "e2dfb54ee157ccaf06d2608ea063e70d4fec96d146a6665ae90c2a2dc4c92fc6",
+      "model_sha256": "caefae2f285b7209036c813204ee24d9b546d4e25cab587696f1435ec04f3a18",
       "training_contract": {
         "asof": "2026-09-30",
         "train_end": "2025-07-18",
@@ -1219,7 +1219,7 @@
       "fit_asof": "2026-10-26",
       "signal_end": "2026-11-04",
       "profile": "raw10d_c98856b4_top20_drop2_20d",
-      "model_sha256": "7767cae2d77d09a908e0cf9ac24a3a1c08336ed0f3b97c7a67b40a6cb27ccde2",
+      "model_sha256": "b6f935e765327e3fddc7bf12227830ac6ffb2bd40f7f4aaa128c4c19f381f13b",
       "training_contract": {
         "asof": "2026-10-26",
         "train_end": "2025-08-06",
