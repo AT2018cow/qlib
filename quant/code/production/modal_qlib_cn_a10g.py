@@ -62,7 +62,13 @@ image = (
     .apt_install("build-essential")
     # mlflow>=3.16 默认禁用 file:// 存储后端（maintenance mode），qlib 的
     # MLflowExpManager 用的就是 file:// uri，必须显式放行。
-    .env({"MLFLOW_ALLOW_FILE_STORE": "true"})
+    .env({
+        "MLFLOW_ALLOW_FILE_STORE": "true",
+        # The image excludes .git, so setuptools_scm cannot infer a version from
+        # tags.  A fixed build-time version avoids the setuptools_scm /
+        # vcs-versioning resolver incompatibility seen on 2026-11-06.
+        "SETUPTOOLS_SCM_PRETEND_VERSION": "0.0.0",
+    })
     .pip_install(
         "numpy==1.26.4",
         "cython",
@@ -4196,6 +4202,32 @@ def _current_st_risk_snapshot(instruments: list[str]) -> dict:
     }
 
 
+def _is_one_session_provider_lag(detail: str) -> bool:
+    """Return True only for a single-session upstream data lag.
+
+    A missing provider release is an upstream availability event, not a cron
+    computation failure.  The canonical T-close -> T+1-open contract still
+    forbids publishing a stale signal, so the scheduled run must skip without
+    advancing paper state and wait for the provider to backfill the session.
+    Multi-session lags remain hard failures and require investigation.
+    """
+    return "got lag=1" in detail or "数据滞后 1 个交易日" in detail
+
+
+def _skip_stale_data(signal_date: str, data_date: str, detail: str) -> dict:
+    print(f"[cron] SKIPPED_STALE_DATA: {detail}")
+    print(
+        "[cron] 上游缺少一个交易日的数据：不发布陈旧信号、不推进 paper state；"
+        "等待数据源补发后回补该交易日"
+    )
+    return {
+        "status": "SKIPPED_STALE_DATA",
+        "signal_date": signal_date,
+        "data_date": data_date,
+        "detail": detail,
+    }
+
+
 def _early_gate(cal, signal_date: str) -> str:
     """Gate 前移的预判定（成本优化，语义最小化）。
 
@@ -4376,6 +4408,8 @@ def daily_cron():
     if action == "skip":
         return
     if action == "raise":
+        if _is_one_session_provider_lag(detail):
+            return _skip_stale_data(signal_date, data_date, detail)
         raise RuntimeError(detail)
 
     # CSI1000 Stage-B winner is stricter than the legacy generic gate:
@@ -4387,6 +4421,8 @@ def daily_cron():
     if csi_action == "skip":
         return
     if csi_action == "raise":
+        if _is_one_session_provider_lag(csi_detail):
+            return _skip_stale_data(signal_date, data_date, csi_detail)
         raise RuntimeError(csi_detail)
 
     # R01: each market must independently prove lag=0 freshness, matching
@@ -4401,6 +4437,8 @@ def daily_cron():
     if multi_action == "skip":
         return
     if multi_action == "raise":
+        if _is_one_session_provider_lag(multi_detail):
+            return _skip_stale_data(signal_date, data_date, multi_detail)
         raise RuntimeError(multi_detail)
 
     # R28: build stateful paper artifacts only after the data/publication gate
