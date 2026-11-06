@@ -378,7 +378,22 @@ def summarize_paper_state(
     pending = paper.get("pending_orders")
     if not isinstance(pending, dict):
         raise ValueError("paper pending_orders missing")
-    if pending.get("signal_date") != signal_data_date or pending.get("execution_date") != usage_date:
+    pending_signal_date = pending.get("signal_date")
+    pending_execution_date = pending.get("execution_date")
+    # A one-session stale provider freezes the prior pending order.  The
+    # ranking may still be published, but the paper order must remain the old
+    # one and must never be relabelled as a new publication order.
+    awaiting_execution_data = (
+        pending.get("status") == "awaiting_execution_data"
+        and isinstance(pending_signal_date, str)
+        and isinstance(pending_execution_date, str)
+        and pending_signal_date < signal_data_date
+        and pending_execution_date < usage_date
+    )
+    if not awaiting_execution_data and (
+        pending_signal_date != signal_data_date
+        or pending_execution_date != usage_date
+    ):
         raise ValueError("paper pending order dates mismatch publication")
     buys = pending.get("buy")
     sells = pending.get("sell")
@@ -397,6 +412,8 @@ def summarize_paper_state(
         "status": pending.get("status") or "planned",
         "signal_date": signal_data_date,
         "execution_date": usage_date,
+        "pending_signal_date": pending_signal_date,
+        "pending_execution_date": pending_execution_date,
         "planned_buy_count": len(buys),
         "planned_sell_count": len(sells),
         "prior_execution_report": "present" if isinstance(report, dict) else "none",
