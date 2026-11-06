@@ -1,0 +1,153 @@
+✓ Initialized. View run at 
+https://modal.com/apps/at2018cow/main/ap-YPnWUuH2Nwd7dlYuUjZMPU
+✓ Created objects.
+├── ✓ Uploaded 
+│   /tmp/opencode/qlib-v31/quant/code/production/modal_qlib_cn_a10g.py
+├── ✓ Uploaded /tmp/opencode/qlib-v31
+├── ✓ Created Function bench_years.
+├── ✓ Created Function independent_recheck.
+├── ✓ Created Function verify_integrity.
+├── ✓ Created Function debug_data.
+├── ✓ Created Function verify_universe.
+├── ✓ Created Function build_star_chn_bench.
+├── ✓ Created Function prepare_data.
+├── ✓ Created Function check_gpu.
+├── ✓ Created Function train.
+├── ✓ Created Function train_cpu.
+├── ✓ Created Function build_fund_factors.
+├── ✓ Created Function daily_signal.
+├── ✓ Created Function daily_signal_cpu.
+├── ✓ Created Function train_ensemble.
+├── ✓ Created Function tune_one.
+├── ✓ Created Function tune_driver.
+├── ✓ Created Function dual_horizon.
+├── ✓ Created Function p0_diagnostics.
+├── ✓ Created Function p1_diagnostics.
+├── ✓ Created Function version_check_0911.
+├── ✓ Created Function version_check_0916.
+├── ✓ Created Function batch_c_window.
+├── ✓ Created Function batch_c.
+├── ✓ Created Function p2_rolling.
+├── ✓ Created Function topk_grid.
+├── ✓ Created Function batch_a.
+├── ✓ Created Function batch_a_star_chn.
+├── ✓ Created Function batch_b_one.
+├── ✓ Created Function batch_b.
+├── ✓ Created Function daily_standalone.
+│   └── ⚠ Non-preemptible functions are billed at 3.0x the list rate for CPU and
+│       Memory.
+├── ✓ Created Function daily_cron.
+│   └── ⚠ Non-preemptible functions are billed at 3.0x the list rate for CPU and
+│       Memory.
+├── ✓ Created Function daily_cron_second_chance.
+│   └── ⚠ Non-preemptible functions are billed at 3.0x the list rate for CPU and
+│       Memory.
+├── ✓ Created Function attest_paper_state_bootstrap.
+│   └── ⚠ Non-preemptible functions are billed at 3.0x the list rate for CPU and
+│       Memory.
+├── ✓ Created Function reanchor_paper_state_backfill.
+├── ✓ Created Function freq_window.
+├── ✓ Created Function freq_driver.
+├── ✓ Created Function seed_backfill_state.
+├── ✓ Created Function emit_backfill_artifacts.
+└── ✓ Created Function backfill_signals.
+    └── ⚠ Non-preemptible functions are billed at 3.0x the list rate for CPU and
+        Memory.
+[daily] 下载最新数据 https://github.com/chenditc/investment_data/releases/latest/download/qlib_bin.tar.gz ...
+[daily] 数据就绪：日历 2000-01-04 ~ 2026-11-04（6502 个交易日），archive=dc9172939256
+[2:MainThread](2026-11-06 15:57:33,107) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+[2:MainThread](2026-11-06 15:57:33,110) INFO - qlib.Initialization - [__init__.py:82] - qlib successfully initialized based on client settings.
+[2:MainThread](2026-11-06 15:57:33,110) INFO - qlib.Initialization - [__init__.py:84] - data_path={'__DEFAULT_FREQ': PosixPath('/tmp/cn_data')}
+[daily] CSI300 PIT universe PASS: 300 members asof=2026-11-04 sha=1b16c959b279
+ModuleNotFoundError. CatBoostModel are skipped. (optional: maybe installing CatBoostModel can fix it.)
+ModuleNotFoundError. XGBModel is skipped(optional: maybe installing xgboost can fix it).
+[2:MainThread](2026-11-06 15:57:48,826) INFO - qlib.timer - [log.py:127] - Time cost: 12.541s | Loading data Done
+[2:MainThread](2026-11-06 15:57:49,143) INFO - qlib.timer - [log.py:127] - Time cost: 0.145s | DropnaLabel Done
+[2:MainThread](2026-11-06 15:57:50,560) INFO - qlib.timer - [log.py:127] - Time cost: 1.417s | CSZScoreNorm Done
+[2:MainThread](2026-11-06 15:57:50,561) INFO - qlib.timer - [log.py:127] - Time cost: 1.734s | fit & process data Done
+[2:MainThread](2026-11-06 15:57:50,561) INFO - qlib.timer - [log.py:127] - Time cost: 14.277s | Init data Done
+Training until validation scores don't improve for 50 rounds
+[20]    train's l2: 0.982768    valid's l2: 0.991733
+[40]    train's l2: 0.97641     valid's l2: 0.991967
+[60]    train's l2: 0.971054    valid's l2: 0.993755
+Early stopping, best iteration is:
+[29]    train's l2: 0.979667    valid's l2: 0.991347
+[2:MainThread](2026-11-06 15:57:53,806) WARNING - qlib.workflow - [expm.py:230] - No valid experiment found. Create a new experiment with name qlib-cn-daily.
+[2:MainThread](2026-11-06 15:57:53,811) INFO - qlib.workflow - [exp.py:258] - Experiment 789333158941000866 starts running ...
+2026/11/06 15:57:53 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git SHA is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+2026/11/06 15:57:53 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git branch is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+2026/11/06 15:57:53 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git repository URL is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+[2:MainThread](2026-11-06 15:57:53,945) INFO - qlib.workflow - [recorder.py:345] - Recorder ba39e3bde1064eda9387e43e564647a0 starts running under Experiment 789333158941000866 ...
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 15:57:53,948) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git diff.
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 15:57:53,950) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git status.
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 15:57:53,953) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git diff --cached.
+[2:MainThread](2026-11-06 15:57:54,040) INFO - qlib.timer - [log.py:127] - Time cost: 0.085s | waiting `async_log` Done
+[daily] 模型已重训，训练结束=2025-09-12 验证结束=2026-10-20
+[daily] 10-session label maturity PASS: train_end=2025-09-12 valid_end=2026-10-20 fit_asof=2026-11-04
+[daily] ranking CSV + stateful paper-order context prepared
+[daily] 已剔除 12 只涨/跌停股
+[daily] 2026-11-04 00:00:00 top10（csi300，10日横截面相对强弱评分）:
+   1. SZ002938  score=0.4526
+   2. SH688521  score=0.4414
+   3. SZ300394  score=0.4376
+   4. SH600183  score=0.4325
+   5. SZ301308  score=0.4166
+   6. SZ002384  score=0.3959
+   7. SZ300308  score=0.3930
+   8. SZ300476  score=0.3921
+   9. SH688041  score=0.3617
+  10. SH603986  score=0.3529
+Stopping app - local entrypoint completed.
+✓ App completed. View run at 
+https://modal.com/apps/at2018cow/main/ap-YPnWUuH2Nwd7dlYuUjZMPU

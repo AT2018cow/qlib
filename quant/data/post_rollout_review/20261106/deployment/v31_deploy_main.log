@@ -1,0 +1,57 @@
+✓ Created objects.
+├── ✓ Uploaded 
+│   /tmp/opencode/qlib-v31/quant/code/production/modal_qlib_cn_a10g.py
+├── ✓ Uploaded /tmp/opencode/qlib-v31
+├── ✓ Created Function bench_years.
+├── ✓ Created Function independent_recheck.
+├── ✓ Created Function verify_integrity.
+├── ✓ Created Function debug_data.
+├── ✓ Created Function verify_universe.
+├── ✓ Created Function build_star_chn_bench.
+├── ✓ Created Function prepare_data.
+├── ✓ Created Function check_gpu.
+├── ✓ Created Function train.
+├── ✓ Created Function train_cpu.
+├── ✓ Created Function build_fund_factors.
+├── ✓ Created Function daily_signal.
+├── ✓ Created Function daily_signal_cpu.
+├── ✓ Created Function train_ensemble.
+├── ✓ Created Function tune_one.
+├── ✓ Created Function tune_driver.
+├── ✓ Created Function dual_horizon.
+├── ✓ Created Function p0_diagnostics.
+├── ✓ Created Function p1_diagnostics.
+├── ✓ Created Function version_check_0911.
+├── ✓ Created Function version_check_0916.
+├── ✓ Created Function batch_c_window.
+├── ✓ Created Function batch_c.
+├── ✓ Created Function p2_rolling.
+├── ✓ Created Function topk_grid.
+├── ✓ Created Function batch_a.
+├── ✓ Created Function batch_a_star_chn.
+├── ✓ Created Function batch_b_one.
+├── ✓ Created Function batch_b.
+├── ✓ Created Function daily_standalone.
+│   └── ⚠ Non-preemptible functions are billed at 3.0x the list rate for CPU and
+│       Memory.
+├── ✓ Created Function daily_cron.
+│   └── ⚠ Non-preemptible functions are billed at 3.0x the list rate for CPU and
+│       Memory.
+├── ✓ Created Function daily_cron_second_chance.
+│   └── ⚠ Non-preemptible functions are billed at 3.0x the list rate for CPU and
+│       Memory.
+├── ✓ Created Function attest_paper_state_bootstrap.
+│   └── ⚠ Non-preemptible functions are billed at 3.0x the list rate for CPU and
+│       Memory.
+├── ✓ Created Function reanchor_paper_state_backfill.
+├── ✓ Created Function freq_window.
+├── ✓ Created Function freq_driver.
+├── ✓ Created Function seed_backfill_state.
+├── ✓ Created Function emit_backfill_artifacts.
+└── ✓ Created Function backfill_signals.
+    └── ⚠ Non-preemptible functions are billed at 3.0x the list rate for CPU and
+        Memory.
+✓ App deployed in 14.823s! 🎉
+
+View Deployment: 
+https://modal.com/apps/at2018cow/main/deployed/qlib-cn-daily-a10g

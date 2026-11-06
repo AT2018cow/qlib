@@ -1,6 +1,6 @@
 # 上线后审查逐项复核与处理
 
-状态：`COMMITTED / NOT_DEPLOYED`。对应[审查原文](2026-11-06-post-rollout-review-findings.md)。已完成确认代码缺陷的本地修补、行为回归和现有工件对账；不将 F19 外部证据、F20 正式发布管理记作已完成。原审查文档保留原样。
+状态：`DEPLOYED`。对应[审查原文](2026-11-06-post-rollout-review-findings.md)。已完成确认代码缺陷的本地修补、行为回归、现有工件对账、固定源码 cloud smoke/full、主应用 v31/网站应用 v6 部署与主跑/补跑验收；F19 外部证据仍未完成。原审查文档保留原样。
 
 ## 逐项结论
 
@@ -10,7 +10,7 @@
 | F02 | 成立，已修复 | 三市场先验证市场身份、数据日、provider 日历末日与 archive/calendar SHA，再共同允许显式 lag=1。删除第三道门禁的字符串匹配放行。15 个破坏单一市场身份的 override 反例均拒绝。 |
 | F03 | 成立，已修复 | 排名参考必须已有尚无执行行情的旧 pending，且在核实日历上满足 T+1。无 pending、可结算、未来订单、当日新订单或不满足 T+1 均拒绝。合法旧订单的持仓、现金和 pending 原样保留，不查询新 ST、不新建/执行订单、不写账户状态。 |
 | F04 | 缺少模式披露成立；自动覆盖不可变排名不应实施 | 新 journal 增加 publication context；恢复旧记录时从哈希校验后的 metadata 推导模式、数据日和交易日滞后数，拒绝 context 不一致。已发布滞后排名明确不可自动覆盖，同日修正必须另有显式版本化 amendment；当前未提供静默替换入口。网站收益的行情补算继续独立执行，不等于允许改写历史排名。 |
-| F05 | 成立，已修复 | 新 metadata 使用 `PASS_OPERATOR_OVERRIDE`、`publication_mode`、`lag_sessions`。前端也识别旧 `PASS` 中的 override gate，显示“滞后排名 · 订单冻结”、实际数据日、原执行日及“本日未生成新订单”。实际 11/06 三市场工件均经过前端行为测试；该 UI 改动尚未部署。 |
+| F05 | 成立，已修复 | 新 metadata 使用 `PASS_OPERATOR_OVERRIDE`、`publication_mode`、`lag_sessions`。前端也识别旧 `PASS` 中的 override gate，显示“滞后排名 · 订单冻结”、实际数据日、原执行日及“本日未生成新订单”。实际 11/06 三市场工件均经过前端行为测试；该 UI 改动已随主应用 v31 部署。 |
 | F06 | 成立，已修复配置 | 保留快速组，新增自动发现的完整 `pytest -q quant/tests` CI job，安装 Qlib/Modal 所需依赖及编译扩展。前端自动逐文件执行全部五个 `.cjs` 文件。已本地验证同一测试入口和 workflow YAML；未声称远端 Actions 已执行本轮未提交的修改。 |
 | F07 | 基准语义披露缺陷成立，已修复 | forward 窗口明确记录 `nav_basis` 的实际重基准金额，并单列按原始 1M 本金计算的 `account_cumulative_return`。新生成的重基准 forward 缺少 prefix 时拒绝发布为完整账户收益。网站当前使用的独立 10/08 账户不受此窗口基准影响。 |
 | F08 | 不成立，已补反例证据 | gap 列表实际只遍历开盘已有持仓及收盘实际持仓；`active` 候选用于可交易性掩码。独立 toy replay 证明未持有候选缺价会阻断买入并保留全部现金，`gaps=[]`；已有持仓缺价会产生 gap，并被网站拒绝。保留持仓估值的严格检查。 |
@@ -24,8 +24,8 @@
 | F16 | 成立，已修复 | methodology 及 journal 调度说明更新为 07:00 主跑 / 08:00 补跑，区分原生产冻结 ST 快照与网站未核实历史 ST，说明显式滞后参考模式及原生产账本/网站账户的关系。 |
 | F17 | 成立，已修复 | 全仓 Python Black 25.1.0、120 列检查通过（534 files unchanged；`.ipynb` 因未安装 Jupyter 依赖跳过）。`quant/code`、`quant/tests` 及 `quant/website/build_index.py` 均已格式化；未改写上游 Qlib 语义。 |
 | F18 | 证据范围缺口成立，已按 legacy 方案处理 | 增加[机器可读执行证据状态](../../data/execution_evidence_status.json)、数据字典与策略目录说明，并在 Strategy Atlas 顶部标记旧榜单 `LEGACY_EXECUTION_CONTRACT_NOT_REPLAYED`。已复验单元只按各自冻结 receipt 的范围认定；519 份报告的指标算术审计不等于 519 次成交回放，不宣称全部历史候选已重新排名或现任策略全局最优。 |
-| F19 | 外部证据缺口成立，仍未认证 | 新网站输出明确 `official_reference_price_verified=false`，方法页补充官方除权日参考价未核实；逐日历史 ST、集合竞价流动性与券商成交仍未取得独立证据。现有九份网站 JSON 仍是 v1（`fit_receipt_version` 缺省，无 `official_reference_price_verified` 字段）；前端同时兼容 v1/v2，下一次网站发布的新输出才带 v2 字段。账本对账结果因此保留 `PARTIAL_NOT_CERTIFIED`，不伪造 PASS 认证。 |
-| F20 | 发布管理待办；数字比较本身不能判断源码错配 | Modal v30 与 Git `quant-v1.2.0` 是不同版本序列；应核验提交标记及完整源码清单。不过 Git release 确实落后。已准备[下一版本发布候选说明](2026-11-06-post-rollout-release-candidate.md)；本轮未提交/部署/打 tag，不把发布候选当作正式 release。 |
+| F19 | 外部证据缺口成立，仍未认证 | 新网站输出明确 `official_reference_price_verified=false`，方法页补充官方除权日参考价未核实；逐日历史 ST、集合竞价流动性与券商成交仍未取得独立证据。九份网站 JSON 已随主跑网站阶段发布为 v2（`fit_receipt_version=2`、`official_reference_price_verified=false`、逐点 model/fit 绑定）；commit `9584b2ef0`。账本对账结果因此保留 `PARTIAL_NOT_CERTIFIED`，不伪造 PASS 认证。 |
+| F20 | 已完成 | 已发布 `quant-v1.3.0` 并将主应用升级到 v31、网站应用升级到 v6；旧 v30/v5 已被替换，部署与代码 commit 的对应关系记录在 `2026-11-06-quant-v1.3.0-release.md`。 |
 
 ## 验证结果
 
@@ -67,6 +67,6 @@ canonical live 段使用同一审计器，默认会自动跳过 `BACKFILL_RESEAR
 
 ## 交付与仍需完成的边界
 
-代码已提交并推送：代码提交 `5ca4b892c9bd1b8656a6d3aac3f03db886ffd66e`，tag `quant-v1.3.0` 指向 `7184772f1093b39a5b2b3d9c59e39ae6d117f585`；**尚未生产部署或执行 cloud smoke/full**。正式上线仍需对本轮固定源码完成前台 cloud smoke/full、两应用相同源码清单校验、生产状态前后对账，以及主跑/补跑的真实调用验收；不得将本地测试解释为已验证未来自动 cron 成功。
+代码已提交并推送：代码提交 `5ca4b892c9bd1b8656a6d3aac3f03db886ffd66e`，tag `quant-v1.3.0` 指向 `7184772f1093b39a5b2b3d9c59e39ae6d117f585`。已完成固定源码 cloud smoke/full、主应用 v31、网站应用 v6 部署，以及主跑/补跑真实调用验收；验收事实见 `deployment.json`。
 
 F19 保持外部证据待办；F20 已作为代码版本发布 tag/release，但生产部署与 cloud smoke/full 仍未完成，不能把 tag/release 当成生产部署回执。后续不因这轮审查自行启动全部历史候选的昂贵重选，也不改动已经批准的生产 profile。

@@ -1,0 +1,25 @@
+EXCEPTION DailyPipelineError
+daily publication stages failed: signals
+Traceback (most recent call last):
+  File "<stdin>", line 4, in <module>
+  File "/home/ss/git_repos/qlib/.venv/lib/python3.12/site-packages/modal/_object.py", line 49, in wrapped
+    return await method(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ss/git_repos/qlib/.venv/lib/python3.12/site-packages/modal/_functions.py", line 2067, in remote
+    return await self._call_function(args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ss/git_repos/qlib/.venv/lib/python3.12/site-packages/modal/_functions.py", line 2004, in _call_function
+    return await invocation.run_function()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ss/git_repos/qlib/.venv/lib/python3.12/site-packages/modal/_functions.py", line 515, in run_function
+    return await _process_result(
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ss/git_repos/qlib/.venv/lib/python3.12/site-packages/modal/_utils/function_utils.py", line 572, in _process_result
+    raise exc_with_hints(exc)
+  File "<ta-01M6RSBZ3N1CWW0XCXNMFB8WFR>:/root/modal_qlib_cn_a10g.py", line 4189, in daily_cron
+    return run_daily_pipeline(lambda: _run_daily_signal_cycle(allow_lag), _update_website_returns)
+      ^^^^^^^^^^^^^^^^^
+  File "<ta-01M6RSBZ3N1CWW0XCXNMFB8WFR>:/root/daily_pipeline.py", line 125, in run_daily_pipeline
+    raise DailyPipelineError(stages) from first_error
+  ^^^^^^^^^^^^^^^^^
+daily_pipeline.DailyPipelineError: daily publication stages failed: signals

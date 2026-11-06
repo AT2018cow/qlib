@@ -1,0 +1,1 @@
+RESULT {'status': 'COMPLETED', 'stages': {'signals': {'status': 'SKIPPED_NON_TRADING_DAY', 'result': {'status': 'SKIPPED_NON_TRADING_DAY', 'signal_date': '2026-11-07'}}, 'website': {'status': 'SUCCEEDED', 'result': {'status': 'ALREADY_PUBLISHED', 'source_sha256': '1aa5400c7a670738b504ce09fa5437fa4ff343110eab4b3a008052fb67b8f00a', 'files': 12}}}}

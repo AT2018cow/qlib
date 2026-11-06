@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "status": "DEPLOYED",
+  "deployed_at_cst": "2026-11-06T23:58:00+08:00",
+  "code_commit": "5ca4b892c9bd1b8656a6d3aac3f03db886ffd66e",
+  "tag": "quant-v1.3.0",
+  "tag_target": "7184772f1093b39a5b2b3d9c59e39ae6d117f585",
+  "source_sha256": "1aa5400c7a670738b504ce09fa5437fa4ff343110eab4b3a008052fb67b8f00a",
+  "provider_asset_digest": "sha256:dc917293925635189e982f47d35b960c3db8a9c3f11312c937673c8afdec21aa",
+  "main_app": {
+    "name": "qlib-cn-daily-a10g",
+    "version": "v31",
+    "deployed_at_cst": "2026-11-06T23:58:00+08:00",
+    "schedules": {
+      "daily_cron": "0 7 * * 1-5 Asia/Shanghai",
+      "daily_cron_second_chance": "0 8 * * 1-5 Asia/Shanghai"
+    }
+  },
+  "website_app": {
+    "name": "qlib-website-nav",
+    "version": "v6",
+    "deployed_at_cst": "2026-11-06T23:58:00+08:00",
+    "schedule": null
+  },
+  "cloud_smoke": {
+    "website": {
+      "market": "csi300",
+      "status": "SMOKE_PASS",
+      "days": 12,
+      "return": -0.13520835,
+      "wall_seconds": 129.8
+    },
+    "signals": {
+      "csi1000": "PASS",
+      "csi500": "PASS",
+      "csi300": "PASS"
+    }
+  },
+  "cloud_full": {
+    "website": {
+      "csi300": {
+        "status": "COMPLETED",
+        "days": 20,
+        "return": -0.2084466
+      },
+      "csi500": {
+        "status": "COMPLETED",
+        "days": 20,
+        "return": -0.10702576
+      },
+      "csi1000": {
+        "status": "COMPLETED",
+        "days": 20,
+        "return": -0.20134921
+      }
+    },
+    "signals": {
+      "csi1000": "PASS",
+      "csi500": "PASS",
+      "csi300": "PASS"
+    }
+  },
+  "acceptance": {
+    "daily_cron": {
+      "signals": "INCOMPLETE_STALE_DATA",
+      "website": "PUBLISHED",
+      "website_data_commit": "9584b2ef0"
+    },
+    "daily_cron_second_chance": {
+      "signals": "SKIPPED_NON_TRADING_DAY",
+      "website": "ALREADY_PUBLISHED"
+    }
+  },
+  "website_data": {
+    "version": 2,
+    "files": 12,
+    "commit": "9584b2ef0",
+    "latest_date": "2026-11-04",
+    "audit": "PARTIAL_NOT_CERTIFIED",
+    "ledger_status": "PASS"
+  },
+  "limitations": [
+    "official_reference_prices_unverified",
+    "historical_ST_unverified",
+    "auction_liquidity_unverified",
+    "broker_fills_not_certified"
+  ]
+}

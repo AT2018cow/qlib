@@ -1,0 +1,8 @@
+✓ Created objects.
+├── ✓ Uploaded /tmp/opencode/qlib-v31/quant/code/ops/website_simulation_modal.py
+├── ✓ Uploaded /tmp/opencode/qlib-v31
+├── ✓ Created Function build_market.
+└── ✓ Created Function daily.
+✓ App deployed in 12.018s! 🎉
+
+View Deployment: https://modal.com/apps/at2018cow/main/deployed/qlib-website-nav

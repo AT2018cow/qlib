@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "completed_at_utc": "2026-11-06T15:29:45.736919+00:00",
-  "status": "COMMITTED_NOT_DEPLOYED",
+  "status": "DEPLOYED",
   "base_commit": "33bef4b646612c5b6fe86587aaf49c1b4f641508",
   "verification_source_sha256": "1aa5400c7a670738b504ce09fa5437fa4ff343110eab4b3a008052fb67b8f00a",
   "python": {
@@ -39,11 +39,11 @@
   "production_profile_changed": false,
   "upstream_code_changed": false,
   "cloud_training_or_replay_started": false,
-  "production_deployed": false,
+  "production_deployed": true,
   "git_commit_created": true,
   "tag_or_release_created": false,
   "findings": {
-    "F01": "AUTO_LIVE_START_CANONICAL_AUDIT_PASS_ALIAS_CONTRACT_DOCUMENTED",
+    "F01": "DEPLOYED_CANONICAL_AUDIT_PASS_ALIAS_DOCUMENTED",
     "F02": "FIXED_LOCAL_VERIFIED",
     "F03": "FIXED_LOCAL_VERIFIED",
     "F04": "FIXED_LOCAL_VERIFIED",
@@ -61,8 +61,8 @@
     "F16": "FIXED_LOCAL_VERIFIED",
     "F17": "FIXED_FULL_PYTHON_BLACK_PASS_IPYNB_SKIPPED",
     "F18": "LEGACY_EVIDENCE_STATUS_LABELLED_NOT_ALL_CANDIDATES_REPLAYED",
-    "F19": "EXTERNAL_EVIDENCE_OPEN_CURRENT_WEBSITE_FILES_V1",
-    "F20": "RELEASE_CANDIDATE_PREPARED_NOT_RELEASED"
+    "F19": "EXTERNAL_EVIDENCE_OPEN_WEBSITE_V2_PUBLISHED",
+    "F20": "DEPLOYED_MAIN_V31_WEBSITE_V6_RELEASE_V1.3.0"
   },
   "javascript_syntax_check": "PASS",
   "workflow_yaml_structure": "PASS",
@@ -74,5 +74,7 @@
     "audited_reports": 2,
     "issues": 0
   },
-  "commit_sha": "5ca4b892c9bd1b8656a6d3aac3f03db886ffd66e"
+  "commit_sha": "5ca4b892c9bd1b8656a6d3aac3f03db886ffd66e",
+  "deployment": "deployment.json",
+  "website_files_version": 2
 }

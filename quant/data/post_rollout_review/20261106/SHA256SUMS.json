@@ -1,13 +1,23 @@
 {
-  "artifact-reconciliation.json": "31630a7f94bd5114dd5eaa7bfe5190d8ad941a37137ed2f49bd4949853cf7e6c",
+  "artifact-reconciliation.json": "90bd1b2c15cd5081d051f56685be540cfb41e62e5525a507c91c755d65de7d06",
   "csi1000-independent-ledger-audit.json": "4a4132b4cd0c4df7d50ccf497a702356341a1d4cfeb4037dfa36acba1329379d",
   "csi300-independent-ledger-audit.json": "f04cc835d469fedb50c7ce8333c6c928c58c7371b37e4e916c284ddfbc7f1cac",
   "csi500-independent-ledger-audit.json": "8d41115c6dc3333ad280b1a0ce78e148f830b12d8a2082af0d248f7c80d481ab",
+  "deployment/v31_accept_backup.log": "46dceffb89c62f41d31767cf8ccd017948ed31766779eb0797f7a94301e3687b",
+  "deployment/v31_accept_daily_cron.log": "94eb135f5d3d21d25f39d8710cb4f25e95e88affdb89a340ddddc9f88ffe0f30",
+  "deployment/v31_deploy_main.log": "15f1b65562562ed8bff97f389c2f5f1a3615173126b7a602ab298d667c2a6bd8",
+  "deployment/v31_deploy_website.log": "8c2a94225ea6b27e8d66f2e3555ada8e333a3d46f7e161ef7ece850b09467f2e",
+  "deployment/v31_signal_csi1000.log": "ca57f13a23cb8a9d9cc49c8f0e9e0bd1acbf59ccd4e9157c314378b09e4e2780",
+  "deployment/v31_signal_csi300.log": "6c3c885408b72247dfeb2bfd4083bbb3a6e039c8f7f10a9a0802da0618b0c392",
+  "deployment/v31_signal_csi500.log": "30d2e649d3d94032d2611fe9a47ea309982db3f5a00249a4cc4eec4489557318",
+  "deployment/v31_website_full.log": "023c59a0eb7dd4bbf7e07a0380f662420ec6a277135d9d3e266bdafaa6010134",
+  "deployment/v31_website_smoke.log": "41ca35f7f03047c1ecd0def5c71404764eff0278cc9c478ffcea9a3f49068bc9",
+  "deployment.json": "13f9b621453ac588e8eeae95b362f61a41c9beb9dd6a3007526d73e6cac55030",
   "expected-account-scope-rejection.json": "d2f602af96bcdc799293e6f20336ffa5a7b5afd5833b7def5ecc5f1526d0b429",
   "formatting.json": "27bfcd3116955e3099137f0a1d9ddea33e66b8fe352cf919d101106e0d8f3655",
   "frontend.log": "a5643a4988df6d6ac6dec43b9b5ae98ef448d1a6a1120efb79adf7b94ec64b79",
   "historical-audit-summary.json": "0aa9d48c0bb05bcdab16c9f87a254a1b3ed8612a59c0196bb56976c2dd188fe4",
   "pytest.log": "4293f10da9633e4de4e8507da2e306d538a5548d5a4e836e170a6f2bb8635c7a",
   "source-manifest.json": "9d32bf17db30c234d7d52e6ac8d814204082797180bdbf22135b1485d781c55c",
-  "validation.json": "dadd198762e44025a23c6e757fabd7a93295030247563ea7ec2091b869c3721e"
+  "validation.json": "cb09997bfdfdb0494e19aa1d78d39f3caae7d06ffa951c55e2ae8f3e6624b950"
 }
