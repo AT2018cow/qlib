@@ -6,7 +6,7 @@
 
 ## 已具备的可审核内容
 
-- 基础 main 提交：`33bef4b646612c5b6fe86587aaf49c1b4f641508`。本轮工作区尚未提交，没有可用于正式 tag 的新提交 SHA。
+- 基础 main 提交：`33bef4b646612c5b6fe86587aaf49c1b4f641508`。本轮代码提交 `5ca4b892c9bd1b8656a6d3aac3f03db886ffd66e`；代码 release tag `quant-v1.3.0` 指向 `7184772f1093b39a5b2b3d9c59e39ae6d117f585`。
 - 修复范围及 20 项结论：[逐项复核](2026-11-06-post-rollout-review-resolution.md)。
 - 全仓 Python Black 25.1.0/120 列通过（534 files；ipynb 跳过）；canonical live 审计从 11/03 起算、0 issue。
 - 本地验证：[validation.json](../../data/post_rollout_review/20261106/validation.json)。922 项 Python、50 子用例、30 项前端通过；519 份历史报告算术审计与 60 份独立网站账本对账通过。
@@ -15,7 +15,7 @@
 
 ## 正式发版尚缺的事实
 
-1. 本轮改动合并 main 后的准确提交 SHA 与独立复审结果。
+1. 本轮代码已提交并发布 tag；仍缺独立复审签字、固定源码 cloud smoke/full 与实际部署回执。
 2. 绑定该固定源码的新 cloud smoke/full 及输入、输出、实际退出码；在已授权研究环境、同一 workspace 的数据卷中执行，保持前台连接，先 smoke 后 full，不使用 Modal 的 detached 模式。
 3. 部署提交标记、两应用相同源码清单、实际部署版本和 07:00/08:00 调度配置的核验。
 4. 账户状态前后哈希及主跑/补跑真实回执；既有 override 恢复应明确为非正常完成，同时保留网站阶段结果。新鲜路径的检查不能靠捏造未来数据。
