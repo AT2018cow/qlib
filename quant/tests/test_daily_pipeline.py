@@ -3,6 +3,8 @@
 import ast
 import importlib.util
 import pickle
+import subprocess
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -139,3 +141,38 @@ def test_only_main_and_eight_oclock_backup_are_scheduled():
         ("daily_cron", "0 7 * * 1-5", {"timezone": "Asia/Shanghai"}),
         ("daily_cron_second_chance", "0 8 * * 1-5", {"timezone": "Asia/Shanghai"}),
     ]
+
+
+def test_reused_qlib_worker_reinitializes_after_success_and_failed_fit(tmp_path):
+    script = r'''
+from pathlib import Path
+import os, sys
+os.environ["MLFLOW_ALLOW_FILE_STORE"] = "true"
+os.environ["MLFLOW_DISABLE_AGENT_HINT"] = "1"
+sys.path.insert(0, str(Path.cwd() / "quant/code"))
+from quant_bootstrap import ensure_quant_import_paths
+ensure_quant_import_paths()
+import qlib
+from qlib.workflow import R
+from website_simulation_modal import fit_website_model
+root = Path(sys.argv[1])
+class Model:
+    def __init__(self, fail=False): self.fail = fail
+    def fit(self, dataset):
+        R.log_metrics(loss=1.0)
+        if self.fail: raise RuntimeError("training failed")
+for i in range(3):
+    qlib.init(provider_uri=str(root), region="cn", exp_manager={
+        "class": "MLflowExpManager", "module_path": "qlib.workflow.expm",
+        "kwargs": {"uri": (root / f"experiments-{i}").as_uri(), "default_exp_name": "website-simulation"}})
+    if i == 1:
+        try: fit_website_model(Model(fail=True), None)
+        except RuntimeError as exc: assert str(exc) == "training failed"
+        else: raise AssertionError("training failure hidden")
+    else: fit_website_model(Model(), None)
+print("REUSED_WORKER_PASS")
+'''
+    result = subprocess.run([sys.executable, "-c", script, str(tmp_path)], cwd=ROOT,
+                            capture_output=True, text=True, timeout=60)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "REUSED_WORKER_PASS" in result.stdout

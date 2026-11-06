@@ -49,6 +49,14 @@ def make_job(asset, source, market, mode):
     return {"asset": asset, "source_manifest": source, "market": market, "mode": mode}
 
 
+def fit_website_model(model, dataset):
+    """Close the training recorder before a pooled container handles another market."""
+    from qlib.workflow import R
+
+    with R.start(experiment_name="website-simulation"):
+        model.fit(dataset)
+
+
 @app.function(
     volumes={"/simulation": simulation},
     cpu=20,
@@ -216,7 +224,7 @@ def build_market(job):
                 raise ValueError("more than three fresh fits require a separately bounded recovery batch")
             print(f"[website] fit {market} {block['fit_asof']}..{block['signal_end']}", flush=True)
             model = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
-            model.fit(dataset)
+            fit_website_model(model, dataset)
             model_dir.mkdir(parents=True, exist_ok=True)
             model_path.write_bytes(pickle.dumps(model, protocol=pickle.HIGHEST_PROTOCOL))
             meta = {"identity": fit_identity, "model_sha256": hashlib.sha256(model_path.read_bytes()).hexdigest()}
