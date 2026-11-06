@@ -72,7 +72,7 @@ class ReviewRegressionTests(unittest.TestCase):
     def test_daily_cron_isolates_both_pools_and_repairs_missing_files(self):
         src = function_source("quant/code/production/modal_qlib_cn_a10g.py", "_run_daily_signal_cycle")
         self.assertIn('market="csi1000"', src)
-        self.assertIn('CANONICAL_PROFILE', src)
+        self.assertIn("CANONICAL_PROFILE", src)
         self.assertIn("daily_standalone.remote(", src)
         # R01/R02: cross-market freshness gate + journal-frozen publication
         self.assertIn("validate_multi_market_publication", src)
@@ -88,7 +88,7 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn("runtime_lineage", src)
         daily = function_source("quant/code/production/modal_qlib_cn_a10g.py", "daily_standalone")
         self.assertIn("runtime_lineage = _runtime_cache_lineage()", daily)
-        self.assertIn("saved.get(\"runtime_lineage\") != runtime_lineage", daily)
+        self.assertIn('saved.get("runtime_lineage") != runtime_lineage', daily)
 
     def test_r24_research_backtests_use_custom_exchange_config(self):
         src = (ROOT / "quant/code/execution/board_execution.py").read_text()
@@ -183,10 +183,10 @@ class ReviewRegressionTests(unittest.TestCase):
         src = function_source("quant/code/research/pre_tuner/freq_experiment.py", "retrain_phase_sensitivity_driver")
         self.assertIn("prepare.remote(force=False, market=market)", src)
         self.assertIn("phase audit requires a passing reproducibility_gate_driver baseline", src)
-        self.assertIn('if phase == 0:', src)
+        self.assertIn("if phase == 0:", src)
         self.assertIn('"source": "repro_gate_baseline_reuse"', src)
         self.assertIn("_load_signal_artifact", src)
-        self.assertIn("baseline.get(\"reproducibility\") != current_manifest", src)
+        self.assertIn('baseline.get("reproducibility") != current_manifest', src)
 
     def test_frequency_results_are_market_scoped(self):
         src = function_source("quant/code/research/pre_tuner/freq_experiment.py", "freq_driver")
@@ -263,7 +263,9 @@ class ReviewRegressionTests(unittest.TestCase):
 
     def test_phase_extension_runs_canonical_app_only_from_local_entrypoint(self):
         src = (ROOT / "quant/code/research/pre_tuner/phase_audit_extend.py").read_text()
-        entry = function_source("quant/code/research/pre_tuner/phase_audit_extend.py", "extend_phase_sensitivity_driver")
+        entry = function_source(
+            "quant/code/research/pre_tuner/phase_audit_extend.py", "extend_phase_sensitivity_driver"
+        )
         self.assertIn("@app.local_entrypoint()", src)
         self.assertIn('"run"', entry)
         self.assertIn('"freq_experiment.py::retrain_phase_sensitivity_driver"', entry)
@@ -291,7 +293,9 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn("_validate_baseline(", src)
         self.assertIn("baseline_reproducibility", src)
         self.assertIn("baseline_gate", src)
-        canonical = function_source("quant/code/research/pre_tuner/freq_experiment.py", "retrain_phase_sensitivity_driver")
+        canonical = function_source(
+            "quant/code/research/pre_tuner/freq_experiment.py", "retrain_phase_sensitivity_driver"
+        )
         self.assertIn('baseline.get("reproducibility") != current_manifest', canonical)
 
 

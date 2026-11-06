@@ -15,6 +15,7 @@ The archive is skipped when the env var is unset.  The pin below is the
 ``quant/data/signals/2026-10-16_mvp_metadata.json``; update it only when a new
 package hash is accepted into production (and record the new provenance).
 """
+
 import hashlib
 import os
 from pathlib import Path

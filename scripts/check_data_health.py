@@ -7,7 +7,6 @@ from loguru import logger
 from tqdm import tqdm
 
 
-
 class DataHealthChecker:
     """Checks a dataset for data completeness and correctness. The data will be converted to a pd.DataFrame and checked for the following problems:
     - any of the columns ["open", "high", "low", "close", "volume"] are missing
@@ -196,15 +195,17 @@ class DataHealthChecker:
             missing_col = "factor" not in df.columns
             missing_data = False if missing_col else bool(df["factor"].isnull().all())
             if missing_col or missing_data:
-                rows.append({
-                    "instruments": filename,
-                    "missing_factor_col": missing_col,
-                    "missing_factor_data": missing_data,
-                })
+                rows.append(
+                    {
+                        "instruments": filename,
+                        "missing_factor_col": missing_col,
+                        "missing_factor_data": missing_data,
+                    }
+                )
 
-        result_df = pd.DataFrame(
-            rows, columns=["instruments", "missing_factor_col", "missing_factor_data"]
-        ).set_index("instruments")
+        result_df = pd.DataFrame(rows, columns=["instruments", "missing_factor_col", "missing_factor_data"]).set_index(
+            "instruments"
+        )
         if not result_df.empty:
             return result_df
         else:

@@ -31,8 +31,9 @@ RET_TOL = Decimal("0.00000001")
 FILE_PATTERN = re.compile(r"(\d{4}-\d{2}-\d{2})_paper_portfolio\.json$")
 
 
-def resolve_audit_target(market: str = "csi1000", lineage: str = None, profile: str = None,
-                         legacy_winner: bool = False) -> dict:
+def resolve_audit_target(
+    market: str = "csi1000", lineage: str = None, profile: str = None, legacy_winner: bool = False
+) -> dict:
     """Resolve the audited market/profile/lineage; fail closed on mismatches (R03).
 
     The tool previously hardcoded the historical ``stage_b_winner`` lineage and
@@ -65,9 +66,7 @@ def resolve_audit_target(market: str = "csi1000", lineage: str = None, profile: 
             f"{expected_lineage!r}; use --legacy-stage-b-winner for historical winner audits"
         )
     if profile and profile != expected_profile:
-        raise ValueError(
-            f"profile {profile!r} does not match market {market!r} canonical {expected_profile!r}"
-        )
+        raise ValueError(f"profile {profile!r} does not match market {market!r} canonical {expected_profile!r}")
     return {"market": market, "lineage": expected_lineage, "profile": expected_profile}
 
 
@@ -92,8 +91,18 @@ def valid_date(value):
         return False
 
 
-def reconcile(artifacts, *, forward=None, calendar=None, quotes=None,
-              market="csi1000", lineage=None, profile=None, legacy_winner=False):
+def reconcile(
+    artifacts,
+    *,
+    forward=None,
+    calendar=None,
+    quotes=None,
+    market="csi1000",
+    lineage=None,
+    profile=None,
+    legacy_winner=False,
+    start=None,
+):
     """Return a JSON-compatible ledger audit without changing its inputs.
 
     artifacts: public *_paper_portfolio.json dicts (usage date in artifact).
@@ -108,6 +117,49 @@ def reconcile(artifacts, *, forward=None, calendar=None, quotes=None,
     never silently treated as "nothing to audit".
     """
     target = resolve_audit_target(market, lineage, profile, legacy_winner)
+    if start is None:
+        backfill_days = [
+            artifact.get("usage_date")
+            for artifact in artifacts
+            if isinstance(artifact, dict)
+            and artifact.get("data_mode") == "BACKFILL_RESEARCH"
+            and valid_date(artifact.get("usage_date"))
+        ]
+        live_days = [
+            artifact.get("usage_date")
+            for artifact in artifacts
+            if isinstance(artifact, dict)
+            and artifact.get("data_mode") != "BACKFILL_RESEARCH"
+            and valid_date(artifact.get("usage_date"))
+        ]
+        # Legacy fixtures have no data_mode field; preserve the historical
+        # START=2026-10-12 contract. Only the new 1M backfill+live artifacts
+        # auto-start at the first live session.
+        start = min(live_days) if backfill_days and live_days else START
+    elif not valid_date(start):
+        raise ValueError("audit start must be an ISO date")
+    if isinstance(forward, dict) and forward.get("data_mode") == "CAUSAL_SIMULATION":
+        return {
+            "status": "FAIL",
+            "start_date": start,
+            "target": target,
+            "artifact_audit": "NOT_RUN_ACCOUNT_SCOPE_MISMATCH",
+            "audited_reports": 0,
+            "settled_reports": 0,
+            "target_artifacts": 0,
+            "winner_artifacts": 0,
+            "skipped_artifacts": {},
+            "quoted_closes": 0,
+            "rows": [],
+            "warnings": [],
+            "issues": [
+                {
+                    "code": "ACCOUNT_SCOPE_MISMATCH",
+                    "date": None,
+                    "detail": "October 8 website simulation is a separate account; supply --website-ledger for its raw sessions",
+                }
+            ],
+        }
     issues, warnings = [], []
     rows = []
     audited = []
@@ -135,14 +187,19 @@ def reconcile(artifacts, *, forward=None, calendar=None, quotes=None,
             key = f"lineage:{artifact.get('paper_lineage')}"
             skipped[key] = skipped.get(key, 0) + 1
             continue
-        target_artifacts.append(artifact)
+        if artifact.get("data_mode") == "BACKFILL_RESEARCH":
+            skipped["backfill_research"] = skipped.get("backfill_research", 0) + 1
+            continue
         day = artifact.get("usage_date")
+        if valid_date(day) and day < start and artifact.get("execution_report") is not None:
+            skipped["before_start"] = skipped.get("before_start", 0) + 1
+            continue
+        target_artifacts.append(artifact)
         if not valid_date(day):
             issue("BAD_USAGE_DATE", day, "missing/invalid published usage_date")
             continue
         profile_value = artifact.get("production_lineage")
-        if (not isinstance(profile_value, dict)
-                or profile_value.get("profile") != target["profile"]):
+        if not isinstance(profile_value, dict) or profile_value.get("profile") != target["profile"]:
             issue(
                 "LINEAGE_MISMATCH",
                 day,
@@ -180,9 +237,9 @@ def reconcile(artifacts, *, forward=None, calendar=None, quotes=None,
         report = artifact.get("execution_report")
         if report is None:
             if previous:
-                if cash != previous["cash"] or {
-                    k: v["shares"] for k, v in positions.items()
-                } != {k: v["shares"] for k, v in previous["positions"].items()}:
+                if cash != previous["cash"] or {k: v["shares"] for k, v in positions.items()} != {
+                    k: v["shares"] for k, v in previous["positions"].items()
+                }:
                     issue("UNREPORTED_POSITION_CHANGE", day, "cash/positions changed without an execution report")
             previous = {"date": day, "cash": cash, "positions": positions}
             continue
@@ -193,10 +250,11 @@ def reconcile(artifacts, *, forward=None, calendar=None, quotes=None,
 
         execution_day = report.get("date")
         signal_day = report.get("signal_date")
-        if signal_day is not None and (not valid_date(signal_day) or
-                                      (valid_date(execution_day) and signal_day >= execution_day)):
+        if signal_day is not None and (
+            not valid_date(signal_day) or (valid_date(execution_day) and signal_day >= execution_day)
+        ):
             issue("BAD_SIGNAL_DATE", day, f"report signal day {signal_day!r} must precede execution")
-        if not valid_date(execution_day) or execution_day > day or execution_day < START:
+        if not valid_date(execution_day) or execution_day > day or execution_day < start:
             issue("BAD_EXECUTION_DATE", day, f"invalid or out-of-range execution day: {execution_day!r}")
             previous = {"date": day, "cash": cash, "positions": positions}
             continue
@@ -269,25 +327,39 @@ def reconcile(artifacts, *, forward=None, calendar=None, quotes=None,
                                     # Floating adjusted shares may not multiply back to
                                     # exact integers; Qlib explicitly tolerates 0.1 share.
                                     if abs(physical_shares - nearest_lot) > Decimal("0.1"):
-                                        issue("FACTOR_LOT_DIVERGENCE", execution_day,
-                                              f"{sym}: adjusted shares={shares}, factor={factor}; "
-                                              "not a physical 100-share lot")
-                                    if "factor" in fill and abs(number(fill["factor"], "recorded factor") - factor) > Decimal("0.000001"):
-                                        issue("REPORTED_FACTOR_DIFF", execution_day,
-                                              f"{sym}: recorded={fill['factor']}, independent={factor}")
+                                        issue(
+                                            "FACTOR_LOT_DIVERGENCE",
+                                            execution_day,
+                                            f"{sym}: adjusted shares={shares}, factor={factor}; "
+                                            "not a physical 100-share lot",
+                                        )
+                                    if "factor" in fill and abs(
+                                        number(fill["factor"], "recorded factor") - factor
+                                    ) > Decimal("0.000001"):
+                                        issue(
+                                            "REPORTED_FACTOR_DIFF",
+                                            execution_day,
+                                            f"{sym}: recorded={fill['factor']}, independent={factor}",
+                                        )
                                     if "physical_shares" in fill and abs(
                                         number(fill["physical_shares"], "physical shares") - physical_shares
                                     ) > Decimal("0.1"):
-                                        issue("PHYSICAL_SHARES_DIFF", execution_day,
-                                              f"{sym}: reported={fill['physical_shares']}, actual={physical_shares}")
+                                        issue(
+                                            "PHYSICAL_SHARES_DIFF",
+                                            execution_day,
+                                            f"{sym}: reported={fill['physical_shares']}, actual={physical_shares}",
+                                        )
                 except (KeyError, TypeError, ValueError) as exc:
                     issue("INVALID_FILL", execution_day, str(exc))
         if abs(fees - reported_cost) > CENT_TOL:
             issue("TOTAL_FEE_DIFF", execution_day, f"fills fees={fees}, report cost={reported_cost}")
 
         if previous is None:
-            warn("MISSING_OPENING_SNAPSHOT", execution_day,
-                 "no prior winner state snapshot; cannot independently replay opening holdings/cash")
+            warn(
+                "MISSING_OPENING_SNAPSHOT",
+                execution_day,
+                "no prior winner state snapshot; cannot independently replay opening holdings/cash",
+            )
         else:
             cash_after_sells = previous["cash"] + sum(n * px - fee for _, n, px, fee in sells)
             expected_cash = cash_after_sells - sum(n * px + fee for _, n, px, fee in buys)
@@ -312,9 +384,9 @@ def reconcile(artifacts, *, forward=None, calendar=None, quotes=None,
                                 expected_shares = Decimal(expected_lots) * 100 / factor
                                 estimated_fee = max(expected_shares * px * Decimal("0.0005"), Decimal(5))
                                 if expected_shares * px + estimated_fee > available_cash:
-                                    available_lots = max(0, int(
-                                        ((available_cash - Decimal(5)) / px * factor + Decimal("0.1")) // 100
-                                    ))
+                                    available_lots = max(
+                                        0, int(((available_cash - Decimal(5)) / px * factor + Decimal("0.1")) // 100)
+                                    )
                                     expected_lots = min(expected_lots, available_lots)
                                     while expected_lots > 0:
                                         expected_shares = Decimal(expected_lots) * 100 / factor
@@ -324,15 +396,20 @@ def reconcile(artifacts, *, forward=None, calendar=None, quotes=None,
                                         expected_lots -= 1
                                 expected_shares = Decimal(expected_lots) * 100 / factor
                                 if abs(shares - expected_shares) * factor > Decimal("0.1"):
-                                    issue("BUY_SIZE_DIFF", execution_day,
-                                          f"{sym}: filled adjusted shares={shares}, Qlib factor-aware target={expected_shares}")
+                                    issue(
+                                        "BUY_SIZE_DIFF",
+                                        execution_day,
+                                        f"{sym}: filled adjusted shares={shares}, Qlib factor-aware target={expected_shares}",
+                                    )
                         available_cash -= shares * px + fee
             if abs(expected_cash - cash) > CENT_TOL:
                 issue("CASH_LEDGER_DIFF", execution_day, f"replayed cash={expected_cash}, artifact cash={cash}")
             share_balance = {sym: p["shares"] for sym, p in previous["positions"].items()}
             for sym, n, _, _ in sells:
                 if share_balance.get(sym, Decimal(0)) < n:
-                    issue("OVERSOLD_POSITION", execution_day, f"{sym}: sold {n}, previously {share_balance.get(sym, 0)}")
+                    issue(
+                        "OVERSOLD_POSITION", execution_day, f"{sym}: sold {n}, previously {share_balance.get(sym, 0)}"
+                    )
                 share_balance[sym] = share_balance.get(sym, Decimal(0)) - n
             for sym, n, _, _ in buys:
                 share_balance[sym] = share_balance.get(sym, Decimal(0)) + n
@@ -370,25 +447,39 @@ def reconcile(artifacts, *, forward=None, calendar=None, quotes=None,
                     expected_quote_close += pos["shares"] * actual_mark
                     quote_count += 1
                     if abs(actual_mark - pos["last_price"]) > Decimal("0.0001"):
-                        issue("STALE_OR_DIFFERENT_CLOSE", execution_day,
-                              f"{sym}: snapshot mark={pos['last_price']}, independent close={actual_mark}")
+                        issue(
+                            "STALE_OR_DIFFERENT_CLOSE",
+                            execution_day,
+                            f"{sym}: snapshot mark={pos['last_price']}, independent close={actual_mark}",
+                        )
             if not any(x["code"] == "MISSING_INDEPENDENT_CLOSE" and x["date"] == execution_day for x in issues):
                 if abs(expected_quote_close - close) > CENT_TOL:
-                    issue("QUOTE_NAV_DIFF", execution_day, f"independent close NAV={expected_quote_close}, report NAV={close}")
+                    issue(
+                        "QUOTE_NAV_DIFF",
+                        execution_day,
+                        f"independent close NAV={expected_quote_close}, report NAV={close}",
+                    )
 
-        rows.append({"date": execution_day, "baseline_open": str(pre),
-                     "reported_close": str(close), "ledger_close": str(expected_close),
-                     "fee": str(fees), "usage_date": day})
+        rows.append(
+            {
+                "date": execution_day,
+                "baseline_open": str(pre),
+                "reported_close": str(close),
+                "ledger_close": str(expected_close),
+                "fee": str(fees),
+                "usage_date": day,
+            }
+        )
         previous = {"date": day, "cash": cash, "positions": positions}
 
     rows.sort(key=lambda row: row["date"])
-    if rows and rows[0]["date"] != START:
-        issue("MISSING_INCEPTION_REPORT", START, f"first report date {rows[0]['date']}, expected {START}")
+    if rows and rows[0]["date"] != start:
+        issue("MISSING_INCEPTION_REPORT", start, f"first report date {rows[0]['date']}, expected {start}")
     if calendar is not None:
         if len(calendar) != len(set(calendar)) or any(not valid_date(day) for day in calendar):
             issue("INVALID_CALENDAR", None, "calendar dates must be valid and unique")
         elif rows:
-            expected = {day for day in calendar if START <= day <= rows[-1]["date"]}
+            expected = {day for day in calendar if start <= day <= rows[-1]["date"]}
             actual = {row["date"] for row in rows}
             for day in sorted(expected - actual):
                 issue("MISSING_TRADING_DAY", day, "no execution report for an expected session")
@@ -401,16 +492,22 @@ def reconcile(artifacts, *, forward=None, calendar=None, quotes=None,
         if not isinstance(forward, dict):
             issue("INVALID_FORWARD_JSON", None, "forward JSON is not an object")
         elif not rows:
-            if not (forward.get("status") == "awaiting_first_valuation"
-                    and forward.get("start_date") == START
-                    and forward.get("points") == []
-                    and forward.get("cumulative_return") is None
-                    and forward.get("latest_date") is None):
-                issue("FORWARD_BEFORE_INCEPTION", START, "expected an empty awaiting series")
+            if not (
+                forward.get("status") == "awaiting_first_valuation"
+                and forward.get("start_date") == start
+                and forward.get("points") == []
+                and forward.get("cumulative_return") is None
+                and forward.get("latest_date") is None
+            ):
+                issue("FORWARD_BEFORE_INCEPTION", start, "expected an empty awaiting series")
         else:
             points = forward.get("points")
-            if (forward.get("status") != "active" or forward.get("start_date") != START
-                    or not isinstance(points, list) or len(points) != len(rows)):
+            if (
+                forward.get("status") != "active"
+                or forward.get("start_date") != start
+                or not isinstance(points, list)
+                or len(points) != len(rows)
+            ):
                 issue("FORWARD_SCHEMA_DIFF", None, "status/start date/point count differs from paper ledger")
             else:
                 baseline, prev_close = number(rows[0]["baseline_open"], "baseline"), None
@@ -425,14 +522,23 @@ def reconcile(artifacts, *, forward=None, calendar=None, quotes=None,
                         try:
                             actual = number(point.get(field), field)
                             if abs(actual - value) > RET_TOL:
-                                issue("FORWARD_VALUE_DIFF", row["date"], f"{field}: reported={actual}, independent={value}")
+                                issue(
+                                    "FORWARD_VALUE_DIFF",
+                                    row["date"],
+                                    f"{field}: reported={actual}, independent={value}",
+                                )
                         except ValueError as exc:
                             issue("FORWARD_INVALID_VALUE", row["date"], str(exc))
                     prev_close = close
                 try:
-                    if (forward.get("latest_date") != rows[-1]["date"] or
-                        abs(number(forward.get("cumulative_return"), "total return") -
-                            (number(rows[-1]["reported_close"], "close") / baseline - 1)) > RET_TOL):
+                    if (
+                        forward.get("latest_date") != rows[-1]["date"]
+                        or abs(
+                            number(forward.get("cumulative_return"), "total return")
+                            - (number(rows[-1]["reported_close"], "close") / baseline - 1)
+                        )
+                        > RET_TOL
+                    ):
                         issue("FORWARD_TOTAL_DIFF", None, "latest date or final cumulative return differs")
                 except ValueError:
                     issue("FORWARD_TOTAL_DIFF", None, "final return is not numeric")
@@ -445,8 +551,11 @@ def reconcile(artifacts, *, forward=None, calendar=None, quotes=None,
         # Current canonical files exist but no execution settlement yet: this is
         # explicitly not a pass, and no longer silently filtered to NOT_STARTED.
         status = "AWAITING_SETTLEMENT"
-    elif quotes is None or calendar is None or forward is None or any(
-        w["code"] == "MISSING_OPENING_SNAPSHOT" for w in warnings
+    elif (
+        quotes is None
+        or calendar is None
+        or forward is None
+        or any(w["code"] == "MISSING_OPENING_SNAPSHOT" for w in warnings)
     ):
         status = "PARTIAL_NOT_CERTIFIED"
     else:
@@ -454,12 +563,25 @@ def reconcile(artifacts, *, forward=None, calendar=None, quotes=None,
     if rows and forward is None:
         warn("PUBLIC_FORWARD_NOT_PROVIDED", None, "cannot certify that webpage return JSON equals the account ledger")
     if rows and quotes is None:
-        warn("PRICE_PROVENANCE_NOT_VERIFIED", None, "no independent open/close/factor quotes; original market marks unverified")
-    return {"status": status, "start_date": START, "target": target,
-            "winner_artifacts": len(audited), "target_artifacts": len(target_artifacts),
-            "audited_reports": len(rows), "settled_reports": len(rows),
-            "skipped_artifacts": skipped, "quoted_closes": quote_count,
-            "issues": issues, "warnings": warnings, "rows": rows}
+        warn(
+            "PRICE_PROVENANCE_NOT_VERIFIED",
+            None,
+            "no independent open/close/factor quotes; original market marks unverified",
+        )
+    return {
+        "status": status,
+        "start_date": start,
+        "target": target,
+        "winner_artifacts": len(audited),
+        "target_artifacts": len(target_artifacts),
+        "audited_reports": len(rows),
+        "settled_reports": len(rows),
+        "skipped_artifacts": skipped,
+        "quoted_closes": quote_count,
+        "issues": issues,
+        "warnings": warnings,
+        "rows": rows,
+    }
 
 
 def load_quote_csv(path):
@@ -475,21 +597,39 @@ def load_quote_csv(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--signals", type=Path, required=True)
+    parser.add_argument("--signals", type=Path, help="canonical paper artifact directory")
     parser.add_argument("--forward", type=Path)
+    parser.add_argument(
+        "--website-ledger",
+        type=Path,
+        help="raw sessions.jsonl for the separate October 8 website account; requires --forward",
+    )
     parser.add_argument("--calendar", type=Path, help="authoritative dates, one YYYY-MM-DD per line")
     parser.add_argument("--quotes", type=Path, help="independent adjusted open/close/factor CSV")
     parser.add_argument("--output", type=Path, help="optional JSON audit report output")
+    parser.add_argument(
+        "--start",
+        help="canonical live segment start; defaults to the first non-BACKFILL_RESEARCH artifact",
+    )
     parser.add_argument("--market", default="csi1000", choices=("csi1000", "csi500", "csi300"))
     parser.add_argument("--lineage", help="explicit lineage override; must match the market mapping")
     parser.add_argument("--profile", help="explicit profile override; must match the market mapping")
-    parser.add_argument("--legacy-stage-b-winner", action="store_true",
-                        help="audit the historical Stage-B winner lineage (csi1000 only)")
+    parser.add_argument(
+        "--legacy-stage-b-winner",
+        action="store_true",
+        help="audit the historical Stage-B winner lineage (csi1000 only)",
+    )
     args = parser.parse_args()
+    if args.website_ledger and (not args.forward or args.lineage or args.profile or args.legacy_stage_b_winner):
+        parser.error("--website-ledger requires --forward and cannot use canonical lineage/profile overrides")
+    if not args.website_ledger and args.signals is None:
+        parser.error("provide --signals for canonical audit or --website-ledger for website audit")
     suffix = "" if args.market == "csi1000" else f"_{args.market}"
     pattern = re.compile(rf"(\d{{4}}-\d{{2}}-\d{{2}})_paper_portfolio{re.escape(suffix)}\.json$")
     artifacts = []
-    for path in sorted(args.signals.glob(f"*_paper_portfolio{suffix}.json")):
+    for path in (
+        sorted(args.signals.glob(f"*_paper_portfolio{suffix}.json")) if args.signals and not args.website_ledger else []
+    ):
         match = pattern.fullmatch(path.name)
         if not match:
             continue
@@ -504,9 +644,23 @@ def main():
     forward = json.loads(args.forward.read_text()) if args.forward else None
     calendar = [x.strip() for x in args.calendar.read_text().splitlines() if x.strip()] if args.calendar else None
     quotes = load_quote_csv(args.quotes) if args.quotes else None
-    outcome = reconcile(artifacts, forward=forward, calendar=calendar, quotes=quotes,
-                        market=args.market, lineage=args.lineage, profile=args.profile,
-                        legacy_winner=args.legacy_stage_b_winner)
+    if args.website_ledger:
+        from audit_website_nav import reconcile_website
+
+        sessions = [json.loads(line) for line in args.website_ledger.read_text().splitlines() if line.strip()]
+        outcome = reconcile_website(forward, sessions, market=args.market, calendar=calendar, quotes=quotes)
+    else:
+        outcome = reconcile(
+            artifacts,
+            forward=forward,
+            calendar=calendar,
+            quotes=quotes,
+            market=args.market,
+            lineage=args.lineage,
+            profile=args.profile,
+            legacy_winner=args.legacy_stage_b_winner,
+            start=args.start,
+        )
     formatted = json.dumps(outcome, ensure_ascii=False, indent=2)
     print(formatted)
     if args.output:

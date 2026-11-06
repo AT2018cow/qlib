@@ -13,6 +13,7 @@ Then separately compare with the original corrected phase0 Parquet:
    --frozen-report /readonly/23b92de0_p00/fixed_diagnostic_report.parquet \\
    --external-index /tmp/independent-csi1000-20261011/000852_prices.csv
 """
+
 from __future__ import annotations
 
 import argparse
@@ -66,19 +67,17 @@ def parse_daily_records(raw_bytes):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--out-dir", required=True, type=Path,
-                   help="NEW directory outside repository and outside /vol")
+    p.add_argument("--out-dir", required=True, type=Path, help="NEW directory outside repository and outside /vol")
     args = p.parse_args()
     root = Path(__file__).resolve().parents[3]
     out = args.out_dir.resolve()
     if out.exists() or out.is_relative_to(root) or out.is_relative_to(Path("/vol")):
         raise SystemExit("BLOCKED: output must be an entirely new external directory")
-    params = urllib.parse.urlencode({
-        "indexCode": INDEX, "startDate": START, "endDate": END_STR
-    })
+    params = urllib.parse.urlencode({"indexCode": INDEX, "startDate": START, "endDate": END_STR})
     url = BASE_URL + "?" + params
-    req = urllib.request.Request(url, headers={"Accept": "application/json",
-                                                "User-Agent": "csi1000-audit-readonly/1.0"})
+    req = urllib.request.Request(
+        url, headers={"Accept": "application/json", "User-Agent": "csi1000-audit-readonly/1.0"}
+    )
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             if resp.status != 200:
@@ -94,31 +93,36 @@ def main():
     out.mkdir(parents=True)
     csvpath = out / "000852_prices.csv"
     with csvpath.open("w", newline="", encoding="utf-8") as stream:
-        writer = csv.DictWriter(stream, fieldnames=[
-            "date", "close", "index_code", "return_type", "source_id", "source_url"
-        ])
+        writer = csv.DictWriter(
+            stream, fieldnames=["date", "close", "index_code", "return_type", "source_id", "source_url"]
+        )
         writer.writeheader()
         for day, close in series:
-            writer.writerow({
-                "date": day.isoformat(), "close": repr(close),
-                "index_code": INDEX, "return_type": "price_return",
-                "source_id": "csindex_official_api", "source_url": url
-            })
+            writer.writerow(
+                {
+                    "date": day.isoformat(),
+                    "close": repr(close),
+                    "index_code": INDEX,
+                    "return_type": "price_return",
+                    "source_id": "csindex_official_api",
+                    "source_url": url,
+                }
+            )
     meta = {
         "status": "EXTERNAL_SOURCE_BYTES_DOWNLOADED_NOT_RECONCILED",
         "fetched_at_utc": datetime.now(timezone.utc).isoformat(),
         "request_url": url,
         "http_response_sha256": hashlib.sha256(raw).hexdigest(),
         "normalized_csv_sha256": hashlib.sha256(csvpath.read_bytes()).hexdigest(),
-        "rows": len(series), "first": series[0][0].isoformat(),
+        "rows": len(series),
+        "first": series[0][0].isoformat(),
         "last": series[-1][0].isoformat(),
         "source": "China Securities Index Company official index-perf API",
         "methodology": "SH000852 price-level close-to-close",
         "human_provenance_review_required": True,
         "no_republication_of_full_vendor_data": True,
     }
-    (out / "source_receipt.json").write_text(
-        json.dumps(meta, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (out / "source_receipt.json").write_text(json.dumps(meta, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(json.dumps(meta, indent=2, ensure_ascii=False))
     return 0
 

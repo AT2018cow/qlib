@@ -4,6 +4,7 @@ Prices and quantities are always Qlib-adjusted coordinates.  This module is
 used by both historical paper replays and forward paper settlement.  It does
 not model queue position, book depth or partial fills (small account policy).
 """
+
 from __future__ import annotations
 
 import math
@@ -53,9 +54,7 @@ def close_valuation(cash, positions, close_prices, *, confirmed_halts=()):
 
 def opening_valuation(cash, positions, open_prices, *, confirmed_halts=()):
     """Independently mark all PRE-TRADE holdings at the execution-day open."""
-    total, marks = close_valuation(
-        cash, positions, open_prices, confirmed_halts=confirmed_halts
-    )
+    total, marks = close_valuation(cash, positions, open_prices, confirmed_halts=confirmed_halts)
     for mark in marks.values():
         if mark["reason"] == "EXCHANGE_CLOSE":
             mark["reason"] = "EXCHANGE_OPEN"
@@ -72,10 +71,12 @@ def _validate_mark_evidence(symbol, mark, day, halt_evidence, phase):
     evidence = halt_evidence.get(symbol)
     if not isinstance(evidence, dict):
         raise ValueError(f"missing halt evidence for {symbol}")
-    if (evidence.get("date") != day or
-        not evidence.get("source") or
-        evidence.get("scope") != "FULL_SESSION" or
-        not (str(evidence.get("start_date", "")) <= day <= str(evidence.get("end_date", "")))):
+    if (
+        evidence.get("date") != day
+        or not evidence.get("source")
+        or evidence.get("scope") != "FULL_SESSION"
+        or not (str(evidence.get("start_date", "")) <= day <= str(evidence.get("end_date", "")))
+    ):
         raise ValueError(f"invalid dated halt evidence for {symbol}")
 
 
@@ -105,7 +106,9 @@ def verify_ledger(report, *, tolerance=0.011):
     for symbol, position in opening.items():
         mark = opening_marks[symbol]
         shares = _positive(position["shares"], f"{symbol} opening shares")
-        if not math.isclose(shares, _positive(mark["shares"], f"{symbol} open mark shares"), rel_tol=1e-9, abs_tol=1e-7):
+        if not math.isclose(
+            shares, _positive(mark["shares"], f"{symbol} open mark shares"), rel_tol=1e-9, abs_tol=1e-7
+        ):
             raise ValueError(f"opening share mark mismatch: {symbol}")
         _validate_mark_evidence(symbol, mark, day, halt_evidence, "open")
         expected_open_nav += shares * _positive(mark["price"], f"{symbol} opening price")

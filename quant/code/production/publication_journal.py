@@ -21,7 +21,7 @@ Modal Volumes are not a compare-and-swap medium: read-write-reread on a lease
 file cannot exclude two containers (the first review round rejected that
 approach).  Cross-run serialization is therefore delegated to the Modal
 platform: ``daily_cron`` runs with ``max_containers=1``, so the scheduler and
-the 07:45 second chance (which forwards into ``daily_cron``) queue behind the
+the 08:00 second chance (which forwards into ``daily_cron``) queue behind the
 active run and can never overlap.  The journal is the single-writer, crash-
 consistent state machine *inside* that serialized execution; every state write
 is additionally guarded by the recorded prior/post SHA256 (fencing by
@@ -50,6 +50,7 @@ attested once by the operator (``write_anchors`` / the Modal
 The module is stdlib-only and storage-agnostic so CI can fault-inject writes
 and crashes without Modal.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -225,7 +226,9 @@ class PublicationJournal:
                 "holder": holder,
             }
         payload = {"anchors": merged, "updated_at": self.now_fn()}
-        self.storage.write(self._anchor_path(), json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2).encode())
+        self.storage.write(
+            self._anchor_path(), json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2).encode()
+        )
         self.storage.commit()
         return merged
 
@@ -293,9 +296,7 @@ class PublicationJournal:
         if not chain:
             if actual is None:
                 if anchor is not None:
-                    raise JournalCorrupt(
-                        "BLOCKED_MANUAL_RECOVERY: anchored paper state is missing: " + path
-                    )
+                    raise JournalCorrupt("BLOCKED_MANUAL_RECOVERY: anchored paper state is missing: " + path)
                 return
             if anchor is None:
                 raise JournalCorrupt(
@@ -304,8 +305,7 @@ class PublicationJournal:
                 )
             if _sha256(actual) != anchor:
                 raise JournalCorrupt(
-                    "BLOCKED_MANUAL_RECOVERY: paper state differs from its attested "
-                    f"bootstrap anchor: {path}"
+                    "BLOCKED_MANUAL_RECOVERY: paper state differs from its attested " f"bootstrap anchor: {path}"
                 )
             return
         committed = [pair for pair in chain if pair[0]["stage"] == STAGE_VOLUME_COMMITTED]
@@ -321,13 +321,9 @@ class PublicationJournal:
         if actual is None:
             if None in allowed:
                 return
-            raise JournalCorrupt(
-                "BLOCKED_MANUAL_RECOVERY: committed paper state file is missing: " + path
-            )
+            raise JournalCorrupt("BLOCKED_MANUAL_RECOVERY: committed paper state file is missing: " + path)
         if _sha256(actual) not in allowed:
-            raise JournalCorrupt(
-                "BLOCKED_MANUAL_RECOVERY: paper state diverged from the journal chain: " + path
-            )
+            raise JournalCorrupt("BLOCKED_MANUAL_RECOVERY: paper state diverged from the journal chain: " + path)
 
     def check_paper_state_entry(self, state_paths: dict) -> None:
         """Day-start gate: every market's live state must be chain-legal.
@@ -351,6 +347,7 @@ class PublicationJournal:
         holder: str,
         files: dict,
         states: dict,
+        publication_context: dict | None = None,
     ) -> dict:
         """Freeze the publication intent.  ``files`` maps path -> content str;
         ``states`` maps market -> {path, prior_sha256, content}.
@@ -402,6 +399,8 @@ class PublicationJournal:
                 "states": {"path": f"{self._dir(signal_date)}/states.json", "sha256": _sha256(states_bytes)},
             },
         }
+        if publication_context is not None:
+            record["publication_context"] = dict(publication_context)
         self.storage.write(record["payloads"]["files"]["path"], files_bytes)
         self.storage.write(record["payloads"]["states"]["path"], states_bytes)
         self._write_record(record)
@@ -460,8 +459,7 @@ class PublicationJournal:
                 continue
             if _sha256(actual) != expected:
                 raise JournalCorrupt(
-                    "BLOCKED_MANUAL_RECOVERY: published artifact differs from frozen journal "
-                    f"hash: {path}"
+                    "BLOCKED_MANUAL_RECOVERY: published artifact differs from frozen journal " f"hash: {path}"
                 )
         return sorted(missing)
 

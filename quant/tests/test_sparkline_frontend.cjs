@@ -359,6 +359,15 @@ test('rebalance separates Drop1 sells from ranked-out holdings', () => {
   assert.match(body, /上期未在榜/);
   assert.match(nodes.get('rebalance-note').textContent, /最多调出 1 只/);
   assert.match(nodes.get('rebalance-note').textContent, /2026-10-16/);
+  const frozenPaper = structuredClone(paper);
+  frozenPaper.pending_orders.execution_date = '2026-10-16';
+  frozenPaper.pending_orders.status = 'awaiting_execution_data';
+  const frozen = buildRebalance(current, {}, previous, frozenPaper, '2026-10-19');
+  renderRebalance(frozen, '2026-10-16');
+  assert.equal(frozen.frozen, true);
+  assert.match(nodes.get('rebalance-title').textContent, /历史待执行订单.*冻结/);
+  assert.match(nodes.get('rebalance-body').innerHTML, /冻结的原调入单/);
+  assert.match(nodes.get('rebalance-note').textContent, /原执行日 2026-10-16.*本日未生成新订单/);
   renderRebalance(fallback, '2026-10-16');
   assert.match(nodes.get('rebalance-body').innerHTML, /退出 Top 10/);
   assert.doesNotMatch(nodes.get('rebalance-body').innerHTML, /计划调出/);

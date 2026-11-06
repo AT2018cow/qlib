@@ -1,4 +1,5 @@
 """Synthetic fixtures ONLY; not a real provider replay or execution approval."""
+
 import datetime as dt
 import hashlib
 import json
@@ -12,7 +13,12 @@ from pathlib import Path
 import pandas as pd
 
 from audit.verify_stage_b_fixed_ledger import (
-    CAPITAL, DAYS, checked, reconstruct, score, require,
+    CAPITAL,
+    DAYS,
+    checked,
+    reconstruct,
+    score,
+    require,
 )
 
 
@@ -20,27 +26,54 @@ def fixture():
     days = [dt.date(2025, 1, 2) + dt.timedelta(days=i) for i in range(DAYS)]
     quotes = {(day.isoformat(), "SH600000"): (10.0, 10.0, 1.0, 100000.0) for day in days}
     quotes[(days[1].isoformat(), "SH600000")] = (11.0, 11.0, 1.0, 100000.0)
-    orders = [[{"order_index": 0, "stock_id": "SH600000", "direction": 1,
-                "amount": 2.0, "deal_amount": 2.0, "factor": 1.0,
-                "start_time": str(days[0])}],
-              [{"order_index": 0, "stock_id": "SH600000", "direction": 0,
-                "amount": 2.0, "deal_amount": 2.0, "factor": 1.0,
-                "start_time": str(days[1])}]] + [[] for _ in range(DAYS - 2)]
-    decisions = [{"decision_index": i, "start_time": str(day), "orders": day_orders}
-                 for i, (day, day_orders) in enumerate(zip(days, orders))]
+    orders = [
+        [
+            {
+                "order_index": 0,
+                "stock_id": "SH600000",
+                "direction": 1,
+                "amount": 2.0,
+                "deal_amount": 2.0,
+                "factor": 1.0,
+                "start_time": str(days[0]),
+            }
+        ],
+        [
+            {
+                "order_index": 0,
+                "stock_id": "SH600000",
+                "direction": 0,
+                "amount": 2.0,
+                "deal_amount": 2.0,
+                "factor": 1.0,
+                "start_time": str(days[1]),
+            }
+        ],
+    ] + [[] for _ in range(DAYS - 2)]
+    decisions = [
+        {"decision_index": i, "start_time": str(day), "orders": day_orders}
+        for i, (day, day_orders) in enumerate(zip(days, orders))
+    ]
     nav = [CAPITAL - 5, CAPITAL - 8] + [CAPITAL - 8] * (DAYS - 2)
     cash = [CAPITAL - 25, CAPITAL - 8] + [CAPITAL - 8] * (DAYS - 2)
     fees = [5.0, 10.0] + [10.0] * (DAYS - 2)
     turnover = [20.0, 42.0] + [42.0] * (DAYS - 2)
     cost = [5 / CAPITAL, 5 / (CAPITAL - 5)] + [0.0] * (DAYS - 2)
     turn_rate = [20 / CAPITAL, 22 / (CAPITAL - 5)] + [0.0] * (DAYS - 2)
-    gross_returns = [(nav[0] / CAPITAL - 1) + cost[0],
-                     (nav[1] / nav[0] - 1) + cost[1]] + [0.0] * (DAYS - 2)
-    report = pd.DataFrame({"account": nav, "cash": cash,
-                           "value": [20.0] + [0.0] * (DAYS - 1),
-                           "total_cost": fees, "total_turnover": turnover,
-                           "return": gross_returns, "cost": cost,
-                           "turnover": turn_rate, "bench": [0.0] * DAYS})
+    gross_returns = [(nav[0] / CAPITAL - 1) + cost[0], (nav[1] / nav[0] - 1) + cost[1]] + [0.0] * (DAYS - 2)
+    report = pd.DataFrame(
+        {
+            "account": nav,
+            "cash": cash,
+            "value": [20.0] + [0.0] * (DAYS - 1),
+            "total_cost": fees,
+            "total_turnover": turnover,
+            "return": gross_returns,
+            "cost": cost,
+            "turnover": turn_rate,
+            "bench": [0.0] * DAYS,
+        }
+    )
     return days, decisions, report, quotes
 
 
@@ -51,8 +84,10 @@ class FixedLedgerUnitTest(unittest.TestCase):
         self.assertEqual(result["ledger"], "PASS_RESEARCH_ACCOUNTING_ONLY")
         self.assertEqual(result["filled_orders"], 2)
         self.assertEqual(result["daily_net_notional_summary"]["total"], 42.0)
-        self.assertEqual(result["extra_cost_bps_on_original_notional_not_new_fills"]["0"]["strategy_total_return"],
-                         (CAPITAL - 8) / CAPITAL - 1)
+        self.assertEqual(
+            result["extra_cost_bps_on_original_notional_not_new_fills"]["0"]["strategy_total_return"],
+            (CAPITAL - 8) / CAPITAL - 1,
+        )
         self.assertEqual(result["external_fill_liquidity_st_ipo_pit_maturity"], "BLOCKED_NOT_TESTED")
 
     def test_altered_cash_fails_closed(self):
@@ -106,8 +141,10 @@ class FixedLedgerUnitTest(unittest.TestCase):
     def test_sharpe_238_and_cost_stress(self):
         days, decisions, report, quotes = fixture()
         result = reconstruct(decisions, report, quotes, days)
-        self.assertLess(result["extra_cost_bps_on_original_notional_not_new_fills"]["20"]["strategy_total_return"],
-                        result["extra_cost_bps_on_original_notional_not_new_fills"]["0"]["strategy_total_return"])
+        self.assertLess(
+            result["extra_cost_bps_on_original_notional_not_new_fills"]["20"]["strategy_total_return"],
+            result["extra_cost_bps_on_original_notional_not_new_fills"]["0"]["strategy_total_return"],
+        )
 
     def _suspended_holding_fixture(self):
         days, decisions, report, quotes = fixture()
@@ -151,12 +188,19 @@ class FixedLedgerUnitTest(unittest.TestCase):
             turnrates.append(today_notional / previous)
             returns.append(account / previous - 1 + today_cost)
             previous = account
-        report = pd.DataFrame({
-            "account": nav, "cash": cash, "value": value,
-            "total_cost": total_fee, "total_turnover": total_turnover,
-            "return": returns, "cost": costs, "turnover": turnrates,
-            "bench": [0.0] * DAYS,
-        })
+        report = pd.DataFrame(
+            {
+                "account": nav,
+                "cash": cash,
+                "value": value,
+                "total_cost": total_fee,
+                "total_turnover": total_turnover,
+                "return": returns,
+                "cost": costs,
+                "turnover": turnrates,
+                "bench": [0.0] * DAYS,
+            }
+        )
         return days, decisions, report, quotes, suspend, resume
 
     def test_documented_suspension_preserves_last_held_mark(self):
@@ -165,8 +209,7 @@ class FixedLedgerUnitTest(unittest.TestCase):
         self.assertEqual(result["ledger"], "PASS_RESEARCH_ACCOUNTING_ONLY")
         self.assertEqual(result["verified_suspension_marks_count"], 1)
         mark = result["verified_suspension_marks"][0]
-        self.assertEqual((mark["date"], mark["stock_id"], mark["prior_mark_date"]),
-                         (suspend, "SZ000488", "2025-02-19"))
+        self.assertEqual((mark["date"], mark["stock_id"], mark["prior_mark_date"]), (suspend, "SZ000488", "2025-02-19"))
         self.assertEqual(result["known_st_execution_review_count"], 1)
         self.assertEqual(result["known_st_execution_review"][0]["date"], resume)
         self.assertEqual(result["known_st_execution_review"][0]["direction"], "SELL")
@@ -181,11 +224,17 @@ class FixedLedgerUnitTest(unittest.TestCase):
     def test_documented_suspension_rejects_order_even_with_quote(self):
         days, decisions, report, quotes, suspend, _ = self._suspended_holding_fixture()
         target = next(x for x in decisions if x["start_time"] == suspend)
-        target["orders"].append({
-            "order_index": len(target["orders"]), "start_time": suspend,
-            "stock_id": "SZ000488", "direction": 0,
-            "amount": 2, "deal_amount": 2, "factor": 1,
-        })
+        target["orders"].append(
+            {
+                "order_index": len(target["orders"]),
+                "start_time": suspend,
+                "stock_id": "SZ000488",
+                "direction": 0,
+                "amount": 2,
+                "deal_amount": 2,
+                "factor": 1,
+            }
+        )
         with self.assertRaisesRegex(ValueError, "order on verified suspension"):
             reconstruct(decisions, report, quotes, days)
 
@@ -200,12 +249,23 @@ class FixedLedgerUnitTest(unittest.TestCase):
             tmp = Path(t)
             out = tmp / "new-result"
             repo = Path(__file__).resolve().parents[2]
-            cmd = [sys.executable, "-m", "audit.verify_stage_b_fixed_ledger",
-                   "--repo-root", str(repo),
-                   "--provider-uri", str(tmp / "missing_provider"),
-                   "--provider-snapshot", str(tmp / "snapshot_dir" / "missing_snapshot.json"),
-                   "--candidate", "baseline", "--phases", "phase0",
-                   "--output-dir", str(out)]
+            cmd = [
+                sys.executable,
+                "-m",
+                "audit.verify_stage_b_fixed_ledger",
+                "--repo-root",
+                str(repo),
+                "--provider-uri",
+                str(tmp / "missing_provider"),
+                "--provider-snapshot",
+                str(tmp / "snapshot_dir" / "missing_snapshot.json"),
+                "--candidate",
+                "baseline",
+                "--phases",
+                "phase0",
+                "--output-dir",
+                str(out),
+            ]
             proc = subprocess.run(cmd, cwd=repo, capture_output=True, text=True)
             self.assertNotEqual(proc.returncode, 0)
             failure = json.loads((out / "audit_failure.json").read_text())
@@ -217,11 +277,19 @@ class FixedLedgerUnitTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             repo = Path(__file__).resolve().parents[2]
             forbidden = repo / "must-not-be-written-by-this-test"
-            cmd = [sys.executable, "-m", "audit.verify_stage_b_fixed_ledger",
-                   "--repo-root", str(repo),
-                   "--provider-uri", str(Path(t) / "missing"),
-                   "--provider-snapshot", str(Path(t) / "missing-snapshot"),
-                   "--output-dir", str(forbidden)]
+            cmd = [
+                sys.executable,
+                "-m",
+                "audit.verify_stage_b_fixed_ledger",
+                "--repo-root",
+                str(repo),
+                "--provider-uri",
+                str(Path(t) / "missing"),
+                "--provider-snapshot",
+                str(Path(t) / "missing-snapshot"),
+                "--output-dir",
+                str(forbidden),
+            ]
             proc = subprocess.run(cmd, cwd=repo, capture_output=True, text=True)
             self.assertNotEqual(proc.returncode, 0)
             self.assertFalse(forbidden.exists())

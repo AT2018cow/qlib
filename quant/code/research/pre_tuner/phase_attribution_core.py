@@ -45,8 +45,10 @@ def _validate_report(report: pd.DataFrame) -> pd.DataFrame:
     missing = required - set(report.columns)
     if missing:
         raise ValueError(f"report missing required columns: {sorted(missing)}")
-    turnover_col = "turnover" if "turnover" in report.columns else (
-        "total_turnover" if "total_turnover" in report.columns else None
+    turnover_col = (
+        "turnover"
+        if "turnover" in report.columns
+        else ("total_turnover" if "total_turnover" in report.columns else None)
     )
     if turnover_col is None:
         raise ValueError("report missing turnover/total_turnover")
@@ -128,18 +130,14 @@ def annual_attribution(report: pd.DataFrame) -> list[dict]:
         bench_ret = _compound(bench)
         rel_gross = _ratio_return(gross, bench)
         rel_net = _ratio_return(net, bench)
-        relative_log_return = float(
-            np.log1p(net.to_numpy()).sum() - np.log1p(bench.to_numpy()).sum()
-        )
+        relative_log_return = float(np.log1p(net.to_numpy()).sum() - np.log1p(bench.to_numpy()).sum())
         rows.append(
             {
                 "year": int(year),
                 "start": frame.index[0].strftime("%Y-%m-%d"),
                 "end": frame.index[-1].strftime("%Y-%m-%d"),
                 "n_days": int(len(frame)),
-                "partial_year": bool(
-                    int(year) == final_year and (final_month, final_day) < (12, 20)
-                ),
+                "partial_year": bool(int(year) == final_year and (final_month, final_day) < (12, 20)),
                 "gross_strategy_return": round(gross_ret, 8),
                 "net_strategy_return": round(net_ret, 8),
                 "benchmark_return": round(bench_ret, 8),
@@ -154,9 +152,7 @@ def annual_attribution(report: pd.DataFrame) -> list[dict]:
     return rows
 
 
-def _execution_dates_for_retrains(
-    report_index: pd.DatetimeIndex, retrain_dates: list[str]
-) -> list[pd.Timestamp]:
+def _execution_dates_for_retrains(report_index: pd.DatetimeIndex, retrain_dates: list[str]) -> list[pd.Timestamp]:
     idx = pd.DatetimeIndex(report_index).sort_values()
     execution_dates = []
     for value in retrain_dates:
@@ -171,9 +167,7 @@ def _execution_dates_for_retrains(
     return sorted(set(execution_dates))
 
 
-def retrain_event_study(
-    report: pd.DataFrame, retrain_dates: list[str], window: int = 5
-) -> dict:
+def retrain_event_study(report: pd.DataFrame, retrain_dates: list[str], window: int = 5) -> dict:
     if window < 1:
         raise ValueError("window must be >= 1")
     report = _validate_report(report)
@@ -202,12 +196,8 @@ def retrain_event_study(
             {
                 "offset_sessions_after_retrain": offset,
                 "n": int(len(values_turnover)),
-                "mean_turnover": round(float(np.mean(values_turnover)), 8)
-                if values_turnover
-                else None,
-                "mean_cost": round(float(np.mean(values_cost)), 8)
-                if values_cost
-                else None,
+                "mean_turnover": round(float(np.mean(values_turnover)), 8) if values_turnover else None,
+                "mean_cost": round(float(np.mean(values_cost)), 8) if values_cost else None,
                 "first_date": min(dates).strftime("%Y-%m-%d") if dates else None,
                 "last_date": max(dates).strftime("%Y-%m-%d") if dates else None,
             }
@@ -237,38 +227,26 @@ def retrain_event_study(
         "non_event_mean_cost": round(non_event_cost, 8),
         "event_window_mean_turnover": round(event_turnover, 8),
         "event_window_mean_cost": round(event_cost, 8),
-        "event_window_turnover_ratio_to_non_event": round(
-            event_turnover / non_event_turnover, 6
-        )
-        if non_event_turnover
-        else None,
-        "event_window_cost_ratio_to_non_event": round(event_cost / non_event_cost, 6)
-        if non_event_cost
-        else None,
-        "first_execution_day_turnover_ratio_to_non_event": round(
-            first["mean_turnover"] / non_event_turnover, 6
-        )
-        if first["mean_turnover"] is not None and non_event_turnover
-        else None,
-        "first_execution_day_cost_ratio_to_non_event": round(
-            first["mean_cost"] / non_event_cost, 6
-        )
-        if first["mean_cost"] is not None and non_event_cost
-        else None,
-        "event_window_turnover_share": round(
-            float(event[turnover_col].sum()) / total_turnover, 8
-        )
-        if total_turnover
-        else None,
-        "event_window_cost_share": round(float(event["cost"].sum()) / total_cost, 8)
-        if total_cost
-        else None,
+        "event_window_turnover_ratio_to_non_event": (
+            round(event_turnover / non_event_turnover, 6) if non_event_turnover else None
+        ),
+        "event_window_cost_ratio_to_non_event": round(event_cost / non_event_cost, 6) if non_event_cost else None,
+        "first_execution_day_turnover_ratio_to_non_event": (
+            round(first["mean_turnover"] / non_event_turnover, 6)
+            if first["mean_turnover"] is not None and non_event_turnover
+            else None
+        ),
+        "first_execution_day_cost_ratio_to_non_event": (
+            round(first["mean_cost"] / non_event_cost, 6) if first["mean_cost"] is not None and non_event_cost else None
+        ),
+        "event_window_turnover_share": (
+            round(float(event[turnover_col].sum()) / total_turnover, 8) if total_turnover else None
+        ),
+        "event_window_cost_share": round(float(event["cost"].sum()) / total_cost, 8) if total_cost else None,
     }
 
 
-def pairwise_gap_attribution(
-    focus_report: pd.DataFrame, comparator_report: pd.DataFrame
-) -> dict:
+def pairwise_gap_attribution(focus_report: pd.DataFrame, comparator_report: pd.DataFrame) -> dict:
     focus = _validate_report(focus_report)
     comparator = _validate_report(comparator_report)
     common = focus.index.intersection(comparator.index)
@@ -280,9 +258,7 @@ def pairwise_gap_attribution(
     focus_net = focus_gross - focus.loc[common, "cost"].astype(float)
     comp_net = comp_gross - comparator.loc[common, "cost"].astype(float)
 
-    daily_gross_log_gap = (
-        np.log1p(focus_gross.to_numpy()) - np.log1p(comp_gross.to_numpy())
-    )
+    daily_gross_log_gap = np.log1p(focus_gross.to_numpy()) - np.log1p(comp_gross.to_numpy())
     daily_log_gap = np.log1p(focus_net.to_numpy()) - np.log1p(comp_net.to_numpy())
     cumulative_log_gap = np.cumsum(daily_log_gap)
     final_gross_log_gap = float(daily_gross_log_gap.sum())
@@ -313,9 +289,7 @@ def pairwise_gap_attribution(
     for n in (1, 2, 3):
         selected = negative[:n]
         concentration[f"top{n}_negative_year_share"] = (
-            round(sum(-row["log_gap"] for row in selected) / negative_abs_total, 6)
-            if negative_abs_total
-            else None
+            round(sum(-row["log_gap"] for row in selected) / negative_abs_total, 6) if negative_abs_total else None
         )
         concentration[f"top{n}_negative_years"] = [row["year"] for row in selected]
 
@@ -328,9 +302,7 @@ def pairwise_gap_attribution(
             else:
                 positions = np.flatnonzero(cumulative_log_gap >= target)
             milestones[f"first_{int(frac * 100)}pct_final_gap_date"] = (
-                common[int(positions[0])].strftime("%Y-%m-%d")
-                if len(positions)
-                else None
+                common[int(positions[0])].strftime("%Y-%m-%d") if len(positions) else None
             )
 
     min_pos = int(np.argmin(cumulative_log_gap))
@@ -342,11 +314,7 @@ def pairwise_gap_attribution(
         "final_focus_vs_comparator_gross_nav_ratio_gap": round(gross_ratio, 8),
         "final_focus_vs_comparator_net_nav_ratio_gap": round(final_ratio, 8),
         "cost_effect_log_gap": round(cost_effect_log_gap, 8),
-        "cost_effect_share_of_net_gap": round(
-            cost_effect_log_gap / final_log_gap, 6
-        )
-        if final_log_gap
-        else None,
+        "cost_effect_share_of_net_gap": round(cost_effect_log_gap / final_log_gap, 6) if final_log_gap else None,
         "annual": annual,
         "negative_gap_concentration": concentration,
         "gap_formation_milestones": milestones,

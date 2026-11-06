@@ -8,6 +8,7 @@ LightGBM parameter subset in csi1000_tuner_core.py.
 Do not use this fold screen as a final portfolio backtest. Top candidates must
 later pass full freq20 rolling evaluation and the fixed calendar-phase screen.
 """
+
 from __future__ import annotations
 
 from bisect import bisect_left
@@ -285,9 +286,7 @@ def _runtime_manifest(cutoff: str) -> dict:
             hashlib.sha256(core_path.read_bytes()).hexdigest() if core_path.is_file() else "unavailable"
         ),
         "deterministic_strategy_source_sha256": (
-            hashlib.sha256(strategy_path.read_bytes()).hexdigest()
-            if strategy_path.is_file()
-            else "unavailable"
+            hashlib.sha256(strategy_path.read_bytes()).hexdigest() if strategy_path.is_file() else "unavailable"
         ),
     }
     manifest["snapshot_token"] = _stable_json_sha256(manifest)
@@ -460,10 +459,7 @@ def _recompute_result_metrics(report, fold: dict) -> dict:
         initial_cash=100000000,
         backtest_start=fold["execution"][0],
     )
-    if (
-        perf["account_return_max_error"] is None
-        or abs(float(perf["account_return_max_error"])) > 1e-12
-    ):
+    if perf["account_return_max_error"] is None or abs(float(perf["account_return_max_error"])) > 1e-12:
         raise RuntimeError("reusable report fails account consistency")
     return {**perf, **_turnover_cost_summary(report)}
 
@@ -496,10 +492,7 @@ def _assert_reusable_metrics(payload: dict, report, fold: dict) -> dict:
         if key not in payload or not _metric_values_match(payload.get(key), value):
             mismatches.append(key)
     if mismatches:
-        raise RuntimeError(
-            "reusable result metadata disagrees with raw report for "
-            f"{fold['fold_id']}: {mismatches}"
-        )
+        raise RuntimeError("reusable result metadata disagrees with raw report for " f"{fold['fold_id']}: {mismatches}")
     return recomputed
 
 
@@ -534,11 +527,7 @@ def _validate_reusable_result(payload: dict, args: dict) -> bool:
         return False
     if payload.get("candidate") != args["candidate"]:
         return False
-    return bool(
-        payload.get("signal_artifact")
-        and payload.get("decision_artifact")
-        and payload.get("report_artifact")
-    )
+    return bool(payload.get("signal_artifact") and payload.get("decision_artifact") and payload.get("report_artifact"))
 
 
 def _load_verified_report_artifact(meta: dict):
@@ -580,10 +569,7 @@ def _compare_repro_reports(repeat_a: list[dict], repeat_b: list[dict]) -> dict:
             "passed": True,
             "report_content_sha256_a": a["report_artifact"]["content_sha256"],
             "report_content_sha256_b": b["report_artifact"]["content_sha256"],
-            "exact_content_match": (
-                a["report_artifact"]["content_sha256"]
-                == b["report_artifact"]["content_sha256"]
-            ),
+            "exact_content_match": (a["report_artifact"]["content_sha256"] == b["report_artifact"]["content_sha256"]),
             "structure_match": True,
             "canonical_metrics_match": True,
             "columns": {},
@@ -591,10 +577,7 @@ def _compare_repro_reports(repeat_a: list[dict], repeat_b: list[dict]) -> dict:
         }
         all_exact = all_exact and detail["exact_content_match"]
 
-        if (
-            not report_a.index.equals(report_b.index)
-            or list(report_a.index.names) != list(report_b.index.names)
-        ):
+        if not report_a.index.equals(report_b.index) or list(report_a.index.names) != list(report_b.index.names):
             detail["passed"] = False
             detail["structure_match"] = False
             detail["errors"].append("index_mismatch")
@@ -603,9 +586,7 @@ def _compare_repro_reports(repeat_a: list[dict], repeat_b: list[dict]) -> dict:
             detail["passed"] = False
             detail["structure_match"] = False
             detail["errors"].append("column_mismatch")
-        elif [str(dtype) for dtype in report_a.dtypes] != [
-            str(dtype) for dtype in report_b.dtypes
-        ]:
+        elif [str(dtype) for dtype in report_a.dtypes] != [str(dtype) for dtype in report_b.dtypes]:
             detail["passed"] = False
             detail["structure_match"] = False
             detail["errors"].append("dtype_mismatch")
@@ -616,12 +597,8 @@ def _compare_repro_reports(repeat_a: list[dict], repeat_b: list[dict]) -> dict:
                 series_b = report_b[column]
                 if pd.api.types.is_numeric_dtype(series_a.dtype):
                     scale = 100000000.0 if str(column) == "account" else 1.0
-                    values_a = (
-                        series_a.to_numpy(dtype=float, na_value=float("nan")) / scale
-                    )
-                    values_b = (
-                        series_b.to_numpy(dtype=float, na_value=float("nan")) / scale
-                    )
+                    values_a = series_a.to_numpy(dtype=float, na_value=float("nan")) / scale
+                    values_b = series_b.to_numpy(dtype=float, na_value=float("nan")) / scale
                     diag = numeric_reproducibility_diagnostics(
                         values_a,
                         values_b,
@@ -651,22 +628,17 @@ def _compare_repro_reports(repeat_a: list[dict], repeat_b: list[dict]) -> dict:
             except Exception as exc:
                 detail["passed"] = False
                 detail["canonical_metrics_match"] = False
-                detail["errors"].append(
-                    f"canonical_metric_recompute_failed:{type(exc).__name__}:{exc}"
-                )
+                detail["errors"].append(f"canonical_metric_recompute_failed:{type(exc).__name__}:{exc}")
             else:
                 metric_mismatches = [
                     key
                     for key in metrics_a
-                    if key not in metrics_b
-                    or not _metric_values_match(metrics_a[key], metrics_b[key])
+                    if key not in metrics_b or not _metric_values_match(metrics_a[key], metrics_b[key])
                 ]
                 if metric_mismatches:
                     detail["passed"] = False
                     detail["canonical_metrics_match"] = False
-                    detail["errors"].append(
-                        "canonical_metric_mismatch:" + ",".join(metric_mismatches)
-                    )
+                    detail["errors"].append("canonical_metric_mismatch:" + ",".join(metric_mismatches))
                 detail["canonical_metrics"] = metrics_b
         else:
             detail["canonical_metrics_match"] = False
@@ -692,11 +664,14 @@ def _load_reusable_result(args: dict):
 
     import pandas as pd
 
-    result_path = _result_dir(
-        args["snapshot_token"],
-        args["candidate"]["candidate_id"],
-        args["fold"]["fold_id"],
-    ) / "result.json"
+    result_path = (
+        _result_dir(
+            args["snapshot_token"],
+            args["candidate"]["candidate_id"],
+            args["fold"]["fold_id"],
+        )
+        / "result.json"
+    )
     if not result_path.is_file():
         return None
     payload = json.loads(result_path.read_text())
@@ -709,11 +684,7 @@ def _load_reusable_result(args: dict):
     signal_path = Path(signal_meta["path"])
     decision_path = Path(decision_meta["path"])
     report_path = Path(report_meta["path"])
-    if (
-        not signal_path.is_file()
-        or not decision_path.is_file()
-        or not report_path.is_file()
-    ):
+    if not signal_path.is_file() or not decision_path.is_file() or not report_path.is_file():
         return None
     if hashlib.sha256(signal_path.read_bytes()).hexdigest() != signal_meta["sha256"]:
         return None
@@ -817,9 +788,7 @@ def stage_a_fold_worker(args: dict):
         backtest_start=fold["execution"][0],
     )
     if perf["account_return_max_error"] is None or abs(float(perf["account_return_max_error"])) > 1e-12:
-        raise RuntimeError(
-            f"{candidate['candidate_id']} {fold['fold_id']}: account consistency failed"
-        )
+        raise RuntimeError(f"{candidate['candidate_id']} {fold['fold_id']}: account consistency failed")
     turnover_cost = _turnover_cost_summary(report)
     report_artifact = _write_report_artifact(report, root / "report.parquet")
     decision_artifact = _write_decision_artifact(
@@ -909,9 +878,7 @@ def stage_a_screen_driver(
         }
         for fold in folds
     ]
-    print(
-        f"[stage-a] reproducibility preflight: baseline x {len(folds)} folds x2"
-    )
+    print(f"[stage-a] reproducibility preflight: baseline x {len(folds)} folds x2")
     repeat_a = list(stage_a_fold_worker.map(gate_jobs_a))
     repeat_b = list(stage_a_fold_worker.map(gate_jobs_b))
     # Child workers commit report artifacts to the shared Volume. Refresh the
@@ -921,9 +888,7 @@ def stage_a_screen_driver(
     reproducibility_gate = validate_reproducibility_pairs(repeat_a, repeat_b)
     report_validation = _compare_repro_reports(repeat_a, repeat_b)
     reproducibility_gate["report_validation"] = report_validation
-    reproducibility_gate["passed"] = bool(
-        reproducibility_gate["passed"] and report_validation["passed"]
-    )
+    reproducibility_gate["passed"] = bool(reproducibility_gate["passed"] and report_validation["passed"])
 
     gate_root = ARTIFACT_ROOT / manifest["snapshot_token"]
     gate_root.mkdir(parents=True, exist_ok=True)
@@ -931,14 +896,9 @@ def stage_a_screen_driver(
     gate_path.write_text(json.dumps(reproducibility_gate, indent=2, ensure_ascii=False))
     vol.commit()
     if not reproducibility_gate["passed"]:
-        failed = [
-            fold_id
-            for fold_id, detail in report_validation["folds"].items()
-            if not detail["passed"]
-        ]
+        failed = [fold_id for fold_id, detail in report_validation["folds"].items() if not detail["passed"]]
         raise RuntimeError(
-            "Stage-A baseline report semantic reproducibility failed for "
-            f"{failed}; diagnostics={gate_path}"
+            "Stage-A baseline report semantic reproducibility failed for " f"{failed}; diagnostics={gate_path}"
         )
 
     if preflight_only:
@@ -953,9 +913,7 @@ def stage_a_screen_driver(
             "max_new_fits": reproducibility_gate["total_gate_fits"],
             "reproducibility_gate": reproducibility_gate,
         }
-        (gate_root / "preflight_summary.json").write_text(
-            json.dumps(payload, indent=2, ensure_ascii=False)
-        )
+        (gate_root / "preflight_summary.json").write_text(json.dumps(payload, indent=2, ensure_ascii=False))
         vol.commit()
         return payload
 

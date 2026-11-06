@@ -22,6 +22,7 @@ from account_boundary import reconcile_states
 FIRST_EXECUTION = "2026-10-08"
 FIRST_SIGNAL = "2026-09-30"
 INITIAL_CASH = 1_000_000
+FIT_RECEIPT_VERSION = 2
 MODE = "CAUSAL_SIMULATION"
 ST_POLICY = "ST_HISTORY_UNVERIFIED_REFERENCE_ONLY"
 
@@ -38,6 +39,50 @@ def training_prefix_fingerprint(provider, market, cutoff):
 
 def boundary(cash, positions):
     return {"cash": float(cash), "shares": {s: float(p["shares"]) for s, p in positions.items()}}
+
+
+def fit_bindings(fits, *, profile, horizon, dates):
+    """Bind each execution to the unique model that scored its prior session."""
+    from datetime import date
+
+    if (
+        not dates
+        or not isinstance(fits, list)
+        or not fits
+        or not isinstance(fits[0], dict)
+        or fits[0].get("fit_asof") != FIRST_SIGNAL
+    ):
+        raise ValueError("missing causal website fit receipts")
+    previous_end = None
+    for fit in fits:
+        if not isinstance(fit, dict):
+            raise ValueError("invalid website fit receipt")
+        for key in ("model_sha256", "data_prefix_sha256"):
+            digest = fit.get(key)
+            if not isinstance(digest, str) or len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
+                raise ValueError("website fit model/data SHA256 missing")
+        contract = fit.get("training_contract") or {}
+        if not isinstance(contract, dict):
+            raise ValueError("invalid website training contract")
+        for value in (fit.get("fit_asof"), fit.get("signal_end"), contract.get("train_end"), contract.get("valid_end")):
+            if not isinstance(value, str) or date.fromisoformat(value).isoformat() != value:
+                raise ValueError("invalid website fit date")
+        if (
+            fit.get("profile") != profile
+            or contract.get("asof") != fit["fit_asof"]
+            or contract.get("horizon") != horizon
+            or not contract["train_end"] < contract["valid_end"] < fit["fit_asof"] <= fit["signal_end"] <= dates[-1]
+            or (previous_end is not None and fit["fit_asof"] <= previous_end)
+        ):
+            raise ValueError("non-causal or overlapping website fit receipt")
+        previous_end = fit["signal_end"]
+    bindings = []
+    for signal_day in [FIRST_SIGNAL, *dates[:-1]]:
+        matches = [fit for fit in fits if fit["fit_asof"] <= signal_day <= fit["signal_end"]]
+        if len(matches) != 1:
+            raise ValueError("website point has no unique fit coverage")
+        bindings.append((signal_day, matches[0]))
+    return bindings
 
 
 def build_website_series(market, result, *, calendar, source_sha, provider_sha, fits):
@@ -96,14 +141,20 @@ def build_website_series(market, result, *, calendar, source_sha, provider_sha, 
         "trading_dates": [d for d in calendar if FIRST_EXECUTION <= d <= points[-1]["date"]],
         "execution_st_policy": ST_POLICY,
         "auction_liquidity_verified": False,
+        "official_reference_price_verified": False,
         "return_interpretation": "CAUSAL_HISTORICAL_SIMULATION_REFERENCE_ONLY",
         "source_manifest_sha256": source_sha,
         "provider_archive_sha256": provider_sha,
         "fit_receipts": fits,
+        "fit_receipt_version": FIT_RECEIPT_VERSION,
         "total_fees": sum(p["cost"] for p in points),
         "broker_fills_certified": False,
         "live_trading_approved": False,
     }
+    for point, (signal_day, fit) in zip(
+        points, fit_bindings(fits, profile=profile, horizon=identity["horizon"], dates=payload["trading_dates"])
+    ):
+        point.update(signal_date=signal_day, fit_asof=fit["fit_asof"], model_sha256=fit["model_sha256"])
     validate_website_series(payload, market=market)
     return payload
 
@@ -177,21 +228,18 @@ def validate_website_series(raw, *, market=None):
         fees += p["cost"]
     if abs(raw["cumulative_return"] - points[-1]["cumulative_return"]) > 1e-12 or abs(raw["total_fees"] - fees) > 0.011:
         raise ValueError("website cumulative return/fee mismatch")
-    fits = raw.get("fit_receipts")
-    if not isinstance(fits, list) or not fits or fits[0].get("fit_asof") != FIRST_SIGNAL:
-        raise ValueError("missing causal website fit receipts")
-    for fit in fits:
-        contract = fit.get("training_contract") or {}
-        if (
-            fit.get("profile") != profile
-            or contract.get("asof") != fit.get("fit_asof")
-            or contract.get("horizon") != expected_identity["horizon"]
-            or not contract.get("train_end")
-            or not contract.get("valid_end")
-            or not contract["train_end"] < contract["valid_end"] < fit["fit_asof"]
-            or fit["signal_end"] < fit["fit_asof"]
-        ):
-            raise ValueError("non-causal website fit receipt")
+    revision = raw.get("fit_receipt_version", 1)
+    if type(revision) is not int or revision not in (1, FIT_RECEIPT_VERSION):
+        raise ValueError("unknown website fit receipt version")
+    bindings = fit_bindings(raw.get("fit_receipts"), profile=profile, horizon=expected_identity["horizon"], dates=dates)
+    if revision == FIT_RECEIPT_VERSION:
+        for point, (signal_day, fit) in zip(points, bindings):
+            if (
+                point.get("signal_date") != signal_day
+                or point.get("fit_asof") != fit["fit_asof"]
+                or point.get("model_sha256") != fit["model_sha256"]
+            ):
+                raise ValueError("website point/model fit binding mismatch")
     return raw
 
 

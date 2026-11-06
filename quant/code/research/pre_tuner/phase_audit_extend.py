@@ -19,10 +19,7 @@ VOL_NAME = "qlib-cn-data"
 VOL_ROOT = Path("/vol")
 
 vol = modal.Volume.from_name(VOL_NAME, create_if_missing=True)
-image = (
-    modal.Image.debian_slim(python_version="3.11")
-    .pip_install("numpy==1.26.4", "pandas==2.2.3", "pyarrow")
-)
+image = modal.Image.debian_slim(python_version="3.11").pip_install("numpy==1.26.4", "pandas==2.2.3", "pyarrow")
 app = modal.App(APP_NAME, image=image)
 
 
@@ -49,9 +46,7 @@ def _validate_baseline(baseline, *, freq, market, topk, nd):
         raise RuntimeError("baseline protocol is not v5 reproducible protocol")
     if baseline.get("market") != market:
         raise RuntimeError("baseline market mismatch")
-    if int(baseline.get("topk", -1)) != int(topk) or int(
-        baseline.get("n_drop", -1)
-    ) != int(nd):
+    if int(baseline.get("topk", -1)) != int(topk) or int(baseline.get("n_drop", -1)) != int(nd):
         raise RuntimeError("baseline topk/n_drop mismatch")
     if not (baseline.get("reproducibility_gate") or {}).get("passed"):
         raise RuntimeError("phase extension requires a passing reproducibility gate")
@@ -162,8 +157,7 @@ def _phase_metric_summary(results, field):
 
 
 @app.function(volumes={str(VOL_ROOT): vol}, timeout=15 * 60)
-def prepare_phase_extension(freq: int, eval_from: str, market: str,
-                            topk: int, nd: int, phases: str):
+def prepare_phase_extension(freq: int, eval_from: str, market: str, topk: int, nd: int, phases: str):
     """Choose and snapshot reusable results before the canonical subset run."""
     import json
 
@@ -176,9 +170,7 @@ def prepare_phase_extension(freq: int, eval_from: str, market: str,
 
     baseline_path = _baseline_path(market)
     baseline = _load_json(baseline_path)
-    _validate_baseline(
-        baseline, freq=freq, market=market, topk=topk, nd=nd
-    )
+    _validate_baseline(baseline, freq=freq, market=market, topk=topk, nd=nd)
 
     phase_root = VOL_ROOT / "freq_phase_sensitivity"
     phase_path = phase_root / f"phase_{market}_freq{freq}.json"
@@ -198,11 +190,7 @@ def prepare_phase_extension(freq: int, eval_from: str, market: str,
         ):
             continue
         results = payload.get("results") or {}
-        reusable = sorted(
-            phase
-            for phase in requested
-            if phase != 0 and _is_reusable_phase(results.get(str(phase)))
-        )
+        reusable = sorted(phase for phase in requested if phase != 0 and _is_reusable_phase(results.get(str(phase))))
         candidates.append((len(reusable), -priority, path, payload, reusable))
 
     if candidates:
@@ -216,9 +204,7 @@ def prepare_phase_extension(freq: int, eval_from: str, market: str,
     phase_root.mkdir(parents=True, exist_ok=True)
     reuse_snapshot_path = phase_root / f"phase_{market}_freq{freq}.reuse_source.json"
     if source_payload is not None:
-        reuse_snapshot_path.write_text(
-            json.dumps(source_payload, indent=2, ensure_ascii=False)
-        )
+        reuse_snapshot_path.write_text(json.dumps(source_payload, indent=2, ensure_ascii=False))
     elif reuse_snapshot_path.exists():
         reuse_snapshot_path.unlink()
 
@@ -240,8 +226,7 @@ def prepare_phase_extension(freq: int, eval_from: str, market: str,
 
 
 @app.function(volumes={str(VOL_ROOT): vol}, timeout=15 * 60)
-def merge_phase_extension(freq: int, eval_from: str, market: str,
-                          topk: int, nd: int, phases: str):
+def merge_phase_extension(freq: int, eval_from: str, market: str, topk: int, nd: int, phases: str):
     """Merge the canonical fresh subset with the snapshotted reusable phases."""
     import json
 
@@ -256,9 +241,7 @@ def merge_phase_extension(freq: int, eval_from: str, market: str,
         raise RuntimeError("phase extension plan missing or does not match request")
 
     baseline = _load_json(_baseline_path(market))
-    _validate_baseline(
-        baseline, freq=freq, market=market, topk=topk, nd=nd
-    )
+    _validate_baseline(baseline, freq=freq, market=market, topk=topk, nd=nd)
     if plan.get("baseline_reproducibility") != baseline.get("reproducibility"):
         raise RuntimeError("baseline reproducibility changed during phase extension")
     if plan.get("baseline_gate") != baseline.get("reproducibility_gate"):
@@ -279,9 +262,7 @@ def merge_phase_extension(freq: int, eval_from: str, market: str,
     fresh_results = fresh.get("results") or {}
     run_phases = plan.get("run_phases") or []
     if sorted(int(x) for x in fresh.get("phases", [])) != sorted(run_phases):
-        raise RuntimeError(
-            f"fresh canonical phases mismatch: got={fresh.get('phases')} expected={run_phases}"
-        )
+        raise RuntimeError(f"fresh canonical phases mismatch: got={fresh.get('phases')} expected={run_phases}")
 
     reuse = None
     if plan.get("reuse_snapshot"):
@@ -321,19 +302,13 @@ def merge_phase_extension(freq: int, eval_from: str, market: str,
         "mean_turnover",
         "total_cost_sum",
     ]
-    summary = {
-        field: _phase_metric_summary(merged_results, field) for field in metric_fields
-    }
+    summary = {field: _phase_metric_summary(merged_results, field) for field in metric_fields}
     summary["strategy_cagr_range_pp"] = round(
         (summary["strategy_cagr"]["max"] - summary["strategy_cagr"]["min"]) * 100,
         3,
     )
     summary["relative_excess_cagr_range_pp"] = round(
-        (
-            summary["relative_excess_cagr"]["max"]
-            - summary["relative_excess_cagr"]["min"]
-        )
-        * 100,
+        (summary["relative_excess_cagr"]["max"] - summary["relative_excess_cagr"]["min"]) * 100,
         3,
     )
 
@@ -347,9 +322,7 @@ def merge_phase_extension(freq: int, eval_from: str, market: str,
             "reused_phases": reusable,
             "computed_phases": missing,
             "validation_phases": [0],
-            "new_model_fits": sum(
-                int(merged_results[str(phase)]["n_retrains"]) for phase in missing
-            ),
+            "new_model_fits": sum(int(merged_results[str(phase)]["n_retrains"]) for phase in missing),
             "results": merged_results,
             "summary": summary,
         }
@@ -412,8 +385,7 @@ def extend_phase_sensitivity_driver(
         canonical_phases,
     ]
     print(
-        "[phase-extend] launching canonical app for phases="
-        f"{canonical_phases}; this is the only model-fitting step"
+        "[phase-extend] launching canonical app for phases=" f"{canonical_phases}; this is the only model-fitting step"
     )
     subprocess.run(
         command,

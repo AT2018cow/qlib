@@ -30,6 +30,8 @@ def example_series():
             "fit_asof": "2026-09-30",
             "signal_end": "2026-10-09",
             "profile": "59b93929_top10_drop1_10d",
+            "model_sha256": "c" * 64,
+            "data_prefix_sha256": "d" * 64,
             "training_contract": {
                 "asof": "2026-09-30",
                 "train_end": "2025-08-15",
@@ -188,7 +190,8 @@ def test_cloud_worker_rejects_changed_source_before_accessing_volume():
         module.build_market.local({"source_manifest": {}})
 
 
-def test_publication_recovers_lost_response_and_does_not_push_twice(tmp_path, monkeypatch):
+@pytest.mark.parametrize("previous_date", [None, "", "2026-10-08", "2026-10-10", "not-a-date"])
+def test_publication_recovers_lost_response_and_does_not_push_twice(tmp_path, monkeypatch, previous_date):
     import base64
     import importlib.util
     from pathlib import Path
@@ -230,7 +233,11 @@ def test_publication_recovers_lost_response_and_does_not_push_twice(tmp_path, mo
                 "series": raw,
             }
         )
-    published, pushes = {}, []
+    published = {
+        f"quant/data/signals/{market}_website_performance.json": json.dumps({"latest_date": previous_date})
+        for market in CANONICAL_PROFILES_BY_MARKET
+    }
+    pushes = []
 
     class Response:
         def __init__(self, path):
@@ -258,6 +265,11 @@ def test_publication_recovers_lost_response_and_does_not_push_twice(tmp_path, mo
 
     monkeypatch.setattr(website_simulation, "write_immutable", interrupt)
     asset = {"digest": "sha256:" + "b" * 64}
+    if previous_date in ("2026-10-10", "not-a-date"):
+        with pytest.raises(ValueError):
+            module.publish_results(results, {}, asset, token="TEST_ONLY")
+        assert pushes == [] and len(published) == 3
+        return
     with pytest.raises(RuntimeError, match="publication succeeded"):
         module.publish_results(results, {}, asset, token="TEST_ONLY")
     monkeypatch.setattr(website_simulation, "write_immutable", original)

@@ -8,6 +8,7 @@ Use the *original* provider snapshot, original frozen signal, and same frozen
 execution interval. Reproduce the legacy report/decisions first; fail closed if
 they cannot be reproduced. Then switch only the exchange's quote coverage.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -21,8 +22,12 @@ import pandas as pd
 
 from audit.independent_stage_b_metrics import REQUIRED, metrics
 from csi1000_stage_b_core import (
-    BENCHMARK, MARKET, N_DROP, RESERVED_EXECUTION_END,
-    RESERVED_EXECUTION_START, TOPK,
+    BENCHMARK,
+    MARKET,
+    N_DROP,
+    RESERVED_EXECUTION_END,
+    RESERVED_EXECUTION_START,
+    TOPK,
 )
 from execution_quote_universe import execution_quote_codes
 
@@ -55,18 +60,25 @@ def _audit_decisions(decisions):
     for index, d in enumerate(decisions):
         orders = [
             {
-                "order_index": j, "stock_id": str(o.stock_id),
-                "direction": int(o.direction), "amount": float(o.amount),
+                "order_index": j,
+                "stock_id": str(o.stock_id),
+                "direction": int(o.direction),
+                "amount": float(o.amount),
                 "deal_amount": float(o.deal_amount),
                 "factor": None if o.factor is None else float(o.factor),
-                "start_time": str(o.start_time), "end_time": str(o.end_time),
+                "start_time": str(o.start_time),
+                "end_time": str(o.end_time),
             }
             for j, o in enumerate(d.get_decision())
         ]
-        rows.append({
-            "decision_index": index, "start_time": str(d.start_time),
-            "end_time": str(d.end_time), "orders": orders,
-        })
+        rows.append(
+            {
+                "decision_index": index,
+                "start_time": str(d.start_time),
+                "end_time": str(d.end_time),
+                "orders": orders,
+            }
+        )
     return rows
 
 
@@ -76,16 +88,12 @@ def _compare_original_report(expected, actual):
     if list(expected.columns) != list(actual.columns):
         raise ValueError("legacy replay schema differs from frozen report")
     for col in REQUIRED:
-        difference = float(np.max(np.abs(
-            expected[col].to_numpy(dtype=float) - actual[col].to_numpy(dtype=float)
-        )))
-        tolerance = ACCOUNT_TOL_CNY if col in {
-            "account", "cash", "value", "total_cost", "total_turnover"
-        } else RELATIVE_TOL
+        difference = float(np.max(np.abs(expected[col].to_numpy(dtype=float) - actual[col].to_numpy(dtype=float))))
+        tolerance = (
+            ACCOUNT_TOL_CNY if col in {"account", "cash", "value", "total_cost", "total_turnover"} else RELATIVE_TOL
+        )
         if not math.isfinite(difference) or difference > tolerance:
-            raise ValueError(
-                f"LEGACY REPLAY NOT REPRODUCIBLE: {col} max diff {difference} > {tolerance}"
-            )
+            raise ValueError(f"LEGACY REPLAY NOT REPRODUCIBLE: {col} max diff {difference} > {tolerance}")
 
 
 def _compare_original_decisions(expected, actual):
@@ -103,9 +111,7 @@ def _compare_original_decisions(expected, actual):
             for key in ("amount", "deal_amount", "factor"):
                 if (o[key] is None) != (a[key] is None):
                     raise ValueError(f"legacy {key} null differs")
-                if o[key] is not None and not math.isclose(
-                    float(o[key]), float(a[key]), rel_tol=1e-10, abs_tol=1e-7
-                ):
+                if o[key] is not None and not math.isclose(float(o[key]), float(a[key]), rel_tol=1e-10, abs_tol=1e-7):
                     raise ValueError(f"legacy {key} differs at {old['start_time']}")
 
 
@@ -114,35 +120,35 @@ def _backtest(signal, codes):
     from qlib.backtest import collect_data
 
     result = {}
-    decisions = list(collect_data(
-        strategy={
-            "class": "DeterministicTopkDropoutStrategy",
-            "module_path": "deterministic_strategy",
-            "kwargs": {
-                "signal": signal,
-                "topk": TOPK,
-                "n_drop": N_DROP,
-                "forbid_all_trade_at_limit": False,
+    decisions = list(
+        collect_data(
+            strategy={
+                "class": "DeterministicTopkDropoutStrategy",
+                "module_path": "deterministic_strategy",
+                "kwargs": {
+                    "signal": signal,
+                    "topk": TOPK,
+                    "n_drop": N_DROP,
+                    "forbid_all_trade_at_limit": False,
+                },
             },
-        },
-        executor={
-            "class": "SimulatorExecutor",
-            "module_path": "qlib.backtest.executor",
-            "kwargs": {
-                "time_per_step": "day",
-                "generate_portfolio_metrics": True,
-                "track_data": True,
+            executor={
+                "class": "SimulatorExecutor",
+                "module_path": "qlib.backtest.executor",
+                "kwargs": {
+                    "time_per_step": "day",
+                    "generate_portfolio_metrics": True,
+                    "track_data": True,
+                },
             },
-        },
-        start_time=RESERVED_EXECUTION_START,
-        end_time=RESERVED_EXECUTION_END,
-        account=100_000_000,
-        benchmark=BENCHMARK,
-        exchange_kwargs=research_exchange(
-            RESERVED_EXECUTION_START, RESERVED_EXECUTION_END, codes=codes
-        ),
-        return_value=result,
-    ))
+            start_time=RESERVED_EXECUTION_START,
+            end_time=RESERVED_EXECUTION_END,
+            account=100_000_000,
+            benchmark=BENCHMARK,
+            exchange_kwargs=research_exchange(RESERVED_EXECUTION_START, RESERVED_EXECUTION_END, codes=codes),
+            return_value=result,
+        )
+    )
     return result["portfolio_dict"]["1day"][0], _audit_decisions(decisions)
 
 
@@ -155,12 +161,18 @@ def _metrics(report):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--provider-uri", required=True, type=Path,
-                        help="Read-only path of ORIGINAL provider, not refreshed data")
-    parser.add_argument("--provider-snapshot", required=True, type=Path,
-                        help="Original csi1000_stage_b/provider_snapshot.json from frozen volume")
-    parser.add_argument("--output-dir", required=True, type=Path,
-                        help="New separate local audit-only directory; will not overwrite")
+    parser.add_argument(
+        "--provider-uri", required=True, type=Path, help="Read-only path of ORIGINAL provider, not refreshed data"
+    )
+    parser.add_argument(
+        "--provider-snapshot",
+        required=True,
+        type=Path,
+        help="Original csi1000_stage_b/provider_snapshot.json from frozen volume",
+    )
+    parser.add_argument(
+        "--output-dir", required=True, type=Path, help="New separate local audit-only directory; will not overwrite"
+    )
     parser.add_argument("--repo-root", type=Path, default=Path("."))
     args = parser.parse_args()
     repo = args.repo_root.resolve()
@@ -199,18 +211,20 @@ def main():
 
     import qlib
     from qlib.data import D
+
     qlib.init(provider_uri=str(args.provider_uri.resolve()), region="cn")
 
-    expected_calendar = list(D.calendar(
-        start_time=RESERVED_EXECUTION_START,
-        end_time=RESERVED_EXECUTION_END, freq="day",
-    ))
+    expected_calendar = list(
+        D.calendar(
+            start_time=RESERVED_EXECUTION_START,
+            end_time=RESERVED_EXECUTION_END,
+            freq="day",
+        )
+    )
     if list(old_report.index) != list(pd.DatetimeIndex(expected_calendar)):
         raise ValueError("newly initialized provider calendar differs from frozen report")
 
-    expanded_codes = execution_quote_codes(
-        MARKET, RESERVED_EXECUTION_START, RESERVED_EXECUTION_END
-    )
+    expanded_codes = execution_quote_codes(MARKET, RESERVED_EXECUTION_START, RESERVED_EXECUTION_END)
     for stock in ("SH603301", "SH688066"):
         if stock not in expanded_codes:
             raise ValueError(f"frozen F1 former constituent omitted from quote union: {stock}")
@@ -219,15 +233,16 @@ def main():
     probe = D.features(
         ["SH603301", "SH688066"],
         ["$open", "$close", "$factor"],
-        "2025-07-02", "2025-07-02", freq="day",
+        "2025-07-02",
+        "2025-07-02",
+        freq="day",
     )
     for stock in ("SH603301", "SH688066"):
         try:
             fields = probe.loc[(stock, pd.Timestamp("2025-07-02"))]
         except KeyError as exc:
             raise ValueError(f"underlying F1 post-removal market quote unavailable: {stock}") from exc
-        if not all(math.isfinite(float(fields[k])) and float(fields[k]) > 0 for k in
-                   ("$open", "$close", "$factor")):
+        if not all(math.isfinite(float(fields[k])) and float(fields[k]) > 0 for k in ("$open", "$close", "$factor")):
             raise ValueError(f"underlying F1 post-removal market quote invalid: {stock}")
 
     # Original must replay before diagnosing any new path.
@@ -251,30 +266,25 @@ def main():
     daily["delta_net_return"] = daily["fixed_net_return"] - daily["legacy_net_return"]
 
     def order_list(rows):
-        return [
-            [(o["stock_id"], o["direction"], o["amount"], o["deal_amount"]) for o in d["orders"]]
-            for d in rows
-        ]
+        return [[(o["stock_id"], o["direction"], o["amount"], o["deal_amount"]) for o in d["orders"]] for d in rows]
+
     old_orders_by_day = order_list(old_orders)
     new_orders_by_day = order_list(fixed_orders)
     changed_order_days = [
-        str(day.date()) for day, before, after in zip(
-            old_report.index, old_orders_by_day, new_orders_by_day
-        ) if before != after
+        str(day.date())
+        for day, before, after in zip(old_report.index, old_orders_by_day, new_orders_by_day)
+        if before != after
     ]
     diffs = np.abs(daily["delta_account"].to_numpy(dtype=float))
     changed_nav_dates = [
-        str(old_report.index[i].date()) for i, difference in enumerate(diffs)
-        if difference > ACCOUNT_TOL_CNY
+        str(old_report.index[i].date()) for i, difference in enumerate(diffs) if difference > ACCOUNT_TOL_CNY
     ]
     frozen_stall = ("2025-07-02", "2026-06-29")
     stall_old = sum(
-        len(day["orders"]) for day in old_orders
-        if frozen_stall[0] <= day["start_time"][:10] <= frozen_stall[1]
+        len(day["orders"]) for day in old_orders if frozen_stall[0] <= day["start_time"][:10] <= frozen_stall[1]
     )
     stall_fixed = sum(
-        len(day["orders"]) for day in fixed_orders
-        if frozen_stall[0] <= day["start_time"][:10] <= frozen_stall[1]
+        len(day["orders"]) for day in fixed_orders if frozen_stall[0] <= day["start_time"][:10] <= frozen_stall[1]
     )
     if stall_old != 0:
         raise ValueError(f"frozen F1 stall not reproduced: {stall_old} original orders")
@@ -294,9 +304,7 @@ def main():
         "report_frozen_byte_sha256": _sha(report_path),
         "decision_frozen_byte_sha256": _sha(decisions_path),
         "quote_codes_count": len(expanded_codes),
-        "quote_codes_sha256": hashlib.sha256(
-            ("\n".join(expanded_codes) + "\n").encode()
-        ).hexdigest(),
+        "quote_codes_sha256": hashlib.sha256(("\n".join(expanded_codes) + "\n").encode()).hexdigest(),
         "fixed_quote_codes_include_f1_removed_holdings": True,
         "legacy_reproduction": "PASS",
         "frozen_stall_original_orders": stall_old,
@@ -308,9 +316,9 @@ def main():
         "legacy_metrics": old_m,
         "fixed_metrics": fixed_m,
         "metric_deltas": {
-            key: fixed_m[key] - old_m[key] for key in old_m
-            if isinstance(fixed_m.get(key), (int, float)) and
-            isinstance(old_m.get(key), (int, float))
+            key: fixed_m[key] - old_m[key]
+            for key in old_m
+            if isinstance(fixed_m.get(key), (int, float)) and isinstance(old_m.get(key), (int, float))
         },
         "legacy_diagnostics": old_d,
         "fixed_diagnostics": fixed_d,
@@ -328,24 +336,27 @@ def main():
     out.mkdir(parents=True, exist_ok=False)
     old_replay.to_parquet(out / "legacy_diagnostic_report.parquet")
     fixed_report.to_parquet(out / "fixed_diagnostic_report.parquet")
-    (out / "fixed_diagnostic_decisions.json").write_text(
-        json.dumps(fixed_orders, indent=2, allow_nan=False) + "\n"
-    )
+    (out / "fixed_diagnostic_decisions.json").write_text(json.dumps(fixed_orders, indent=2, allow_nan=False) + "\n")
     daily.to_csv(out / "daily_legacy_vs_fixed.csv")
     (out / "comparison.json").write_text(json.dumps(output, indent=2, allow_nan=False) + "\n")
-    print(json.dumps({
-        "legacy_reproduction": "PASS",
-        "first_changed_order_date": output["first_changed_order_date"],
-        "first_changed_nav_date": output["first_changed_nav_date"],
-        "changed_order_days": len(changed_order_days),
-        "frozen_stall_fixed_orders": stall_fixed,
-        "legacy_sharpe": old_m["sharpe"],
-        "fixed_sharpe": fixed_m["sharpe"],
-        "legacy_CAGR": old_m["strategy_cagr"],
-        "fixed_CAGR": fixed_m["strategy_cagr"],
-        "execution_integrity": output["verdict"],
-        "saved_under": str(out),
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "legacy_reproduction": "PASS",
+                "first_changed_order_date": output["first_changed_order_date"],
+                "first_changed_nav_date": output["first_changed_nav_date"],
+                "changed_order_days": len(changed_order_days),
+                "frozen_stall_fixed_orders": stall_fixed,
+                "legacy_sharpe": old_m["sharpe"],
+                "fixed_sharpe": fixed_m["sharpe"],
+                "legacy_CAGR": old_m["strategy_cagr"],
+                "fixed_CAGR": fixed_m["strategy_cagr"],
+                "execution_integrity": output["verdict"],
+                "saved_under": str(out),
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

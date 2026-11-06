@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "verified_at_utc": "2026-11-06T15:04:13.809266+00:00",
+  "verification_source_sha256": "1aa5400c7a670738b504ce09fa5437fa4ff343110eab4b3a008052fb67b8f00a",
+  "training_or_cloud_replay_performed": false,
+  "mode": "READ_ONLY_LOCAL_RECONCILIATION_OF_EXISTING_FROZEN_INPUTS",
+  "accounts": {
+    "csi300": {
+      "status": "PARTIAL_NOT_CERTIFIED",
+      "ledger_status": "PASS",
+      "sessions": 20,
+      "latest_date": "2026-11-04",
+      "cumulative_return": -0.20844659999999993,
+      "total_fees": 4089.7799999999997,
+      "financial_fields_and_boundaries_exactly_unchanged": true,
+      "fit_receipt_v2_local_derivation_valid": true,
+      "fit_receipts": 2,
+      "model_binary_reopened": false,
+      "original_training_source_sha256": "0f322f8c9be595a4da2dd9a96a4ea2d3a0a677d98d6b3e6188acf275e04aa7a1",
+      "input_sha256": {
+        "quant/data/signals/csi300_website_performance.json": "1b7ece3cceca4aabbc1b290af80f347bd58d4450fd1da0a4fdde6e104d1bfef8",
+        "quant/data/daily_schedule/20261106/accounts/csi300/ledger/sessions.jsonl": "7593b4e98664e786ef4d7fc7c46c79b54fd05097f32e4e129b39cc68ae60d9cb",
+        "quant/data/daily_schedule/20261106/accounts/csi300/ledger/gaps.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+        "quant/data/signals/csi300_forward_performance.json": "1b7ece3cceca4aabbc1b290af80f347bd58d4450fd1da0a4fdde6e104d1bfef8",
+        "quant/data/signals/csi300_backfill_performance.json": "1b7ece3cceca4aabbc1b290af80f347bd58d4450fd1da0a4fdde6e104d1bfef8"
+      },
+      "audit_report": "quant/data/post_rollout_review/20261106/csi300-independent-ledger-audit.json",
+      "audit_sha256": "f04cc835d469fedb50c7ce8333c6c928c58c7371b37e4e916c284ddfbc7f1cac"
+    },
+    "csi500": {
+      "status": "PARTIAL_NOT_CERTIFIED",
+      "ledger_status": "PASS",
+      "sessions": 20,
+      "latest_date": "2026-11-04",
+      "cumulative_return": -0.10702575999999997,
+      "total_fees": 3741.6200000000003,
+      "financial_fields_and_boundaries_exactly_unchanged": true,
+      "fit_receipt_v2_local_derivation_valid": true,
+      "fit_receipts": 2,
+      "model_binary_reopened": false,
+      "original_training_source_sha256": "0f322f8c9be595a4da2dd9a96a4ea2d3a0a677d98d6b3e6188acf275e04aa7a1",
+      "input_sha256": {
+        "quant/data/signals/csi500_website_performance.json": "eb54e39ecdd2690c3c76573492b842850f048eed85a7eb6735ef9153baf1d57a",
+        "quant/data/daily_schedule/20261106/accounts/csi500/ledger/sessions.jsonl": "58bf5a5a24a735c5f0a4e6aee8c555fda847f05306af76cfa22069940a81eccf",
+        "quant/data/daily_schedule/20261106/accounts/csi500/ledger/gaps.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+        "quant/data/signals/csi500_forward_performance.json": "eb54e39ecdd2690c3c76573492b842850f048eed85a7eb6735ef9153baf1d57a",
+        "quant/data/signals/csi500_backfill_performance.json": "eb54e39ecdd2690c3c76573492b842850f048eed85a7eb6735ef9153baf1d57a"
+      },
+      "audit_report": "quant/data/post_rollout_review/20261106/csi500-independent-ledger-audit.json",
+      "audit_sha256": "8d41115c6dc3333ad280b1a0ce78e148f830b12d8a2082af0d248f7c80d481ab"
+    },
+    "csi1000": {
+      "status": "PARTIAL_NOT_CERTIFIED",
+      "ledger_status": "PASS",
+      "sessions": 20,
+      "latest_date": "2026-11-04",
+      "cumulative_return": -0.20134920999999995,
+      "total_fees": 3881.5299999999997,
+      "financial_fields_and_boundaries_exactly_unchanged": true,
+      "fit_receipt_v2_local_derivation_valid": true,
+      "fit_receipts": 2,
+      "model_binary_reopened": false,
+      "original_training_source_sha256": "0f322f8c9be595a4da2dd9a96a4ea2d3a0a677d98d6b3e6188acf275e04aa7a1",
+      "input_sha256": {
+        "quant/data/signals/csi1000_website_performance.json": "42113767f8d6564444adbc624f09c55815b0ee8f8cac52a56b86addc0094488e",
+        "quant/data/daily_schedule/20261106/accounts/csi1000/ledger/sessions.jsonl": "a7a20a5a27d1878b0710c65c609ebfac347caf41815952d2e33fe6b710590c75",
+        "quant/data/daily_schedule/20261106/accounts/csi1000/ledger/gaps.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+        "quant/data/signals/csi1000_forward_performance.json": "42113767f8d6564444adbc624f09c55815b0ee8f8cac52a56b86addc0094488e",
+        "quant/data/signals/csi1000_backfill_performance.json": "42113767f8d6564444adbc624f09c55815b0ee8f8cac52a56b86addc0094488e"
+      },
+      "audit_report": "quant/data/post_rollout_review/20261106/csi1000-independent-ledger-audit.json",
+      "audit_sha256": "4a4132b4cd0c4df7d50ccf497a702356341a1d4cfeb4037dfa36acba1329379d"
+    }
+  },
+  "frozen_publication": {
+    "context": {
+      "publication_mode": "OPERATOR_OVERRIDE",
+      "usage_date": "2026-11-06",
+      "signal_data_date": "2026-11-04",
+      "lag_sessions": 1,
+      "same_day_revision_policy": "EXPLICIT_VERSIONED_AMENDMENT_ONLY"
+    },
+    "pending_artifact_audit": {
+      "static_artifact_contract": "PASS_STATIC_ONLY",
+      "pending_status": "FROZEN_AWAITING_EXECUTION_DATA",
+      "errors": [],
+      "active_candidate_id": "c98856b460aba687640d422e85a82a545bf5b6ca932e906a180699e0f6cad19b",
+      "active_profile": "c98856b4_top10_drop1",
+      "artifact_signal_data_date": "2026-11-04",
+      "artifact_usage_date": "2026-11-06",
+      "supplied_calendar_gate": "PASS_SUPPLIED_CALENDAR_ONLY",
+      "historical_accounting": "BLOCKED_UNLESS_SEPARATE_REAL_PROVIDER_AUDIT_PASS",
+      "historical_strategy_selection": "CONSUMED_TAIL_DIAGNOSTIC_ONLY",
+      "deployed_runtime": "NOT_VERIFIED",
+      "training_label_maturity": "NOT_VERIFIED_FROM_THIS_ARTIFACT",
+      "current_st_suspension_status": "NOT_VERIFIED",
+      "real_fill_execution": "NOT_CERTIFIED",
+      "mvp_activation_approved": false
+    },
+    "metadata_sha256": {
+      "quant/data/signals/2026-11-06_mvp_metadata_csi300.json": "83c8201665418ae422c267871ce90aa621d285a9fc11c0f8086173db7f0a504d",
+      "quant/data/signals/2026-11-06_mvp_metadata_csi500.json": "01224af3897550b0bcdce340fa4356436ddcc9cc17149c55c2a7b932096af0ca",
+      "quant/data/signals/2026-11-06_mvp_metadata.json": "4b5b623795faceaf24bf33910a19be421ac5dc9305a6cf3de2d28121f35aede8"
+    }
+  },
+  "financial_verification_repeated_after_final_scope_guard": true
+}

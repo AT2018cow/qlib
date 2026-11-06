@@ -9,6 +9,8 @@
 > **注意：** 下文 2025–2026 五相位表是 **2026-11-02 切换前**的研究记录（CSI300 20d / CSI500 10d Top10），不是当前 CSI300/CSI500 profile。当前 1M 指标见 `quant/docs/08-current-window-backtest/19-g2-1m-account-replay-20261103.md`，2025–2026 扩展见 `20-g2-1m-2026-holdout-20261103.md`。
 > **配套全量数据库**：[`quant/data/strategy_catalog/`](../../data/strategy_catalog/) 与 [`quant/data/csi300_csi500_research/`](../../data/csi300_csi500_research/)  
 > **配套原始回测账本**：[`quant/data/round2_layered_search/`](../../data/round2_layered_search/)
+>
+> **2026-11-06 证据状态补充：** 本页历史研究指标（包括页首引用的 11/03 旧 1M 摘要、下文排行榜与五相位表）标记为 `LEGACY_EXECUTION_CONTRACT_NOT_REPLAYED`，保留原实验合同。生产 profile 名称仍有效，旧指标不能解释为已按本轮新执行规则重新验证。F1 报价修正不代表随后新增的板块数量规则已经对全部候选重放；原文“全实验冠军”等称谓仅指当时的搜索。当前已复验单元以[执行证据状态清单](../../data/execution_evidence_status.json)及[使用前复验结果](../07-code-review/2026-11-06-prelive-revalidation-results.md)为准，指标算术审计不能替代成交重放，也不证明当前策略全局最优。
 
 ---
 

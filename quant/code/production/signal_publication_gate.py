@@ -3,6 +3,7 @@
 Kept free of Modal/Qlib imports so trading-calendar freshness semantics can be
 unit-tested in lightweight CI.
 """
+
 from __future__ import annotations
 
 
@@ -50,7 +51,7 @@ def _publication_decision(cal, data_date: str, signal_date: str, fallback_days: 
     )
 
 
-def validate_multi_market_publication(results, signal_date: str, verified_calendar):
+def validate_multi_market_publication(results, signal_date: str, verified_calendar, *, allow_lag: bool = False):
     """Fail-closed freshness validation for the three-pool canonical publication.
 
     R01: the legacy flow only checked the CSI1000 worker result before
@@ -63,6 +64,10 @@ def validate_multi_market_publication(results, signal_date: str, verified_calend
     - all three workers agree on data date, archive SHA256 and calendar SHA256
       (guards against ``latest`` drifting between independently started
       containers).
+
+    Explicit ``allow_lag=True`` permits one shared stale session only after all
+    three identities pass. It authorizes reference rankings; the paper planner
+    separately requires an existing, calendar-valid frozen pending order.
 
     Returns ``(action, detail)`` with action in ``("publish", "skip", "raise")``.
     Any inconsistency raises for the whole canonical publication; callers must
@@ -101,12 +106,6 @@ def validate_multi_market_publication(results, signal_date: str, verified_calend
                 f"multi-market canonical: {market} data_date={data_date} >= signal_date={signal_date}",
             )
         lag = sum(1 for c in cal if data_date < c < signal_date)
-        if lag != 0:
-            return (
-                "raise",
-                f"multi-market canonical: {market} requires lag=0 (T-close -> T+1-open); "
-                f"got lag={lag} ({data_date} -> {signal_date})",
-            )
         identity = res.get("provider_identity")
         if not isinstance(identity, dict):
             return ("raise", f"multi-market canonical: {market} provider identity missing")
@@ -118,7 +117,10 @@ def validate_multi_market_publication(results, signal_date: str, verified_calend
             )
         archive = identity.get("archive_sha256")
         calendar_sha = identity.get("calendar_sha256")
-        if not archive or not calendar_sha:
+        if any(
+            not isinstance(value, str) or len(value) != 64 or any(c not in "0123456789abcdef" for c in value)
+            for value in (archive, calendar_sha)
+        ):
             return (
                 "raise",
                 f"multi-market canonical: {market} provider archive/calendar SHA missing",
@@ -131,13 +133,20 @@ def validate_multi_market_publication(results, signal_date: str, verified_calend
                 "raise",
                 "multi-market canonical: market snapshots disagree "
                 f"(data_date/archive/calendar): {market}={fingerprint} vs {expected}; "
-                "refusing mixed-provider publication",
+                f"lag={lag}; refusing mixed-provider publication",
             )
     data_date, archive, calendar_sha = expected
+    lag = sum(1 for day in cal if data_date < day < signal_date)
+    if lag != 0 and not (allow_lag is True and lag == 1):
+        return (
+            "raise",
+            "multi-market canonical: all market identities verified, requires lag=0 "
+            f"(T-close -> T+1-open); got lag={lag} ({data_date} -> {signal_date})",
+        )
     return (
         "publish",
-        "multi-market canonical freshness PASS: "
-        f"csi1000/csi500/csi300 data_date={data_date} lag=0, "
+        ("OPERATOR_OVERRIDE ranking-only: " if lag else "multi-market canonical freshness PASS: ")
+        + f"csi1000/csi500/csi300 data_date={data_date} lag={lag}, "
         f"archive={archive[:12]}, calendar={calendar_sha[:12]} identical",
     )
 
@@ -160,8 +169,7 @@ def _csi1000_canonical_publication_decision(cal, data_date: str, signal_date: st
     if data_date >= signal_date:
         return (
             "raise",
-            f"CSI1000 Stage-B canonical requires data_date < signal_date: "
-            f"{data_date} >= {signal_date}",
+            f"CSI1000 Stage-B canonical requires data_date < signal_date: " f"{data_date} >= {signal_date}",
         )
     lag = sum(1 for c in cal if data_date < c < signal_date)
     if lag != 0:
@@ -172,6 +180,5 @@ def _csi1000_canonical_publication_decision(cal, data_date: str, signal_date: st
         )
     return (
         "publish",
-        f"CSI1000 Stage-B canonical freshness PASS: {data_date} close -> "
-        f"{signal_date} open (lag=0)",
+        f"CSI1000 Stage-B canonical freshness PASS: {data_date} close -> " f"{signal_date} open (lag=0)",
     )

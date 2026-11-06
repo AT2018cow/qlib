@@ -4,6 +4,7 @@ No Qlib imports, training, external I/O beyond hashing the provided input.
 Keep these gates separate from the ledger reconstruction so tests can inject
 tampered orders, dates, fee totals, and hashes without rerunning the backtest.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -67,14 +68,25 @@ def check_full_buy(requested: float, filled: float, stock: str) -> None:
         raise ValueError(f"{stock}: partial buy fill")
 
 
-def audit_failures(*, calendar_exact: bool, decisions_n: int, report_n: int,
-                   decision_mismatches: int, tradability_violations: int,
-                   lot_violations: int, factor_mismatches: int,
-                   buy_amount_mismatches: int, sell_amount_mismatches: int,
-                   negative_cash_events: int, max_account_diff: Decimal,
-                   max_return_diff: float, max_fee_diff: Decimal,
-                   max_turnover_diff: Decimal, max_fee_rate_diff: Decimal,
-                   max_turnover_rate_diff: Decimal) -> list[str]:
+def audit_failures(
+    *,
+    calendar_exact: bool,
+    decisions_n: int,
+    report_n: int,
+    decision_mismatches: int,
+    tradability_violations: int,
+    lot_violations: int,
+    factor_mismatches: int,
+    buy_amount_mismatches: int,
+    sell_amount_mismatches: int,
+    negative_cash_events: int,
+    max_account_diff: Decimal,
+    max_return_diff: float,
+    max_fee_diff: Decimal,
+    max_turnover_diff: Decimal,
+    max_fee_rate_diff: Decimal,
+    max_turnover_rate_diff: Decimal,
+) -> list[str]:
     """One auditable gate; any nonzero mismatch is FAIL, never silent PASS."""
     issues = []
     if not calendar_exact or decisions_n != report_n or report_n != 424:

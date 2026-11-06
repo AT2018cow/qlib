@@ -173,9 +173,7 @@ def job_id(job: dict[str, Any]) -> str:
     require(job.get("phase") in (0, 10), "STAGE0_P0 invalid phase")
     model_short = job["candidate_id"][:8]
     if job["kind"] == "retrain":
-        require(
-            bool(re.fullmatch(r"\d{4}-\d\d-\d\d", job.get("retrain_asof", "") or "")), "STAGE0_P0 invalid as-of"
-        )
+        require(bool(re.fullmatch(r"\d{4}-\d\d-\d\d", job.get("retrain_asof", "") or "")), "STAGE0_P0 invalid as-of")
         return f"retrain/{job['market']}/{job['model_key']}/{model_short}/phase{job['phase']:02d}/{job['retrain_asof']}"
     require(job.get("combo_key") in ("top20_drop2", "top10_drop1"), "STAGE0_P0 unknown combo")
     return f"cell/{job['market']}/{job['model_key']}/{model_short}/{job['combo_key']}/phase{job['phase']:02d}"
@@ -534,12 +532,12 @@ def render_scoreboard(summary: dict[str, Any], csv_path: str | Path) -> Path:
                     "strategy_max_drawdown": metrics.get("strategy_max_drawdown"),
                     "mean_turnover": metrics.get("mean_turnover"),
                     "total_cost_sum": metrics.get("total_cost_sum"),
-                    "stressed10bp_strategy_total_return": (cell.get("stressed") or {}).get("10bp", {}).get(
-                        "strategy_total_return"
-                    ),
-                    "stressed20bp_strategy_total_return": (cell.get("stressed") or {}).get("20bp", {}).get(
-                        "strategy_total_return"
-                    ),
+                    "stressed10bp_strategy_total_return": (cell.get("stressed") or {})
+                    .get("10bp", {})
+                    .get("strategy_total_return"),
+                    "stressed20bp_strategy_total_return": (cell.get("stressed") or {})
+                    .get("20bp", {})
+                    .get("strategy_total_return"),
                     "account_return_max_error": metrics.get("account_return_max_error"),
                 }
             )

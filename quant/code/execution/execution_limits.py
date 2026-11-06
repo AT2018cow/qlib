@@ -3,6 +3,7 @@
 No dependency on Qlib or the broker. The same masks are used in
 BoardAwareExchange and historical PaperPortfolio replay.
 """
+
 from __future__ import annotations
 
 from typing import Dict, Optional
@@ -167,7 +168,11 @@ def compute_limit_masks(
         eps = np.maximum(1e-8, np.abs(raw_open) * 3e-7)
         limit_up = np.where(limited, raw_open >= upper_px - eps, False)
         limit_down = np.where(limited, raw_open <= lower_px + eps, False)
-    high_open = np.where(valid_prev, gap > float(high_open_block), False) if high_open_block is not None else np.zeros_like(valid_prev, dtype=bool)
+    high_open = (
+        np.where(valid_prev, gap > float(high_open_block), False)
+        if high_open_block is not None
+        else np.zeros_like(valid_prev, dtype=bool)
+    )
     if listing_dates and calendar and uniform_limit_ratio is None:
         cal_idx = {d: i for i, d in enumerate(calendar)}
         d_idx = np.array([cal_idx.get(str(d)[:10], -1) for d in dates])

@@ -1,4 +1,5 @@
 """No Qlib/Modal runtime needed: regression tests for F1 quote coverage."""
+
 import unittest
 from execution_quote_universe import execution_quote_codes
 
@@ -23,17 +24,16 @@ class FakeInstrumentProvider:
         if not as_list:
             raise AssertionError("must return a static list, not point-in-time intervals")
         return [
-            code for code, spans in self.memberships.items()
-            if any(a <= end_time and b >= start_time for a, b in spans)
-        ] + ["SH603301"]  # fake provider duplicates must not leak into quote list
+            code for code, spans in self.memberships.items() if any(a <= end_time and b >= start_time for a, b in spans)
+        ] + [
+            "SH603301"
+        ]  # fake provider duplicates must not leak into quote list
 
 
 class F1QuoteUniverseTests(unittest.TestCase):
     def test_removed_stocks_keep_quotes_after_index_exit(self):
         provider = FakeInstrumentProvider()
-        codes = execution_quote_codes(
-            "csi1000", "2025-01-02", "2026-09-30", provider=provider
-        )
+        codes = execution_quote_codes("csi1000", "2025-01-02", "2026-09-30", provider=provider)
         self.assertEqual(codes, ["SH603301", "SH688066", "SZ002001"])
         self.assertEqual(
             provider.calls,
@@ -59,6 +59,7 @@ class F1QuoteUniverseTests(unittest.TestCase):
         class EmptyProvider(FakeInstrumentProvider):
             def list_instruments(self, *args, **kwargs):
                 return []
+
         with self.assertRaisesRegex(ValueError, "invalid execution quote universe"):
             execution_quote_codes("csi1000", "2025-01-02", "2026-09-30", provider=EmptyProvider())
 

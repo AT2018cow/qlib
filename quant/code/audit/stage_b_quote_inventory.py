@@ -4,6 +4,7 @@ A *complete* trading-calendar sweep runs before independent NAV accounting.
 It never infers a suspension from a missing quote or forward-fills a price.
 Rows contain metadata and issue categories only, not proprietary market bars.
 """
+
 from __future__ import annotations
 
 import math
@@ -26,8 +27,7 @@ def _conflicting_suspension_close(value) -> bool:
         return True
 
 
-def scan_holding_quotes(decisions, quotes, dates, documented_suspensions,
-                        known_st_execution=None):
+def scan_holding_quotes(decisions, quotes, dates, documented_suspensions, known_st_execution=None):
     """Scan held stocks *after* the day's frozen fills, across every date.
 
     Documented suspensions map (date ISO, stock) -> announcement URL.  Only
@@ -47,20 +47,26 @@ def scan_holding_quotes(decisions, quotes, dates, documented_suspensions,
             raise ValueError(f"inventory decision clock/index {today}")
         for pos, order in enumerate(decision["orders"]):
             symbol = str(order["stock_id"])
-            if (order["order_index"] != pos or str(order["start_time"])[:10] != today
-                    or order["direction"] not in (0, 1)):
+            if (
+                order["order_index"] != pos
+                or str(order["start_time"])[:10] != today
+                or order["direction"] not in (0, 1)
+            ):
                 raise ValueError(f"inventory invalid order {today}/{symbol}")
             qty, requested = float(order["deal_amount"]), float(order["amount"])
-            if not (_positive(qty) and _positive(requested)
-                    and math.isclose(qty, requested, rel_tol=1e-10, abs_tol=1e-6)):
+            if not (
+                _positive(qty) and _positive(requested) and math.isclose(qty, requested, rel_tol=1e-10, abs_tol=1e-6)
+            ):
                 raise ValueError(f"inventory partial/invalid fill {today}/{symbol}")
             q = quotes.get((today, symbol))
             if not (q is not None and len(q) == 4 and all(_positive(q[j]) for j in (0, 1, 2))):
-                issues.append({"date": today, "stock_id": symbol,
-                               "issue": "INVALID_FROZEN_FILL_QUOTE", "blocking": True})
+                issues.append(
+                    {"date": today, "stock_id": symbol, "issue": "INVALID_FROZEN_FILL_QUOTE", "blocking": True}
+                )
             if (today, symbol) in documented_suspensions:
-                issues.append({"date": today, "stock_id": symbol,
-                               "issue": "ORDER_ON_DOCUMENTED_SUSPENSION", "blocking": True})
+                issues.append(
+                    {"date": today, "stock_id": symbol, "issue": "ORDER_ON_DOCUMENTED_SUSPENSION", "blocking": True}
+                )
             if order["direction"] == 1:
                 held[symbol] = held.get(symbol, 0.0) + qty
             else:
@@ -70,9 +76,15 @@ def scan_holding_quotes(decisions, quotes, dates, documented_suspensions,
                 del held[symbol]
                 previous_mark_date.pop(symbol, None)
             if (today, symbol) in known_st_execution:
-                issues.append({"date": today, "stock_id": symbol,
-                               "issue": "HISTORICAL_ST_FILL_NOT_CERTIFIED", "blocking": False,
-                               "evidence": known_st_execution[(today, symbol)]["notice"]})
+                issues.append(
+                    {
+                        "date": today,
+                        "stock_id": symbol,
+                        "issue": "HISTORICAL_ST_FILL_NOT_CERTIFIED",
+                        "blocking": False,
+                        "evidence": known_st_execution[(today, symbol)]["notice"],
+                    }
+                )
             count_orders += 1
         for symbol in sorted(held):
             q = quotes.get((today, symbol))
@@ -80,22 +92,46 @@ def scan_holding_quotes(decisions, quotes, dates, documented_suspensions,
             evidence = documented_suspensions.get((today, symbol))
             if evidence:
                 if _conflicting_suspension_close(close):
-                    issues.append({"date": today, "stock_id": symbol,
-                                   "issue": "DOCUMENTED_SUSPENSION_HAS_CLOSE", "blocking": True,
-                                   "evidence": evidence})
+                    issues.append(
+                        {
+                            "date": today,
+                            "stock_id": symbol,
+                            "issue": "DOCUMENTED_SUSPENSION_HAS_CLOSE",
+                            "blocking": True,
+                            "evidence": evidence,
+                        }
+                    )
                 elif symbol not in previous_mark_date:
-                    issues.append({"date": today, "stock_id": symbol,
-                                   "issue": "DOCUMENTED_SUSPENSION_NO_PRIOR_HELD_MARK",
-                                   "blocking": True, "evidence": evidence})
+                    issues.append(
+                        {
+                            "date": today,
+                            "stock_id": symbol,
+                            "issue": "DOCUMENTED_SUSPENSION_NO_PRIOR_HELD_MARK",
+                            "blocking": True,
+                            "evidence": evidence,
+                        }
+                    )
                 else:
-                    issues.append({"date": today, "stock_id": symbol,
-                                   "issue": "DOCUMENTED_SUSPENSION_CARRY_MARK",
-                                   "prior_mark_date": previous_mark_date[symbol],
-                                   "blocking": False, "evidence": evidence})
+                    issues.append(
+                        {
+                            "date": today,
+                            "stock_id": symbol,
+                            "issue": "DOCUMENTED_SUSPENSION_CARRY_MARK",
+                            "prior_mark_date": previous_mark_date[symbol],
+                            "blocking": False,
+                            "evidence": evidence,
+                        }
+                    )
             elif not _positive(close):
-                issues.append({"date": today, "stock_id": symbol,
-                               "issue": "UNKNOWN_HELD_CLOSE", "blocking": True,
-                               "last_valid_mark_date": previous_mark_date.get(symbol)})
+                issues.append(
+                    {
+                        "date": today,
+                        "stock_id": symbol,
+                        "issue": "UNKNOWN_HELD_CLOSE",
+                        "blocking": True,
+                        "last_valid_mark_date": previous_mark_date.get(symbol),
+                    }
+                )
             else:
                 previous_mark_date[symbol] = today
     blockers = [x for x in issues if x["blocking"]]
@@ -106,10 +142,8 @@ def scan_holding_quotes(decisions, quotes, dates, documented_suspensions,
         "anomaly_count": len(issues),
         "blocking_count": len(blockers),
         "unknown_held_close_count": sum(x["issue"] == "UNKNOWN_HELD_CLOSE" for x in issues),
-        "documented_suspension_carry_count":
-            sum(x["issue"] == "DOCUMENTED_SUSPENSION_CARRY_MARK" for x in issues),
-        "st_execution_warning_count":
-            sum(x["issue"] == "HISTORICAL_ST_FILL_NOT_CERTIFIED" for x in issues),
+        "documented_suspension_carry_count": sum(x["issue"] == "DOCUMENTED_SUSPENSION_CARRY_MARK" for x in issues),
+        "st_execution_warning_count": sum(x["issue"] == "HISTORICAL_ST_FILL_NOT_CERTIFIED" for x in issues),
         "issues": issues,  # Full, date-sorted inventory; never return only first gap.
         "market_execution": "NOT_CERTIFIED",
         "model_training": False,

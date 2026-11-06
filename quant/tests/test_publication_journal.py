@@ -292,11 +292,14 @@ def test_committed_record_after_incomplete_is_rejected():
     journal, storage = make_journal()
     complete_day(journal)
     record2 = journal.prepare(
-        "2026-10-17", "inv2", FILES,
+        "2026-10-17",
+        "inv2",
+        FILES,
         day_states(journal, {"csi1000": '{"version": 2, "cash": 101.0}\n'}),
     )
-    inject_record(storage, "2026-10-18", "VOLUME_COMMITTED",
-                  prior=record2["states"]["csi1000"]["sha256"], post=sha(b"later"))
+    inject_record(
+        storage, "2026-10-18", "VOLUME_COMMITTED", prior=record2["states"]["csi1000"]["sha256"], post=sha(b"later")
+    )
     with pytest.raises(JournalCorrupt, match="committed record after"):
         journal.verify_chain_integrity()
 
@@ -305,7 +308,9 @@ def test_expected_prior_requires_recovery_of_incomplete_successor():
     journal, _storage = make_journal()
     complete_day(journal)
     journal.prepare(
-        "2026-10-17", "inv2", FILES,
+        "2026-10-17",
+        "inv2",
+        FILES,
         day_states(journal, {"csi1000": '{"version": 2, "cash": 101.0}\n'}),
     )
     with pytest.raises(JournalCorrupt, match="recovered"):
@@ -362,10 +367,10 @@ def test_missing_previously_existing_state_file_fails_closed():
     prior = b'{"version": 2, "cash": 50.0}\n'
     journal.write_anchors({PATHS["csi1000"]: sha(prior)}, note="n", holder="op")
     record = journal.prepare(
-        "2026-10-18", "inv",
+        "2026-10-18",
+        "inv",
         FILES,
-        day_states(journal, {"csi1000": '{"version": 2, "cash": 60.0}\n',
-                             "csi500": '{"version": 2, "cash": 70.0}\n'}),
+        day_states(journal, {"csi1000": '{"version": 2, "cash": 60.0}\n', "csi500": '{"version": 2, "cash": 70.0}\n'}),
     )
     with pytest.raises(JournalCorrupt, match="missing"):
         journal.plan_state_writes(record, {"csi1000": None, "csi500": None})
@@ -376,10 +381,10 @@ def test_truncated_or_replaced_state_file_fails_closed():
     prior = b'{"version": 2, "cash": 50.0}\n'
     journal.write_anchors({PATHS["csi1000"]: sha(prior)}, note="n", holder="op")
     record = journal.prepare(
-        "2026-10-18", "inv",
+        "2026-10-18",
+        "inv",
         FILES,
-        day_states(journal, {"csi1000": '{"version": 2, "cash": 60.0}\n',
-                             "csi500": '{"version": 2, "cash": 70.0}\n'}),
+        day_states(journal, {"csi1000": '{"version": 2, "cash": 60.0}\n', "csi500": '{"version": 2, "cash": 70.0}\n'}),
     )
     truncated = b'{"version": 2, "cash": 50.0'  # prior file cut off mid-write
     with pytest.raises(JournalCorrupt, match="diverged"):
@@ -462,18 +467,20 @@ def test_verify_committed_states_rejects_loss_divergence_and_stale_state():
         journal.verify_committed_states(committed, foreign)
 
     # A legitimate later day advances both accounts; the chain stays valid.
-    day2 = {"csi1000": '{"version": 2, "cash": 111.0}\n',
-            "csi500": '{"version": 2, "cash": 222.0}\n'}
+    day2 = {"csi1000": '{"version": 2, "cash": 111.0}\n', "csi500": '{"version": 2, "cash": 222.0}\n'}
     journal.prepare("2026-10-17", "inv2", FILES, day_states(journal, day2))
     simulate_completion(journal.load("2026-10-17"), journal, github, state_fs)
     advanced = {market: state_fs.get(entry["path"]) for market, entry in committed["states"].items()}
     journal.verify_committed_states(committed, advanced)
     # Day-1 bytes are stale once day 2 is committed.
     with pytest.raises(JournalCorrupt):
-        journal.verify_committed_states(committed, {
-            "csi1000": DAY1_CONTENT["csi1000"].encode(),
-            "csi500": DAY1_CONTENT["csi500"].encode(),
-        })
+        journal.verify_committed_states(
+            committed,
+            {
+                "csi1000": DAY1_CONTENT["csi1000"].encode(),
+                "csi500": DAY1_CONTENT["csi500"].encode(),
+            },
+        )
 
 
 def test_journal_records_sort_oldest_first():
@@ -522,10 +529,16 @@ def test_modal_completion_helper_pushes_then_persists_and_is_idempotent(tmp_path
     monkeypatch.setenv("GITHUB_TOKEN", "test-token")
 
     state_records = {
-        "csi1000": {"path": "paper_portfolio/csi1000.json", "prior_sha256": None,
-                    "content": '{"version": 2, "cash": 1.0}\n'},
-        "csi500": {"path": "paper_portfolio/csi500.json", "prior_sha256": None,
-                   "content": '{"version": 2, "cash": 2.0}\n'},
+        "csi1000": {
+            "path": "paper_portfolio/csi1000.json",
+            "prior_sha256": None,
+            "content": '{"version": 2, "cash": 1.0}\n',
+        },
+        "csi500": {
+            "path": "paper_portfolio/csi500.json",
+            "prior_sha256": None,
+            "content": '{"version": 2, "cash": 2.0}\n',
+        },
     }
     record = journal.prepare("2026-10-18", "invocation-a", FILES, state_records)
     namespace = {

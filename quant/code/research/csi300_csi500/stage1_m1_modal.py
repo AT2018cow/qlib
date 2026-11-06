@@ -254,7 +254,8 @@ if modal is not None:
 
         src = _source_checks()
         require(
-            src["provider_fingerprint"] == meta["provider_fingerprint"], "STOP_STAGE1_SOURCE: fingerprint identity drift"
+            src["provider_fingerprint"] == meta["provider_fingerprint"],
+            "STOP_STAGE1_SOURCE: fingerprint identity drift",
         )
         qlib.init(provider_uri=str(SOURCE / "cn_data"), region="cn")
         calendar = read_trading_calendar(SOURCE / "cn_data")
@@ -269,8 +270,13 @@ if modal is not None:
             require(quote_sha == spec["expected_quote_sha256"], f"STOP_STAGE1_QUOTE_SHA: {market}")
             require(quote_sha == quote_sha_of(codes), f"STOP_STAGE1_QUOTE_RECOMPUTE: {market}")
             quotes[market] = {"count": len(codes), "quote_sha256": quote_sha}
-            frame = D.features([spec["benchmark"]], ["$close"], start_time=RESERVED_EXECUTION_START,
-                               end_time=RESERVED_EXECUTION_END, freq="day")
+            frame = D.features(
+                [spec["benchmark"]],
+                ["$close"],
+                start_time=RESERVED_EXECUTION_START,
+                end_time=RESERVED_EXECUTION_END,
+                freq="day",
+            )
             closes = frame["$close"] if "$close" in frame else frame.iloc[:, 0]
             import pandas as pd
 
@@ -413,8 +419,10 @@ if modal is not None:
         source_shas = []
         for part in build_phase_jobs(calendar, job["phase"]):
             fit_job = {
-                **{k: job[k] for k in ("run_id", "code_sha", "provider_fingerprint", "source_snapshot_sha256",
-                                       "quote_sha256")},
+                **{
+                    k: job[k]
+                    for k in ("run_id", "code_sha", "provider_fingerprint", "source_snapshot_sha256", "quote_sha256")
+                },
                 "kind": "retrain",
                 "market": job["market"],
                 "benchmark": job["benchmark"],
@@ -444,8 +452,10 @@ if modal is not None:
         if job["combo_key"] == "top20_drop2":
             shared = shared_signal_path(root, job["market"], job["model_key"], job["phase"])
             if shared.is_file():
-                require(pd.read_parquet(shared)["score"].equals(signal.to_frame("score")["score"]),
-                        "STOP_STAGE1_SHARED_SIGNAL_DRIFT")
+                require(
+                    pd.read_parquet(shared)["score"].equals(signal.to_frame("score")["score"]),
+                    "STOP_STAGE1_SHARED_SIGNAL_DRIFT",
+                )
             else:
                 shared.parent.mkdir(parents=True, exist_ok=True)
                 tmp_shared = shared.parent / (shared.name + ".tmp")
@@ -455,15 +465,19 @@ if modal is not None:
 
                 _os.replace(tmp_shared, shared)
         report, decisions = backtest_market_signal(
-            signal, job["topk"], job["n_drop"], codes,
-            RESERVED_EXECUTION_START, RESERVED_EXECUTION_END, job["benchmark"],
+            signal,
+            job["topk"],
+            job["n_drop"],
+            codes,
+            RESERVED_EXECUTION_START,
+            RESERVED_EXECUTION_END,
+            job["benchmark"],
         )
         metrics, diagnostics = report_metrics(report)
         require(len(report) == N_EXECUTION_DAYS and report.index.is_unique, "STOP_STAGE1_424_DAY_REPORT")
         require(len(decisions) == N_EXECUTION_DAYS, "STOP_STAGE1_424_DAY_DECISIONS")
         require(
-            diagnostics["max_account_return_delta"] <= 1e-10
-            and diagnostics["max_cost_rate_delta"] <= 1e-10,
+            diagnostics["max_account_return_delta"] <= 1e-10 and diagnostics["max_cost_rate_delta"] <= 1e-10,
             "STOP_STAGE1_NAV_ACCOUNT_DRIFT",
         )
         stressed = {}
@@ -551,7 +565,9 @@ if modal is not None:
                 anchor.get("provider_fingerprint", meta["provider_fingerprint"]) == meta["provider_fingerprint"],
                 "STOP_STAGE1_ANCHOR_PROVIDER_DRIFT",
             )
-        all_cells = sorted(cells + anchors, key=lambda row: (row["market"], row["model_key"], row["combo_key"], row["phase"]))
+        all_cells = sorted(
+            cells + anchors, key=lambda row: (row["market"], row["model_key"], row["combo_key"], row["phase"])
+        )
         require(len(all_cells) == 96, "STOP_STAGE1_96_COVERAGE")
         rankings = {
             market: rank_market_cells([c for c in all_cells if c["market"] == market])
@@ -598,9 +614,7 @@ if modal is not None:
         """Immutable marker, no modification after verification."""
         require(key in ("smoke_pass", "stage1_m1_summary"), "STOP_STAGE1_MARKER_KIND")
         research.reload()
-        require(
-            bool(re.fullmatch(r"[a-f0-9]{40}", meta.get("code_sha") or "")), "STOP_STAGE1_MARKER_IDENTITY"
-        )
+        require(bool(re.fullmatch(r"[a-f0-9]{40}", meta.get("code_sha") or "")), "STOP_STAGE1_MARKER_IDENTITY")
         root = RESULTS / prefix_for(meta["run_id"], meta["code_sha"])
         root.mkdir(parents=True, exist_ok=True)
         path = root / (key + ".json")
@@ -743,15 +757,19 @@ if modal is not None:
         require(len(fits) == 880 and len(cells) == 80, "STOP_STAGE1_ROSTER")
         smoke_jobs = [
             next(j for j in fits if j["market"] == "csi300" and j["model_key"] == "m01_59b93929" and j["phase"] == 0),
-            next(j for j in fits if j["market"] == "csi500" and j["model_key"] == "m09_raw10d_baseline" and j["phase"] == 0),
+            next(
+                j
+                for j in fits
+                if j["market"] == "csi500" and j["model_key"] == "m09_raw10d_baseline" and j["phase"] == 0
+            ),
         ]
-        require(smoke_jobs[0]["label_horizon"] == 20 and smoke_jobs[1]["label_horizon"] == 10, "STOP_STAGE1_SMOKE_HORIZONS")
+        require(
+            smoke_jobs[0]["label_horizon"] == 20 and smoke_jobs[1]["label_horizon"] == 10, "STOP_STAGE1_SMOKE_HORIZONS"
+        )
         if mode == "smoke":
             require(marker_remote.remote(full_meta, "smoke_pass") is None, "STOP_STAGE1_SMOKE_ALREADY_DONE")
             _dispatch_fits(smoke_jobs, max_workers, None)
-            require(
-                all(row is not None for row in receipts_remote.remote(smoke_jobs)), "STOP_STAGE1_SMOKE_RECEIPT"
-            )
+            require(all(row is not None for row in receipts_remote.remote(smoke_jobs)), "STOP_STAGE1_SMOKE_RECEIPT")
             freeze_remote.remote(
                 full_meta,
                 "smoke_pass",
@@ -770,14 +788,11 @@ if modal is not None:
         require(
             marker is not None
             and marker["status"] == "PASS"
-            and marker["smoke_job_shas"]
-            == [stable_sha(smoke_jobs[0]), stable_sha(smoke_jobs[1])]
+            and marker["smoke_job_shas"] == [stable_sha(smoke_jobs[0]), stable_sha(smoke_jobs[1])]
             and marker["provider_snapshot_sha256"] == inventory["source"]["snapshot_sha256"],
             "STOP_STAGE1_SMOKE_NOT_VERIFIED",
         )
-        require(
-            all(row is not None for row in receipts_remote.remote(smoke_jobs)), "STOP_STAGE1_SMOKE_RECEIPT_MISSING"
-        )
+        require(all(row is not None for row in receipts_remote.remote(smoke_jobs)), "STOP_STAGE1_SMOKE_RECEIPT_MISSING")
         remaining = [max_fit_waves] if max_fit_waves else None
         if not _dispatch_fits(fits, max_workers, remaining):
             print("STAGE1_SAFE_PAUSE", flush=True)

@@ -65,9 +65,7 @@ class PhaseRegimeAgeTests(unittest.TestCase):
         self.assertEqual(out.loc["2024-01-03", "model_age_sessions"], 0)
         self.assertEqual(out.loc["2024-01-08", "signal_date"], "2024-01-05")
         self.assertEqual(out.loc["2024-01-08", "model_age_sessions"], 3)
-        self.assertEqual(
-            out.loc["2024-01-09", "active_retrain_asof"], "2024-01-08"
-        )
+        self.assertEqual(out.loc["2024-01-09", "active_retrain_asof"], "2024-01-08")
         self.assertEqual(out.loc["2024-01-09", "model_age_sessions"], 0)
 
     def test_regime_features_are_shifted_one_execution_day(self):
@@ -169,9 +167,7 @@ class PhaseRegimeAgeTests(unittest.TestCase):
         self.assertEqual(out["regime_years"]["n_days"], 4)
         self.assertAlmostEqual(out["regime_years"]["total_net_log_gap"], -0.6)
         self.assertAlmostEqual(out["full_sample"]["total_net_log_gap"], -0.4)
-        self.assertAlmostEqual(
-            out["regime_years"]["share_of_full_net_log_gap"], 1.5
-        )
+        self.assertAlmostEqual(out["regime_years"]["share_of_full_net_log_gap"], 1.5)
 
     def test_decision_summary_distinguishes_contribution_from_intensity(self):
         pairwise = {

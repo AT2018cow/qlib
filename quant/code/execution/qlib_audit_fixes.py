@@ -2,6 +2,7 @@
 
 No Qlib import is required, so the functions can be unit-tested independently.
 """
+
 from __future__ import annotations
 
 from bisect import bisect_left, bisect_right

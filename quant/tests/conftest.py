@@ -1,4 +1,5 @@
 """Pytest path configuration for the organized `quant/` workspace."""
+
 import sys
 from pathlib import Path
 

@@ -20,6 +20,9 @@ function series() {
     start_date: '2026-10-08', inception_date: '2026-10-08', latest_date: '2026-10-08',
     trading_dates: ['2026-10-08'], cumulative_return: -0.01, total_fees: 500,
     execution_st_policy: 'ST_HISTORY_UNVERIFIED_REFERENCE_ONLY',
+    fit_receipts: [{ fit_asof: '2026-09-30', signal_end: '2026-10-08',
+      profile: '59b93929_top10_drop1_10d', model_sha256: 'c'.repeat(64), data_prefix_sha256: 'd'.repeat(64),
+      training_contract: { asof: '2026-09-30', horizon: 10, train_end: '2025-08-15', valid_end: '2026-09-14' } }],
     points: [{ date: '2026-10-08', nav: 0.99, daily_return: -0.01, cumulative_return: -0.01,
       portfolio_value_close: 990000, cash: 10000, cost: 500, data_mode: 'CAUSAL_SIMULATION' }] };
 }
@@ -41,4 +44,20 @@ test('current market panel refuses an obsolete cumulative-return file', () => {
     latest_date: '2026-09-30', cumulative_return: 0.03,
     points: [{ date: '2026-09-30', nav: 1.03, daily_return: 0.03, cumulative_return: 0.03 }] };
   assert.equal(normalizeForwardPerformance(legacy, 'csi300').status, 'invalid');
+});
+
+test('fit receipts require valid hashes, coverage and explicit version 2 point binding', () => {
+  const valid = series();
+  valid.fit_receipt_version = 2;
+  Object.assign(valid.points[0], { signal_date: '2026-09-30', fit_asof: '2026-09-30', model_sha256: 'c'.repeat(64) });
+  assert.equal(normalizeForwardPerformance(valid, 'csi300').status, 'active');
+  for (const change of [s => s.fit_receipts[0].model_sha256 = '',
+    s => s.fit_receipts[0].data_prefix_sha256 = ['d'.repeat(64)],
+    s => s.fit_receipts[0].signal_end = '2026-09-29',
+    s => s.fit_receipts.push(structuredClone(s.fit_receipts[0])),
+    s => s.points[0].model_sha256 = 'e'.repeat(64),
+    s => s.points[0].signal_date = '2026-10-08', s => s.fit_receipt_version = 99]) {
+    const raw = structuredClone(valid); change(raw);
+    assert.equal(normalizeForwardPerformance(raw, 'csi300').status, 'invalid');
+  }
 });

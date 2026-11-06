@@ -273,6 +273,7 @@ function normalizeWebsiteSimulation(raw, market = null) {
       raw.status !== 'active' || raw.data_mode !== 'CAUSAL_SIMULATION' ||
       raw.execution_st_policy !== 'ST_HISTORY_UNVERIFIED_REFERENCE_ONLY' ||
       raw.start_date !== FORWARD_START || raw.inception_date !== FORWARD_START ||
+      typeof raw.source_manifest_sha256 !== 'string' || typeof raw.provider_archive_sha256 !== 'string' ||
       !/^[0-9a-f]{64}$/.test(raw.source_manifest_sha256 || '') ||
       !/^[0-9a-f]{64}$/.test(raw.provider_archive_sha256 || '') ||
       !Array.isArray(raw.points) || !raw.points.length || !Array.isArray(raw.trading_dates) ||
@@ -298,12 +299,41 @@ function normalizeWebsiteSimulation(raw, market = null) {
       !Number.isFinite(raw.cumulative_return) || Math.abs(raw.cumulative_return - previousNav + 1) > 1e-9 ||
       typeof raw.total_fees !== 'number' || !Number.isFinite(raw.total_fees) ||
       Math.abs(raw.total_fees - fees) > 0.011) return invalid;
+  const receiptVersion = raw.fit_receipt_version === undefined ? 1 : raw.fit_receipt_version;
+  const fits = raw.fit_receipts;
+  if (![1, 2].includes(receiptVersion) || !Array.isArray(fits) || !fits.length ||
+      fits[0]?.fit_asof !== '2026-09-30') return invalid;
+  let previousFitEnd = '';
+  for (const fit of fits) {
+    const contract = fit?.training_contract;
+    if (!fit || !contract || fit.profile !== identity.profile || contract.horizon !== identity.horizon ||
+        contract.asof !== fit.fit_asof ||
+        typeof fit.model_sha256 !== 'string' || typeof fit.data_prefix_sha256 !== 'string' ||
+        !/^[0-9a-f]{64}$/.test(fit.model_sha256 || '') ||
+        !/^[0-9a-f]{64}$/.test(fit.data_prefix_sha256 || '') ||
+        [fit.fit_asof, fit.signal_end, contract.train_end, contract.valid_end]
+          .some(day => !Number.isFinite(dateKeyToUTC(day))) ||
+        !(contract.train_end < contract.valid_end && contract.valid_end < fit.fit_asof &&
+          fit.fit_asof <= fit.signal_end && fit.signal_end <= raw.latest_date) ||
+        (previousFitEnd && fit.fit_asof <= previousFitEnd)) return invalid;
+    previousFitEnd = fit.signal_end;
+  }
+  for (let i = 0; i < raw.points.length; i++) {
+    const signalDate = i === 0 ? '2026-09-30' : raw.points[i - 1].date;
+    const covering = fits.filter(fit => fit.fit_asof <= signalDate && signalDate <= fit.signal_end);
+    if (covering.length !== 1) return invalid;
+    const point = raw.points[i], fit = covering[0];
+    if (receiptVersion === 2 && (point.signal_date !== signalDate || point.fit_asof !== fit.fit_asof ||
+        point.model_sha256 !== fit.model_sha256)) return invalid;
+  }
   return raw;
 }
 
 function normalizeForwardPerformance(raw, market = null) {
   const invalid = { status: 'invalid' };
   if (raw?.schema_version === 3) return normalizeWebsiteSimulation(raw, market);
+  // Public market panels require the approved October account. The legacy
+  // parser below is an explicit historical reader, never an automatic fallback.
   if (market) return invalid;
   const allowedStart = raw && raw.start_date === '2026-09-30';
   if (!allowedStart || !Array.isArray(raw.points)) return invalid;
@@ -560,15 +590,29 @@ function evaluateMvpContract(metadata, paper, date, rows, pool = currentPool) {
   const risk = metadata.risk;
   const expectedMarket = pool?.key || 'csi1000';
   const expectedPitCount = pool?.expectedPitCount || 1000;
+  const publication = metadata.publication;
+  const lagged = publication?.status === 'PASS_OPERATOR_OVERRIDE' ||
+    publication?.publication_mode === 'OPERATOR_OVERRIDE' ||
+    String(publication?.canonical_freshness_gate || '').includes('OPERATOR_OVERRIDE');
 
   if (metadata.contract_version !== MVP_CONTRACT_VERSION) errors.push('contract version mismatch');
   if (metadata.market !== expectedMarket) errors.push('market mismatch');
-  if (!['PASS', 'PASS_BACKFILL'].includes(metadata.publication?.status) || metadata.publication?.usage_date !== date) {
+  if (!['PASS', 'PASS_BACKFILL', 'PASS_OPERATOR_OVERRIDE'].includes(metadata.publication?.status) || metadata.publication?.usage_date !== date) {
     errors.push('publication gate not bound to selected date');
   }
   if (!paper || metadata.publication?.signal_data_date !== paper.signal_data_date ||
       paper.usage_date !== date) {
     errors.push('paper date lineage mismatch');
+  }
+  if (lagged) {
+    const pending = paper?.pending_orders;
+    const dataDate = publication?.signal_data_date;
+    const calendar = paper?.trading_calendar?.dates;
+    const lag = Array.isArray(calendar) ? calendar.filter(day => dataDate < day && day < date).length : null;
+    if (lag !== 1 || pending?.status !== 'awaiting_execution_data' ||
+        !(pending.signal_date <= dataDate && dataDate < pending.execution_date && pending.execution_date < date)) {
+      errors.push('lagged publication is not a frozen reference order');
+    }
   }
   const expectedCount = TOP10_PROFILES.has(production?.profile) ? 10 : 20;
   if (!isWinnerCanonical(paper) ||
@@ -621,6 +665,8 @@ function evaluateMvpContract(metadata, paper, date, rows, pool = currentPool) {
     ok: errors.length === 0,
     legacy: false,
     backfill: metadata.publication?.status === 'PASS_BACKFILL',
+    lagged,
+    publicationWarning: lagged ? `排名数据截至 ${formatDate(publication.signal_data_date)}，滞后 1 个交易日；仅供参考，旧订单保持冻结。` : null,
     errors,
     pitText: pit?.status === 'PASS' && label?.status === 'PASS'
       ? `${pit.member_count}只成分股 · 防泄漏校验通过` : '未通过',
@@ -706,6 +752,8 @@ function buildRebalance(rows, nameMap, prev, paper, date, pool = null) {
   return {
     planAvailable,
     awaiting: Boolean(pending && pending.status === 'awaiting_execution_data'),
+    frozen: Boolean(pending && pending.status === 'awaiting_execution_data' && pending.execution_date < date),
+    pendingExecutionDate: pending?.execution_date || null,
     positionsAvailable: Boolean(positionsAvailable),
     topk,
     nd,
@@ -762,8 +810,8 @@ function rebalanceBody(model) {
   if (model.planAvailable) {
     body += `
       <div class="rebalance-grid">
-        ${column('计划调入', 'trade-in', model.buy, '本期无调入')}
-        ${column('计划调出', 'trade-out', model.sell, '本期无调出')}
+        ${column(model.frozen ? '冻结的原调入单' : '计划调入', 'trade-in', model.buy, '本期无调入')}
+        ${column(model.frozen ? '冻结的原调出单' : '计划调出', 'trade-out', model.sell, '本期无调出')}
       </div>`;
   }
   if (model.planAvailable && model.heldOutside.length) {
@@ -800,11 +848,15 @@ function renderRebalance(model, prevDate) {
     return;
   }
   section.hidden = false;
+  const title = document.getElementById('rebalance-title');
+  if (title) title.textContent = model.frozen ? '历史待执行订单 · 冻结' : '本期调仓';
   if (body) body.innerHTML = rebalanceBody(model);
   if (note) {
     const compare = prevDate ? `${formatDate(prevDate)} 对比 · ` : '';
     if (model.planAvailable) {
-      note.textContent = compare + `T+1 开盘 · 最多调出 ${model.nd || 1} 只${model.awaiting ? ' · 沿用待执行' : ''}`;
+      note.textContent = model.frozen
+        ? `原执行日 ${formatDate(model.pendingExecutionDate)} · 保留原订单，本日未生成新订单`
+        : compare + `T+1 开盘 · 最多调出 ${model.nd || 1} 只${model.awaiting ? ' · 沿用待执行' : ''}`;
     } else {
       note.textContent = compare + '调仓计划暂不可用';
     }
@@ -926,7 +978,7 @@ function pageShell(dates) {
           <div class="rebalance-head">
             <div>
               <div class="panel-kicker" id="rebalance-kicker">Top ${currentPool.topk} · Drop${currentPool.nd}</div>
-              <h3>本期调仓</h3>
+              <h3 id="rebalance-title">本期调仓</h3>
             </div>
             <div class="panel-note" id="rebalance-note"></div>
           </div>
@@ -1102,7 +1154,8 @@ async function main() {
       document.getElementById('artifact-status').innerHTML = !ctx
         ? '校验中…'
         : (contract.ok
-          ? (contract.backfill ? '<span class="status-pill"><span class="status-dot"></span> 回补校验 · 通过</span>' : '<span class="status-pill"><span class="status-dot"></span> 校验 · 通过</span>')
+          ? (contract.lagged ? '<span class="status-pill history">滞后排名 · 订单冻结</span>'
+            : contract.backfill ? '<span class="status-pill"><span class="status-dot"></span> 回补校验 · 通过</span>' : '<span class="status-pill"><span class="status-dot"></span> 校验 · 通过</span>')
           : '<span class="status-pill history">校验信息不完整</span>');
       const health = document.getElementById('mvp-health');
       if (health) {
@@ -1110,7 +1163,8 @@ async function main() {
         health.textContent = !ctx
           ? '核验中…'
           : contract.ok
-            ? `收盘行情、${pool.expectedPitCount} 只成分股、${horizonDays} 日防泄漏与账本核验通过。`
+            ? (contract.lagged ? contract.publicationWarning
+              : `收盘行情、${pool.expectedPitCount} 只成分股、${horizonDays} 日防泄漏与账本核验通过。`)
             : contract.legacy
               ? '缺少校验文件，仅只读展示。'
               : '校验未通过：' + escapeHtml(contract.errors.join('；'));

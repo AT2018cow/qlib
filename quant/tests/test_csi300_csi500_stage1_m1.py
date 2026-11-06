@@ -65,8 +65,9 @@ def _model_sha(model_params: dict) -> str:
     from stage0_p0_core import REPO_ROOT
 
     cfg = YAML(typ="safe", pure=True).load(
-        (Path(REPO_ROOT) / "examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158_csi500.yaml")
-        .read_text(encoding="utf-8")
+        (Path(REPO_ROOT) / "examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158_csi500.yaml").read_text(
+            encoding="utf-8"
+        )
     )
     cfg["task"]["model"]["kwargs"].update(model_params)
     apply_lgb_reproducibility(cfg)
@@ -131,7 +132,9 @@ def test_stage1_fit_roster_is_880_unique_and_horizon_mapped():
     for market in ("csi300", "csi500"):
         for model_key, spec in core.STAGE1_NEW_MODELS.items():
             for phase in (0, 10):
-                group = [j for j in jobs if j["market"] == market and j["model_key"] == model_key and j["phase"] == phase]
+                group = [
+                    j for j in jobs if j["market"] == market and j["model_key"] == model_key and j["phase"] == phase
+                ]
                 assert len(group) == 22
                 legal = {(p["retrain_asof"], p["signal_end"]) for p in build_phase_jobs(calendar, phase)}
                 assert {(j["retrain_asof"], j["signal_end"]) for j in group} == legal
@@ -165,7 +168,9 @@ def test_stage1_cell_roster_is_80_unique():
 def test_stage1_smoke_slices_are_raw20_plus_raw10_first_asof():
     jobs = core.build_stage1_fit_jobs(_synthetic_calendar(), "stage1_m1_20261015_a1", "a" * 40)
     first20 = next(j for j in jobs if j["market"] == "csi300" and j["model_key"] == "m01_59b93929" and j["phase"] == 0)
-    first10 = next(j for j in jobs if j["market"] == "csi500" and j["model_key"] == "m09_raw10d_baseline" and j["phase"] == 0)
+    first10 = next(
+        j for j in jobs if j["market"] == "csi500" and j["model_key"] == "m09_raw10d_baseline" and j["phase"] == 0
+    )
     all_first = sorted({(j["retrain_asof"], j["signal_end"]) for j in jobs if j["phase"] == 0})
     assert (first20["retrain_asof"], first20["signal_end"]) == all_first[0]
     assert (first10["retrain_asof"], first10["signal_end"]) == all_first[0]
@@ -234,10 +239,20 @@ class _DummyParquet:
 
 
 def _retrain_job():
-    return {**_meta(), "kind": "retrain", "market": "csi300", "benchmark": "SH000300",
-            "model_key": "m01_59b93929", "candidate_id": "c" * 64, "model_params": {"learning_rate": 0.1},
-            "model_sha256": "1" * 64, "label_horizon": 20, "phase": 0,
-            "retrain_asof": "2025-01-02", "signal_end": "2025-01-29"}
+    return {
+        **_meta(),
+        "kind": "retrain",
+        "market": "csi300",
+        "benchmark": "SH000300",
+        "model_key": "m01_59b93929",
+        "candidate_id": "c" * 64,
+        "model_params": {"learning_rate": 0.1},
+        "model_sha256": "1" * 64,
+        "label_horizon": 20,
+        "phase": 0,
+        "retrain_asof": "2025-01-02",
+        "signal_end": "2025-01-29",
+    }
 
 
 def _meta():
@@ -263,21 +278,36 @@ def test_stage1_receipt_roundtrip_and_tamper_reject(tmp_path):
 
 def _fake_metrics(rel, sharpe=1.0, ir=0.5, mdd=-0.1, total=0.2, cagr=0.1):
     return {
-        "n_days": 424, "strategy_total_return": total, "strategy_cagr": cagr, "benchmark_cagr": 0.05,
-        "relative_excess_cagr": rel, "sharpe": sharpe, "information_ratio": ir,
-        "strategy_max_drawdown": mdd, "mean_turnover": 0.2, "total_cost_sum": 0.05,
+        "n_days": 424,
+        "strategy_total_return": total,
+        "strategy_cagr": cagr,
+        "benchmark_cagr": 0.05,
+        "relative_excess_cagr": rel,
+        "sharpe": sharpe,
+        "information_ratio": ir,
+        "strategy_max_drawdown": mdd,
+        "mean_turnover": 0.2,
+        "total_cost_sum": 0.05,
         "account_return_max_error": 1e-12,
     }
 
 
 def _fake_cell(market, model_key, combo_key, phase, rel, anchor=False, horizon=20):
     return {
-        "market": market, "benchmark": core.MARKETS[market]["benchmark"], "model_key": model_key,
-        "candidate_id": "c" * 64, "label_horizon": horizon, "anchor": anchor, "combo_key": combo_key,
-        "topk": 20 if combo_key == "top20_drop2" else 10, "n_drop": 2 if combo_key == "top20_drop2" else 1,
-        "phase": phase, "metrics": _fake_metrics(rel),
+        "market": market,
+        "benchmark": core.MARKETS[market]["benchmark"],
+        "model_key": model_key,
+        "candidate_id": "c" * 64,
+        "label_horizon": horizon,
+        "anchor": anchor,
+        "combo_key": combo_key,
+        "topk": 20 if combo_key == "top20_drop2" else 10,
+        "n_drop": 2 if combo_key == "top20_drop2" else 1,
+        "phase": phase,
+        "metrics": _fake_metrics(rel),
         "stressed": {"10bp": {"strategy_total_return": 0.1}, "20bp": {"strategy_total_return": 0.09}},
-        "artifact_sha256": {"a": "b"}, "job_sha256": "c" * 64,
+        "artifact_sha256": {"a": "b"},
+        "job_sha256": "c" * 64,
     }
 
 
@@ -318,24 +348,41 @@ def test_stage1_load_anchor_cells_and_drift_reject(tmp_path):
                     job_sha = stable_sha({"x": (market, model_key, combo_key, phase)})
                     metrics = _fake_metrics(0.05)
                     cell = {
-                        "market": market, "benchmark": core.MARKETS[market]["benchmark"], "model_key": model_key,
-                        "candidate_id": cid, "combo_key": combo_key, "topk": 20, "n_drop": 2, "phase": phase,
-                        "metrics": metrics, "stressed": {"10bp": {"strategy_total_return": 0.1}},
-                        "artifact_sha256": {}, "job_sha256": job_sha,
+                        "market": market,
+                        "benchmark": core.MARKETS[market]["benchmark"],
+                        "model_key": model_key,
+                        "candidate_id": cid,
+                        "combo_key": combo_key,
+                        "topk": 20,
+                        "n_drop": 2,
+                        "phase": phase,
+                        "metrics": metrics,
+                        "stressed": {"10bp": {"strategy_total_return": 0.1}},
+                        "artifact_sha256": {},
+                        "job_sha256": job_sha,
                     }
                     cells.append(cell)
-                    cdir = (root / "cells" / f"cell/{market}/{model_key}/{cid[:8]}/{combo_key}/phase{phase:02d}")
+                    cdir = root / "cells" / f"cell/{market}/{model_key}/{cid[:8]}/{combo_key}/phase{phase:02d}"
                     cdir.mkdir(parents=True)
                     report = b"report-bytes-" + market.encode() + str(phase).encode()
                     (cdir / "fixed_report.parquet").write_bytes(report)
                     digest = hashlib.sha256(report).hexdigest()
                     cell["artifact_sha256"] = {"fixed_report.parquet": digest}
                     (cdir / "receipt.json").write_text(
-                        json.dumps({"status": "PASS", "job_sha256": job_sha, "artifact_sha256": cell["artifact_sha256"]})
+                        json.dumps(
+                            {"status": "PASS", "job_sha256": job_sha, "artifact_sha256": cell["artifact_sha256"]}
+                        )
                     )
     (root / "stage0_p0_summary.json").write_text(
-        json.dumps({"status": "PASS", "completed_cells": 16, "run_id": core.STAGE0_RUN_ID,
-                    "code_sha": core.STAGE0_CODE_SHA, "cells": cells})
+        json.dumps(
+            {
+                "status": "PASS",
+                "completed_cells": 16,
+                "run_id": core.STAGE0_RUN_ID,
+                "code_sha": core.STAGE0_CODE_SHA,
+                "cells": cells,
+            }
+        )
     )
     anchors = core.load_stage0_anchor_cells(tmp_path)
     assert len(anchors) == 16 and all(c["anchor"] is True for c in anchors)
@@ -390,8 +437,17 @@ def test_stage1_modal_imports_all_resolve_in_core():
 
 def test_stage1_modal_traps_static():
     src = MODAL_SRC.read_text(encoding="utf-8")
-    for token in ("quant/local_backup", "quant/data", ".worktrees", ".venv", "mlruns", "__pycache__", ".git",
-                  ".cpp", ".so"):
+    for token in (
+        "quant/local_backup",
+        "quant/data",
+        ".worktrees",
+        ".venv",
+        "mlruns",
+        "__pycache__",
+        ".git",
+        ".cpp",
+        ".so",
+    ):
         assert token in src, f"image ignore missing: {token}"
     for token in (
         "/root/qlib:",

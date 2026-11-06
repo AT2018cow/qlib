@@ -5,6 +5,7 @@ forward/paper production path.  It deliberately contains no selection logic:
 the winner is already frozen by the Stage-B result and must not be re-tuned
 against the consumed 2025-01-02..2026-09-30 confirmation tail.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -12,12 +13,8 @@ import json
 from copy import deepcopy
 
 STAGE_B_RESULT_COMMIT = "7a2676397b0f8e6f69c0bffc98d1764647f644ac"
-STAGE_B_SNAPSHOT_TOKEN = (
-    "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1"
-)
-STAGE_B_RESULT_PATH = (
-    "quant/data/round1_stage_ab/csi1000_stage_b/stage_b_full_51756897fc752304.json"
-)
+STAGE_B_SNAPSHOT_TOKEN = "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1"
+STAGE_B_RESULT_PATH = "quant/data/round1_stage_ab/csi1000_stage_b/stage_b_full_51756897fc752304.json"
 PRODUCTION_CONTRACT_VERSION = "csi1000_stage_b_forward_v1"
 MODEL_NUM_THREADS = 20
 
@@ -223,10 +220,7 @@ def apply_csi1000_model_profile(cfg: dict, profile: str) -> dict:
     actual_sha = stable_json_sha256(model)
     expected_sha = manifest["model_config_sha256"]
     if actual_sha != expected_sha:
-        raise RuntimeError(
-            f"CSI1000 production model config drift for {profile}: "
-            f"{actual_sha} != {expected_sha}"
-        )
+        raise RuntimeError(f"CSI1000 production model config drift for {profile}: " f"{actual_sha} != {expected_sha}")
     horizon = int(manifest.get("label_horizon", 20))
     dh = cfg.get("task", {}).get("dataset", {}).get("kwargs", {}).get("handler", {}).get("kwargs")
     if isinstance(dh, dict):

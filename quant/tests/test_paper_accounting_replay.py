@@ -18,7 +18,9 @@ def _row(day, signal, open_price, prior_price, close_price, *, st=()):
         "previous_close": {A: prior_price},
         "factors": {A: 1.0},
         "execution_st_snapshot": {
-            "date": day, "source": "dated test fixture", "st_symbols": list(st),
+            "date": day,
+            "source": "dated test fixture",
+            "st_symbols": list(st),
         },
     }
 
@@ -56,15 +58,16 @@ def test_missing_close_fails_before_any_paper_state_changes():
     pp.plan_signal("2025-02-19", "2025-02-20", [(A, 1.0)])
     before = pp.to_dict()
     with pytest.raises(ValueError, match="unverified missing close"):
-        pp.execute_pending("2025-02-20", {A: 10}, factors={A: 1},
-                           close_prices={}, strict_valuation=True)
+        pp.execute_pending("2025-02-20", {A: 10}, factors={A: 1}, close_prices={}, strict_valuation=True)
     assert pp.to_dict() == before
 
 
 def test_only_certified_halt_may_carry_old_valid_price():
     value, marks = close_valuation(
-        100, {A: {"shares": 10, "last_price": 11}},
-        {}, confirmed_halts={A},
+        100,
+        {A: {"shares": 10, "last_price": 11}},
+        {},
+        confirmed_halts={A},
     )
     assert value == 210
     assert marks[A]["reason"] == "CERTIFIED_HALT_CARRY"

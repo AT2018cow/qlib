@@ -72,7 +72,13 @@ def test_actual_cron_checks_website_after_signal_fast_path(monkeypatch, signal_s
 
     monkeypatch.setattr(production, "_run_daily_signal_cycle", signals)
     monkeypatch.setattr(production, "_update_website_returns", website)
-    result = production.daily_cron.local()
+    if signal_status == "SKIPPED_STALE_DATA":
+        with pytest.raises(DailyPipelineError) as caught:
+            production.daily_cron.local()
+        result = {"stages": caught.value.stages}
+        assert result["stages"]["signals"]["status"] == "INCOMPLETE_STALE_DATA"
+    else:
+        result = production.daily_cron.local()
     assert seen == ["signals", "website"]
     assert result["stages"]["signals"]["result"]["status"] == signal_status
     assert result["stages"]["website"]["result"]["status"] == "ALREADY_PUBLISHED"
@@ -144,7 +150,7 @@ def test_only_main_and_eight_oclock_backup_are_scheduled():
 
 
 def test_reused_qlib_worker_reinitializes_after_success_and_failed_fit(tmp_path):
-    script = r'''
+    script = r"""
 from pathlib import Path
 import os, sys
 os.environ["MLFLOW_ALLOW_FILE_STORE"] = "true"
@@ -171,8 +177,13 @@ for i in range(3):
         else: raise AssertionError("training failure hidden")
     else: fit_website_model(Model(), None)
 print("REUSED_WORKER_PASS")
-'''
-    result = subprocess.run([sys.executable, "-c", script, str(tmp_path), str(ROOT)], cwd=tmp_path,
-                            capture_output=True, text=True, timeout=60)
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script, str(tmp_path), str(ROOT)],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
     assert result.returncode == 0, result.stdout + result.stderr
     assert "REUSED_WORKER_PASS" in result.stdout

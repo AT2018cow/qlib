@@ -17,6 +17,7 @@ Two modes are supported:
    when given the plan file, verify that planned reusable artifacts were not
    rewritten during the expanded run.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -75,9 +76,7 @@ def _safe_artifact_path(path_text: str, expected_dir: Path) -> Path:
     try:
         path.relative_to(expected_dir)
     except ValueError as exc:
-        raise ValueError(
-            f"artifact path escapes expected candidate-fold directory: {path}"
-        ) from exc
+        raise ValueError(f"artifact path escapes expected candidate-fold directory: {path}") from exc
     return path
 
 
@@ -181,9 +180,7 @@ def _scan_result(
     artifact_checks = {}
     for key in ("signal_artifact", "decision_artifact", "report_artifact"):
         artifact_checks[key] = _validate_artifact(payload.get(key), expected_dir)
-    failed_artifacts = [
-        name for name, detail in artifact_checks.items() if not detail["passed"]
-    ]
+    failed_artifacts = [name for name, detail in artifact_checks.items() if not detail["passed"]]
     if failed_artifacts:
         return {
             **base,
@@ -223,9 +220,7 @@ def scan_snapshot(
     summary = json.loads(summary_path.read_text())
 
     if summary.get("protocol") != protocol:
-        raise RuntimeError(
-            f"protocol mismatch: expected={protocol} actual={summary.get('protocol')}"
-        )
+        raise RuntimeError(f"protocol mismatch: expected={protocol} actual={summary.get('protocol')}")
     if (summary.get("manifest") or {}).get("snapshot_token") != snapshot_token:
         raise RuntimeError("summary snapshot token does not match requested snapshot")
 
@@ -247,13 +242,10 @@ def scan_snapshot(
             planned = (planned_entries or {}).get(key)
             if planned and planned.get("precheck_reusable"):
                 row["planned_reusable"] = True
-                row["planned_result_json_mtime_ns"] = planned.get(
-                    "result_json_mtime_ns"
-                )
+                row["planned_result_json_mtime_ns"] = planned.get("result_json_mtime_ns")
                 row["planned_reuse_unchanged"] = bool(
                     row.get("precheck_reusable")
-                    and row.get("result_json_mtime_ns")
-                    == planned.get("result_json_mtime_ns")
+                    and row.get("result_json_mtime_ns") == planned.get("result_json_mtime_ns")
                 )
             else:
                 row["planned_reusable"] = False
@@ -293,19 +285,11 @@ def _metric_summary(rows: list[dict]) -> dict:
         "relative_excess_cagr_median": float(median(relative)),
         "relative_excess_cagr_worst": min(relative),
         "positive_ratio": sum(value > 0 for value in relative) / len(relative),
-        "information_ratio_median": float(
-            median(row["metrics"]["information_ratio"] for row in rows)
-        ),
+        "information_ratio_median": float(median(row["metrics"]["information_ratio"] for row in rows)),
         "sharpe_median": float(median(row["metrics"]["sharpe"] for row in rows)),
-        "strategy_max_drawdown_worst": min(
-            row["metrics"]["strategy_max_drawdown"] for row in rows
-        ),
-        "mean_turnover_median": float(
-            median(row["metrics"]["mean_turnover"] for row in rows)
-        ),
-        "total_cost_sum_median": float(
-            median(row["metrics"]["total_cost_sum"] for row in rows)
-        ),
+        "strategy_max_drawdown_worst": min(row["metrics"]["strategy_max_drawdown"] for row in rows),
+        "mean_turnover_median": float(median(row["metrics"]["mean_turnover"] for row in rows)),
+        "total_cost_sum_median": float(median(row["metrics"]["total_cost_sum"] for row in rows)),
     }
 
 
@@ -331,10 +315,7 @@ def _rank_from_rows(
         if len(candidate_rows) != expected_n:
             return []
         summary = _metric_summary(candidate_rows)
-        vector = tuple(
-            float(summary[field]) * int(direction)
-            for field, direction in rank_specs
-        )
+        vector = tuple(float(summary[field]) * int(direction) for field, direction in rank_specs)
         ranked.append(
             {
                 "candidate_id": candidate["candidate_id"],
@@ -389,10 +370,7 @@ def _compact_candidate_results(candidates: list[dict], rows: list[dict]) -> list
 
 
 def _plan_entry_map(payload: dict) -> dict[str, dict]:
-    return {
-        f"{row['candidate_id']}/{row['fold_id']}": row
-        for row in payload.get("artifact_inventory", [])
-    }
+    return {f"{row['candidate_id']}/{row['fold_id']}": row for row in payload.get("artifact_inventory", [])}
 
 
 @app.local_entrypoint()
@@ -415,13 +393,9 @@ def main(
         raise ValueError("mode must be 'plan' or 'export'")
     if mode == "plan":
         if not plan_label:
-            raise ValueError(
-                "plan_label is required in plan mode so reuse plans are immutable"
-            )
+            raise ValueError("plan_label is required in plan mode so reuse plans are immutable")
         if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", plan_label):
-            raise ValueError(
-                "plan_label must be 1-64 characters: letters, digits, dot, underscore, hyphen"
-            )
+            raise ValueError("plan_label must be 1-64 characters: letters, digits, dot, underscore, hyphen")
     if not snapshot_token:
         raise ValueError("snapshot_token is required")
     if int(candidate_count) != 80:
@@ -436,9 +410,7 @@ def main(
             raise ValueError("plan snapshot token does not match requested snapshot")
         if plan_payload.get("mode") != "plan":
             raise ValueError("plan_path must reference a plan-mode audit file")
-        if int((plan_payload.get("accounting") or {}).get("candidate_count", -1)) != int(
-            candidate_count
-        ):
+        if int((plan_payload.get("accounting") or {}).get("candidate_count", -1)) != int(candidate_count):
             raise ValueError("plan candidate_count does not match requested expansion")
         planned_entries = _plan_entry_map(plan_payload)
 
@@ -450,19 +422,13 @@ def main(
     )
     source_kind = scan["source_summary_kind"]
     if mode == "plan" and source_kind != "smoke":
-        raise RuntimeError(
-            f"reuse plan must be created from the accepted smoke summary, got {source_kind!r}"
-        )
+        raise RuntimeError(f"reuse plan must be created from the accepted smoke summary, got {source_kind!r}")
     if mode == "export" and source_kind != "expanded":
-        raise RuntimeError(
-            f"expanded audit requires a completed expanded summary, got {source_kind!r}"
-        )
+        raise RuntimeError(f"expanded audit requires a completed expanded summary, got {source_kind!r}")
 
     rows = scan["rows"]
     nonbaseline_rows = [row for row in rows if not row["is_baseline"]]
-    prechecked_reusable = sum(
-        bool(row.get("precheck_reusable")) for row in nonbaseline_rows
-    )
+    prechecked_reusable = sum(bool(row.get("precheck_reusable")) for row in nonbaseline_rows)
     candidate_fold_jobs = (len(candidates) - 1) * len(scan["folds"])
     gate_new_fits = 2 * len(scan["folds"])
 
@@ -472,9 +438,7 @@ def main(
         "candidate_fold_jobs_excluding_baseline": candidate_fold_jobs,
         "baseline_gate_new_fits": gate_new_fits,
         "prechecked_reusable_nonbaseline_candidate_folds": prechecked_reusable,
-        "expected_new_candidate_fits_if_resume_accepts_precheck": (
-            candidate_fold_jobs - prechecked_reusable
-        ),
+        "expected_new_candidate_fits_if_resume_accepts_precheck": (candidate_fold_jobs - prechecked_reusable),
         "expected_total_new_fits_if_resume_accepts_precheck": (
             gate_new_fits + candidate_fold_jobs - prechecked_reusable
         ),
@@ -493,9 +457,7 @@ def main(
 
     if mode == "export":
         valid_rows = [row for row in rows if row.get("precheck_reusable")]
-        payload["all_candidate_fold_results_present"] = (
-            len(valid_rows) == len(candidates) * len(scan["folds"])
-        )
+        payload["all_candidate_fold_results_present"] = len(valid_rows) == len(candidates) * len(scan["folds"])
         payload["candidate_fold_results"] = _compact_candidate_results(
             candidates,
             rows,
@@ -518,15 +480,8 @@ def main(
         }
 
         if plan_payload is not None:
-            planned_rows = [
-                row
-                for row in rows
-                if row.get("planned_reusable")
-                and not row.get("is_baseline")
-            ]
-            unchanged = sum(
-                bool(row.get("planned_reuse_unchanged")) for row in planned_rows
-            )
+            planned_rows = [row for row in rows if row.get("planned_reusable") and not row.get("is_baseline")]
+            unchanged = sum(bool(row.get("planned_reuse_unchanged")) for row in planned_rows)
             payload["reuse_verification"] = {
                 "planned_reusable_nonbaseline_candidate_folds": len(planned_rows),
                 "unchanged_result_artifacts": unchanged,
@@ -540,15 +495,11 @@ def main(
     if mode == "plan":
         payload["plan_label"] = plan_label
         stem = "stage_a_expanded_reuse_plan"
-        out_path = out_dir / (
-            f"{stem}_{snapshot_token[:16]}_{plan_label}.json"
-        )
+        out_path = out_dir / (f"{stem}_{snapshot_token[:16]}_{plan_label}.json")
         serialized = json.dumps(payload, indent=2, ensure_ascii=False)
         if out_path.exists():
             if out_path.read_text() != serialized:
-                raise RuntimeError(
-                    f"immutable reuse plan already exists with different content: {out_path}"
-                )
+                raise RuntimeError(f"immutable reuse plan already exists with different content: {out_path}")
             print(f"[stage-a-audit] immutable plan already exists unchanged: {out_path}")
         else:
             out_path.write_text(serialized)

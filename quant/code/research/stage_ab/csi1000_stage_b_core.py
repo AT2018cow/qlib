@@ -5,6 +5,7 @@ top-10 candidates plus the pre-tuner baseline control, evaluates the untouched
 reserved tail with production-aligned freq20 rolling, and ranks candidates by
 retraining-calendar robustness across fixed phases.
 """
+
 from __future__ import annotations
 
 from bisect import bisect_left
@@ -16,15 +17,9 @@ from typing import Any, Iterable
 
 STAGE_B_PROTOCOL_VERSION = "csi1000_lgb_stage_b_v1"
 STAGE_A_PROTOCOL_VERSION = "csi1000_lgb_stage_a_v3"
-STAGE_A_SNAPSHOT_TOKEN = (
-    "a2ecd8d1cadf404670762a81b1fd33a377f2ef2aaf27a0d9ac6787366defd65b"
-)
-STAGE_A_EXPANDED_RESULT = (
-    "quant/data/round1_stage_ab/csi1000_tuner/stage_a_expanded_a2ecd8d1cadf4046.json"
-)
-STAGE_A_EXPANDED_AUDIT = (
-    "quant/data/round1_stage_ab/csi1000_tuner/stage_a_expanded_audit_a2ecd8d1cadf4046.json"
-)
+STAGE_A_SNAPSHOT_TOKEN = "a2ecd8d1cadf404670762a81b1fd33a377f2ef2aaf27a0d9ac6787366defd65b"
+STAGE_A_EXPANDED_RESULT = "quant/data/round1_stage_ab/csi1000_tuner/stage_a_expanded_a2ecd8d1cadf4046.json"
+STAGE_A_EXPANDED_AUDIT = "quant/data/round1_stage_ab/csi1000_tuner/stage_a_expanded_audit_a2ecd8d1cadf4046.json"
 
 MARKET = "csi1000"
 BENCHMARK = "SH000852"
@@ -79,9 +74,7 @@ PHASE_RANK_SPECS = (
     ("total_cost_sum_median", -1),
 )
 
-BASELINE_CANDIDATE_ID = (
-    "23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785"
-)
+BASELINE_CANDIDATE_ID = "23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785"
 BASELINE_MODEL_PARAMS = {
     "learning_rate": 0.1,
     "colsample_bytree": 0.9,
@@ -94,46 +87,136 @@ BASELINE_MODEL_PARAMS = {
 
 # Frozen after the accepted Stage-A 80-candidate expansion.
 _TUNED_CANDIDATES = (
-    (1, "59b93929bff1e736228d31403a167781aff433d27da1870bcf9fe34e04b6bbb9",
-     {"learning_rate": 0.1, "colsample_bytree": 0.8, "lambda_l1": 10.0,
-      "lambda_l2": 400.0, "max_depth": 6, "num_leaves": 31,
-      "min_data_in_leaf": 100}),
-    (2, "a419047ab97ec0273ebe67791b6e225e824b2764f5932d73651efd89add5a677",
-     {"learning_rate": 0.1, "colsample_bytree": 1.0, "lambda_l1": 50.0,
-      "lambda_l2": 200.0, "max_depth": 6, "num_leaves": 31,
-      "min_data_in_leaf": 200}),
-    (3, "b034ac4645fb45bba35bc185693b7776344c9117f594e4c972671062cdcf9457",
-     {"learning_rate": 0.1, "colsample_bytree": 0.8, "lambda_l1": 50.0,
-      "lambda_l2": 200.0, "max_depth": 8, "num_leaves": 31,
-      "min_data_in_leaf": 200}),
-    (4, "e74b3bbe2278aa89b33375fe21bc308bc5cf0b2e5ee512ab1b05469b52a4825a",
-     {"learning_rate": 0.1, "colsample_bytree": 0.9, "lambda_l1": 100.0,
-      "lambda_l2": 400.0, "max_depth": 6, "num_leaves": 31,
-      "min_data_in_leaf": 200}),
-    (5, "4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2",
-     {"learning_rate": 0.08, "colsample_bytree": 0.8, "lambda_l1": 10.0,
-      "lambda_l2": 400.0, "max_depth": 6, "num_leaves": 63,
-      "min_data_in_leaf": 50}),
-    (6, "17dbfe28fea8d7a782918ee426e01c7f7b23a08b44c00cc7e2d8391974efd5f2",
-     {"learning_rate": 0.08, "colsample_bytree": 0.8, "lambda_l1": 10.0,
-      "lambda_l2": 100.0, "max_depth": 10, "num_leaves": 127,
-      "min_data_in_leaf": 100}),
-    (7, "c04ca4163f77e6e24a7c7adf556d5f11b85ab526d5c3e8b2c9dd11c2bfca7b46",
-     {"learning_rate": 0.1, "colsample_bytree": 1.0, "lambda_l1": 50.0,
-      "lambda_l2": 200.0, "max_depth": 10, "num_leaves": 127,
-      "min_data_in_leaf": 50}),
-    (8, "c98856b460aba687640d422e85a82a545bf5b6ca932e906a180699e0f6cad19b",
-     {"learning_rate": 0.05, "colsample_bytree": 1.0, "lambda_l1": 205.6999,
-      "lambda_l2": 200.0, "max_depth": 10, "num_leaves": 250,
-      "min_data_in_leaf": 200}),
-    (9, "1db146eec9deda008be3e6612a1fc48a057e34b7891d3d70ca69a6e4c4fe62a2",
-     {"learning_rate": 0.1, "colsample_bytree": 1.0, "lambda_l1": 205.6999,
-      "lambda_l2": 400.0, "max_depth": 8, "num_leaves": 63,
-      "min_data_in_leaf": 20}),
-    (10, "40b872dfe452b649e666598d7438c0c342b6de45b9d8fa4df4d06e4080ab9d19",
-     {"learning_rate": 0.03, "colsample_bytree": 0.7, "lambda_l1": 100.0,
-      "lambda_l2": 50.0, "max_depth": 10, "num_leaves": 63,
-      "min_data_in_leaf": 20}),
+    (
+        1,
+        "59b93929bff1e736228d31403a167781aff433d27da1870bcf9fe34e04b6bbb9",
+        {
+            "learning_rate": 0.1,
+            "colsample_bytree": 0.8,
+            "lambda_l1": 10.0,
+            "lambda_l2": 400.0,
+            "max_depth": 6,
+            "num_leaves": 31,
+            "min_data_in_leaf": 100,
+        },
+    ),
+    (
+        2,
+        "a419047ab97ec0273ebe67791b6e225e824b2764f5932d73651efd89add5a677",
+        {
+            "learning_rate": 0.1,
+            "colsample_bytree": 1.0,
+            "lambda_l1": 50.0,
+            "lambda_l2": 200.0,
+            "max_depth": 6,
+            "num_leaves": 31,
+            "min_data_in_leaf": 200,
+        },
+    ),
+    (
+        3,
+        "b034ac4645fb45bba35bc185693b7776344c9117f594e4c972671062cdcf9457",
+        {
+            "learning_rate": 0.1,
+            "colsample_bytree": 0.8,
+            "lambda_l1": 50.0,
+            "lambda_l2": 200.0,
+            "max_depth": 8,
+            "num_leaves": 31,
+            "min_data_in_leaf": 200,
+        },
+    ),
+    (
+        4,
+        "e74b3bbe2278aa89b33375fe21bc308bc5cf0b2e5ee512ab1b05469b52a4825a",
+        {
+            "learning_rate": 0.1,
+            "colsample_bytree": 0.9,
+            "lambda_l1": 100.0,
+            "lambda_l2": 400.0,
+            "max_depth": 6,
+            "num_leaves": 31,
+            "min_data_in_leaf": 200,
+        },
+    ),
+    (
+        5,
+        "4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2",
+        {
+            "learning_rate": 0.08,
+            "colsample_bytree": 0.8,
+            "lambda_l1": 10.0,
+            "lambda_l2": 400.0,
+            "max_depth": 6,
+            "num_leaves": 63,
+            "min_data_in_leaf": 50,
+        },
+    ),
+    (
+        6,
+        "17dbfe28fea8d7a782918ee426e01c7f7b23a08b44c00cc7e2d8391974efd5f2",
+        {
+            "learning_rate": 0.08,
+            "colsample_bytree": 0.8,
+            "lambda_l1": 10.0,
+            "lambda_l2": 100.0,
+            "max_depth": 10,
+            "num_leaves": 127,
+            "min_data_in_leaf": 100,
+        },
+    ),
+    (
+        7,
+        "c04ca4163f77e6e24a7c7adf556d5f11b85ab526d5c3e8b2c9dd11c2bfca7b46",
+        {
+            "learning_rate": 0.1,
+            "colsample_bytree": 1.0,
+            "lambda_l1": 50.0,
+            "lambda_l2": 200.0,
+            "max_depth": 10,
+            "num_leaves": 127,
+            "min_data_in_leaf": 50,
+        },
+    ),
+    (
+        8,
+        "c98856b460aba687640d422e85a82a545bf5b6ca932e906a180699e0f6cad19b",
+        {
+            "learning_rate": 0.05,
+            "colsample_bytree": 1.0,
+            "lambda_l1": 205.6999,
+            "lambda_l2": 200.0,
+            "max_depth": 10,
+            "num_leaves": 250,
+            "min_data_in_leaf": 200,
+        },
+    ),
+    (
+        9,
+        "1db146eec9deda008be3e6612a1fc48a057e34b7891d3d70ca69a6e4c4fe62a2",
+        {
+            "learning_rate": 0.1,
+            "colsample_bytree": 1.0,
+            "lambda_l1": 205.6999,
+            "lambda_l2": 400.0,
+            "max_depth": 8,
+            "num_leaves": 63,
+            "min_data_in_leaf": 20,
+        },
+    ),
+    (
+        10,
+        "40b872dfe452b649e666598d7438c0c342b6de45b9d8fa4df4d06e4080ab9d19",
+        {
+            "learning_rate": 0.03,
+            "colsample_bytree": 0.7,
+            "lambda_l1": 100.0,
+            "lambda_l2": 50.0,
+            "max_depth": 10,
+            "num_leaves": 63,
+            "min_data_in_leaf": 20,
+        },
+    ),
 )
 
 _REQUIRED_PHASE_METRICS = (
@@ -163,18 +246,11 @@ def validate_worker_resources(
     memory_value = int(memory_mib)
     container_value = int(max_containers)
     if not (WORKER_CPU_MIN <= cpu_value <= WORKER_CPU_MAX):
-        raise ValueError(
-            f"worker_cpu must be within {WORKER_CPU_MIN}..{WORKER_CPU_MAX}"
-        )
+        raise ValueError(f"worker_cpu must be within {WORKER_CPU_MIN}..{WORKER_CPU_MAX}")
     if not (WORKER_MEMORY_MIB_MIN <= memory_value <= WORKER_MEMORY_MIB_MAX):
-        raise ValueError(
-            "worker_memory_mib must be within "
-            f"{WORKER_MEMORY_MIB_MIN}..{WORKER_MEMORY_MIB_MAX}"
-        )
+        raise ValueError("worker_memory_mib must be within " f"{WORKER_MEMORY_MIB_MIN}..{WORKER_MEMORY_MIB_MAX}")
     if not (1 <= container_value <= STARTER_CONTAINER_LIMIT):
-        raise ValueError(
-            f"worker_max_containers must be within 1..{STARTER_CONTAINER_LIMIT}"
-        )
+        raise ValueError(f"worker_max_containers must be within 1..{STARTER_CONTAINER_LIMIT}")
     return {
         "retrain_worker_cpu_physical_cores": cpu_value,
         "retrain_worker_memory_mib": memory_value,
@@ -203,10 +279,7 @@ def frozen_stage_b_protocol() -> dict:
         "reserved_execution_start": RESERVED_EXECUTION_START,
         "reserved_execution_end": RESERVED_EXECUTION_END,
         "reference_phases": list(REFERENCE_PHASES),
-        "selection_rule": (
-            "stage_a_full_rank_top10_and_lofo_top10_in_at_least_3_of_4"
-            "_plus_baseline_control"
-        ),
+        "selection_rule": ("stage_a_full_rank_top10_and_lofo_top10_in_at_least_3_of_4" "_plus_baseline_control"),
         "tuned_candidate_count": 10,
         "control_candidate_count": 1,
     }
@@ -256,15 +329,11 @@ def validate_stage_a_evidence(expanded: dict, audit: dict) -> dict:
     audit_ranked = audit.get("recomputed_full_rank") or []
     if len(audit_ranked) != 80:
         raise ValueError("Stage-A audit recomputed ranking is incomplete")
-    if [row.get("candidate_id") for row in audit_ranked] != [
-        row.get("candidate_id") for row in ranked
-    ]:
+    if [row.get("candidate_id") for row in audit_ranked] != [row.get("candidate_id") for row in ranked]:
         raise ValueError("Stage-A expanded ranking disagrees with independent audit ranking")
 
     tuned = [row for row in stage_b_candidates() if not row["is_baseline"]]
-    if [row.get("candidate_id") for row in ranked[:10]] != [
-        row["candidate_id"] for row in tuned
-    ]:
+    if [row.get("candidate_id") for row in ranked[:10]] != [row["candidate_id"] for row in tuned]:
         raise ValueError("frozen tuned set no longer equals Stage-A full-rank top 10")
 
     lofo = audit.get("leave_one_fold_out_rankings") or {}
@@ -285,9 +354,7 @@ def validate_stage_a_evidence(expanded: dict, audit: dict) -> dict:
             raise ValueError("Stage-A model-param key drift")
         for key, value in expected["model_params"].items():
             if float(params[key]) != float(value):
-                raise ValueError(
-                    f"Stage-A model-param drift for {expected['candidate_id']}.{key}"
-                )
+                raise ValueError(f"Stage-A model-param drift for {expected['candidate_id']}.{key}")
         if not expected["is_baseline"]:
             count = 0
             for ranking in lofo.values():
@@ -300,8 +367,7 @@ def validate_stage_a_evidence(expanded: dict, audit: dict) -> dict:
                 count += int(int(lofo_row.get("rank", 9999)) <= 10)
             if count < 3:
                 raise ValueError(
-                    f"frozen tuned candidate fails 3/4 LOFO-top10 rule: "
-                    f"{expected['candidate_id']} ({count}/4)"
+                    f"frozen tuned candidate fails 3/4 LOFO-top10 rule: " f"{expected['candidate_id']} ({count}/4)"
                 )
             lofo_top10_counts[expected["candidate_id"]] = count
 
@@ -368,9 +434,7 @@ def build_phase_jobs(calendar: list[str], phase: int) -> list[dict]:
         raise RuntimeError("phase generated no retraining jobs")
     if jobs[-1]["signal_end"] != calendar[last_signal_i]:
         raise RuntimeError("phase jobs do not cover final executable signal day")
-    if not (
-        jobs[0]["retrain_asof"] <= RESERVED_SIGNAL_ANCHOR <= jobs[0]["signal_end"]
-    ):
+    if not (jobs[0]["retrain_asof"] <= RESERVED_SIGNAL_ANCHOR <= jobs[0]["signal_end"]):
         raise RuntimeError("first phase job does not cover common signal anchor")
     return jobs
 
@@ -446,19 +510,11 @@ def summarize_phase_results(rows: Iterable[dict]) -> dict:
         "relative_excess_cagr_q25": _linear_quantile(rel, 0.25),
         "relative_excess_cagr_median": float(median(rel)),
         "positive_ratio": sum(value > 0 for value in rel) / len(rel),
-        "information_ratio_median": float(
-            median(row["information_ratio"] for row in ordered)
-        ),
+        "information_ratio_median": float(median(row["information_ratio"] for row in ordered)),
         "sharpe_median": float(median(row["sharpe"] for row in ordered)),
-        "strategy_max_drawdown_worst": min(
-            row["strategy_max_drawdown"] for row in ordered
-        ),
-        "mean_turnover_median": float(
-            median(row["mean_turnover"] for row in ordered)
-        ),
-        "total_cost_sum_median": float(
-            median(row["total_cost_sum"] for row in ordered)
-        ),
+        "strategy_max_drawdown_worst": min(row["strategy_max_drawdown"] for row in ordered),
+        "mean_turnover_median": float(median(row["mean_turnover"] for row in ordered)),
+        "total_cost_sum_median": float(median(row["total_cost_sum"] for row in ordered)),
     }
 
 
@@ -495,10 +551,7 @@ def rank_stage_b_candidates(rows: Iterable[dict]) -> list[dict]:
             raise ValueError("Stage-A tiebreak rank drift")
         summary = summarize_phase_results(row.get("phase_results") or [])
         row["phase_summary"] = summary
-        row["ranking_vector"] = [
-            float(summary[field]) * direction
-            for field, direction in PHASE_RANK_SPECS
-        ]
+        row["ranking_vector"] = [float(summary[field]) * direction for field, direction in PHASE_RANK_SPECS]
 
     # candidate ID ascending is the final deterministic tie break.
     candidates.sort(key=lambda row: row["candidate_id"])

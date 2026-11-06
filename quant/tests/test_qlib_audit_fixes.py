@@ -2,15 +2,29 @@ import tempfile
 import unittest
 from pathlib import Path
 from qlib_audit_fixes import (
-    read_trading_calendar, last_matured_sample, infer_label_horizon, purge_cfg_splits,
+    read_trading_calendar,
+    last_matured_sample,
+    infer_label_horizon,
+    purge_cfg_splits,
 )
 
 
 class SplitTests(unittest.TestCase):
     def setUp(self):
-        self.cal = ["2022-12-26", "2022-12-27", "2022-12-28", "2022-12-29",
-                    "2022-12-30", "2023-01-03", "2023-01-04", "2023-01-05",
-                    "2023-01-06", "2023-01-09", "2023-01-10", "2023-01-11"]
+        self.cal = [
+            "2022-12-26",
+            "2022-12-27",
+            "2022-12-28",
+            "2022-12-29",
+            "2022-12-30",
+            "2023-01-03",
+            "2023-01-04",
+            "2023-01-05",
+            "2023-01-06",
+            "2023-01-09",
+            "2023-01-10",
+            "2023-01-11",
+        ]
 
     def test_boundary_strictly_before_test(self):
         self.assertEqual(last_matured_sample(self.cal, "2023-01-09", 2), "2023-01-04")
@@ -35,12 +49,22 @@ class SplitTests(unittest.TestCase):
         self.assertEqual(infer_label_horizon(cfg), 20)
 
     def config(self):
-        return {"task": {"dataset": {"kwargs": {
-            "handler": {"kwargs": {"fit_end_time": "2022-12-29", "label": ["Ref($close,-2)/Ref($close,-1)-1"]}},
-            "segments": {"train": ["2022-12-26", "2022-12-29"],
-                         "valid": ["2022-12-30", "2023-01-06"],
-                         "test": ["2023-01-09", "2023-01-11"]},
-        }}}}
+        return {
+            "task": {
+                "dataset": {
+                    "kwargs": {
+                        "handler": {
+                            "kwargs": {"fit_end_time": "2022-12-29", "label": ["Ref($close,-2)/Ref($close,-1)-1"]}
+                        },
+                        "segments": {
+                            "train": ["2022-12-26", "2022-12-29"],
+                            "valid": ["2022-12-30", "2023-01-06"],
+                            "test": ["2023-01-09", "2023-01-11"],
+                        },
+                    }
+                }
+            }
+        }
 
     def test_purge_train_and_validation_and_fit(self):
         cfg = self.config()

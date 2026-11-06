@@ -98,11 +98,14 @@ class LimitThresholdTests(unittest.TestCase):
         "2026-09-10",
     ]
 
-
     def test_main_registration_ipo_first_five_sessions_unlimited(self):
         cal = [
-            "2023-04-10", "2023-04-11", "2023-04-12", "2023-04-13",
-            "2023-04-14", "2023-04-17",
+            "2023-04-10",
+            "2023-04-11",
+            "2023-04-12",
+            "2023-04-13",
+            "2023-04-14",
+            "2023-04-17",
         ]
         listing = {"SZ001286": "2023-04-10"}
         for d in cal[:5]:

@@ -1,4 +1,5 @@
 """Regression coverage for the static CSI1000 Pages date/name manifest."""
+
 import csv
 import json
 import subprocess
@@ -37,10 +38,19 @@ def test_index_only_includes_published_csi1000_dates_and_required_names(tmp_path
         "names": {"000002": "测试乙", "600001": "测试甲"},
     }
     output = tmp_path / "out" / "available_dates.json"
-    subprocess.run([
-        sys.executable, str(ROOT / "quant" / "website" / "build_index.py"),
-        "--signals", str(tmp_path), "--output", str(output),
-    ], check=True, capture_output=True, text=True)
+    subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "quant" / "website" / "build_index.py"),
+            "--signals",
+            str(tmp_path),
+            "--output",
+            str(output),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
     assert json.loads(output.read_text()) == index
 
 
@@ -61,14 +71,16 @@ def test_index_sanitizes_hostile_name_values(tmp_path):
     with (tmp_path / "code_name_map.csv").open("w", newline="", encoding="utf-8") as stream:
         writer = csv.writer(stream)
         writer.writerow(["code", "name"])
-        writer.writerows([
-            ["600001", "测试甲"],
-            ["600002", "<img src=x onerror=alert(1)>"],
-            ["600003", 'bad"quote'],
-            ["600004", "控\x07制"],
-            ["600005", "x" * 41],
-            ["bad-code", "非法代码"],
-        ])
+        writer.writerows(
+            [
+                ["600001", "测试甲"],
+                ["600002", "<img src=x onerror=alert(1)>"],
+                ["600003", 'bad"quote'],
+                ["600004", "控\x07制"],
+                ["600005", "x" * 41],
+                ["bad-code", "非法代码"],
+            ]
+        )
     write_signal(tmp_path, "2026-10-08", ["SH600001", "SH600002", "SH600003", "SH600004", "SH600005"])
     index = build_index(tmp_path)
     assert index["names"] == {"600001": "测试甲"}
@@ -76,10 +88,18 @@ def test_index_sanitizes_hostile_name_values(tmp_path):
 
 def test_index_fails_closed_without_signals(tmp_path):
     output = tmp_path / "available_dates.json"
-    result = subprocess.run([
-        sys.executable, str(ROOT / "quant" / "website" / "build_index.py"),
-        "--signals", str(tmp_path), "--output", str(output),
-    ], capture_output=True, text=True)
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "quant" / "website" / "build_index.py"),
+            "--signals",
+            str(tmp_path),
+            "--output",
+            str(output),
+        ],
+        capture_output=True,
+        text=True,
+    )
     assert result.returncode != 0
     assert not output.exists()
 
@@ -107,4 +127,3 @@ def test_index_supports_csi500_and_csi300_pools(tmp_path):
         "dates": ["2026-10-15"],
         "names": {"688521": "芯原股份"},
     }
-

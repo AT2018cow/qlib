@@ -5,6 +5,7 @@ optionally against a *supplied authoritative trading calendar*. Does not
 verify deployed cron, today's provider, label maturity, current ST state,
 execution, or research returns. Never promotes any model.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -21,7 +22,10 @@ from quant_bootstrap import ensure_quant_import_paths  # noqa: E402
 ensure_quant_import_paths()
 
 from csi1000_production_config import (  # noqa: E402
-    CANONICAL_PAPER_LINEAGE, CANONICAL_PROFILE, WINNER_PROFILE, profile_manifest,
+    CANONICAL_PAPER_LINEAGE,
+    CANONICAL_PROFILE,
+    WINNER_PROFILE,
+    profile_manifest,
 )
 from signal_publication_gate import _csi1000_canonical_publication_decision  # noqa: E402
 
@@ -45,8 +49,7 @@ def evaluate_paper_artifact(paper, calendar=None):
     for key, value in expected.items():
         if paper.get(key) != value:
             errors.append(f"{key}_MISMATCH")
-    for key in ("candidate_id", "profile", "model_config_sha256",
-                "stage_b_snapshot_token", "contract_version"):
+    for key in ("candidate_id", "profile", "model_config_sha256", "stage_b_snapshot_token", "contract_version"):
         if lineage.get(key) != manifest.get(key):
             errors.append(f"production_lineage_{key}_MISMATCH")
 
@@ -66,45 +69,78 @@ def evaluate_paper_artifact(paper, calendar=None):
         errors.append("FUTURE_OR_OUT_OF_ORDER_MODEL_SIGNAL_DATE")
 
     pending = paper.get("pending_orders")
+    frozen_pending = False
     if not isinstance(pending, dict):
         errors.append("PENDING_ORDERS_MISSING")
     else:
-        if pending.get("signal_date") != data_date or pending.get("execution_date") != use_date:
+        try:
+            valid_pending_dates = all(
+                isinstance(pending.get(key), str) and date.fromisoformat(pending[key]).isoformat() == pending[key]
+                for key in ("signal_date", "execution_date")
+            )
+        except ValueError:
+            valid_pending_dates = False
+        frozen_pending = (
+            pending.get("status") == "awaiting_execution_data"
+            and valid_dates
+            and valid_pending_dates
+            and pending["signal_date"] <= data_date < pending["execution_date"] < use_date
+        )
+        if not frozen_pending and (
+            pending.get("signal_date") != data_date or pending.get("execution_date") != use_date
+        ):
             errors.append("PENDING_ORDER_DATES_MISMATCH")
         buys, sells = pending.get("buy"), pending.get("sell")
         if not isinstance(buys, list) or not isinstance(sells, list):
             errors.append("PENDING_ORDER_LISTS_MISSING")
-        elif (not all(isinstance(x, str) and x for x in buys + sells)
-              or len(buys) > 20 or len(set(buys)) != len(buys)
-              or len(set(sells)) != len(sells) or set(buys) & set(sells)):
+        elif (
+            not all(isinstance(x, str) and x for x in buys + sells)
+            or len(buys) > 20
+            or len(set(buys)) != len(buys)
+            or len(set(sells)) != len(sells)
+            or set(buys) & set(sells)
+        ):
             errors.append("PENDING_ORDER_SET_INVALID")
     if calendar is not None:
         # The caller must document/verify the calendar source. Do NOT infer a
         # trading session from consecutive calendar dates or a chart series.
         try:
-            valid_calendar = (isinstance(calendar, list)
-                              and calendar == sorted(set(calendar))
-                              and all(isinstance(x, str) and
-                                      date.fromisoformat(x).isoformat() == x for x in calendar))
+            valid_calendar = (
+                isinstance(calendar, list)
+                and calendar == sorted(set(calendar))
+                and all(isinstance(x, str) and date.fromisoformat(x).isoformat() == x for x in calendar)
+            )
         except (TypeError, ValueError):
             valid_calendar = False
         if not valid_calendar:
             errors.append("INVALID_SUPPLIED_TRADING_CALENDAR")
         elif isinstance(data_date, str) and isinstance(use_date, str):
-            action, detail = _csi1000_canonical_publication_decision(
-                calendar, data_date, use_date)
-            if action != "publish":
+            following = [day for day in calendar if day > pending["signal_date"]] if frozen_pending else []
+            if frozen_pending and (
+                pending["signal_date"] not in calendar or not following or following[0] != pending["execution_date"]
+            ):
+                errors.append("FROZEN_PENDING_NOT_T_PLUS_ONE")
+            action, detail = _csi1000_canonical_publication_decision(calendar, data_date, use_date)
+            if action != "publish" and not (
+                frozen_pending
+                and data_date in calendar
+                and use_date in calendar
+                and sum(1 for day in calendar if data_date < day < use_date) == 1
+            ):
                 errors.append("PUBLICATION_NOT_APPROVED: " + detail)
     return {
         "static_artifact_contract": "FAIL" if errors else "PASS_STATIC_ONLY",
+        "pending_status": "FROZEN_AWAITING_EXECUTION_DATA" if frozen_pending else "CURRENT_ORDER",
         "errors": errors,
         "active_candidate_id": manifest["candidate_id"],
         "active_profile": CANONICAL_PROFILE,
         "artifact_signal_data_date": data_date,
         "artifact_usage_date": use_date,
-        "supplied_calendar_gate": ("FAIL" if errors and calendar is not None
-                                   else "PASS_SUPPLIED_CALENDAR_ONLY" if calendar is not None
-                                   else "NOT_CHECKED"),
+        "supplied_calendar_gate": (
+            "FAIL"
+            if errors and calendar is not None
+            else "PASS_SUPPLIED_CALENDAR_ONLY" if calendar is not None else "NOT_CHECKED"
+        ),
         "historical_accounting": "BLOCKED_UNLESS_SEPARATE_REAL_PROVIDER_AUDIT_PASS",
         "historical_strategy_selection": "CONSUMED_TAIL_DIAGNOSTIC_ONLY",
         "deployed_runtime": "NOT_VERIFIED",
@@ -131,8 +167,9 @@ def main():
         calendar = [x.strip()[:10] for x in args.calendar_file.read_text().splitlines() if x.strip()]
     result = evaluate_paper_artifact(paper, calendar=calendar)
     result["source_paper_sha256"] = hashlib.sha256(args.paper_artifact.read_bytes()).hexdigest()
-    result["calendar_sha256"] = (hashlib.sha256(args.calendar_file.read_bytes()).hexdigest()
-                                 if args.calendar_file else None)
+    result["calendar_sha256"] = (
+        hashlib.sha256(args.calendar_file.read_bytes()).hexdigest() if args.calendar_file else None
+    )
     dest.write_text(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False) + "\n")
     print(json.dumps({"output": str(dest), "contract": result["static_artifact_contract"]}))
     if result["static_artifact_contract"] != "PASS_STATIC_ONLY":

@@ -1,0 +1,198 @@
+{
+  "version": "25.1.0",
+  "line_length": 120,
+  "checked_files": [
+    "quant/code/audit/audit_repair_impact.py",
+    "quant/code/audit/mvp_entry_review.py",
+    "quant/code/audit/review_extension_boundaries_20261106.py",
+    "quant/code/execution/board_execution.py",
+    "quant/code/execution/deterministic_strategy.py",
+    "quant/code/execution/execution_limits.py",
+    "quant/code/execution/liquidity_contract.py",
+    "quant/code/execution/order_quantity.py",
+    "quant/code/execution/portfolio_overlays.py",
+    "quant/code/execution/portfolio_performance.py",
+    "quant/code/execution/qlib_live_retrain.py",
+    "quant/code/execution/research_governance.py",
+    "quant/code/execution/research_identity.py",
+    "quant/code/execution/st_history.py",
+    "quant/code/ops/audit_paper_nav.py",
+    "quant/code/ops/audit_website_nav.py",
+    "quant/code/ops/benchmark_evidence_overlay.py",
+    "quant/code/ops/build_forward_performance.py",
+    "quant/code/ops/limited_rollout_readiness.py",
+    "quant/code/ops/merge_forward_performance.py",
+    "quant/code/ops/research_promotion_gate.py",
+    "quant/code/ops/website_simulation_modal.py",
+    "quant/code/production/account_boundary.py",
+    "quant/code/production/artifact_io.py",
+    "quant/code/production/coordinate_contract.py",
+    "quant/code/production/csi1000_mvp_contract.py",
+    "quant/code/production/daily_pipeline.py",
+    "quant/code/production/forward_performance.py",
+    "quant/code/production/modal_qlib_cn_a10g.py",
+    "quant/code/production/paper_accounting.py",
+    "quant/code/production/paper_execution_context.py",
+    "quant/code/production/paper_portfolio.py",
+    "quant/code/production/paper_replay.py",
+    "quant/code/production/portfolio_diagnostics.py",
+    "quant/code/production/publication_journal.py",
+    "quant/code/production/signal_publication_gate.py",
+    "quant/code/production/website_simulation.py",
+    "quant/code/research/csi300_csi500/stage0_p0_core.py",
+    "quant/code/research/regime_reselection/analyze_prelive_results.py",
+    "quant/code/research/regime_reselection/october_backfill_modal.py",
+    "quant/code/research/regime_reselection/october_backfill_plan.py",
+    "quant/code/research/regime_reselection/prelive_local.py",
+    "quant/code/research/regime_reselection/prelive_modal.py",
+    "quant/code/research/regime_reselection/prelive_revalidation.py",
+    "quant/code/research/regime_reselection/run_g1_baseline.py",
+    "quant/code/research/regime_reselection/run_g1_overlays.py",
+    "quant/code/research/regime_reselection/run_october_replay.py",
+    "quant/code/research/regime_reselection/select_per_market.py",
+    "quant/code/research/regime_reselection/spine_and_replay_modal.py",
+    "quant/tests/test_audit_account_contracts.py",
+    "quant/tests/test_benchmark_evidence_overlay.py",
+    "quant/tests/test_board_execution.py",
+    "quant/tests/test_cron_gate.py",
+    "quant/tests/test_daily_pipeline.py",
+    "quant/tests/test_execution_attribution_quantities.py",
+    "quant/tests/test_extension_calculation_fixes.py",
+    "quant/tests/test_forward_merge.py",
+    "quant/tests/test_limited_rollout_readiness.py",
+    "quant/tests/test_modal_structure.py",
+    "quant/tests/test_multi_market_publication.py",
+    "quant/tests/test_name_map_sync.py",
+    "quant/tests/test_october_backfill_plan.py",
+    "quant/tests/test_portfolio_performance.py",
+    "quant/tests/test_post_rollout_regressions.py",
+    "quant/tests/test_prelive_ranking.py",
+    "quant/tests/test_prelive_revalidation.py",
+    "quant/tests/test_production_surface.py",
+    "quant/tests/test_research_identity.py",
+    "quant/tests/test_review_regressions.py",
+    "quant/tests/test_website_simulation.py"
+  ],
+  "errors": [],
+  "ast_comparison_with_base": {
+    "quant/code/audit/mvp_entry_review.py": {
+      "ast_unchanged": false,
+      "sha256": "851c20b10b45b624aa397488ab73733060d19e756adb76f6debc39cb6fb43a7e"
+    },
+    "quant/code/execution/deterministic_strategy.py": {
+      "ast_unchanged": true,
+      "sha256": "c06f3598b98f31f282c8e7a40daf35cac466c560d0c85318c09582c11837186d"
+    },
+    "quant/code/execution/execution_limits.py": {
+      "ast_unchanged": true,
+      "sha256": "fb5ddf01a13df1efe5cab0c4d8f2f92f63076010f7d73464042523191fbeb17d"
+    },
+    "quant/code/execution/portfolio_performance.py": {
+      "ast_unchanged": true,
+      "sha256": "4fb11d1874ff84d0ec28dc7119ff61f5e09397ffc25a561b233a79422b5023cb"
+    },
+    "quant/code/execution/qlib_live_retrain.py": {
+      "ast_unchanged": true,
+      "sha256": "c311c99b740241670131bb33e8e33f015d7a9b5dce0633c2656198f42a12e10d"
+    },
+    "quant/code/ops/audit_paper_nav.py": {
+      "ast_unchanged": false,
+      "sha256": "6d19e83fbc1ecceff616de804e0a0ea328435f02d900676620a8e500fa761f20"
+    },
+    "quant/code/ops/merge_forward_performance.py": {
+      "ast_unchanged": false,
+      "sha256": "35c902f0ce26b6d95c7bf5ec8a79cb79b9496a7d98ec0f7128c836868e56a494"
+    },
+    "quant/code/ops/website_simulation_modal.py": {
+      "ast_unchanged": false,
+      "sha256": "e9cb933cbb40a19f9314faa4eb3f6f6e8560d4482f5217bcebdb5e1dea139de9"
+    },
+    "quant/code/production/csi1000_mvp_contract.py": {
+      "ast_unchanged": false,
+      "sha256": "0e9078189793255679265111bb30fe1e2d7b7ff2e527af84afee36db05e65707"
+    },
+    "quant/code/production/daily_pipeline.py": {
+      "ast_unchanged": false,
+      "sha256": "58041b3905ebbe3321a7d7b2bd67a986076b09cab1a4cc49f5a7fbf9a3a2e75b"
+    },
+    "quant/code/production/forward_performance.py": {
+      "ast_unchanged": false,
+      "sha256": "b95d5fc224227626c5640397503a886fed533c5113a1c5d43fa91f270b84a9f2"
+    },
+    "quant/code/production/modal_qlib_cn_a10g.py": {
+      "ast_unchanged": false,
+      "sha256": "41bd70735086c10f6c709c96dce4bb1f90c786754742fde696ba15068d69d451"
+    },
+    "quant/code/production/paper_accounting.py": {
+      "ast_unchanged": true,
+      "sha256": "efa5d5667c5c0c2ffa13c6719999673a59c6fa15c5c09197021e8400f9564f27"
+    },
+    "quant/code/production/paper_portfolio.py": {
+      "ast_unchanged": true,
+      "sha256": "4538a9cb69c404757c44ff3161523851a397ed236d5d3abf7e1ba8fc6560fc17"
+    },
+    "quant/code/production/paper_replay.py": {
+      "ast_unchanged": true,
+      "sha256": "6bcc6388b3d91b6372465f469cd542ec98d1390df434e8af37bf37d01562cf35"
+    },
+    "quant/code/production/publication_journal.py": {
+      "ast_unchanged": false,
+      "sha256": "4265ef184505287acdc50cd91ff244cbb5e9f7c7bc2616bc824035592d66e9e5"
+    },
+    "quant/code/production/signal_publication_gate.py": {
+      "ast_unchanged": false,
+      "sha256": "f14325a61826055865b2e71a3dba0505a70f8b5cc71f09bd8f60b967164e3880"
+    },
+    "quant/code/production/website_simulation.py": {
+      "ast_unchanged": false,
+      "sha256": "7a75bc4fb92ad8e6af55d624c33e540aede8cc01d6facd8524a39a74ed7743b9"
+    },
+    "quant/code/research/csi300_csi500/stage0_p0_core.py": {
+      "ast_unchanged": true,
+      "sha256": "39954e602b2f1c8ffbf5d2fd1b4114e830d8d01f4fabf680883429f711efb872"
+    },
+    "quant/code/research/regime_reselection/prelive_revalidation.py": {
+      "ast_unchanged": true,
+      "sha256": "d97fadaff2f382318cbbab4e00a9ab4ea16cce2302d155b99e909f93bede6528"
+    },
+    "quant/tests/test_board_execution.py": {
+      "ast_unchanged": true,
+      "sha256": "a2c52b898ecf5671ae0f7bef1e39f014f978b465be18764e6e8ce40bbb87db19"
+    },
+    "quant/tests/test_cron_gate.py": {
+      "ast_unchanged": false,
+      "sha256": "fc9674484c8c8dcd372af6d318366925e8c58f7d9b92934f948eaa07b93ff4e6"
+    },
+    "quant/tests/test_daily_pipeline.py": {
+      "ast_unchanged": false,
+      "sha256": "bd82124b65406addd3ffb6187cd6e3ca037f1977783e3f84d18e091b13ba1fbd"
+    },
+    "quant/tests/test_modal_structure.py": {
+      "ast_unchanged": false,
+      "sha256": "6ee93020b21aebaa9880188d1c505394e4cfe057ddb91dca8f66cd4fc31c6646"
+    },
+    "quant/tests/test_portfolio_performance.py": {
+      "ast_unchanged": true,
+      "sha256": "022955fe04c36d93b019ee7dfdf9688931816e6c57cf3ff38417f24e611abd10"
+    },
+    "quant/tests/test_production_surface.py": {
+      "ast_unchanged": false,
+      "sha256": "e49596a41f4a0bebabfb611bfc85a00cb4bb5220dc71331bbdce015001c38c6f"
+    },
+    "quant/tests/test_review_regressions.py": {
+      "ast_unchanged": true,
+      "sha256": "207a9bf4aff1c2d69b1227bc7f1ce06fb76209309acb9d902ee62cf860c91dd0"
+    },
+    "quant/tests/test_website_simulation.py": {
+      "ast_unchanged": false,
+      "sha256": "9f0dc48537cc1fdef5ce73a3b9aa7647628536004ad949175c64b956bd051343"
+    }
+  },
+  "upstream_changed": false,
+  "make_available": false,
+  "global_make_black_claimed_pass": false,
+  "validation_method": "BLACK_FORMAT_FILE_CONTENTS_FAST_FALSE_SEQUENTIAL",
+  "result": "PASS",
+  "full_repository_make_black": "PASS_PYTHON_534_FILES_IPYNB_SKIPPED",
+  "checked_python_files": 534
+}

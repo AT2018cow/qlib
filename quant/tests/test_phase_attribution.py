@@ -61,21 +61,13 @@ class PhaseAttributionTests(unittest.TestCase):
         self.assertAlmostEqual(out["cost_effect_share_of_net_gap"], 1.0, places=6)
 
     def test_pairwise_gap_tracks_year_concentration_and_milestones(self):
-        idx = pd.to_datetime(
-            ["2023-01-03", "2023-12-20", "2024-01-03", "2024-12-20"]
-        )
+        idx = pd.to_datetime(["2023-01-03", "2023-12-20", "2024-01-03", "2024-12-20"])
         focus = _report(idx, [-0.02, -0.02, -0.005, -0.005], [0.0] * 4)
         comparator = _report(idx, [0.0] * 4, [0.0] * 4)
         out = pairwise_gap_attribution(focus, comparator)
-        self.assertEqual(
-            out["negative_gap_concentration"]["top1_negative_years"], [2023]
-        )
-        self.assertGreater(
-            out["negative_gap_concentration"]["top1_negative_year_share"], 0.7
-        )
-        self.assertIsNotNone(
-            out["gap_formation_milestones"]["first_50pct_final_gap_date"]
-        )
+        self.assertEqual(out["negative_gap_concentration"]["top1_negative_years"], [2023])
+        self.assertGreater(out["negative_gap_concentration"]["top1_negative_year_share"], 0.7)
+        self.assertIsNotNone(out["gap_formation_milestones"]["first_50pct_final_gap_date"])
 
     def test_retrain_event_study_uses_next_report_session(self):
         idx = pd.bdate_range("2024-01-02", periods=8)

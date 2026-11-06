@@ -1,4 +1,5 @@
 """Offline, synthetic official CSI index API parsing negative controls."""
+
 import json
 import unittest
 from datetime import date, timedelta
@@ -11,9 +12,9 @@ def mock_response():
         r = [None] * 16
         r[0], r[1], r[9] = day.isoformat(), "000852", close
         return r
+
     d = date(2025, 1, 2)
-    return {"data": [row(date(2024, 12, 31), 1000)] +
-            [row(d + timedelta(days=i), 1000 + i) for i in range(424)]}
+    return {"data": [row(date(2024, 12, 31), 1000)] + [row(d + timedelta(days=i), 1000 + i) for i in range(424)]}
 
 
 class TestOfficialSourceParser(unittest.TestCase):

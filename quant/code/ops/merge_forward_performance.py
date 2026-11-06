@@ -124,6 +124,8 @@ def merge_forward_performance(
     if prefix is None:
         if live.get("status") != "active" or not live_points:
             return dict(live)
+        if live.get("nav_basis", {}).get("kind") == "FORWARD_WINDOW_OPEN_REBASE":
+            raise ValueError("backfill prefix required: forward-window return is rebased, not an inception return")
         return dict(live)
 
     prefix_points, initial_cash = _prefix_series(prefix)

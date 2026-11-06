@@ -8,6 +8,7 @@ This helper is deliberately ONLY for the exchange's price/valuation universe.
 The strategy's dated signal universe must remain the original point-in-time
 index membership; do not expose future index members as today's buy candidates.
 """
+
 from __future__ import annotations
 
 
@@ -44,6 +45,7 @@ def execution_quote_codes(market: str, start_time: str, end_time: str, *, provid
 
     if provider is None:
         from qlib.data import D
+
         provider = D
 
     # IMPORTANT: as_list=True is what removes membership-date restrictions.

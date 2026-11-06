@@ -387,12 +387,10 @@ def summarize_paper_state(
         pending.get("status") == "awaiting_execution_data"
         and isinstance(pending_signal_date, str)
         and isinstance(pending_execution_date, str)
-        and pending_signal_date <= signal_data_date
-        and pending_execution_date < usage_date
+        and pending_signal_date <= signal_data_date < pending_execution_date < usage_date
     )
     if not awaiting_execution_data and (
-        pending_signal_date != signal_data_date
-        or pending_execution_date != usage_date
+        pending_signal_date != signal_data_date or pending_execution_date != usage_date
     ):
         raise ValueError("paper pending order dates mismatch publication")
     buys = pending.get("buy")
@@ -547,11 +545,23 @@ def build_mvp_metadata(
         )
 
     public_pit = {k: v for k, v in pit_universe.items() if k != "active_members"}
+    operator_override = "OPERATOR_OVERRIDE" in str(publication_detail)
+    if operator_override and not (
+        paper_summary["status"] == "awaiting_execution_data"
+        and paper_summary["pending_signal_date"]
+        <= signal_data_date
+        < paper_summary["pending_execution_date"]
+        < usage_date
+    ):
+        raise ValueError("operator override must retain an older frozen pending order")
     return {
         "contract_version": MVP_CONTRACT_VERSION,
         "market": market,
         "publication": {
-            "status": "PASS",
+            "status": "PASS_OPERATOR_OVERRIDE" if operator_override else "PASS",
+            "publication_mode": "OPERATOR_OVERRIDE" if operator_override else "CANONICAL_T1",
+            "lag_sessions": 1 if operator_override else 0,
+            "same_day_revision_policy": "EXPLICIT_VERSIONED_AMENDMENT_ONLY",
             "signal_data_date": signal_data_date,
             "usage_date": usage_date,
             "canonical_freshness_gate": str(publication_detail),

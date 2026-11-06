@@ -6,6 +6,7 @@ would have silently broken (10-08 with data through 09-30 = 8 natural days).
 
 Watched by .github/workflows/csi1000-tuner-core.yml (push to main).
 """
+
 import os
 import sys
 
@@ -25,12 +26,29 @@ def test_cron_schedule_registered():
     line while the newString omitted it — silently deleting the schedule.
     py_compile passes without a schedule; nothing else would notice, and the
     next morning's cron simply never fires. This test pins the line."""
-    src = open(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-                            "quant/code/production/modal_qlib_cn_a10g.py")).read()
-    assert 'schedule=modal.Cron("0 7 * * 1-5", timezone="Asia/Shanghai")' in src, \
-        "daily_cron schedule line missing — cron would silently never fire!"
-    assert 'schedule=modal.Cron("0 8 * * 1-5", timezone="Asia/Shanghai")' in src, \
-        "daily_cron_second_chance schedule line missing — backup run would silently never fire!"
+    src = open(
+        os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+            "quant/code/production/modal_qlib_cn_a10g.py",
+        )
+    ).read()
+    import ast
+
+    schedules = {}
+    for node in ast.parse(src).body:
+        if isinstance(node, ast.FunctionDef):
+            for decorator in node.decorator_list:
+                if isinstance(decorator, ast.Call):
+                    for keyword in decorator.keywords:
+                        if keyword.arg == "schedule":
+                            schedules[node.name] = (
+                                ast.literal_eval(keyword.value.args[0]),
+                                {kw.arg: ast.literal_eval(kw.value) for kw in keyword.value.keywords},
+                            )
+    assert schedules == {
+        "daily_cron": ("0 7 * * 1-5", {"timezone": "Asia/Shanghai"}),
+        "daily_cron_second_chance": ("0 8 * * 1-5", {"timezone": "Asia/Shanghai"}),
+    }, "production cron schedule missing, moved to another function or changed"
     assert "nonpreemptible=True" in src
     assert 'modal.Secret.from_name(_GH_SECRET_NAME := "github-push")' in src
 
@@ -131,35 +149,27 @@ def test_future_data_rejected():
 
 def test_csi1000_canonical_lag0_required():
     cal = _cal(["2026-10-08", "2026-10-09"])
-    action, detail = _csi1000_canonical_publication_decision(
-        cal, "2026-10-08", "2026-10-09"
-    )
+    action, detail = _csi1000_canonical_publication_decision(cal, "2026-10-08", "2026-10-09")
     assert action == "publish"
     assert "lag=0" in detail
 
 
 def test_csi1000_canonical_lag1_rejected():
     cal = _cal(["2026-10-08", "2026-10-09", "2026-10-12"])
-    action, detail = _csi1000_canonical_publication_decision(
-        cal, "2026-10-08", "2026-10-12"
-    )
+    action, detail = _csi1000_canonical_publication_decision(cal, "2026-10-08", "2026-10-12")
     assert action == "raise"
     assert "got lag=1" in detail
 
 
 def test_csi1000_canonical_calendar_unavailable_rejected():
-    action, detail = _csi1000_canonical_publication_decision(
-        None, "2026-10-08", "2026-10-09"
-    )
+    action, detail = _csi1000_canonical_publication_decision(None, "2026-10-08", "2026-10-09")
     assert action == "raise"
     assert "verified trading calendar" in detail
 
 
 def test_csi1000_canonical_unknown_data_date_rejected():
     cal = _cal(["2026-10-08", "2026-10-09"])
-    action, _ = _csi1000_canonical_publication_decision(
-        cal, "2026-10-07", "2026-10-09"
-    )
+    action, _ = _csi1000_canonical_publication_decision(cal, "2026-10-07", "2026-10-09")
     assert action == "raise"
 
 
@@ -177,13 +187,9 @@ def test_modal_image_bundles_mvp_contract_runtime_module():
     copies = [
         arg.value
         for node in ast.walk(tree)
-        if isinstance(node, ast.Call)
-        and isinstance(node.func, ast.Attribute)
-        and node.func.attr == "run_commands"
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "run_commands"
         for arg in node.args
-        if isinstance(arg, ast.Constant)
-        and isinstance(arg.value, str)
-        and arg.value.startswith("cp /root/qlib/")
+        if isinstance(arg, ast.Constant) and isinstance(arg.value, str) and arg.value.startswith("cp /root/qlib/")
     ]
     assert any(
         "/root/qlib/quant/code/production/csi1000_mvp_contract.py" in command.split()
@@ -198,8 +204,7 @@ def _modal_helper_from_source(name, namespace=None):
 
     src = Path(__file__).resolve().parents[2] / "quant/code/production/modal_qlib_cn_a10g.py"
     tree = ast.parse(src.read_text())
-    node = next(n for n in tree.body
-                if isinstance(n, ast.FunctionDef) and n.name == name)
+    node = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == name)
     ns = dict(namespace or {})
     exec(compile(ast.Module(body=[node], type_ignores=[]), str(src), "exec"), ns)
     return ns[name]
@@ -211,9 +216,16 @@ def test_st_source_prefers_real_valid_snapshot_and_classifies_outage(monkeypatch
     import time
 
     exceptions = types.ModuleType("requests.exceptions")
-    class ConnectionError(Exception): pass
-    class Timeout(Exception): pass
-    class HTTPError(Exception): pass
+
+    class ConnectionError(Exception):
+        pass
+
+    class Timeout(Exception):
+        pass
+
+    class HTTPError(Exception):
+        pass
+
     exceptions.ConnectionError = ConnectionError
     exceptions.Timeout = Timeout
     exceptions.HTTPError = HTTPError
@@ -228,17 +240,30 @@ def test_st_source_prefers_real_valid_snapshot_and_classifies_outage(monkeypatch
     fn = _modal_helper_from_source("_current_st_risk_snapshot")
 
     class Codes:
-        def __init__(self, values): self.values = values
-        def isna(self): return self
-        def any(self): return False
-        def tolist(self): return self.values
+        def __init__(self, values):
+            self.values = values
+
+        def isna(self):
+            return self
+
+        def any(self):
+            return False
+
+        def tolist(self):
+            return self.values
 
     class Frame:
         columns = ["代码"]
         empty = False
-        def __init__(self, values): self.values = values
-        def __getitem__(self, key): return Codes(self.values)
-        def __len__(self): return len(self.values)
+
+        def __init__(self, values):
+            self.values = values
+
+        def __getitem__(self, key):
+            return Codes(self.values)
+
+        def __len__(self):
+            return len(self.values)
 
     ak.stock_zh_a_st_em = lambda: Frame(["600000", "000001"])
     result = fn(["SH600000", "SZ000001", "SH601000"])
@@ -248,9 +273,11 @@ def test_st_source_prefers_real_valid_snapshot_and_classifies_outage(monkeypatch
     assert result["fetched_at_cst"].startswith("20")
 
     calls = []
+
     def transport_outage():
         calls.append(1)
         raise ConnectionError("RemoteDisconnected")
+
     ak.stock_zh_a_st_em = transport_outage
     result = fn(["SH600000"])
     assert len(calls) == 2
@@ -284,11 +311,13 @@ def test_paper_planner_prefers_st_and_only_transport_fallback(tmp_path, monkeypa
 
         def plan_signal(self, *, signal_date, execution_date, ranking, metadata):
             self.pending_signal = {
-                "signal_date": signal_date, "execution_date": execution_date,
-                "planned_buy": ["SH600000"], "planned_sell": [], "metadata": metadata,
+                "signal_date": signal_date,
+                "execution_date": execution_date,
+                "planned_buy": ["SH600000"],
+                "planned_sell": [],
+                "metadata": metadata,
             }
-            return {"signal_date": signal_date, "execution_date": execution_date,
-                    "buy": ["SH600000"], "sell": []}
+            return {"signal_date": signal_date, "execution_date": execution_date, "buy": ["SH600000"], "sell": []}
 
         def to_dict(self):
             return {"pending_signal": self.pending_signal}
@@ -296,8 +325,7 @@ def test_paper_planner_prefers_st_and_only_transport_fallback(tmp_path, monkeypa
     mod = types.ModuleType("paper_portfolio")
     mod.PaperPortfolio = StubPaperPortfolio
     monkeypatch.setitem(sys.modules, "paper_portfolio", mod)
-    monkeypatch.setattr(contract, "require_reference_preopen",
-                        lambda day: day + "T07:01:00+08:00")
+    monkeypatch.setattr(contract, "require_reference_preopen", lambda day: day + "T07:01:00+08:00")
 
     outcome = {}
     namespace = {
@@ -309,15 +337,24 @@ def test_paper_planner_prefers_st_and_only_transport_fallback(tmp_path, monkeypa
     }
     fn = _modal_helper_from_source("_apply_paper_portfolio", namespace)
     res = {
-        "market": "csi1000", "date": "2026-10-12",
-        "ranking_full": [["SH600000", 0.5]], "model_fit_asof": "2026-10-12",
-        "train_end": "2026-09-01", "valid_end": "2026-09-11",
+        "market": "csi1000",
+        "date": "2026-10-12",
+        "ranking_full": [["SH600000", 0.5]],
+        "model_fit_asof": "2026-10-12",
+        "train_end": "2026-09-01",
+        "valid_end": "2026-09-11",
         "production_lineage": {"profile": "stage_b_winner"},
     }
+
     def propose():
-        return fn(res, "2026-10-13", topk=20, nd=2,
-                  lineage="stage_b_winner_canonical",
-                  verified_calendar={"2026-10-12", "2026-10-13"})
+        return fn(
+            res,
+            "2026-10-13",
+            topk=20,
+            nd=2,
+            lineage="stage_b_winner_canonical",
+            verified_calendar={"2026-10-12", "2026-10-13"},
+        )
 
     outcome["data"] = {
         "status": "SOURCE_SNAPSHOT_AVAILABLE",
@@ -334,8 +371,10 @@ def test_paper_planner_prefers_st_and_only_transport_fallback(tmp_path, monkeypa
     assert verified["risk_st"]["status"] == "SOURCE_SNAPSHOT_AVAILABLE"
 
     outcome["data"] = {
-        "status": "UNAVAILABLE", "failure_kind": "TRANSPORT",
-        "source": "akshare.stock_zh_a_st_em", "detail": "ConnectionError: disconnected",
+        "status": "UNAVAILABLE",
+        "failure_kind": "TRANSPORT",
+        "source": "akshare.stock_zh_a_st_em",
+        "detail": "ConnectionError: disconnected",
     }
     fallback = propose()
     frozen = json.loads(fallback["state_json"])["pending_signal"]["metadata"]
@@ -345,8 +384,10 @@ def test_paper_planner_prefers_st_and_only_transport_fallback(tmp_path, monkeypa
     assert fallback["risk_st"]["top20_st_count"] is None
 
     outcome["data"] = {
-        "status": "UNAVAILABLE", "failure_kind": "INVALID_RESPONSE",
-        "source": "akshare.stock_zh_a_st_em", "detail": "missing columns",
+        "status": "UNAVAILABLE",
+        "failure_kind": "INVALID_RESPONSE",
+        "source": "akshare.stock_zh_a_st_em",
+        "detail": "missing columns",
     }
     with pytest.raises(RuntimeError, match="ST response invalid"):
         propose()
@@ -359,14 +400,12 @@ def test_reference_execution_context_requires_explicit_mode_and_keeps_price_gate
     src = (Path(__file__).resolve().parents[2] / "quant/code/production/modal_qlib_cn_a10g.py").read_text()
     assert "from paper_execution_context import build_paper_execution_context" in src
     context = (Path(__file__).resolve().parents[2] / "quant/code/production/paper_execution_context.py").read_text()
-    cron = src.split("def daily_cron(allow_lag: bool = False):", 1)[1].split(
-        "\n# ===================== 第六步", 1
-    )[0]
-    assert 'execution_st_policy == REFERENCE_ST_POLICY' in context
-    assert 'st_symbols = set()' in context
-    assert 'validate_verified_st_snapshot(snapshot, execution_date)' in context
-    assert 'compute_limit_masks(' in context
-    assert 'certify_full_session_halts(' in context
+    cron = src.split("def daily_cron(allow_lag: bool = False):", 1)[1].split("\n# ===================== 第六步", 1)[0]
+    assert "execution_st_policy == REFERENCE_ST_POLICY" in context
+    assert "st_symbols = set()" in context
+    assert "validate_verified_st_snapshot(snapshot, execution_date)" in context
+    assert "compute_limit_masks(" in context
+    assert "certify_full_session_halts(" in context
     assert '"$open", "Ref($close,1)", "$close", "$factor"' in context
     assert '_current_st_risk_snapshot(res["display_top20"])' not in cron
     assert 'paper_proposals["csi1000"]["risk_st"]' in cron

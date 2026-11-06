@@ -5,6 +5,7 @@ historical data as OOS. Reuses frozen Stage-A identities and the new paired
 P0/L1 audit arithmetic. L2/L3 plans are NOT training results: a separately
 reviewed, actual-fit runner must attach reproducible training lineages.
 """
+
 from __future__ import annotations
 
 import argparse

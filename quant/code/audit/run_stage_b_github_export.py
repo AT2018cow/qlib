@@ -3,6 +3,7 @@
 Does not import Qlib, production metrics, or execute models.
 Missing historical provider calendar prevents formal metric_formula PASS.
 """
+
 import importlib.util
 import json
 import os
@@ -11,7 +12,9 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-EXPORT = Path(os.environ.get("AUDIT_EXPORT_ROOT", str(ROOT / "quant/data/round1_stage_ab/csi1000_stage_b/audit_reports")))
+EXPORT = Path(
+    os.environ.get("AUDIT_EXPORT_ROOT", str(ROOT / "quant/data/round1_stage_ab/csi1000_stage_b/audit_reports"))
+)
 AUDIT = ROOT / "quant/code/audit/independent_stage_b_metrics.py"
 TARGET = ROOT / "quant/data/round1_audit_evidence/csi1000_stage_b_frozen_manifest_20261009.json"
 OUTPUT = ROOT / "audit-output"
@@ -50,6 +53,7 @@ def run():
     # Compare date index across all ten phase results; this is a useful internal
     # check, but cannot substitute for the authentic provider trading calendar.
     import pandas as pd
+
     calendars = {}
     for p in evidence["phases"]:
         e = found[p["expected_report"]["path"]]
@@ -69,9 +73,13 @@ def run():
         "claimed_end": reference[-1] if reference else None,
         "unique_days": len(set(reference)),
         "saved_metric_discrepancies": [
-            {"cohort": r["cohort"], "phase": r["phase"], "keys": [
-                k for k, v in (r.get("comparison") or {}).items() if not v["within_tolerance"]]}
-            for r in rows if any(not v["within_tolerance"] for v in (r.get("comparison") or {}).values())
+            {
+                "cohort": r["cohort"],
+                "phase": r["phase"],
+                "keys": [k for k, v in (r.get("comparison") or {}).items() if not v["within_tolerance"]],
+            }
+            for r in rows
+            if any(not v["within_tolerance"] for v in (r.get("comparison") or {}).values())
         ],
         "results": rows,
         "provider_calendar_verified": False,
@@ -81,19 +89,36 @@ def run():
     print("AUDIT SUMMARY " + json.dumps({k: v for k, v in summary.items() if k != "results"}, sort_keys=True))
     for r in rows:
         rec = r.get("recomputed") or {}
-        print("PHASE " + json.dumps({
-            "cohort": r["cohort"], "phase": r["phase"], "sha_verified": r.get("actual_sha256")==r["expected_sha256"],
-            "metric_formula": r["metric_formula"], "daily_account": r["daily_account"], "reason": r["reason"],
-            "days": rec.get("n_days"), "sharpe": rec.get("sharpe"), "IR": rec.get("information_ratio"),
-            "CAGR": rec.get("strategy_cagr"), "vol": rec.get("annual_volatility"), "max_drawdown": rec.get("strategy_max_drawdown"),
-            "cost": rec.get("total_cost_sum"), "max_account_diff": rec.get("account_return_max_error"),
-            "max_fee_diff": (r.get("diagnostics") or {}).get("max_cost_rate_delta"),
-        }, sort_keys=True))
+        print(
+            "PHASE "
+            + json.dumps(
+                {
+                    "cohort": r["cohort"],
+                    "phase": r["phase"],
+                    "sha_verified": r.get("actual_sha256") == r["expected_sha256"],
+                    "metric_formula": r["metric_formula"],
+                    "daily_account": r["daily_account"],
+                    "reason": r["reason"],
+                    "days": rec.get("n_days"),
+                    "sharpe": rec.get("sharpe"),
+                    "IR": rec.get("information_ratio"),
+                    "CAGR": rec.get("strategy_cagr"),
+                    "vol": rec.get("annual_volatility"),
+                    "max_drawdown": rec.get("strategy_max_drawdown"),
+                    "cost": rec.get("total_cost_sum"),
+                    "max_account_diff": rec.get("account_return_max_error"),
+                    "max_fee_diff": (r.get("diagnostics") or {}).get("max_cost_rate_delta"),
+                },
+                sort_keys=True,
+            )
+        )
     if summary["sha256_match_count"] != 10 or not same_dates or invalid_weekday:
         raise SystemExit("FAIL: content hashes or common calendar")
     if summary["saved_metric_discrepancies"] or any(r["daily_account"] == "FAIL" for r in rows):
         raise SystemExit("FAIL: frozen metric or account discrepancies")
-    print("PROVISIONAL_METRIC_RECONCILIATION_OK — formal PASS blocked by missing provider calendar and execution evidence")
+    print(
+        "PROVISIONAL_METRIC_RECONCILIATION_OK — formal PASS blocked by missing provider calendar and execution evidence"
+    )
 
 
 if __name__ == "__main__":

@@ -25,9 +25,7 @@ _REQUIRED_METRICS = (
 
 def frozen_audit_config(market: str) -> dict:
     if market not in FROZEN_AUDIT_CONFIGS:
-        raise ValueError(
-            f"market must be one of {sorted(FROZEN_AUDIT_CONFIGS)}; got {market!r}"
-        )
+        raise ValueError(f"market must be one of {sorted(FROZEN_AUDIT_CONFIGS)}; got {market!r}")
     return dict(FROZEN_AUDIT_CONFIGS[market])
 
 
@@ -36,9 +34,7 @@ def _require_metrics(result: dict, *, label: str) -> None:
     if missing:
         raise RuntimeError(f"{label}: missing canonical metrics {missing}")
     if abs(float(result["account_return_max_error"])) > 1e-12:
-        raise RuntimeError(
-            f"{label}: account_return_max_error={result['account_return_max_error']}"
-        )
+        raise RuntimeError(f"{label}: account_return_max_error={result['account_return_max_error']}")
 
 
 def validate_gate_payload(
@@ -101,9 +97,7 @@ def validate_gate_payload(
 
     if result.get("signal_sha256") != signal_a:
         raise RuntimeError("gate: canonical signal hash differs from repeats")
-    if int(result.get("n_retrains", -1)) != int(
-        gate.get("n_retrains_per_repeat", -2)
-    ):
+    if int(result.get("n_retrains", -1)) != int(gate.get("n_retrains_per_repeat", -2)):
         raise RuntimeError("gate: retrain count mismatch")
     artifact = result.get("report_artifact") or {}
     if artifact.get("content_sha256") != report_a:
@@ -145,9 +139,7 @@ def validate_screen_payload(
     if payload.get("eval_from") != eval_from:
         raise RuntimeError("screen: eval_from mismatch")
     if [int(x) for x in payload.get("phases", [])] != SCREEN_PHASES:
-        raise RuntimeError(
-            f"screen: expected phases={SCREEN_PHASES}, got={payload.get('phases')}"
-        )
+        raise RuntimeError(f"screen: expected phases={SCREEN_PHASES}, got={payload.get('phases')}")
     if payload.get("complete_phase_grid") is not False:
         raise RuntimeError("screen: this audit must remain a 4-phase screen")
     if payload.get("phase0_reused_from_repro_gate") is not True:
@@ -155,26 +147,22 @@ def validate_screen_payload(
 
     if payload.get("reproducibility") != gate_payload.get("reproducibility"):
         raise RuntimeError("screen: reproducibility manifest differs from gate")
-    if payload.get("reproducibility_gate") != gate_payload.get(
-        "reproducibility_gate"
-    ):
+    if payload.get("reproducibility_gate") != gate_payload.get("reproducibility_gate"):
         raise RuntimeError("screen: gate payload differs from baseline")
 
     results = payload.get("results") or {}
     expected_keys = {str(x) for x in SCREEN_PHASES}
     if set(results) != expected_keys:
-        raise RuntimeError(
-            f"screen: result phases={sorted(results)} expected={sorted(expected_keys)}"
-        )
+        raise RuntimeError(f"screen: result phases={sorted(results)} expected={sorted(expected_keys)}")
 
     phase0 = results["0"]
     if phase0.get("source") != "repro_gate_baseline_reuse":
         raise RuntimeError("screen: phase0 source is not gate reuse")
     if phase0.get("signal_sha256") != gate_result.get("signal_sha256"):
         raise RuntimeError("screen: phase0 signal differs from gate")
-    if (phase0.get("report_artifact") or {}).get("content_sha256") != (
-        gate_result.get("report_artifact") or {}
-    ).get("content_sha256"):
+    if (phase0.get("report_artifact") or {}).get("content_sha256") != (gate_result.get("report_artifact") or {}).get(
+        "content_sha256"
+    ):
         raise RuntimeError("screen: phase0 report differs from gate")
 
     for phase in SCREEN_PHASES:
@@ -185,9 +173,7 @@ def validate_screen_payload(
                 raise RuntimeError(f"screen phase {phase}: missing {extra}")
         if phase != 0:
             if result.get("source") != "deterministic_refit":
-                raise RuntimeError(
-                    f"screen phase {phase}: expected deterministic_refit source"
-                )
+                raise RuntimeError(f"screen phase {phase}: expected deterministic_refit source")
             if int(result.get("n_retrains", 0)) <= 0:
                 raise RuntimeError(f"screen phase {phase}: missing retrain lineage")
             if not result.get("chunk_predictions"):

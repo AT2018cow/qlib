@@ -4,6 +4,7 @@ Read SHA-pinned corrected report/decisions from commit a7e4f22 and load only
 OHLCV/factor from the ORIGINAL provider.  This is an accounting verification,
 NOT proof of order fills, historical ST, liquidity, PIT or matured labels.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -35,15 +36,15 @@ RATE_TOL = 1e-10
 
 # Explicitly documented, date-scoped exceptions. Never infer a suspension
 # merely because a bar is missing from the research provider.
-CHENMING_NOTICE = ("https://disc.static.szse.cn/download/disc/disk03/finalpage/"
-                   "2025-02-19/b0f90573-61df-4bcc-953f-edf8738c84e1.PDF")
+CHENMING_NOTICE = (
+    "https://disc.static.szse.cn/download/disc/disk03/finalpage/" "2025-02-19/b0f90573-61df-4bcc-953f-edf8738c84e1.PDF"
+)
 DALI_NOTICE = "https://static.cninfo.com.cn/finalpage/2025-04-26/1223329081.PDF"
 # Three additional events, exactly seven missing-held-close rows from the
 # immutable PR #54 full-calendar inventory. Evidence is the original dated
 # company announcement; NEVER treat an arbitrary missing close as a halt.
 MUBANG_NOTICE = (
-    "https://static.sse.com.cn/disclosure/listedinfo/announcement/c/new/"
-    "2025-04-30/603398_20250430_AUP6.pdf"
+    "https://static.sse.com.cn/disclosure/listedinfo/announcement/c/new/" "2025-04-30/603398_20250430_AUP6.pdf"
 )
 DONGFANG_NOTICE = "https://static.cninfo.com.cn/finalpage/2025-04-30/1223423862.PDF"
 LIANCHUANG_NOTICE = "https://static.cninfo.com.cn/finalpage/2025-12-25/1224897232.PDF"
@@ -105,10 +106,13 @@ def load_plan(repo: Path, candidate: str, phase: int):
     batch_file = repo / "quant/data/round1_audit_evidence/stage_b_corrected_rerank/batch_result.json"
     checked(batch_file, BATCH_SHA, "batch_result")
     batch = json.loads(batch_file.read_text())
-    require(batch["original_snapshot_token"] == SNAPSHOT and
-            batch["original_provider_fingerprint"] == FINGERPRINT and
-            batch["completed_phase_replays"] == 55 and
-            batch["training_performed"] is False, "batch provenance drift")
+    require(
+        batch["original_snapshot_token"] == SNAPSHOT
+        and batch["original_provider_fingerprint"] == FINGERPRINT
+        and batch["completed_phase_replays"] == 55
+        and batch["training_performed"] is False,
+        "batch provenance drift",
+    )
     rows = [x for x in batch["phase_comparisons"] if x["candidate_id"] == candidate and x["phase"] == phase]
     require(len(rows) == 1, "missing or repeated phase comparison")
     row = rows[0]
@@ -147,8 +151,9 @@ def score(dates: list[date], nav: list[float], bench_daily: list[float]) -> dict
     }
 
 
-def reconstruct(decisions: list[dict], report, quotes: dict, dates: list[date],
-                *, cost_bps_extra=(0, 5, 10, 20)) -> dict:
+def reconstruct(
+    decisions: list[dict], report, quotes: dict, dates: list[date], *, cost_bps_extra=(0, 5, 10, 20)
+) -> dict:
     """Independent unit bookkeeping. Orders hold Qlib *adjusted* quantities.
 
     quotes[(date ISO, stock)] = (adjusted open, adjusted close, factor, volume).
@@ -166,8 +171,19 @@ def reconstruct(decisions: list[dict], report, quotes: dict, dates: list[date],
     st_execution_review = []
     cash = CAPITAL
     fees = turnover = 0.0
-    max_diff = {k: 0.0 for k in ("account", "cash", "value", "total_cost", "total_turnover",
-                                     "net_return", "cost_rate", "turnover_rate")}
+    max_diff = {
+        k: 0.0
+        for k in (
+            "account",
+            "cash",
+            "value",
+            "total_cost",
+            "total_turnover",
+            "net_return",
+            "cost_rate",
+            "turnover_rate",
+        )
+    }
     daily_nav, daily_bench, daily_turnover, daily_notional = [], [], [], []
     first_diff_date: dict[str, str] = {}
     violations: list[dict] = []
@@ -175,8 +191,10 @@ def reconstruct(decisions: list[dict], report, quotes: dict, dates: list[date],
     total_fills = 0
     for i, (decision, day) in enumerate(zip(decisions, dates)):
         today = day.isoformat()
-        require(str(decision["start_time"])[:10] == today and
-                decision["decision_index"] == i, f"decision clock/index {today}")
+        require(
+            str(decision["start_time"])[:10] == today and decision["decision_index"] == i,
+            f"decision clock/index {today}",
+        )
         orders = decision["orders"]
         daily_fee = daily_volume = 0.0
         sells_done = False
@@ -184,34 +202,39 @@ def reconstruct(decisions: list[dict], report, quotes: dict, dates: list[date],
             symbol = order["stock_id"]
             direction = order["direction"]
             require(direction in (0, 1), f"direction {today}/{symbol}")
-            require(order["order_index"] == pos and
-                    str(order["start_time"])[:10] == today, f"order time/index {today}")
-            require((today, symbol) not in VERIFIED_SUSPENSION_DATES,
-                    f"order on verified suspension {today}/{symbol}")
+            require(order["order_index"] == pos and str(order["start_time"])[:10] == today, f"order time/index {today}")
+            require((today, symbol) not in VERIFIED_SUSPENSION_DATES, f"order on verified suspension {today}/{symbol}")
             require(not sells_done or direction != 0, f"sell after buy {today}")
             if direction == 1:
                 sells_done = True
             qty = numeric(order["deal_amount"], "deal amount", strictly_positive=True)
             requested = numeric(order["amount"], "order amount", strictly_positive=True)
-            require(math.isclose(qty, requested, abs_tol=1e-6, rel_tol=1e-10),
-                    f"partial fill {today}/{symbol}: not independently executable")
+            require(
+                math.isclose(qty, requested, abs_tol=1e-6, rel_tol=1e-10),
+                f"partial fill {today}/{symbol}: not independently executable",
+            )
             quote = quotes.get((today, symbol))
             require(quote is not None, f"missing trade quote {today}/{symbol}")
             open_px, close_px, factor, volume = quote
             open_px = numeric(open_px, "open", strictly_positive=True)
             factor = numeric(factor, "factor", strictly_positive=True)
-            require(close_px is not None and math.isfinite(close_px) and close_px > 0,
-                    f"filled order despite missing close {today}/{symbol}")
+            require(
+                close_px is not None and math.isfinite(close_px) and close_px > 0,
+                f"filled order despite missing close {today}/{symbol}",
+            )
             recorded_factor = numeric(order["factor"], "order factor", strictly_positive=True)
-            require(math.isclose(factor, recorded_factor, abs_tol=1e-8, rel_tol=1e-6),
-                    f"factor mismatch {today}/{symbol}")
+            require(
+                math.isclose(factor, recorded_factor, abs_tol=1e-8, rel_tol=1e-6), f"factor mismatch {today}/{symbol}"
+            )
             notional = qty * open_px
             require(math.isfinite(notional) and notional > 1e-5, "invalid notional")
             fee = max(5.0, notional * (0.0005 if direction == 1 else 0.0015))
             if direction == 0:
                 before = held.get(symbol, 0.0)
-                require(before > 0 and math.isclose(before, qty, abs_tol=1e-5, rel_tol=1e-9),
-                        f"not a full sell of held adjusted shares {today}/{symbol}")
+                require(
+                    before > 0 and math.isclose(before, qty, abs_tol=1e-5, rel_tol=1e-9),
+                    f"not a full sell of held adjusted shares {today}/{symbol}",
+                )
                 del held[symbol]
                 last_valid_mark.pop(symbol, None)
                 last_valid_mark_date.pop(symbol, None)
@@ -227,12 +250,16 @@ def reconstruct(decisions: list[dict], report, quotes: dict, dates: list[date],
                 pass
             flagged = KNOWN_ST_EXECUTION_REVIEW.get((today, symbol))
             if flagged:
-                st_execution_review.append({
-                    "date": today, "stock_id": symbol,
-                    "direction": "SELL" if direction == 0 else "BUY",
-                    "issue": flagged["issue"], "notice": flagged["notice"],
-                    "status": "BLOCKED_MARKET_EXECUTION_NOT_CERTIFIED",
-                })
+                st_execution_review.append(
+                    {
+                        "date": today,
+                        "stock_id": symbol,
+                        "direction": "SELL" if direction == 0 else "BUY",
+                        "issue": flagged["issue"],
+                        "notice": flagged["notice"],
+                        "status": "BLOCKED_MARKET_EXECUTION_NOT_CERTIFIED",
+                    }
+                )
             daily_fee += fee
             daily_volume += notional
             total_fills += 1
@@ -242,21 +269,26 @@ def reconstruct(decisions: list[dict], report, quotes: dict, dates: list[date],
             close_px = quote[1] if quote is not None else None
             verified_notice = VERIFIED_SUSPENSION_DATES.get((today, symbol))
             if verified_notice is not None:
-                require(close_px is None or not math.isfinite(float(close_px)),
-                        f"verified suspension conflicts with quoted close {today}/{symbol}")
-                require(symbol in last_valid_mark,
-                        f"verified suspension has no prior held mark {today}/{symbol}")
+                require(
+                    close_px is None or not math.isfinite(float(close_px)),
+                    f"verified suspension conflicts with quoted close {today}/{symbol}",
+                )
+                require(symbol in last_valid_mark, f"verified suspension has no prior held mark {today}/{symbol}")
                 mark = last_valid_mark[symbol]
-                suspension_marks.append({
-                    "date": today, "stock_id": symbol,
-                    "prior_mark_date": last_valid_mark_date[symbol],
-                    "valuation": "CARRY_LAST_VALID_HELD_CLOSE",
-                    "notice": verified_notice,
-                })
+                suspension_marks.append(
+                    {
+                        "date": today,
+                        "stock_id": symbol,
+                        "prior_mark_date": last_valid_mark_date[symbol],
+                        "valuation": "CARRY_LAST_VALID_HELD_CLOSE",
+                        "notice": verified_notice,
+                    }
+                )
             else:
-                require(close_px is not None and math.isfinite(float(close_px)) and
-                        float(close_px) > 0,
-                        f"unknown missing held close {today}/{symbol}; no blanket forward fill")
+                require(
+                    close_px is not None and math.isfinite(float(close_px)) and float(close_px) > 0,
+                    f"unknown missing held close {today}/{symbol}; no blanket forward fill",
+                )
                 mark = float(close_px)
                 last_valid_mark[symbol] = mark
                 last_valid_mark_date[symbol] = today
@@ -266,17 +298,24 @@ def reconstruct(decisions: list[dict], report, quotes: dict, dates: list[date],
         fees += daily_fee
         turnover += daily_volume
         values = {
-            "account": account, "cash": cash, "value": stock_value,
-            "total_cost": fees, "total_turnover": turnover,
+            "account": account,
+            "cash": cash,
+            "value": stock_value,
+            "total_cost": fees,
+            "total_turnover": turnover,
             "net_return": account / previous_account - 1,
             "cost_rate": daily_fee / previous_account,
             "turnover_rate": daily_volume / previous_account,
         }
         expected = report.iloc[i]
         required = {
-            "account": "account", "cash": "cash", "value": "value",
-            "total_cost": "total_cost", "total_turnover": "total_turnover",
-            "cost_rate": "cost", "turnover_rate": "turnover",
+            "account": "account",
+            "cash": "cash",
+            "value": "value",
+            "total_cost": "total_cost",
+            "total_turnover": "total_turnover",
+            "cost_rate": "cost",
+            "turnover_rate": "turnover",
         }
         for key, col in required.items():
             diff = abs(values[key] - numeric(expected[col], col))
@@ -294,7 +333,11 @@ def reconstruct(decisions: list[dict], report, quotes: dict, dates: list[date],
         daily_notional.append(daily_volume)
         daily_turnover.append(daily_volume / previous_account)
         previous_account = account
-    errors = [x for x, v in max_diff.items() if v > (RATE_TOL if x in ("net_return", "cost_rate", "turnover_rate") else CNY_TOL)]
+    errors = [
+        x
+        for x, v in max_diff.items()
+        if v > (RATE_TOL if x in ("net_return", "cost_rate", "turnover_rate") else CNY_TOL)
+    ]
     # Cost-only sensitivity on *frozen* fills. NOT an executable re-simulation;
     # no re-sizing, portfolio re-ranking or market-impact/slippage forecast.
     stresses = {}
@@ -310,8 +353,11 @@ def reconstruct(decisions: list[dict], report, quotes: dict, dates: list[date],
             stresses[str(bps)] = score(dates, stressed_nav, daily_bench)
     return {
         "ledger": "FAIL" if errors else "PASS_RESEARCH_ACCOUNTING_ONLY",
-        "fail_fields": errors, "first_diff_date": first_diff_date, "max_abs_diff": max_diff,
-        "matched_trading_days": len(dates), "filled_orders": total_fills,
+        "fail_fields": errors,
+        "first_diff_date": first_diff_date,
+        "max_abs_diff": max_diff,
+        "matched_trading_days": len(dates),
+        "filled_orders": total_fills,
         "daily_net_notional_summary": {"total": turnover, "avg_turnover_ratio": statistics.mean(daily_turnover)},
         "reported_price_volume_warnings": violations[:25],
         "reported_price_volume_warning_count": len(violations),
@@ -338,15 +384,18 @@ def provider_prices(provider: Path, codes: list[str], expected_calendar: list[st
     qlib.init(provider_uri=str(provider), region="cn")
     calendar = [str(x)[:10] for x in D.calendar(start_time=START, end_time=END)]
     require(calendar == expected_calendar, "provider calendar differs from 424 frozen days")
-    frames = D.features(codes, ["$open", "$close", "$factor", "$volume"],
-                        start_time=START, end_time=END, freq="day", disk_cache=False)
+    frames = D.features(
+        codes, ["$open", "$close", "$factor", "$volume"], start_time=START, end_time=END, freq="day", disk_cache=False
+    )
     require(isinstance(frames, pd.DataFrame) and not frames.empty, "empty provider features")
     require(not frames.index.has_duplicates, "duplicate provider instrument/date rows")
     rows = {}
     for (symbol, timestamp), q in frames.iterrows():
         dt = str(timestamp)[:10]
+
         def optional(v):
             return float(v) if pd.notna(v) else None
+
         rows[(dt, str(symbol))] = tuple(optional(q[k]) for k in ("$open", "$close", "$factor", "$volume"))
     return rows
 
@@ -363,10 +412,14 @@ def run(args):
         require(not out.is_relative_to(forbidden), "output inside input/repo/Volume forbidden")
     require(not out.exists(), "output already exists; no overwrite")
     snapshot = json.loads(original_snapshot.read_text())
-    require(snapshot.get("snapshot_token") == SNAPSHOT and
-            snapshot.get("provider_fingerprint") == FINGERPRINT, "provider snapshot mismatch")
+    require(
+        snapshot.get("snapshot_token") == SNAPSHOT and snapshot.get("provider_fingerprint") == FINGERPRINT,
+        "provider snapshot mismatch",
+    )
     # Source code does not train; no snapshot/Volume writes.
-    candidate_set = CANDIDATES if args.candidate == "both" else (BASELINE if args.candidate == "baseline" else RUNNER_UP,)
+    candidate_set = (
+        CANDIDATES if args.candidate == "both" else (BASELINE if args.candidate == "baseline" else RUNNER_UP,)
+    )
     phases = PHASES if args.phases == "all" else (0,)
     tasks = []
     all_codes = set()
@@ -376,9 +429,14 @@ def run(args):
             report = pd.read_parquet(report_path)
             decisions = json.loads(decisions_path.read_text())
             dates = [x.date() for x in pd.DatetimeIndex(report.index)]
-            require(len(dates) == DAYS and len(set(dates)) == DAYS and
-                    dates[0].isoformat() == START and dates[-1].isoformat() == END and
-                    list(report.index) == sorted(report.index), "report coverage/order")
+            require(
+                len(dates) == DAYS
+                and len(set(dates)) == DAYS
+                and dates[0].isoformat() == START
+                and dates[-1].isoformat() == END
+                and list(report.index) == sorted(report.index),
+                "report coverage/order",
+            )
             require(len(decisions) == DAYS, "decisions length drift")
             all_codes.update(o["stock_id"] for d in decisions for o in d["orders"])
             tasks.append((candidate, phase, dates, report, decisions, identity, row))
@@ -389,28 +447,33 @@ def run(args):
     inventory_by_cell = []
     for candidate, phase, dates, report, decisions, identity, row in tasks:
         require(dates == tasks[0][2], "cross-phase calendar disagreement")
-        inventory_by_cell.append({
-            "candidate_id": candidate, "phase": phase,
-            "fixed_sha256": identity,
-            "inventory": scan_holding_quotes(
-                decisions, quotes, dates,
-                VERIFIED_SUSPENSION_DATES, KNOWN_ST_EXECUTION_REVIEW),
-        })
+        inventory_by_cell.append(
+            {
+                "candidate_id": candidate,
+                "phase": phase,
+                "fixed_sha256": identity,
+                "inventory": scan_holding_quotes(
+                    decisions, quotes, dates, VERIFIED_SUSPENSION_DATES, KNOWN_ST_EXECUTION_REVIEW
+                ),
+            }
+        )
     blocked = [x for x in inventory_by_cell if x["inventory"]["blocking_count"]]
     if blocked:
         out.mkdir(parents=True)
         payload = {
             "status": "BLOCKED_OR_FAILED_NOT_PASS",
             "reason": "full-calendar quote inventory has unresolved blocking rows; no NAV PASS",
-            "snapshot": SNAPSHOT, "provider_fingerprint": FINGERPRINT,
-            "candidate": args.candidate, "phases": args.phases,
+            "snapshot": SNAPSHOT,
+            "provider_fingerprint": FINGERPRINT,
+            "candidate": args.candidate,
+            "phases": args.phases,
             "inventory_cells": inventory_by_cell,
             "blocking_cells": len(blocked),
             "market_execution": "NOT_CERTIFIED",
-            "model_training": False, "production_promotion": False,
+            "model_training": False,
+            "production_promotion": False,
         }
-        (out / "audit_failure.json").write_text(
-            json.dumps(payload, indent=2, allow_nan=False) + "\n")
+        (out / "audit_failure.json").write_text(json.dumps(payload, indent=2, allow_nan=False) + "\n")
         raise ValueError("unresolved frozen holding quote inventory; see audit_failure.json")
 
     outputs = []
@@ -419,19 +482,24 @@ def run(args):
         result = reconstruct(decisions, report, quotes, dates)
         result["full_calendar_quote_inventory"] = inv["inventory"]
         report_metrics = row["fixed_metrics"]
-        metric_aliases = {"sharpe_238_rf0": "sharpe", "strategy_cagr": "strategy_cagr",
-                          "relative_excess_cagr": "relative_excess_cagr",
-                          "strategy_max_drawdown": "strategy_max_drawdown",
-                          "strategy_total_return": "strategy_total_return"}
+        metric_aliases = {
+            "sharpe_238_rf0": "sharpe",
+            "strategy_cagr": "strategy_cagr",
+            "relative_excess_cagr": "relative_excess_cagr",
+            "strategy_max_drawdown": "strategy_max_drawdown",
+            "strategy_total_return": "strategy_total_return",
+        }
         result["metrics_comparison"] = {
-            name: {"independent": result["computed_metrics"][name], "saved": report_metrics[reference],
-                   "difference": abs(result["computed_metrics"][name] - report_metrics[reference])}
+            name: {
+                "independent": result["computed_metrics"][name],
+                "saved": report_metrics[reference],
+                "difference": abs(result["computed_metrics"][name] - report_metrics[reference]),
+            }
             for name, reference in metric_aliases.items()
             if result["computed_metrics"][name] is not None
         }
         # Compare arithmetic-derived metrics with saved corrected metrics, not just daily NAV.
-        drift = [k for k, v in result["metrics_comparison"].items()
-                 if v["difference"] > 1e-6]
+        drift = [k for k, v in result["metrics_comparison"].items() if v["difference"] > 1e-6]
         if drift:
             result["ledger"] = "FAIL"
             result["fail_fields"].extend("saved_metric_" + k for k in drift)
@@ -448,16 +516,22 @@ def run(args):
                 "status": "DIAGNOSTIC_ON_CONSUMED_TAIL_NOT_BEST_STRATEGY_CERTIFICATION",
             }
     out.mkdir(parents=True)
-    payload = {"audit": "independent_price_to_cash_nav_no_qlib_backtest",
-               "snapshot": SNAPSHOT, "provider_fingerprint": FINGERPRINT,
-               "cells": outputs, "phase_completeness": len(outputs),
-               "quote_inventory_completed_before_ledger": True,
-               "cohort_summaries": cohort_summaries,
-               "all_research_accounting_pass": all(c["ledger"] == "PASS_RESEARCH_ACCOUNTING_ONLY" for c in outputs),
-               "market_execution": "BLOCKED_EXTERNAL_HISTORICAL_RULES_AND_LIQUIDITY",
-               "parameter_search": False, "model_training": False, "production_promotion": False,
-               "selection_on_consumed_tail": "DIAGNOSTIC_ONLY",
-               "independent_benchmark_price_audit": "BLOCKED_SAVED_BENCH_RETURNS_USED"}
+    payload = {
+        "audit": "independent_price_to_cash_nav_no_qlib_backtest",
+        "snapshot": SNAPSHOT,
+        "provider_fingerprint": FINGERPRINT,
+        "cells": outputs,
+        "phase_completeness": len(outputs),
+        "quote_inventory_completed_before_ledger": True,
+        "cohort_summaries": cohort_summaries,
+        "all_research_accounting_pass": all(c["ledger"] == "PASS_RESEARCH_ACCOUNTING_ONLY" for c in outputs),
+        "market_execution": "BLOCKED_EXTERNAL_HISTORICAL_RULES_AND_LIQUIDITY",
+        "parameter_search": False,
+        "model_training": False,
+        "production_promotion": False,
+        "selection_on_consumed_tail": "DIAGNOSTIC_ONLY",
+        "independent_benchmark_price_audit": "BLOCKED_SAVED_BENCH_RETURNS_USED",
+    }
     (out / "independent_ledger.json").write_text(json.dumps(payload, indent=2, allow_nan=False) + "\n")
     if not payload["all_research_accounting_pass"]:
         raise ValueError("independent ledger has mismatches; see isolated JSON output")
@@ -480,22 +554,40 @@ def main() -> None:
         # sanitized failure record only in an isolated, never-reused output dir.
         # Never write even a failure report to /vol, provider, snapshot or repo.
         out = args.output_dir.resolve()
-        prohibited = (args.repo_root.resolve(), args.provider_uri.resolve(),
-                      args.provider_snapshot.resolve().parent, Path("/vol"))
+        prohibited = (
+            args.repo_root.resolve(),
+            args.provider_uri.resolve(),
+            args.provider_snapshot.resolve().parent,
+            Path("/vol"),
+        )
         if not out.exists() and not any(out.is_relative_to(p) for p in prohibited):
             out.mkdir(parents=True, exist_ok=False)
             (out / "audit_failure.json").write_text(
-                json.dumps({"status": "BLOCKED_OR_FAILED_NOT_PASS",
-                            "error_type": type(exc).__name__,
-                            "reason": str(exc)[:1000],
-                            "candidate": args.candidate,
-                            "phases": args.phases,
-                            "market_execution": "NOT_CERTIFIED"},
-                           indent=2, allow_nan=False) + "\n"
+                json.dumps(
+                    {
+                        "status": "BLOCKED_OR_FAILED_NOT_PASS",
+                        "error_type": type(exc).__name__,
+                        "reason": str(exc)[:1000],
+                        "candidate": args.candidate,
+                        "phases": args.phases,
+                        "market_execution": "NOT_CERTIFIED",
+                    },
+                    indent=2,
+                    allow_nan=False,
+                )
+                + "\n"
             )
         raise
-    print(json.dumps({"cells": len(result["cells"]), "ledger_match": result["all_research_accounting_pass"],
-                      "market_execution": result["market_execution"], "output": "independent_ledger.json"}))
+    print(
+        json.dumps(
+            {
+                "cells": len(result["cells"]),
+                "ledger_match": result["all_research_accounting_pass"],
+                "market_execution": result["market_execution"],
+                "output": "independent_ledger.json",
+            }
+        )
+    )
 
 
 if __name__ == "__main__":

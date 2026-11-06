@@ -21,6 +21,7 @@ Filter thresholds use the pipeline's audit口径 margin: nominal minus 0.5pp
 (10%→0.095, 20%→0.195, 30%→0.295, 5%→0.045), matching the existing
 |close/prev_close - 1| >= threshold filter.
 """
+
 from __future__ import annotations
 
 from bisect import bisect_left, bisect_right
@@ -314,7 +315,7 @@ def build_ew_bench_files(provider_dir, market: str) -> dict:
             i0 = bisect_left(cal, str(s_row["start"])[:10])
             i1 = bisect_right(cal, str(s_row["end"])[:10])
             if i1 > max(i0, 0):
-                member[k, max(i0, 0):i1] = True
+                member[k, max(i0, 0) : i1] = True
         if not p.is_file():
             missing += 1
             continue
@@ -325,7 +326,7 @@ def build_ew_bench_files(provider_dir, market: str) -> dict:
         if start < 0 or start >= n:
             continue
         take = min(len(vals), n - start)
-        M[k, start: start + take] = vals[:take]
+        M[k, start : start + take] = vals[:take]
     # 区间外价格不参与（即使 bin 有数据也屏蔽）
     M = np.where(member, M, np.nan)
     mean_ret, idx_close = ew_index_matrix(M)

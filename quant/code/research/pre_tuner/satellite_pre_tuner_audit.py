@@ -83,9 +83,7 @@ def read_and_validate_satellite_audit(
     topk, nd = int(cfg["topk"]), int(cfg["nd"])
 
     gate_path = VOL_ROOT / "freq_experiment" / f"results_{market}.json"
-    screen_path = (
-        VOL_ROOT / "freq_phase_sensitivity" / f"phase_{market}_freq{freq}.json"
-    )
+    screen_path = VOL_ROOT / "freq_phase_sensitivity" / f"phase_{market}_freq{freq}.json"
 
     gate = _load_json(gate_path)
     validate_gate_payload(
@@ -138,10 +136,7 @@ def run(
     if not modal_bin:
         raise RuntimeError("modal CLI not found in local PATH")
 
-    print(
-        f"[satellite-audit] market={market} freq={freq} "
-        f"topk={topk} nd={nd} phases={SCREEN_PHASES}"
-    )
+    print(f"[satellite-audit] market={market} freq={freq} " f"topk={topk} nd={nd} phases={SCREEN_PHASES}")
 
     gate_cmd = [
         modal_bin,
@@ -165,10 +160,7 @@ def run(
         freq=freq,
         eval_from=eval_from,
     )
-    print(
-        "[satellite-audit] gate artifact validated "
-        f"snapshot={gate_check['snapshot_token']}"
-    )
+    print("[satellite-audit] gate artifact validated " f"snapshot={gate_check['snapshot_token']}")
 
     # The phase extension entrypoint validates the just-written gate before any
     # non-zero phase fits and preserves canonical freq_experiment.py unchanged.
@@ -210,9 +202,7 @@ def run(
 
     gate_path.write_text(json.dumps(bundle["gate"], indent=2, ensure_ascii=False))
     screen_path.write_text(json.dumps(bundle["screen"], indent=2, ensure_ascii=False))
-    summary_path.write_text(
-        json.dumps(bundle["compact_summary"], indent=2, ensure_ascii=False)
-    )
+    summary_path.write_text(json.dumps(bundle["compact_summary"], indent=2, ensure_ascii=False))
 
     print(f"[satellite-audit] gate PASS: {gate_path}")
     print(f"[satellite-audit] screen PASS: {screen_path}")

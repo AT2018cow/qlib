@@ -4,6 +4,7 @@ The real Qlib replay and independent execution ledger remain unavailable in CI;
 these tests cover frozen IDs, SHA-tamper failures, source namespaces and the
 unchanged 11-candidate ranking contract.
 """
+
 from __future__ import annotations
 
 import copy
@@ -14,7 +15,12 @@ import unittest
 from pathlib import Path
 
 from audit.run_stage_b_corrected_rerank import (
-    BASELINE, FROZEN_N, PHASES, WINNER, diagnose_ranking, plan_sources,
+    BASELINE,
+    FROZEN_N,
+    PHASES,
+    WINNER,
+    diagnose_ranking,
+    plan_sources,
 )
 from audit.stage_b_f6_preflight import FROZEN, source_suffix
 
@@ -33,9 +39,11 @@ class BatchOriginalReplayTests(unittest.TestCase):
             cid = c["candidate_id"]
             for phase in c["phase_results"]:
                 ph = phase["phase"]
-                for kind, name in (("report", "report.parquet"),
-                                   ("signal", "signal.parquet"),
-                                   ("decision", "decisions.json")):
+                for kind, name in (
+                    ("report", "report.parquet"),
+                    ("signal", "signal.parquet"),
+                    ("decision", "decisions.json"),
+                ):
                     meta = phase[kind + "_artifact"]
                     relative = source_suffix(meta["path"], phase=ph, candidate_id=cid)
                     self.assertEqual(relative.name, name)
@@ -56,8 +64,7 @@ class BatchOriginalReplayTests(unittest.TestCase):
             self.assertEqual(len(controls), 10)
             self.assertEqual(len({j["candidate_id"] for j in all_jobs}), FROZEN_N)
             self.assertEqual({j["phase"] for j in all_jobs}, set(PHASES))
-            baseline0 = next(j for j in all_jobs
-                             if j["candidate_id"] == BASELINE and j["phase"] == 0)
+            baseline0 = next(j for j in all_jobs if j["candidate_id"] == BASELINE and j["phase"] == 0)
             self.assertIn("repeat_b", baseline0["paths"]["report"].parts)
             self.assertEqual({j["candidate_id"] for j in controls}, {WINNER, BASELINE})
 
@@ -91,11 +98,13 @@ class BatchOriginalReplayTests(unittest.TestCase):
         records = []
         for c in self.frozen["ranked_candidates"]:
             for phase in c["phase_results"]:
-                records.append({
-                    "candidate_id": c["candidate_id"],
-                    "phase": phase["phase"],
-                    "fixed_metrics": copy.deepcopy(phase["phase_metrics"]),
-                })
+                records.append(
+                    {
+                        "candidate_id": c["candidate_id"],
+                        "phase": phase["phase"],
+                        "fixed_metrics": copy.deepcopy(phase["phase_metrics"]),
+                    }
+                )
         blocked = diagnose_ranking(self.frozen, records[:10], "controls")
         self.assertEqual(blocked["status"], "BLOCKED_NOT_ALL_11_CANDIDATES")
         self.assertFalse(blocked["new_winner_certified"])

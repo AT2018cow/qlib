@@ -45,8 +45,7 @@ def _equal_quote(observed, expected, label):
         raise ValueError(f"independent quote mismatch {label}: {actual} != {want}")
 
 
-def acceptance(signals, forward_path, *, calendar_path=None, quotes_path=None,
-               calendar_source=None, quote_source=None):
+def acceptance(signals, forward_path, *, calendar_path=None, quotes_path=None, calendar_source=None, quote_source=None):
     artifacts = []
     for path in sorted(Path(signals).glob("*_paper_portfolio.json")):
         try:
@@ -61,21 +60,30 @@ def acceptance(signals, forward_path, *, calendar_path=None, quotes_path=None,
     if published != generated:
         raise ValueError("published forward JSON disagrees with verified raw paper artifacts")
     if generated["status"] != "active":
-        return {"status": "NOT_STARTED", "audited_days": 0, "latest_date": None,
-                "reason": "No completed post-start verified paper settlement"}
+        return {
+            "status": "NOT_STARTED",
+            "audited_days": 0,
+            "latest_date": None,
+            "reason": "No completed post-start verified paper settlement",
+        }
     start = generated["inception_date"]
     last = generated["latest_date"]
     if not all((calendar_path, quotes_path, calendar_source, quote_source)):
-        return {"status": "BLOCKED_INDEPENDENT_SOURCES",
-                "audited_days": len(generated["points"]), "latest_date": last,
-                "reason": "Provide external calendar CSV, independently adjusted daily quotes CSV and provenance identifiers"}
+        return {
+            "status": "BLOCKED_INDEPENDENT_SOURCES",
+            "audited_days": len(generated["points"]),
+            "latest_date": last,
+            "reason": "Provide external calendar CSV, independently adjusted daily quotes CSV and provenance identifiers",
+        }
     calendar_rows = _read_csv(calendar_path, {"date"})
     external_sessions = [r["date"] for r in calendar_rows if start <= r["date"] <= last]
     if external_sessions != sorted(set(external_sessions)):
         raise ValueError("independent exchange calendar has duplicate or out-of-order sessions")
     public_dates = [p["date"] for p in generated["points"]]
     if public_dates != external_sessions:
-        raise ValueError(f"independent exchange calendar mismatch: published {public_dates}, external {external_sessions}")
+        raise ValueError(
+            f"independent exchange calendar mismatch: published {public_dates}, external {external_sessions}"
+        )
     quotes = {}
     for row in _read_csv(quotes_path, {"date", "instrument", "open", "close", "factor"}):
         key = (row["date"], row["instrument"])
@@ -103,8 +111,10 @@ def acceptance(signals, forward_path, *, calendar_path=None, quotes_path=None,
             if "factor" in fill:
                 _equal_quote(quote["factor"], fill["factor"], f"{day}/{sym} fill factor")
                 verified_quotes += 1
-        for field, quote_col, reason in (("opening_marks", "open", "EXCHANGE_OPEN"),
-                                         ("position_marks", "close", "EXCHANGE_CLOSE")):
+        for field, quote_col, reason in (
+            ("opening_marks", "open", "EXCHANGE_OPEN"),
+            ("position_marks", "close", "EXCHANGE_CLOSE"),
+        ):
             for sym, mark in report[field].items():
                 if mark["reason"] == "CERTIFIED_HALT_CARRY":
                     halt_marks += 1
@@ -118,7 +128,8 @@ def acceptance(signals, forward_path, *, calendar_path=None, quotes_path=None,
                 verified_quotes += 1
     return {
         "status": "HALT_SOURCE_REVIEW_REQUIRED" if halt_marks else "PASS_ACCOUNTING_CALENDAR_AND_EXTERNAL_QUOTES",
-        "audited_days": len(public_dates), "latest_date": last,
+        "audited_days": len(public_dates),
+        "latest_date": last,
         "external_calendar_source": calendar_source,
         "external_quote_source": quote_source,
         "compared_quote_fields": verified_quotes,
@@ -139,10 +150,17 @@ def main():
     parser.add_argument("--require-pass", action="store_true")
     args = parser.parse_args()
     try:
-        result = acceptance(args.signals, args.forward,
-                            calendar_path=args.calendar_csv, quotes_path=args.quotes_csv,
-                            calendar_source=args.calendar_source, quote_source=args.quote_source)
-        exit_code = 0 if not args.require_pass or result["status"] == "PASS_ACCOUNTING_CALENDAR_AND_EXTERNAL_QUOTES" else 2
+        result = acceptance(
+            args.signals,
+            args.forward,
+            calendar_path=args.calendar_csv,
+            quotes_path=args.quotes_csv,
+            calendar_source=args.calendar_source,
+            quote_source=args.quote_source,
+        )
+        exit_code = (
+            0 if not args.require_pass or result["status"] == "PASS_ACCOUNTING_CALENDAR_AND_EXTERNAL_QUOTES" else 2
+        )
     except (OSError, ValueError, KeyError, TypeError) as exc:
         result = {"status": "FAIL", "error": f"{type(exc).__name__}: {exc}"}
         exit_code = 1

@@ -1,4 +1,5 @@
 """Synthetic negative controls plus pinned JSON smoke; no data provider required."""
+
 from __future__ import annotations
 
 import copy
@@ -6,7 +7,10 @@ import unittest
 from datetime import date, timedelta
 
 from audit.csi1000_residual_evidence import (
-    ROOT, compare_index_prices, read_pinned, validate_residual,
+    ROOT,
+    compare_index_prices,
+    read_pinned,
+    validate_residual,
 )
 
 
@@ -17,9 +21,14 @@ def fake_index():
     index_days = [start - timedelta(days=1)] + dates
     levels = [1000 + float(i) for i in range(425)]
     rows = [
-        {"date": d.isoformat(), "close": str(levels[i]), "index_code": "000852",
-         "return_type": "price_return", "source_id": "independent_fixture",
-         "source_url": "https://example.invalid/synthetic"}
+        {
+            "date": d.isoformat(),
+            "close": str(levels[i]),
+            "index_code": "000852",
+            "return_type": "price_return",
+            "source_id": "independent_fixture",
+            "source_url": "https://example.invalid/synthetic",
+        }
         for i, d in enumerate(index_days)
     ]
     saved = [levels[i + 1] / levels[i] - 1 for i in range(424)]
@@ -31,8 +40,7 @@ class TestBenchmarkGate(unittest.TestCase):
         rows, dates, saved = fake_index()
         result = compare_index_prices(rows, dates, saved)
         self.assertEqual(result["n_sessions"], 424)
-        self.assertEqual(result["status"],
-                         "NUMERICAL_MATCH_PENDING_HUMAN_SOURCE_CERTIFICATION")
+        self.assertEqual(result["status"], "NUMERICAL_MATCH_PENDING_HUMAN_SOURCE_CERTIFICATION")
         self.assertEqual(result["max_abs_daily_return_error"], 0)
 
     def test_negative_shift_date(self):
@@ -78,9 +86,7 @@ class TestBenchmarkGate(unittest.TestCase):
 class TestPinnedResidual(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.objects = [
-            read_pinned(ROOT, k) for k in ("batch", "ledger", "baseline", "winner")
-        ]
+        cls.objects = [read_pinned(ROOT, k) for k in ("batch", "ledger", "baseline", "winner")]
 
     def test_expected_frozen_artifacts_and_order_links(self):
         result = validate_residual(*self.objects)
@@ -101,8 +107,11 @@ class TestPinnedResidual(unittest.TestCase):
         batch, ledger, baseline, winner = self.objects
         altered = copy.deepcopy(baseline)
         match = next(
-            order for row in altered if row["start_time"].startswith("2025-02-21")
-            for order in row["orders"] if order["stock_id"] == "SZ000488"
+            order
+            for row in altered
+            if row["start_time"].startswith("2025-02-21")
+            for order in row["orders"]
+            if order["stock_id"] == "SZ000488"
         )
         match["deal_amount"] = 0
         with self.assertRaisesRegex(ValueError, "full-fill"):

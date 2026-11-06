@@ -1,0 +1,25 @@
+{
+  "status": "FAIL",
+  "start_date": "2026-10-12",
+  "target": {
+    "market": "csi1000",
+    "lineage": "c98856b4_top10_drop1_canonical_1m",
+    "profile": "c98856b4_top10_drop1"
+  },
+  "artifact_audit": "NOT_RUN_ACCOUNT_SCOPE_MISMATCH",
+  "audited_reports": 0,
+  "settled_reports": 0,
+  "target_artifacts": 0,
+  "winner_artifacts": 0,
+  "skipped_artifacts": {},
+  "quoted_closes": 0,
+  "rows": [],
+  "warnings": [],
+  "issues": [
+    {
+      "code": "ACCOUNT_SCOPE_MISMATCH",
+      "date": null,
+      "detail": "October 8 website simulation is a separate account; supply --website-ledger for its raw sessions"
+    }
+  ]
+}

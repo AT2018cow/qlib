@@ -74,19 +74,13 @@ def _screen(gate, freq=20):
         result = {
             **_perf(strategy=0.08 + phase / 1000),
             "phase": phase,
-            "source": (
-                "repro_gate_baseline_reuse" if phase == 0 else "deterministic_refit"
-            ),
-            "signal_sha256": (
-                base["signal_sha256"] if phase == 0 else f"{phase:064d}"[-64:]
-            ),
+            "source": ("repro_gate_baseline_reuse" if phase == 0 else "deterministic_refit"),
+            "signal_sha256": (base["signal_sha256"] if phase == 0 else f"{phase:064d}"[-64:]),
             "n_retrains": 70,
             "report_artifact": {
                 "path": f"/vol/freq_phase_sensitivity/report_phase{phase}.parquet",
                 "content_sha256": (
-                    base["report_artifact"]["content_sha256"]
-                    if phase == 0
-                    else f"{phase + 100:064d}"[-64:]
+                    base["report_artifact"]["content_sha256"] if phase == 0 else f"{phase + 100:064d}"[-64:]
                 ),
             },
             "performance": _perf(strategy=0.08 + phase / 1000),
@@ -261,9 +255,7 @@ class SatelliteAuditTests(unittest.TestCase):
         src = (ROOT / "quant/code/research/pre_tuner/satellite_pre_tuner_audit.py").read_text()
         gate_pos = src.index("freq_experiment.py::reproducibility_gate_driver")
         verify_pos = src.index("read_and_validate_gate.remote(")
-        screen_pos = src.index(
-            "phase_audit_extend.py::extend_phase_sensitivity_driver"
-        )
+        screen_pos = src.index("phase_audit_extend.py::extend_phase_sensitivity_driver")
         self.assertLess(gate_pos, verify_pos)
         self.assertLess(verify_pos, screen_pos)
         self.assertIn("@app.local_entrypoint()", src)

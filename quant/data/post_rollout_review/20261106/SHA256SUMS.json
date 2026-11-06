@@ -1,0 +1,13 @@
+{
+  "artifact-reconciliation.json": "31630a7f94bd5114dd5eaa7bfe5190d8ad941a37137ed2f49bd4949853cf7e6c",
+  "csi1000-independent-ledger-audit.json": "4a4132b4cd0c4df7d50ccf497a702356341a1d4cfeb4037dfa36acba1329379d",
+  "csi300-independent-ledger-audit.json": "f04cc835d469fedb50c7ce8333c6c928c58c7371b37e4e916c284ddfbc7f1cac",
+  "csi500-independent-ledger-audit.json": "8d41115c6dc3333ad280b1a0ce78e148f830b12d8a2082af0d248f7c80d481ab",
+  "expected-account-scope-rejection.json": "d2f602af96bcdc799293e6f20336ffa5a7b5afd5833b7def5ecc5f1526d0b429",
+  "formatting.json": "27bfcd3116955e3099137f0a1d9ddea33e66b8fe352cf919d101106e0d8f3655",
+  "frontend.log": "a5643a4988df6d6ac6dec43b9b5ae98ef448d1a6a1120efb79adf7b94ec64b79",
+  "historical-audit-summary.json": "0aa9d48c0bb05bcdab16c9f87a254a1b3ed8612a59c0196bb56976c2dd188fe4",
+  "pytest.log": "4293f10da9633e4de4e8507da2e306d538a5548d5a4e836e170a6f2bb8635c7a",
+  "source-manifest.json": "9d32bf17db30c234d7d52e6ac8d814204082797180bdbf22135b1485d781c55c",
+  "validation.json": "cb54d12e831dff87ae198c42f2b8355008f6fc11d779a2212aa4ee02a6a1c5ff"
+}

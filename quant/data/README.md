@@ -2,6 +2,8 @@
 
 本目录集中存放我们自己的全部策略实验数据、日频回测账本（`fixed_report.parquet`）、统一策略排行榜以及线上每日发布的信号文件，与 Qlib 框架自身文件彻底隔离。
 
+**2026-11-06 执行规则证据范围：** `strategy_catalog/`、`round1_stage_ab/`、`round1_audit_evidence/`、`round2_layered_search/`、`pre_tuner_experiments/`、`csi300_csi500_research/` 和 `current_window_backtest/` 中的旧指标默认标记为 `LEGACY_EXECUTION_CONTRACT_NOT_REPLAYED`。它们保留各自生成时的成交与数量规则，不能解释为全部已经使用当前板块数量规则重新成交回放。算术重算不等于成交重放；当前有效证据与例外见[执行规则状态清单](execution_evidence_status.json)及[复核记录](../docs/07-code-review/2026-11-06-post-rollout-review-resolution.md)。
+
 ---
 
 ## 目录结构一览
@@ -29,6 +31,13 @@ quant/data/
 ├── current_window_backtest/               # 2026-10-16 ~ 10-29 三市场候选策略同期回测（研究记录，非生产切换）
 └── signals/                               # 线上每日自动发布的 CSI1000 信号四件套 (CSV + Chart + PaperPortfolio + Metadata)
 ```
+
+### `signals/` 收益文件语义（2026-11-06 起）
+
+- `csi*_website_performance.json`：**2026-10-08 开盘、每市场 100 万现金**的独立网站模拟账户；使用当前 profile 的因果重建，未核实逐日历史 ST、官方除权参考价和开盘集合竞价流动性。
+- `csi*_forward_performance.json`、`csi*_backfill_performance.json`：该网站模拟账户的**兼容别名**，内容与 `*_website_performance.json` 相同；**不再表示** canonical live-paper 前向曲线或旧 BACKFILL prefix。
+- canonical live-paper 账户仍以 `csi*_paper_portfolio.json` 为账本证据，使用 `audit_paper_nav` 审计。该工具默认从第一条非 `BACKFILL_RESEARCH` 工件起算，也可用 `--start YYYY-MM-DD` 显式指定 live 段起点；`BACKFILL_RESEARCH` 工件不会混入 live 对账。
+- 旧文档中把 `*_forward_performance.json` 描述为“2026-10-12 起 live paper”的表述属于历史合同；当前公开网站使用 10/08 独立模拟账户，不能再据此读取 canonical live-paper 收益。
 
 ### `current_window_backtest/`
 

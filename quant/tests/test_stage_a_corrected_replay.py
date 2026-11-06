@@ -1,4 +1,5 @@
 """Synthetic tests only; not a substitute for original Modal provider smoke."""
+
 import hashlib
 import json
 import sys
@@ -11,16 +12,24 @@ from audit import replay_stage_a_corrected as a
 
 
 def frozen():
-    candidates = [{"candidate_id": f"{i:064x}", "candidate": {"candidate_id": f"{i:064x}"},
-                   "rank": i + 1} for i in range(78)]
+    candidates = [
+        {"candidate_id": f"{i:064x}", "candidate": {"candidate_id": f"{i:064x}"}, "rank": i + 1} for i in range(78)
+    ]
     candidates[-1]["rank"] = 80
-    candidates += [{"candidate_id": a.BASELINE, "candidate": {"candidate_id": a.BASELINE}, "rank": 48},
-                   {"candidate_id": a.WINNER, "candidate": {"candidate_id": a.WINNER}, "rank": 5}]
-    folds = [{"fold_id": f"fold{f}", "signal": ["2021-01-01", "2021-01-31"],
-              "execution": ["2021-01-04", "2021-02-01"]} for f in range(1, 5)]
-    summary = {"protocol": "csi1000_lgb_stage_a_v3", "manifest":
-               {"snapshot_token": a.SNAPSHOT, "provider_fingerprint": "test"},
-               "ranked_candidates": candidates, "folds": folds}
+    candidates += [
+        {"candidate_id": a.BASELINE, "candidate": {"candidate_id": a.BASELINE}, "rank": 48},
+        {"candidate_id": a.WINNER, "candidate": {"candidate_id": a.WINNER}, "rank": 5},
+    ]
+    folds = [
+        {"fold_id": f"fold{f}", "signal": ["2021-01-01", "2021-01-31"], "execution": ["2021-01-04", "2021-02-01"]}
+        for f in range(1, 5)
+    ]
+    summary = {
+        "protocol": "csi1000_lgb_stage_a_v3",
+        "manifest": {"snapshot_token": a.SNAPSHOT, "provider_fingerprint": "test"},
+        "ranked_candidates": candidates,
+        "folds": folds,
+    }
     return summary
 
 
@@ -30,14 +39,28 @@ def fixture_files(tmp_path):
     f = s["folds"][0]
     path = tmp_path / "csi1000_tuner" / "stage_a" / a.SNAPSHOT / c["candidate_id"] / f["fold_id"]
     path.mkdir(parents=True)
-    payload = {"protocol": s["protocol"], "snapshot_token": a.SNAPSHOT,
-               "candidate_id": c["candidate_id"], "candidate": c["candidate"],
-               "fold_id": f["fold_id"], "fold": f, "artifact_namespace": None}
-    for k, name in (("signal", "signal.parquet"), ("report", "report.parquet"),
-                    ("decision", "decisions.json")):
+    payload = {
+        "protocol": s["protocol"],
+        "snapshot_token": a.SNAPSHOT,
+        "candidate_id": c["candidate_id"],
+        "candidate": c["candidate"],
+        "fold_id": f["fold_id"],
+        "fold": f,
+        "artifact_namespace": None,
+    }
+    for k, name in (("signal", "signal.parquet"), ("report", "report.parquet"), ("decision", "decisions.json")):
         (path / name).write_bytes((k + " frozen").encode())
-        payload[k + "_artifact"] = {"sha256": a.sha256(path / name),
-                                     "path": "/vol/csi1000_tuner/stage_a/" + a.SNAPSHOT + "/" + c["candidate_id"] + "/" + f["fold_id"] + "/" + name}
+        payload[k + "_artifact"] = {
+            "sha256": a.sha256(path / name),
+            "path": "/vol/csi1000_tuner/stage_a/"
+            + a.SNAPSHOT
+            + "/"
+            + c["candidate_id"]
+            + "/"
+            + f["fold_id"]
+            + "/"
+            + name,
+        }
     a.save_json(path / "result.json", payload)
     return s, c, f, path
 
@@ -102,10 +125,23 @@ def test_output_cannot_overlap_source(tmp_path):
 
 
 def test_order_replay_requires_exact_identity_and_fill():
-    base = [{"start_time": "2021-01-04", "end_time": "2021-01-05",
-             "orders": [{"stock_id": "SH600000", "direction": 1,
-                         "start_time": "a", "end_time": "b", "amount": 100.0,
-                         "deal_amount": 100.0, "factor": 1.0}]}]
+    base = [
+        {
+            "start_time": "2021-01-04",
+            "end_time": "2021-01-05",
+            "orders": [
+                {
+                    "stock_id": "SH600000",
+                    "direction": 1,
+                    "start_time": "a",
+                    "end_time": "b",
+                    "amount": 100.0,
+                    "deal_amount": 100.0,
+                    "factor": 1.0,
+                }
+            ],
+        }
+    ]
     a.compare_decisions(base, json.loads(json.dumps(base)))
     other = json.loads(json.dumps(base))
     other[0]["orders"][0]["deal_amount"] = 90
@@ -115,8 +151,9 @@ def test_order_replay_requires_exact_identity_and_fill():
 
 def test_numerical_report_strict_and_calendar():
     pd = pytest.importorskip("pandas")
-    old = pd.DataFrame({"account": [100.0, 101.0], "cost": [0.0, .0001]},
-                       index=pd.to_datetime(["2021-01-04", "2021-01-05"]))
+    old = pd.DataFrame(
+        {"account": [100.0, 101.0], "cost": [0.0, 0.0001]}, index=pd.to_datetime(["2021-01-04", "2021-01-05"])
+    )
     a.compare_report(old, old.copy())
     changed = old.copy()
     changed.iloc[1, 0] += 1
@@ -132,15 +169,29 @@ def test_resume_checks_output_byte_hash_and_result_path(tmp_path):
     a.save_json(snapshot, s["manifest"])
     output = tmp_path / "results"
     output.mkdir()
-    needed = ("fixed_report.parquet", "fixed_decisions.json", "daily_nav_delta.csv",
-              "order_delta.json", "legacy_reproduction.json", "fixed_metrics.json")
+    needed = (
+        "fixed_report.parquet",
+        "fixed_decisions.json",
+        "daily_nav_delta.csv",
+        "order_delta.json",
+        "legacy_reproduction.json",
+        "fixed_metrics.json",
+    )
     for name in needed:
         (output / name).write_text("test")
-    record = {"status": "PASS", "run_version": a.VERSION, "candidate_id": c["candidate_id"],
-              "fold_id": f["fold_id"], "source_sha256": a.checked_sources(tmp_path / "source", c, f)[2],
-              "source_stat": {k: {"bytes": p.stat().st_size, "mtime_ns": p.stat().st_mtime_ns} for k, p in a.checked_sources(tmp_path / "source", c, f)[1].items()},
-              "provider_manifest_sha256": a.sha256(snapshot),
-              "output_sha256": {x: a.sha256(output / x) for x in needed}}
+    record = {
+        "status": "PASS",
+        "run_version": a.VERSION,
+        "candidate_id": c["candidate_id"],
+        "fold_id": f["fold_id"],
+        "source_sha256": a.checked_sources(tmp_path / "source", c, f)[2],
+        "source_stat": {
+            k: {"bytes": p.stat().st_size, "mtime_ns": p.stat().st_mtime_ns}
+            for k, p in a.checked_sources(tmp_path / "source", c, f)[1].items()
+        },
+        "provider_manifest_sha256": a.sha256(snapshot),
+        "output_sha256": {x: a.sha256(output / x) for x in needed},
+    }
     a.save_json(output / "comparison.json", record)
     assert a.checked_resume(tmp_path / "source", snapshot, s, c, f, output) == record
     (output / "order_delta.json").write_text("changed")

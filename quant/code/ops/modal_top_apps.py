@@ -32,8 +32,7 @@ from decimal import Decimal
 def fetch_report(profile: str | None, cycle: str, by_resource: bool) -> list[dict]:
     # Prefer `sys.executable -m modal` so the CLI is found even when the
     # `modal` entry point is not on PATH (e.g. project virtualenvs).
-    cmd = [sys.executable, "-m", "modal", "billing", "report",
-           "--for", cycle, "--json"]
+    cmd = [sys.executable, "-m", "modal", "billing", "report", "--for", cycle, "--json"]
     if by_resource:
         cmd.append("--show-resources")
     if profile:
@@ -55,14 +54,16 @@ def fetch_report(profile: str | None, cycle: str, by_resource: bool) -> list[dic
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--profile", nargs="*", default=None,
-                        help="Modal profile(s)/workspace(s) to query (default: active profile)")
-    parser.add_argument("--for", dest="cycle", default="this month",
-                        help='billing cycle, e.g. "this month", "last month", "2026-09"')
-    parser.add_argument("--top", type=int, default=5,
-                        help="show the top N apps (default: 5)")
-    parser.add_argument("--by-resource", action="store_true",
-                        help="also break each app total down by resource (CPU/memory/GPU/...)")
+    parser.add_argument(
+        "--profile", nargs="*", default=None, help="Modal profile(s)/workspace(s) to query (default: active profile)"
+    )
+    parser.add_argument(
+        "--for", dest="cycle", default="this month", help='billing cycle, e.g. "this month", "last month", "2026-09"'
+    )
+    parser.add_argument("--top", type=int, default=5, help="show the top N apps (default: 5)")
+    parser.add_argument(
+        "--by-resource", action="store_true", help="also break each app total down by resource (CPU/memory/GPU/...)"
+    )
     args = parser.parse_args()
 
     profiles = args.profile or [None]

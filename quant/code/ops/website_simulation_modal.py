@@ -22,6 +22,7 @@ sys.path.insert(0, str(CODE / "research/regime_reselection"))
 
 import modal
 from modal_qlib_cn_a10g import image
+from daily_pipeline import WEBSITE_STAGE_TIMEOUT_SECONDS, WEBSITE_WORKER_TIMEOUT_SECONDS
 
 app = modal.App("qlib-website-nav", image=image)
 simulation = modal.Volume.from_name("qlib-website-simulation", create_if_missing=True)
@@ -61,7 +62,7 @@ def fit_website_model(model, dataset):
     volumes={"/simulation": simulation},
     cpu=20,
     memory=32768,
-    timeout=3600,
+    timeout=WEBSITE_WORKER_TIMEOUT_SECONDS,
     max_containers=3,
     retries=0,
     scaledown_window=5,
@@ -370,7 +371,16 @@ def publish_results(results, source, asset, *, token):
                 if path.startswith("quant/data/website_simulation/"):
                     raise ValueError("published immutable website snapshot conflict")
                 previous = json.loads(base64.b64decode(response.json()["content"]))
-                if str(previous.get("latest_date", "")) > s["latest_date"]:
+                previous_date = previous.get("latest_date")
+                if previous_date is not None and previous_date != "":
+                    from datetime import date
+
+                    if (
+                        not isinstance(previous_date, str)
+                        or date.fromisoformat(previous_date).isoformat() != previous_date
+                    ):
+                        raise ValueError("previous website latest_date is invalid")
+                if previous_date and previous_date > s["latest_date"]:
                     raise ValueError("refusing to replace newer website data with an older run")
                 missing[path] = content
     receipt_path = Path("/simulation") / source_sha / asset["digest"].split(":")[1] / "publication.json"
@@ -412,7 +422,7 @@ def publish_results(results, source, asset, *, token):
 @app.function(
     volumes={"/simulation": simulation},
     secrets=[modal.Secret.from_name("github-push")],
-    timeout=10800,
+    timeout=WEBSITE_STAGE_TIMEOUT_SECONDS,
     cpu=1,
     memory=2048,
     max_containers=1,

@@ -4,6 +4,7 @@ Input is an explicit sequence of signal-date / next-open sessions with PIT
 ranking, normalized Qlib prices + factors, execution-date preopen ST snapshot,
 and optional listing metadata. This does NOT alter frozen Stage-B artifacts.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -37,7 +38,12 @@ def replay_paper_sessions(rows, *, config=None, calendar=None, listing_dates=Non
             raise ValueError("dates must be strictly ordered and signals precede execution")
         last_date = execution_date
         snapshot = row.get("execution_st_snapshot")
-        if not isinstance(snapshot, dict) or snapshot.get("date") != execution_date or not isinstance(snapshot.get("st_symbols"), list) or not snapshot.get("source"):
+        if (
+            not isinstance(snapshot, dict)
+            or snapshot.get("date") != execution_date
+            or not isinstance(snapshot.get("st_symbols"), list)
+            or not snapshot.get("source")
+        ):
             raise ValueError("PIT execution-date ST evidence is required, including an explicit empty list")
         pp.plan_signal(signal_date, execution_date, row["ranking"])
         pending = pp.pending_signal
@@ -51,7 +57,8 @@ def replay_paper_sessions(rows, *, config=None, calendar=None, listing_dates=Non
             if sym not in prevs:
                 raise ValueError(f"missing previous close for {sym}")
         limit_buy, limit_sell = compute_limit_masks(
-            instruments, [execution_date] * len(instruments),
+            instruments,
+            [execution_date] * len(instruments),
             [opens.get(s, float("nan")) for s in instruments],
             [prevs[s] for s in instruments],
             [s not in closes for s in instruments],

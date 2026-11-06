@@ -13,6 +13,7 @@ This strategy keeps the standard top/bottom TopkDropout semantics but freezes:
 
 Random buy/sell modes are intentionally unsupported by this audited strategy.
 """
+
 from __future__ import annotations
 
 import copy
@@ -30,10 +31,7 @@ class DeterministicTopkDropoutStrategy(TopkDropoutStrategy):
 
     def __init__(self, *args, method_sell="bottom", method_buy="top", **kwargs):
         if method_sell != "bottom" or method_buy != "top":
-            raise ValueError(
-                "DeterministicTopkDropoutStrategy supports only "
-                "method_sell='bottom', method_buy='top'"
-            )
+            raise ValueError("DeterministicTopkDropoutStrategy supports only " "method_sell='bottom', method_buy='top'")
         super().__init__(
             *args,
             method_sell=method_sell,
@@ -60,6 +58,7 @@ class DeterministicTopkDropoutStrategy(TopkDropoutStrategy):
             raise ValueError("prediction signal contains duplicate instruments")
 
         if self.only_tradable:
+
             def get_first_n(items, n, reverse=False):
                 result = []
                 iterator = reversed(items) if reverse else items
@@ -73,7 +72,9 @@ class DeterministicTopkDropoutStrategy(TopkDropoutStrategy):
                         if len(result) >= n:
                             break
                 return result[::-1] if reverse else result
+
         else:
+
             def get_first_n(items, n, reverse=False):
                 values = list(items)
                 if reverse:

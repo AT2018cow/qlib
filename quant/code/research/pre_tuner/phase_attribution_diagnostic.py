@@ -73,15 +73,11 @@ def _load_and_verify_report(result: dict):
     report = pd.read_parquet(path)
     expected_rows = int(artifact.get("rows", -1))
     if expected_rows >= 0 and len(report) != expected_rows:
-        raise RuntimeError(
-            f"report row-count mismatch: path={path} got={len(report)} expected={expected_rows}"
-        )
+        raise RuntimeError(f"report row-count mismatch: path={path} got={len(report)} expected={expected_rows}")
     expected_hash = artifact.get("content_sha256")
     actual_hash = frame_sha256(report)
     if not expected_hash or actual_hash != expected_hash:
-        raise RuntimeError(
-            f"report content hash mismatch: path={path} got={actual_hash} expected={expected_hash}"
-        )
+        raise RuntimeError(f"report content hash mismatch: path={path} got={actual_hash} expected={expected_hash}")
     return report
 
 
@@ -106,15 +102,12 @@ def _assert_canonical_metrics(phase: int, result: dict, period: dict) -> dict:
         }
         if round(float(actual[key]), 6) != round(float(expected[key]), 6):
             raise RuntimeError(
-                f"phase {phase} canonical {key} mismatch: "
-                f"recomputed={actual[key]} expected={expected[key]}"
+                f"phase {phase} canonical {key} mismatch: " f"recomputed={actual[key]} expected={expected[key]}"
             )
     return checks
 
 
-def _retrain_dates_for_phase(
-    phase: int, result: dict, baseline_freq_result: dict
-) -> list[str]:
+def _retrain_dates_for_phase(phase: int, result: dict, baseline_freq_result: dict) -> list[str]:
     chunks = result.get("chunk_predictions") or []
     if phase == 0 and not chunks:
         chunks = baseline_freq_result.get("chunk_predictions") or []
@@ -181,9 +174,7 @@ def zero_fit_phase_attribution_driver(
             "first_retrain_asof": result.get("first_retrain_asof"),
             "n_retrains": int(result.get("n_retrains", len(retrain_dates))),
             "signal_sha256": result.get("signal_sha256"),
-            "report_content_sha256": (result.get("report_artifact") or {}).get(
-                "content_sha256"
-            ),
+            "report_content_sha256": (result.get("report_artifact") or {}).get("content_sha256"),
             "canonical_metric_checks": metric_checks,
             "period": period,
             "annual": annual_attribution(report),
@@ -192,21 +183,12 @@ def zero_fit_phase_attribution_driver(
 
     comparator_phases = [phase for phase in phase_list if phase != focus_phase]
     pairwise = {
-        str(phase): pairwise_gap_attribution(
-            reports[focus_phase], reports[phase]
-        )
-        for phase in comparator_phases
+        str(phase): pairwise_gap_attribution(reports[focus_phase], reports[phase]) for phase in comparator_phases
     }
 
     focus_period = phase_outputs[str(focus_phase)]["period"]
-    comparator_turnover = [
-        phase_outputs[str(phase)]["period"]["mean_turnover"]
-        for phase in comparator_phases
-    ]
-    comparator_cost = [
-        phase_outputs[str(phase)]["period"]["total_cost_sum"]
-        for phase in comparator_phases
-    ]
+    comparator_turnover = [phase_outputs[str(phase)]["period"]["mean_turnover"] for phase in comparator_phases]
+    comparator_cost = [phase_outputs[str(phase)]["period"]["total_cost_sum"] for phase in comparator_phases]
     focus_turnover = float(focus_period["mean_turnover"])
     focus_cost = float(focus_period["total_cost_sum"])
     median_turnover = float(np.median(comparator_turnover))
@@ -237,37 +219,24 @@ def zero_fit_phase_attribution_driver(
             "focus_relative_net_cagr": focus_period["relative_net_cagr"],
             "focus_mean_turnover": focus_turnover,
             "other_phase_median_mean_turnover": round(median_turnover, 8),
-            "focus_turnover_ratio_to_other_median": round(
-                focus_turnover / median_turnover, 6
-            )
-            if median_turnover
-            else None,
+            "focus_turnover_ratio_to_other_median": (
+                round(focus_turnover / median_turnover, 6) if median_turnover else None
+            ),
             "focus_total_cost_sum": focus_cost,
             "other_phase_median_total_cost_sum": round(median_cost, 8),
-            "focus_cost_ratio_to_other_median": round(focus_cost / median_cost, 6)
-            if median_cost
-            else None,
-            "pairwise_cost_effect_share_of_net_gap_median": round(
-                float(np.median(cost_shares)), 6
-            )
-            if cost_shares
-            else None,
+            "focus_cost_ratio_to_other_median": round(focus_cost / median_cost, 6) if median_cost else None,
+            "pairwise_cost_effect_share_of_net_gap_median": (
+                round(float(np.median(cost_shares)), 6) if cost_shares else None
+            ),
             "pairwise_cost_effect_share_of_net_gap": {
-                str(phase): pairwise[str(phase)][
-                    "cost_effect_share_of_net_gap"
-                ]
-                for phase in comparator_phases
+                str(phase): pairwise[str(phase)]["cost_effect_share_of_net_gap"] for phase in comparator_phases
             },
             "pairwise_top2_negative_year_share": {
-                str(phase): pairwise[str(phase)]["negative_gap_concentration"][
-                    "top2_negative_year_share"
-                ]
+                str(phase): pairwise[str(phase)]["negative_gap_concentration"]["top2_negative_year_share"]
                 for phase in comparator_phases
             },
             "pairwise_top2_negative_years": {
-                str(phase): pairwise[str(phase)]["negative_gap_concentration"][
-                    "top2_negative_years"
-                ]
+                str(phase): pairwise[str(phase)]["negative_gap_concentration"]["top2_negative_years"]
                 for phase in comparator_phases
             },
         },

@@ -1,0 +1,38 @@
+✔ pool metadata matches the frozen per-market production profiles (1.455199ms)
+✔ csi300: every published date has a passing dashboard contract (21.597928ms)
+✔ csi500: every published date has a passing dashboard contract (16.829203ms)
+✔ csi1000: every published date has a passing dashboard contract (9.207008ms)
+✔ actual November 6 legacy override is a frozen reference, including after status migration (9.679244ms)
+✔ legacy short data retains missing calendar prefix (6.192615ms)
+✔ null is not interpreted as zero or squeezed out (2.780445ms)
+✔ chart trend color follows first and last valid values (1.450621ms)
+✔ desktop table-cell layout remains intact; mobile uses flex only (0.852489ms)
+✔ forward panel rejects pre-inception, malformed and contradictory data (3.539668ms)
+✔ forward awaiting state is not confused with a zero return (2.886223ms)
+✔ validated forward curve labels dates and flags possibly stale valuations (0.748464ms)
+✔ forward return follows the selected historical ranking date (4.393951ms)
+✔ date selection is latest-request-wins and the daily ranking leads the archive (3.591556ms)
+✔ sparkline placeholders explain missing, discontinuous and loading data visibly (3.830504ms)
+✔ Pages index replaces weekday probing and first-render barrier (0.402074ms)
+✔ ranking change labels reflect position, not paper account holdings (5.136373ms)
+✔ rebalance separates Drop1 sells from ranked-out holdings (8.037915ms)
+✔ ST-free forward NAV is explicitly shown as research reference (0.506069ms)
+✔ mixed ST modes disclose exactly which forward dates skipped ST (0.41607ms)
+✔ segmented NAV preserves ST fallback and backfill identity (4.343466ms)
+✔ old CSV cannot repaint while the next market index is pending or empty (11.987983ms)
+✔ escapeHtml neutralizes markup and attribute breakers (1.426135ms)
+✔ sanitizeNameMap drops markup/control/oversized names (1.533586ms)
+✔ parseCSV rejects hostile or malformed rows and keeps valid files (2.188004ms)
+✔ renderers escape name/instrument/url instead of emitting live markup (0.513423ms)
+✔ October 8 first-close return is displayed with correct market identity (2.832722ms)
+✔ incorrect old capital, missing dates and inconsistent fees cannot display a return (1.902568ms)
+✔ current market panel refuses an obsolete cumulative-return file (0.234841ms)
+✔ fit receipts require valid hashes, coverage and explicit version 2 point binding (1.891257ms)
+ℹ tests 30
+ℹ suites 0
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 828.480544

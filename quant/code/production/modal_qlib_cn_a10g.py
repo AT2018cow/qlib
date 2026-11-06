@@ -17,6 +17,7 @@
 
 import modal
 from pathlib import Path
+from daily_pipeline import MAIN_TIMEOUT_SECONDS, BACKUP_TIMEOUT_SECONDS, SIGNAL_WORKER_TIMEOUT_SECONDS
 from qlib_audit_fixes import read_trading_calendar, purge_cfg_splits
 from qlib_live_retrain import (
     configure_asof,
@@ -62,13 +63,15 @@ image = (
     .apt_install("build-essential")
     # mlflow>=3.16 默认禁用 file:// 存储后端（maintenance mode），qlib 的
     # MLflowExpManager 用的就是 file:// uri，必须显式放行。
-    .env({
-        "MLFLOW_ALLOW_FILE_STORE": "true",
-        # The image excludes .git, so setuptools_scm cannot infer a version from
-        # tags.  A fixed build-time version avoids the setuptools_scm /
-        # vcs-versioning resolver incompatibility seen on 2026-11-06.
-        "SETUPTOOLS_SCM_PRETEND_VERSION": "0.0.0",
-    })
+    .env(
+        {
+            "MLFLOW_ALLOW_FILE_STORE": "true",
+            # The image excludes .git, so setuptools_scm cannot infer a version from
+            # tags.  A fixed build-time version avoids the setuptools_scm /
+            # vcs-versioning resolver incompatibility seen on 2026-11-06.
+            "SETUPTOOLS_SCM_PRETEND_VERSION": "0.0.0",
+        }
+    )
     .pip_install(
         "numpy==1.26.4",
         "cython",
@@ -99,7 +102,7 @@ image = (
     .pip_install("torch")
     .run_commands(
         'python -c "import io; import pandas as pd; b=io.BytesIO(); '
-        'pd.DataFrame({\'x\':[1]}).to_parquet(b); b.seek(0); assert pd.read_parquet(b).iloc[0,0] == 1"'
+        "pd.DataFrame({'x':[1]}).to_parquet(b); b.seek(0); assert pd.read_parquet(b).iloc[0,0] == 1\""
     )
     # 把当前仓库（含本文件同目录的 qlib/ + examples/）打进镜像，并在构建期编译
     # qlib/data/_libs/{rolling,expanding}.pyx（否则 ImportError: qlib.data._libs）。
@@ -115,8 +118,19 @@ image = (
             or any(
                 part in str(path)
                 for part in (
-                    ".venv", ".worktrees", "mlruns", "__pycache__", "quant/local_backup", "quant/data",
-                    ".pytest_cache", ".mypy_cache", ".ruff_cache", ".black_cache", ".codex", ".agents", ".aws",
+                    ".venv",
+                    ".worktrees",
+                    "mlruns",
+                    "__pycache__",
+                    "quant/local_backup",
+                    "quant/data",
+                    ".pytest_cache",
+                    ".mypy_cache",
+                    ".ruff_cache",
+                    ".black_cache",
+                    ".codex",
+                    ".agents",
+                    ".aws",
                 )
             )
             or str(path).startswith(".git/")
@@ -508,9 +522,7 @@ def _load_and_patch_cfg(
             raise ValueError("csi1000_profile is valid only for market in ('csi1000', 'csi500', 'csi300')")
         from csi1000_production_config import apply_csi1000_model_profile
 
-        cfg["_csi1000_production_manifest"] = apply_csi1000_model_profile(
-            cfg, csi1000_profile
-        )
+        cfg["_csi1000_production_manifest"] = apply_csi1000_model_profile(cfg, csi1000_profile)
 
     return cfg
 
@@ -570,9 +582,7 @@ def independent_recheck():
 
     # ---- 独立读取交易日历并手工推导成熟边界（刻意不调用 purge_cfg_splits）----
     calendar = [
-        line.strip()[:10]
-        for line in (DATA_DIR / "calendars" / "day.txt").read_text().splitlines()
-        if line.strip()
+        line.strip()[:10] for line in (DATA_DIR / "calendars" / "day.txt").read_text().splitlines() if line.strip()
     ]
     if not calendar or calendar != sorted(set(calendar)):
         raise RuntimeError("invalid trading calendar in independent recheck")
@@ -699,6 +709,7 @@ def independent_recheck():
     # Batch C artifact is committed under the exact same protocol, the
     # independent implementation becomes fail-closed again automatically.
     import json as _json
+
     _artifact = Path("/root/qlib/results/batch_c/rolling5y_c1000_nd2.json")
     if _artifact.is_file():
         _stored = _json.loads(_artifact.read_text())
@@ -882,7 +893,9 @@ def verify_universe(star: bool = True, chinext: bool = True, force: bool = False
         print(f"[universe] qlib D.list_instruments({pool_name}, 2024-01-01~{cal_lines[-1]}): {len(listed)} 只可交易")
         for sym in listed[:3]:
             df = D.features([sym], ["$close", "$volume"], start_time=cal_lines[-10], end_time=cal_lines[-1], freq="day")
-            print(f"[universe]   {sym} 近10日读数: shape={df.shape}, 最新收盘 {df['$close'].iloc[-1] if len(df) else 'N/A'}")
+            print(
+                f"[universe]   {sym} 近10日读数: shape={df.shape}, 最新收盘 {df['$close'].iloc[-1] if len(df) else 'N/A'}"
+            )
         if not listed:
             raise RuntimeError(f"{pool_name} 池在 2024 后无可交易记录——前缀过滤或数据范围有问题")
     for pool_name, bench in EW_BENCH.items():
@@ -1169,7 +1182,9 @@ def build_fund_factors(market: str = "csi500", start_year: int = 2021, max_stock
                 all_rows.append(df)
             if (i + 1) % 50 == 0:
                 print(f"[fund] 已处理 {i + 1}/{len(symbols)}")
-    print(f"[fund] 拉取完成：{len(all_rows)} 只有数据；失败 财报={fail_cnt['fin']} 市盈率={fail_cnt['pe']} 市净率={fail_cnt['pb']}")
+    print(
+        f"[fund] 拉取完成：{len(all_rows)} 只有数据；失败 财报={fail_cnt['fin']} 市盈率={fail_cnt['pe']} 市净率={fail_cnt['pb']}"
+    )
     if not all_rows:
         raise RuntimeError("全部股票拉取失败，请检查 akshare 接口")
     df_all = pd.concat(all_rows, ignore_index=True)
@@ -1350,6 +1365,7 @@ def _apply_paper_portfolio(
     *,
     lineage: str = "canonical",
     verified_calendar=None,
+    ranking_only: bool = False,
 ) -> dict:
     """Propose the next persistent paper state without committing it.
 
@@ -1361,7 +1377,9 @@ def _apply_paper_portfolio(
     from paper_portfolio import PaperPortfolio
     from portfolio_diagnostics import portfolio_diagnostics
     from csi1000_mvp_contract import (
-        REFERENCE_ST_POLICY, VERIFIED_ST_POLICY, require_reference_preopen,
+        REFERENCE_ST_POLICY,
+        VERIFIED_ST_POLICY,
+        require_reference_preopen,
     )
 
     market = res["market"]
@@ -1373,13 +1391,29 @@ def _apply_paper_portfolio(
         pp = PaperPortfolio.load(state_path)
         if pp.topk != topk or pp.nd != nd:
             raise RuntimeError(
-                f"paper portfolio config drift for {market}: state topk/nd={pp.topk}/{pp.nd}, "
-                f"requested={topk}/{nd}"
+                f"paper portfolio config drift for {market}: state topk/nd={pp.topk}/{pp.nd}, " f"requested={topk}/{nd}"
             )
     else:
         from csi1000_production_config import PAPER_INITIAL_CASH
 
         pp = PaperPortfolio(topk=topk, nd=nd, initial_cash=PAPER_INITIAL_CASH)
+
+    if ranking_only and (
+        pp.pending_signal is None
+        or pp.pending_signal["signal_date"] > res["date"]
+        or pp.pending_signal["execution_date"] <= res["date"]
+        or pp.pending_signal["execution_date"] >= usage_date
+    ):
+        raise RuntimeError("ranking-only override requires an existing frozen pending order awaiting execution data")
+    if ranking_only:
+        pending = pp.pending_signal
+        following = sorted(day for day in (verified_calendar or ()) if day > pending["signal_date"])
+        if (
+            pending["signal_date"] not in (verified_calendar or ())
+            or not following
+            or following[0] != pending["execution_date"]
+        ):
+            raise RuntimeError("frozen pending order does not satisfy the verified T+1 calendar")
 
     execution_report = None
     if pp.history and pp.history[-1].get("date") == res["date"]:
@@ -1400,9 +1434,7 @@ def _apply_paper_portfolio(
                 raise RuntimeError(
                     f"paper execution context unavailable for {market} {pending_date}: {ctx.get('status')}"
                 )
-            if ctx.get("execution_st_policy") != (
-                pp.pending_signal.get("metadata") or {}
-            ).get("execution_st_policy"):
+            if ctx.get("execution_st_policy") != (pp.pending_signal.get("metadata") or {}).get("execution_st_policy"):
                 raise RuntimeError("paper execution ST policy drift across provider refresh")
             execution_report = pp.execute_pending(
                 pending_date,
@@ -1432,9 +1464,7 @@ def _apply_paper_portfolio(
         # explicit reference-mode fallback; bad schemas/empty source still fail.
         # Both paths require a real same-day preopen decision, never backdating.
         require_reference_preopen(usage_date)
-        st_risk = _current_st_risk_snapshot(
-            sorted(set(pp.positions).union(s for s, _ in res["ranking_full"]))
-        )
+        st_risk = _current_st_risk_snapshot(sorted(set(pp.positions).union(s for s, _ in res["ranking_full"])))
         if st_risk["status"] == "SOURCE_SNAPSHOT_AVAILABLE":
             st_risk["date"] = usage_date
             policy = VERIFIED_ST_POLICY
@@ -1456,7 +1486,8 @@ def _apply_paper_portfolio(
                 "scope": "transport outage; reference paper without ST restrictions",
                 "failure_kind": "TRANSPORT",
                 "detail": st_risk.get("detail", "ST_SOURCE_UNAVAILABLE")[:180],
-                "top20_st": None, "top20_st_count": None,
+                "top20_st": None,
+                "top20_st_count": None,
                 "selection_filter_applied": False,
                 "tradeability_certified": False,
             }
@@ -1519,22 +1550,26 @@ def _apply_paper_portfolio(
                 "source_row_count": snapshot.get("source_row_count"),
                 "scope": "frozen preopen pending",
                 "fetched_at_cst": snapshot.get("fetched_at_cst"),
-                "top20_st": matches, "top20_st_count": len(matches),
+                "top20_st": matches,
+                "top20_st_count": len(matches),
                 "selection_filter_applied": False,
                 "tradeability_certified": False,
             }
         elif prior.get("execution_st_policy") == REFERENCE_ST_POLICY:
             st_risk = {
-                "status": "NOT_CHECKED_REFERENCE_ONLY", "source": "PRIOR_PENDING",
-                "date": prior.get("execution_date", usage_date), "failure_kind": "TRANSPORT",
-                "scope": "prior reference-only pending", "top20_st": None,
+                "status": "NOT_CHECKED_REFERENCE_ONLY",
+                "source": "PRIOR_PENDING",
+                "date": pp.pending_signal["execution_date"],
+                "failure_kind": "TRANSPORT",
+                "scope": "prior reference-only pending",
+                "top20_st": None,
                 "top20_st_count": None,
-                "selection_filter_applied": False, "tradeability_certified": False,
+                "selection_filter_applied": False,
+                "tradeability_certified": False,
             }
         else:
             raise RuntimeError("missing explicit frozen ST policy in pending paper state")
-    calendar_dates = sorted(str(d) for d in (verified_calendar or ())
-                            if "2026-10-12" <= str(d) <= usage_date)
+    calendar_dates = sorted(str(d) for d in (verified_calendar or ()) if "2026-10-12" <= str(d) <= usage_date)
     artifact = {
         "state_version": 2,
         "trading_calendar": (
@@ -2404,7 +2439,11 @@ def p1_diagnostics():
 
     sim_eq = sim_weighted(p360_20, "equal")
     sim_sc = sim_weighted(p360_20, "score")
-    results["sim_equal_vs_score"] = {"equal": sim_eq, "score": sim_sc, "note": "手动模拟（每20日调仓、无涨跌停约束），仅内部对比可信"}
+    results["sim_equal_vs_score"] = {
+        "equal": sim_eq,
+        "score": sim_sc,
+        "note": "手动模拟（每20日调仓、无涨跌停约束），仅内部对比可信",
+    }
     print(f"[p1] 7c 手动模拟: 等权={sim_eq} 分数加权={sim_sc}")
 
     # ---------- 持久化 ----------
@@ -2793,6 +2832,7 @@ def batch_c_window(args: dict):
     _cal = read_trading_calendar(DATA_DIR)
     purge_cfg_splits(cfg, _cal, horizon=20)
     from bisect import bisect_left as _bisect_left
+
     _te_i = _bisect_left(_cal, te_s)
     if _te_i < 1 or _te_i >= len(_cal):
         raise RuntimeError(f"no bootstrap/execution trading day around Batch C test start {te_s}")
@@ -2879,7 +2919,9 @@ def batch_c(market: str = "csi1000", bench: str = "SH000852", topk: int = 20, nd
             build_custom_instruments(DATA_DIR / "instruments" / "all.txt", pool_txt, boards=POOL_BOARDS[market])
         bench = EW_BENCH[market]
         if not (DATA_DIR / "features" / bench.lower() / "close.day.bin").is_file():
-            raise FileNotFoundError(f"等权基准 {bench} 不在 Volume——先跑 modal run modal_qlib_cn_a10g.py::build_star_chn_bench")
+            raise FileNotFoundError(
+                f"等权基准 {bench} 不在 Volume——先跑 modal run modal_qlib_cn_a10g.py::build_star_chn_bench"
+            )
     _ensure_data()
     wins = _gen_5y_windows()
     if market in EW_BENCH:
@@ -2926,9 +2968,7 @@ def batch_c(market: str = "csi1000", bench: str = "SH000852", topk: int = 20, nd
         "median_window_relative_excess_cagr": round(float(np.median(relative_cagrs)), 4),
         "median_window_strategy_cagr": round(float(np.median(strategy_cagrs)), 4),
         "median_window_strategy_max_drawdown": round(float(np.median(strategy_mdds)), 4),
-        "median_window_sharpe": (
-            round(float(np.median(sharpes)), 4) if sharpes else None
-        ),
+        "median_window_sharpe": (round(float(np.median(sharpes)), 4) if sharpes else None),
         "continuous_account_cagr": None,
         "continuous_account_max_drawdown": None,
         "note": (
@@ -3012,6 +3052,7 @@ def p2_rolling():
         _cal = read_trading_calendar(DATA_DIR)
         purge_cfg_splits(cfg, _cal, horizon=20)
         from bisect import bisect_left as _bisect_left
+
         _te_i = _bisect_left(_cal, te_s)
         if _te_i < 1 or _te_i >= len(_cal):
             raise RuntimeError(f"no bootstrap/execution trading day around P2 test start {te_s}")
@@ -3311,7 +3352,9 @@ def batch_a_star_chn(market: str = "star_chn"):
     if not pool_txt.is_file():
         build_custom_instruments(all_txt, pool_txt, boards=POOL_BOARDS[market])
     if not (DATA_DIR / "features" / BENCH.lower() / "close.day.bin").is_file():
-        raise FileNotFoundError(f"等权基准 {BENCH} 不在 Volume——先跑 modal run modal_qlib_cn_a10g.py::build_star_chn_bench")
+        raise FileNotFoundError(
+            f"等权基准 {BENCH} 不在 Volume——先跑 modal run modal_qlib_cn_a10g.py::build_star_chn_bench"
+        )
     qlib.init(
         provider_uri=str(DATA_DIR),
         region="cn",
@@ -3496,7 +3539,9 @@ def batch_b(lgb_trials: int = 12, market: str = "csi1000", bench: str = "SH00085
             build_custom_instruments(DATA_DIR / "instruments" / "all.txt", pool_txt, boards=POOL_BOARDS[market])
         bench = EW_BENCH[market]
         if not (DATA_DIR / "features" / bench.lower() / "close.day.bin").is_file():
-            raise FileNotFoundError(f"等权基准 {bench} 不在 Volume——先跑 modal run modal_qlib_cn_a10g.py::build_star_chn_bench")
+            raise FileNotFoundError(
+                f"等权基准 {bench} 不在 Volume——先跑 modal run modal_qlib_cn_a10g.py::build_star_chn_bench"
+            )
 
     jobs = [{"market": market, "bench": bench, "tag": f"b1_{s}", "train_start": s} for s in ("2011", "2013", "2016")]
     jobs.append({"market": market, "bench": bench, "tag": "b2_sliding_6y", "sliding": True})
@@ -3543,14 +3588,13 @@ CHENDITC_LATEST_URL = "https://github.com/chenditc/investment_data/releases/late
     # 2026-10-08 production retrain-day profiling peaked at ~9.1 GiB RSS.
     # 16 GiB preserves substantial headroom while avoiding a 32 GiB request.
     memory=16384,
-    # daily_cron waits synchronously with the same 2h ceiling; a longer child
-    # timeout cannot rescue publication after the parent has timed out.
-    timeout=2 * 3600,
+    # The coordinator budgets three sequential workers plus the website stage.
+    timeout=SIGNAL_WORKER_TIMEOUT_SECONDS,
     # Production has one canonical signal lineage. Queue accidental overlapping
     # manual/cron invocations instead of running duplicate heavy containers.
     max_containers=1,
     nonpreemptible=True,  # 每日信号是生产职责：抢占会导致当天无信号；保留可靠性优先语义
-    retries=modal.Retries(max_retries=2, initial_delay=30, backoff_coefficient=2.0, max_delay=60),  # 2 次快速重试（30/60s）自愈瞬时故障，父级重试为后备
+    retries=0,  # 由 08:00 补跑恢复，不把每个 90min 任务再扩成三倍预算。
 )
 def daily_standalone(
     topk: int = 10,
@@ -3729,8 +3773,7 @@ def daily_standalone(
         or data_revision
         or saved.get("production_lineage") != production_lineage
         or saved.get("horizon") != profile_horizon
-        or (retrain_due_calendar(calendar, asof, interval=RETRAIN_EVERY_SESSIONS)
-            and saved["fit_asof"] != asof)
+        or (retrain_due_calendar(calendar, asof, interval=RETRAIN_EVERY_SESSIONS) and saved["fit_asof"] != asof)
         or should_retrain(calendar, asof, saved["fit_asof"], interval=RETRAIN_EVERY_SESSIONS)
     )
     if train_now:
@@ -3834,13 +3877,8 @@ def daily_standalone(
         active_members = set(pit_universe["active_members"])
         outside_pit = sorted(str(inst) for inst in day.index if str(inst) not in active_members)
         if outside_pit:
-            raise RuntimeError(
-                f"CSI1000 prediction contains non-PIT members at {asof}: {outside_pit[:10]}"
-            )
-    ranking_full = [
-        [str(inst), float(day.loc[inst])]
-        for inst in ranking_order
-    ]
+            raise RuntimeError(f"CSI1000 prediction contains non-PIT members at {asof}: {outside_pit[:10]}")
+    ranking_full = [[str(inst), float(day.loc[inst])] for inst in ranking_order]
     try:
         vol.reload()
     except Exception:
@@ -4037,8 +4075,8 @@ def _current_st_risk_snapshot(instruments: list[str]) -> dict:
             if frame.empty or frame[code_col].isna().any():
                 raise RuntimeError("ST source returned empty or missing-code rows")
             import re
-            codes = [str(value).strip().split(".")[0]
-                     for value in frame[code_col].tolist()]
+
+            codes = [str(value).strip().split(".")[0] for value in frame[code_col].tolist()]
             if any(not re.fullmatch(r"\d{6}", code) for code in codes):
                 raise RuntimeError("ST source returned invalid security codes")
             st_codes = set(codes)
@@ -4060,16 +4098,15 @@ def _current_st_risk_snapshot(instruments: list[str]) -> dict:
             # response, missing codes or unknown HTTP status is NOT a legitimate
             # reason to ignore exchange risk on a public paper series.
             failure_kind = (
-                "TRANSPORT" if isinstance(exc, (RequestsConnectionError, RequestsTimeout))
-                or (isinstance(exc, RequestsHTTPError)
-                    and getattr(getattr(exc, "response", None), "status_code", None)
-                    in (502, 503, 504))
+                "TRANSPORT"
+                if isinstance(exc, (RequestsConnectionError, RequestsTimeout))
+                or (
+                    isinstance(exc, RequestsHTTPError)
+                    and getattr(getattr(exc, "response", None), "status_code", None) in (502, 503, 504)
+                )
                 else "INVALID_RESPONSE"
             )
-            print(
-                f"[risk] ST snapshot attempt={attempt}/2 {failure_kind}: "
-                f"{type(exc).__name__}: {str(exc)[:180]}"
-            )
+            print(f"[risk] ST snapshot attempt={attempt}/2 {failure_kind}: " f"{type(exc).__name__}: {str(exc)[:180]}")
             if failure_kind != "TRANSPORT":
                 break
             if attempt == 1:
@@ -4101,10 +4138,7 @@ def _is_one_session_provider_lag(detail: str) -> bool:
 
 def _skip_stale_data(signal_date: str, data_date: str, detail: str) -> dict:
     print(f"[cron] SKIPPED_STALE_DATA: {detail}")
-    print(
-        "[cron] 上游缺少一个交易日的数据：不发布陈旧信号、不推进 paper state；"
-        "等待数据源补发后回补该交易日"
-    )
+    print("[cron] 上游缺少一个交易日的数据：不发布陈旧信号、不推进 paper state；" "等待数据源补发后回补该交易日")
     return {
         "status": "SKIPPED_STALE_DATA",
         "signal_date": signal_date,
@@ -4133,18 +4167,20 @@ def _early_gate(cal, signal_date: str) -> str:
 
 @app.function(
     volumes={str(VOL_ROOT): vol},
-    schedule=modal.Cron("0 7 * * 1-5", timezone="Asia/Shanghai"),  # 周一~周五 07:00（周一算上周五数据，周二~周五算前一交易日）
+    schedule=modal.Cron(
+        "0 7 * * 1-5", timezone="Asia/Shanghai"
+    ),  # 周一~周五 07:00（周一算上周五数据，周二~周五算前一交易日）
     # ⚠️ 此 schedule 行曾被重构编辑意外吞掉（2026-09-28 gate 上线时），导致 09-29 静默无调度——
     #    任何触碰此装饰器的编辑后必须运行 tests/test_cron_gate.py 的守护测试。
     secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
     # Research placeholders cannot authorize publication; production needs GITHUB_TOKEN.
-    timeout=5 * 3600,  # 统一入口覆盖信号发布与最长 3h 的网站收益更新。
+    timeout=MAIN_TIMEOUT_SECONDS,
     nonpreemptible=True,  # 调度入口：被抢占则当天任务丢失；自身运行时间短，3x 成本增量极小
     # ⚠️ R02 序列化契约：max_containers=1 使 Modal 平台串行执行 daily_cron——08:00 补跑转发
     #    的调用必须排队等待当前运行结束，两个容器永不重叠。严禁提高此值：Volume 没有原子
     #    CAS，跨容器互斥只能由平台单执行保证；若必须并发，先引入外部锁服务并暂停自动发布。
     max_containers=1,
-    retries=modal.Retries(max_retries=5, initial_delay=30, backoff_coefficient=2.0, max_delay=60),  # 平台限制单次延迟≤60s：30/60×4 共 5 次覆盖瞬断；重跑幂等
+    retries=0,  # 08:00 入口负责恢复；不对最长 10.5h 的整条流水线叠加自动重试。
 )
 def daily_cron(allow_lag: bool = False):
     """Publish signals and website returns under the same serialized daily run."""
@@ -4212,9 +4248,7 @@ def _run_daily_signal_cycle(allow_lag: bool = False):
     try:
         cal = _cn_trading_calendar()
     except Exception as e:  # pylint: disable=W0703
-        raise RuntimeError(
-            "CSI1000 Stage-B canonical requires a verified trading calendar"
-        ) from e
+        raise RuntimeError("CSI1000 Stage-B canonical requires a verified trading calendar") from e
 
     # ---- R02: 先恢复/校验中断的 publication，再决定今天的流程 ----
     # 平台已以 max_containers=1 串行化本函数（含 08:00 补跑转发的调用），
@@ -4238,9 +4272,7 @@ def _run_daily_signal_cycle(allow_lag: bool = False):
     try:
         storage.reload()
     except Exception as exc:  # pylint: disable=W0703
-        raise RuntimeError(
-            "volume reload failed; refusing to publish or advance paper state"
-        ) from exc
+        raise RuntimeError("volume reload failed; refusing to publish or advance paper state") from exc
 
     # ---- R02/B06: 严格跨日哈希链（在恢复写入/任何 paper 副作用之前）----
     journal.verify_chain_integrity()
@@ -4259,18 +4291,16 @@ def _run_daily_signal_cycle(allow_lag: bool = False):
             _verify_committed_record(record, journal, headers)
         if candidate["signal_date"] == signal_date:
             _update_code_name_map(headers)
-            return {"status": "RECOVERED", "signal_date": signal_date}
+            from daily_pipeline import existing_publication_result
+
+            return existing_publication_result(record, journal, recovered=True)
 
     # ---- R02/B06: 严格跨日哈希链 + 账户状态锚点校验 ----
     # 必须在任何 paper 状态加载、训练、发布副作用之前执行；任一市场偏离
     # 逐条连续链（含未锚定的现存状态）立即 fail-closed。
     journal.check_paper_state_entry(
         {
-            market: str(
-                _paper_state_path(
-                    market, CANONICAL_PAPER_LINEAGES_BY_MARKET[market]
-                ).relative_to(VOL_ROOT)
-            )
+            market: str(_paper_state_path(market, CANONICAL_PAPER_LINEAGES_BY_MARKET[market]).relative_to(VOL_ROOT))
             for market in ("csi1000", "csi500", "csi300")
         }
     )
@@ -4280,7 +4310,9 @@ def _run_daily_signal_cycle(allow_lag: bool = False):
         _verify_committed_record(committed, journal, headers)
         _update_code_name_map(headers)
         print(f"[cron] {signal_date} publication 已提交且校验一致；无需重复运行")
-        return {"status": "ALREADY_PUBLISHED", "signal_date": signal_date}
+        from daily_pipeline import existing_publication_result
+
+        return existing_publication_result(committed, journal)
 
     early = _early_gate(cal, signal_date)
     if early == "skip":
@@ -4313,8 +4345,7 @@ def _run_daily_signal_cycle(allow_lag: bool = False):
         )
     except Exception as csi_err:  # pylint: disable=W0703
         raise RuntimeError(
-            "CSI1000/500/300 canonical daily_standalone failed: "
-            f"{type(csi_err).__name__}: {str(csi_err)[:300]}"
+            "CSI1000/500/300 canonical daily_standalone failed: " f"{type(csi_err).__name__}: {str(csi_err)[:300]}"
         ) from csi_err
     data_date = res["date"]
     print(f"[cron] 数据日历至 {data_date}")
@@ -4326,37 +4357,29 @@ def _run_daily_signal_cycle(allow_lag: bool = False):
     action, detail = _publication_decision(cal, data_date, signal_date, fallback_days)
     print(f"[cron] {detail}")
     if action == "skip":
-        return
+        return {"status": "SKIPPED_NON_TRADING_DAY", "signal_date": signal_date}
     if action == "raise":
         if _is_one_session_provider_lag(detail):
             if not allow_lag:
                 return _skip_stale_data(signal_date, data_date, detail)
             print("[cron] OPERATOR_OVERRIDE lag=1: publishing ranking only; paper pending stays frozen")
-            detail = (
-                "⚠️ OPERATOR_OVERRIDE lag=1 ranking-only; paper pending frozen: "
-                f"{detail}"
-            )
+            detail = "⚠️ OPERATOR_OVERRIDE lag=1 ranking-only; paper pending frozen: " f"{detail}"
             action = "publish"
         else:
             raise RuntimeError(detail)
 
     # CSI1000 Stage-B winner is stricter than the legacy generic gate:
     # it must preserve the frozen T-close -> T+1-open contract exactly.
-    csi_action, csi_detail = _csi1000_canonical_publication_decision(
-        cal, res["date"], signal_date
-    )
+    csi_action, csi_detail = _csi1000_canonical_publication_decision(cal, res["date"], signal_date)
     print(f"[cron] {csi_detail}")
     if csi_action == "skip":
-        return
+        return {"status": "SKIPPED_NON_TRADING_DAY", "signal_date": signal_date}
     if csi_action == "raise":
         if _is_one_session_provider_lag(csi_detail):
             if not allow_lag:
                 return _skip_stale_data(signal_date, data_date, csi_detail)
             print("[cron] OPERATOR_OVERRIDE lag=1: publishing ranking only; paper pending stays frozen")
-            csi_detail = (
-                "⚠️ OPERATOR_OVERRIDE lag=1 ranking-only; paper pending frozen: "
-                f"{csi_detail}"
-            )
+            csi_detail = "⚠️ OPERATOR_OVERRIDE lag=1 ranking-only; paper pending frozen: " f"{csi_detail}"
             csi_action = "publish"
         else:
             raise RuntimeError(csi_detail)
@@ -4368,22 +4391,17 @@ def _run_daily_signal_cycle(allow_lag: bool = False):
         {"csi1000": res, "csi500": res_csi500, "csi300": res_csi300},
         signal_date,
         cal,
+        allow_lag=allow_lag,
     )
     print(f"[cron] {multi_detail}")
     if multi_action == "skip":
-        return
+        return {"status": "SKIPPED_NON_TRADING_DAY", "signal_date": signal_date}
     if multi_action == "raise":
-        if _is_one_session_provider_lag(multi_detail):
-            if not allow_lag:
-                return _skip_stale_data(signal_date, data_date, multi_detail)
-            print("[cron] OPERATOR_OVERRIDE lag=1: publishing ranking only; paper pending stays frozen")
-            multi_detail = (
-                "⚠️ OPERATOR_OVERRIDE lag=1 ranking-only; paper pending frozen: "
-                f"{multi_detail}"
-            )
-            multi_action = "publish"
-        else:
-            raise RuntimeError(multi_detail)
+        if not allow_lag and _is_one_session_provider_lag(multi_detail):
+            return _skip_stale_data(signal_date, data_date, multi_detail)
+        raise RuntimeError(multi_detail)
+
+    ranking_only = sum(1 for day in cal if data_date < day < signal_date) == 1
 
     # R28: build stateful paper artifacts only after the data/publication gate
     # has passed.  State is proposed now but persisted only after immutable
@@ -4409,10 +4427,9 @@ def _run_daily_signal_cycle(allow_lag: bool = False):
             nd=CANONICAL_ND_BY_MARKET["csi1000"],
             lineage=CANONICAL_PAPER_LINEAGE,
             verified_calendar=cal,
+            ranking_only=ranking_only,
         )
-        files[f"quant/data/signals/{signal_date}_paper_portfolio.json"] = (
-            paper_proposals["csi1000"]["artifact_json"]
-        )
+        files[f"quant/data/signals/{signal_date}_paper_portfolio.json"] = paper_proposals["csi1000"]["artifact_json"]
 
         from csi1000_mvp_contract import build_mvp_metadata, dumps_metadata
 
@@ -4460,10 +4477,11 @@ def _run_daily_signal_cycle(allow_lag: bool = False):
                 nd=CANONICAL_ND_BY_MARKET[extra_mkt],
                 lineage=extra_lineage,
                 verified_calendar=cal,
+                ranking_only=ranking_only,
             )
-            files[f"quant/data/signals/{signal_date}_paper_portfolio_{extra_mkt}.json"] = (
-                paper_proposals[extra_mkt]["artifact_json"]
-            )
+            files[f"quant/data/signals/{signal_date}_paper_portfolio_{extra_mkt}.json"] = paper_proposals[extra_mkt][
+                "artifact_json"
+            ]
             extra_risk = {
                 "st": paper_proposals[extra_mkt]["risk_st"],
                 "execution_st_policy": paper_proposals[extra_mkt]["artifact"]["execution_st_policy"],
@@ -4485,9 +4503,7 @@ def _run_daily_signal_cycle(allow_lag: bool = False):
                 publication_detail=multi_detail,
                 market=extra_mkt,
             )
-            files[f"quant/data/signals/{signal_date}_mvp_metadata_{extra_mkt}.json"] = (
-                dumps_metadata(extra_meta)
-            )
+            files[f"quant/data/signals/{signal_date}_mvp_metadata_{extra_mkt}.json"] = dumps_metadata(extra_meta)
 
     # ---- R02 critical section: freeze intent -> publish -> persist ----
     # Serialized by max_containers=1; no cross-container lock is acquired here.
@@ -4504,7 +4520,15 @@ def _run_daily_signal_cycle(allow_lag: bool = False):
         }
     record = journal.load(signal_date)
     if record is None:
-        journal.prepare(signal_date, invocation_id, files, state_entries)
+        from daily_pipeline import publication_context
+
+        journal.prepare(
+            signal_date,
+            invocation_id,
+            files,
+            state_entries,
+            publication_context=publication_context(files, signal_date),
+        )
         record = journal.load(signal_date)
     if record["stage"] != "VOLUME_COMMITTED":
         _complete_journal_publication(record, journal, headers)
@@ -4513,7 +4537,12 @@ def _run_daily_signal_cycle(allow_lag: bool = False):
 
     _update_code_name_map(headers)
     print(f"[cron] ✅ {signal_date} 三池 canonical 已按 journal 发布并提交")
-    return {"status": "PUBLISHED", "signal_date": signal_date, "data_date": data_date}
+    return {
+        "status": "PUBLISHED_OPERATOR_OVERRIDE" if ranking_only else "PUBLISHED",
+        "signal_date": signal_date,
+        "data_date": data_date,
+        "publication_mode": "OPERATOR_OVERRIDE" if ranking_only else "CANONICAL_T1",
+    }
 
 
 def _github_existing_files(paths, headers):
@@ -4565,8 +4594,7 @@ def _complete_journal_publication(record, journal, headers):
             branch=SIGNAL_BRANCH,
             files={path: files[path] for path in missing},
             message=(
-                f"chore(signal): {record['signal_date']} repair/publish "
-                f"{len(missing)} signal artifacts (cron)"
+                f"chore(signal): {record['signal_date']} repair/publish " f"{len(missing)} signal artifacts (cron)"
             ),
         )
         record = journal.mark(record, "GITHUB_PUBLISHED", github_commit=commit_sha)
@@ -4587,10 +4615,7 @@ def _complete_journal_publication(record, journal, headers):
         os.replace(tmp, p)
     vol.commit()
     journal.mark(record, "VOLUME_COMMITTED")
-    print(
-        f"[cron] ✅ paper state 已按冻结载荷提交: "
-        f"{', '.join(sorted(record['states']))}"
-    )
+    print(f"[cron] ✅ paper state 已按冻结载荷提交: " f"{', '.join(sorted(record['states']))}")
 
 
 def _verify_committed_record(record, journal, headers):
@@ -4615,8 +4640,7 @@ def _verify_committed_record(record, journal, headers):
             branch=SIGNAL_BRANCH,
             files={path: files[path] for path in missing},
             message=(
-                f"chore(signal): {record['signal_date']} restore "
-                f"{len(missing)} missing immutable artifacts (cron)"
+                f"chore(signal): {record['signal_date']} restore " f"{len(missing)} missing immutable artifacts (cron)"
             ),
         )
         print(f"[cron] ⚠️ 已恢复 {len(missing)} 个缺失的已发布文件: {record['signal_date']}")
@@ -4686,7 +4710,7 @@ def _update_code_name_map(headers):
 
 @app.function(
     schedule=modal.Cron("0 8 * * 1-5", timezone="Asia/Shanghai"),  # 周一~周五 08:00 幂等补跑
-    timeout=24 * 3600,  # 含排队等待；转发到唯一的 daily_cron，绝不另开并发写入者。
+    timeout=BACKUP_TIMEOUT_SECONDS,  # 含最多一个主跑的排队等待及本次运行。
     nonpreemptible=True,  # 与 daily_cron 同语义：补跑被抢占会丢当天兜底
     max_containers=1,
 )
@@ -4731,11 +4755,7 @@ def attest_paper_state_bootstrap(note: str = "", approve: bool = False):
     journal = PublicationJournal(storage)
     anchors = {}
     for market in ("csi1000", "csi500", "csi300"):
-        path = str(
-            _paper_state_path(
-                market, CANONICAL_PAPER_LINEAGES_BY_MARKET[market]
-            ).relative_to(VOL_ROOT)
-        )
+        path = str(_paper_state_path(market, CANONICAL_PAPER_LINEAGES_BY_MARKET[market]).relative_to(VOL_ROOT))
         raw = storage.read(path)
         if raw is None:
             print(f"[attest] {market}: state 不存在，跳过（按新建账户处理）")
@@ -4749,8 +4769,11 @@ def attest_paper_state_bootstrap(note: str = "", approve: bool = False):
     )
     for path in sorted(anchors):
         print(f"[attest] anchor {path} sha256={merged[path]['sha256']}")
-    return {"status": "ANCHORED", "anchored": len(anchors),
-            "anchors": {path: merged[path]["sha256"] for path in sorted(anchors)}}
+    return {
+        "status": "ANCHORED",
+        "anchored": len(anchors),
+        "anchors": {path: merged[path]["sha256"] for path in sorted(anchors)},
+    }
 
 
 # ===================== 第六步：重训频率对比实验（freq 5/20/60） =====================
@@ -4781,13 +4804,9 @@ def reanchor_paper_state_backfill(note: str = "", approve: bool = False):
     old = journal.load_anchors()
     current = {}
     for market in ("csi1000", "csi500", "csi300"):
-        path = str(
-            _paper_state_path(market, CANONICAL_PAPER_LINEAGES_BY_MARKET[market]).relative_to(VOL_ROOT)
-        )
+        path = str(_paper_state_path(market, CANONICAL_PAPER_LINEAGES_BY_MARKET[market]).relative_to(VOL_ROOT))
         if journal._path_records(path):
-            raise RuntimeError(
-                f"journal history already exists for {path}; refusing to rewrite its bootstrap anchor"
-            )
+            raise RuntimeError(f"journal history already exists for {path}; refusing to rewrite its bootstrap anchor")
         raw = storage.read(path)
         if raw is None:
             print(f"[reanchor] {market}: state 不存在，跳过")

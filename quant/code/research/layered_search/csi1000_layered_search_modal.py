@@ -546,9 +546,11 @@ if _HAS_MODAL:
             "completed": len(verified),
             "blocked": len(blocked),
             "remaining": len(expected_keys) - len(verified) - len(blocked),
-            "status": "PASS"
-            if len(verified) == len(expected_keys) and not blocked
-            else ("BLOCKED" if blocked else "INCOMPLETE_BATCH"),
+            "status": (
+                "PASS"
+                if len(verified) == len(expected_keys) and not blocked
+                else ("BLOCKED" if blocked else "INCOMPLETE_BATCH")
+            ),
             "blocked_cells": blocked,
             "verified_cells": verified,
             "reuse_attestations": attestations,

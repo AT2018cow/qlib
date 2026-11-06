@@ -4,6 +4,7 @@ ChiNext research code/history is intentionally retained, but scheduled
 production and the public daily-signal UI are paused until a new model passes
 an explicit production gate.
 """
+
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -32,7 +33,7 @@ def test_chinext_hidden_from_public_signal_ui():
     # selectable pool, ChiNext artifact path, or legacy query-route contract.
     assert "_chinext" not in app
     assert "?pool=chinext" not in app.lower()
-    assert "market=\"chinext\"" not in app.lower()
+    assert 'market="chinext"' not in app.lower()
     assert "csi1000" in app.lower()
     assert "中证1000" in app
 
@@ -91,14 +92,15 @@ def test_dashboard_dark_theme_and_responsive_layout():
     assert ".table-wrap { display: none; }" in styles
     assert ".mobile-cards { display: grid;" in styles
     assert ".doc-grid { grid-template-columns: 1fr;" in styles
-    assert 'src="app.js?v=46"' in index
+    assert 'src="app.js?v=47"' in index
 
 
 def test_rebalance_distinguishes_drop1_sells_from_ranked_out_holdings():
     app = (ROOT / "quant" / "website" / "app.js").read_text()
     styles = (ROOT / "quant" / "website" / "styles.css").read_text()
     assert 'id="rebalance"' in app
-    assert "<h3>本期调仓</h3>" in app
+    assert '<h3 id="rebalance-title">本期调仓</h3>' in app
+    assert "历史待执行订单 · 冻结" in app
     assert "pending_orders" in app
     assert "heldOutside" in app
     assert "最多调出 ${model.nd || 1} 只" in app
@@ -284,12 +286,12 @@ def test_favicon_is_valid_svg_and_published_on_both_pages():
 def test_st_free_reference_return_is_explicit_not_certified():
     app = (ROOT / "quant" / "website" / "app.js").read_text()
     method = (ROOT / "quant" / "website" / "methodology.html").read_text()
-    for phrase in ("策略累计收益 · 模拟盘参考",
-                   "历史重建未核实逐日 ST 和开盘成交量",
-                   "ST_IGNORED_REFERENCE_ONLY"):
+    for phrase in ("策略累计收益 · 模拟盘参考", "历史重建未核实逐日 ST 和开盘成交量", "ST_IGNORED_REFERENCE_ONLY"):
         assert phrase in app, f"site missing reference-only disclosure: {phrase}"
-    assert "外部接口连接故障时降级为不考虑 ST" in method
-    assert "研究型参考收益" in method
+    assert "外部接口连接故障时公开标注参考模式" in method
+    assert "历史模拟未核实逐日 ST" in method
+    assert "官方除权日参考价" in method
+    assert "不能视为当时实际发布的记录或实盘成交收益" in method
 
 
 def test_centered_boot_loader_and_consolidated_bottom_governance_card():
@@ -311,7 +313,27 @@ def test_centered_boot_loader_and_consolidated_bottom_governance_card():
     assert 'id="stat-risk"' not in app
 
     # Methodology includes the current per-market full-cycle research metrics
-    for metric in ("13.69%", "-43.28%", "0.615", "5.62%", "-41.92%", "17.72%", "-50.08%", "8.93%", "2.45%", "0.20%", "-7.90%", "12.98%", "6.64%", "18.20%", "-10.94%", "22.16%", "-16.00%", "35.07%", "-26.76%"):
+    for metric in (
+        "13.69%",
+        "-43.28%",
+        "0.615",
+        "5.62%",
+        "-41.92%",
+        "17.72%",
+        "-50.08%",
+        "8.93%",
+        "2.45%",
+        "0.20%",
+        "-7.90%",
+        "12.98%",
+        "6.64%",
+        "18.20%",
+        "-10.94%",
+        "22.16%",
+        "-16.00%",
+        "35.07%",
+        "-26.76%",
+    ):
         assert metric in method, f"methodology missing full-cycle metric: {metric}"
 
     # Pool switcher supports CSI1000, CSI500, and CSI300, defaults to CSI300 and persists selection
@@ -321,8 +343,6 @@ def test_centered_boot_loader_and_consolidated_bottom_governance_card():
     assert "localStorage.getItem(POOL_STORAGE_KEY)" in app
     assert "localStorage.setItem(POOL_STORAGE_KEY, poolKey)" in app
     assert ".pool-switcher {" in styles
-
-
 
 
 def test_public_site_does_not_mention_legacy_strategy_or_account():

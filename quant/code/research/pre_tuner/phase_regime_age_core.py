@@ -57,9 +57,7 @@ def model_age_frame(
         if age < 0:
             raise AssertionError("negative model age")
         if age >= freq:
-            raise ValueError(
-                f"model age outside expected freq window: exec={exec_day} age={age} freq={freq}"
-            )
+            raise ValueError(f"model age outside expected freq window: exec={exec_day} age={age} freq={freq}")
         rows.append(
             {
                 "execution_date": value,
@@ -70,9 +68,7 @@ def model_age_frame(
         )
 
     out = pd.DataFrame(rows).set_index("execution_date")
-    out["model_age_bin"] = out["model_age_sessions"].map(
-        lambda age: _age_bin(int(age), freq)
-    )
+    out["model_age_bin"] = out["model_age_sessions"].map(lambda age: _age_bin(int(age), freq))
     return out
 
 
@@ -110,13 +106,8 @@ def market_regime_frame(
         raise ValueError("invalid benchmark returns")
 
     prior = bench.shift(1)
-    trailing_return = (1.0 + prior).rolling(lookback, min_periods=lookback).apply(
-        np.prod, raw=True
-    ) - 1.0
-    trailing_vol = (
-        prior.rolling(lookback, min_periods=lookback).std(ddof=1)
-        * math.sqrt(annual_sessions)
-    )
+    trailing_return = (1.0 + prior).rolling(lookback, min_periods=lookback).apply(np.prod, raw=True) - 1.0
+    trailing_vol = prior.rolling(lookback, min_periods=lookback).std(ddof=1) * math.sqrt(annual_sessions)
 
     nav = (1.0 + bench).cumprod()
     prior_nav = nav.shift(1)
@@ -279,9 +270,7 @@ def aggregate_gap_by(frame: pd.DataFrame, columns: str | list[str]) -> list[dict
                 "net_log_gap": round(net_gap, 8),
                 "cost_effect_log_gap": round(cost_gap, 8),
                 "net_nav_ratio_gap": round(float(math.exp(net_gap) - 1.0), 8),
-                "mean_daily_net_log_gap": round(
-                    float(group["net_log_gap"].mean()), 10
-                ),
+                "mean_daily_net_log_gap": round(float(group["net_log_gap"].mean()), 10),
             }
         )
         rows.append(row)
@@ -289,9 +278,7 @@ def aggregate_gap_by(frame: pd.DataFrame, columns: str | list[str]) -> list[dict
     negative_total = sum(-row["net_log_gap"] for row in rows if row["net_log_gap"] < 0)
     for row in rows:
         row["negative_gap_share"] = (
-            round((-row["net_log_gap"]) / negative_total, 6)
-            if row["net_log_gap"] < 0 and negative_total
-            else 0.0
+            round((-row["net_log_gap"]) / negative_total, 6) if row["net_log_gap"] < 0 and negative_total else 0.0
         )
     return sorted(rows, key=lambda row: row["net_log_gap"])
 
@@ -337,16 +324,9 @@ def attribution_windows(
             "n_days": int(len(subset)),
             "total_net_log_gap": round(float(subset["net_log_gap"].sum()), 8),
             "total_gross_log_gap": round(float(subset["gross_log_gap"].sum()), 8),
-            "total_cost_effect_log_gap": round(
-                float(subset["cost_effect_log_gap"].sum()), 8
-            ),
-            "by_dimension": {
-                dim: aggregate_gap_by(subset, dim) for dim in dimensions
-            },
-            "interactions": {
-                "x".join(cols): aggregate_gap_by(subset, cols)
-                for cols in interactions
-            },
+            "total_cost_effect_log_gap": round(float(subset["cost_effect_log_gap"].sum()), 8),
+            "by_dimension": {dim: aggregate_gap_by(subset, dim) for dim in dimensions},
+            "interactions": {"x".join(cols): aggregate_gap_by(subset, cols) for cols in interactions},
         }
 
     full = pack(frame)
@@ -356,11 +336,11 @@ def attribution_windows(
         "regime_years": {
             "years": list(regime_years),
             **focused,
-            "share_of_full_net_log_gap": round(
-                focused["total_net_log_gap"] / full["total_net_log_gap"], 6
-            )
-            if full["total_net_log_gap"]
-            else None,
+            "share_of_full_net_log_gap": (
+                round(focused["total_net_log_gap"] / full["total_net_log_gap"], 6)
+                if full["total_net_log_gap"]
+                else None
+            ),
         },
     }
 
@@ -369,36 +349,20 @@ def benchmark_regime_by_year(regime: pd.DataFrame) -> list[dict]:
     """Compact annual summary of the benchmark state variables."""
     rows = []
     for year, group in regime.groupby(regime.index.year):
-        valid = group.dropna(
-            subset=["trailing_return_20", "trailing_vol_20_ann", "prior_drawdown"]
-        )
+        valid = group.dropna(subset=["trailing_return_20", "trailing_vol_20_ann", "prior_drawdown"])
         if valid.empty:
             continue
         rows.append(
             {
                 "year": int(year),
                 "n_days": int(len(valid)),
-                "mean_trailing_return_20": round(
-                    float(valid["trailing_return_20"].mean()), 8
-                ),
-                "mean_trailing_vol_20_ann": round(
-                    float(valid["trailing_vol_20_ann"].mean()), 8
-                ),
-                "mean_prior_drawdown": round(
-                    float(valid["prior_drawdown"].mean()), 8
-                ),
-                "stress_day_share": round(
-                    float((valid["stress_regime"] == "stress").mean()), 6
-                ),
-                "downtrend_day_share": round(
-                    float((valid["trend_regime"] == "down_5pct_plus").mean()), 6
-                ),
-                "high_vol_day_share": round(
-                    float((valid["vol_regime"] == "high_ge30").mean()), 6
-                ),
-                "deep_drawdown_day_share": round(
-                    float((valid["drawdown_regime"] == "deep_ge20").mean()), 6
-                ),
+                "mean_trailing_return_20": round(float(valid["trailing_return_20"].mean()), 8),
+                "mean_trailing_vol_20_ann": round(float(valid["trailing_vol_20_ann"].mean()), 8),
+                "mean_prior_drawdown": round(float(valid["prior_drawdown"].mean()), 8),
+                "stress_day_share": round(float((valid["stress_regime"] == "stress").mean()), 6),
+                "downtrend_day_share": round(float((valid["trend_regime"] == "down_5pct_plus").mean()), 6),
+                "high_vol_day_share": round(float((valid["vol_regime"] == "high_ge30").mean()), 6),
+                "deep_drawdown_day_share": round(float((valid["drawdown_regime"] == "deep_ge20").mean()), 6),
             }
         )
     return rows
@@ -415,37 +379,19 @@ def decision_summary(pairwise_windows: dict[str, dict]) -> dict:
         age_contribution = min(age_rows, key=lambda row: row["net_log_gap"])
         age_intensity = min(age_rows, key=lambda row: row["mean_daily_net_log_gap"])
         stress_contribution = min(stress_rows, key=lambda row: row["net_log_gap"])
-        stress_intensity = min(
-            stress_rows, key=lambda row: row["mean_daily_net_log_gap"]
-        )
+        stress_intensity = min(stress_rows, key=lambda row: row["mean_daily_net_log_gap"])
 
         out[str(comparator)] = {
-            "regime_year_share_of_full_net_gap": target[
-                "share_of_full_net_log_gap"
-            ],
+            "regime_year_share_of_full_net_gap": target["share_of_full_net_log_gap"],
             "dominant_negative_age_state": age_contribution["relative_age_state"],
-            "dominant_negative_age_state_net_log_gap": age_contribution[
-                "net_log_gap"
-            ],
-            "dominant_negative_age_state_share": age_contribution[
-                "negative_gap_share"
-            ],
+            "dominant_negative_age_state_net_log_gap": age_contribution["net_log_gap"],
+            "dominant_negative_age_state_share": age_contribution["negative_gap_share"],
             "worst_mean_daily_age_state": age_intensity["relative_age_state"],
-            "worst_mean_daily_age_state_gap": age_intensity[
-                "mean_daily_net_log_gap"
-            ],
-            "dominant_negative_stress_state": stress_contribution[
-                "stress_regime"
-            ],
-            "dominant_negative_stress_state_net_log_gap": stress_contribution[
-                "net_log_gap"
-            ],
-            "dominant_negative_stress_state_share": stress_contribution[
-                "negative_gap_share"
-            ],
+            "worst_mean_daily_age_state_gap": age_intensity["mean_daily_net_log_gap"],
+            "dominant_negative_stress_state": stress_contribution["stress_regime"],
+            "dominant_negative_stress_state_net_log_gap": stress_contribution["net_log_gap"],
+            "dominant_negative_stress_state_share": stress_contribution["negative_gap_share"],
             "worst_mean_daily_stress_state": stress_intensity["stress_regime"],
-            "worst_mean_daily_stress_state_gap": stress_intensity[
-                "mean_daily_net_log_gap"
-            ],
+            "worst_mean_daily_stress_state_gap": stress_intensity["mean_daily_net_log_gap"],
         }
     return out

@@ -63,11 +63,10 @@ jobs:
       - name: Validate website JavaScript
         run: node --check quant/website/app.js
       - name: Frontend behavior and security tests (no npm dependencies)
-        run: >-
-          node --test
-          quant/tests/test_publication_e2e.cjs
-          quant/tests/test_sparkline_frontend.cjs
-          quant/tests/test_website_security.cjs
+        run: |
+          for test_file in quant/tests/*.cjs; do
+            node "$test_file"
+          done
       - name: Run core contract, publication, security and CLI tests
         run: >-
           python -m pytest -q
@@ -129,3 +128,28 @@ jobs:
           quant/tests/test_csi1000_l3_runtime_guards.py
           quant/tests/test_csi1000_l4_final.py
           quant/tests/test_csi1000_layered_search_replay.py
+
+  all-quant-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MLFLOW_ALLOW_FILE_STORE: "true"
+      MLFLOW_DISABLE_AGENT_HINT: "1"
+      SETUPTOOLS_SCM_PRETEND_VERSION: "0.0.0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install build prerequisites
+        run: >-
+          python -m pip install --disable-pip-version-check
+          "numpy==1.26.4" "pandas==2.2.3" "pyarrow==19.0.1"
+          cython setuptools setuptools-scm wheel pytest pytest-subtests "modal==1.6.1"
+      - name: Build Qlib extensions and install the checked out code
+        run: |
+          make prerequisite
+          python -m pip install --disable-pip-version-check --no-build-isolation -e .
+      - name: Discover every extension regression test
+        run: python -m pytest -q quant/tests

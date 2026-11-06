@@ -9,6 +9,7 @@ The full run requires the passing baseline/phase-0 double-run preflight produced
 under the exact same Stage-B manifest. Candidate selection is frozen in
 csi1000_stage_b_core.py; this runner does not search or mutate candidates.
 """
+
 from __future__ import annotations
 
 from bisect import bisect_left
@@ -101,8 +102,7 @@ image = (
             or any(part in str(path) for part in (".venv", "mlruns", "__pycache__"))
             or str(path).startswith(".git/")
             or "/.git/" in str(path)
-            or str(path)
-            in ("modal_qlib_cn_a10g.py", "freq_experiment.py", "csi1000_stage_b.py")
+            or str(path) in ("modal_qlib_cn_a10g.py", "freq_experiment.py", "csi1000_stage_b.py")
         ),
     )
     .run_commands(
@@ -165,9 +165,7 @@ def _load_task(model_params: dict | None = None) -> dict:
         apply_lgb_reproducibility(cfg)
     actual_threads = int(cfg["task"]["model"]["kwargs"].get("num_threads", -1))
     if actual_threads != MODEL_NUM_THREADS:
-        raise RuntimeError(
-            f"Stage-B LightGBM num_threads drift: {actual_threads} != {MODEL_NUM_THREADS}"
-        )
+        raise RuntimeError(f"Stage-B LightGBM num_threads drift: {actual_threads} != {MODEL_NUM_THREADS}")
     return cfg
 
 
@@ -354,10 +352,7 @@ def _report_compare_payload(report) -> dict:
 
     ordered = report.sort_index()
     if isinstance(ordered.index, pd.MultiIndex):
-        index_values = [
-            [str(part) for part in value]
-            for value in ordered.index.tolist()
-        ]
+        index_values = [[str(part) for part in value] for value in ordered.index.tolist()]
     else:
         index_values = [str(value) for value in ordered.index.tolist()]
 
@@ -367,15 +362,9 @@ def _report_compare_payload(report) -> dict:
         key = str(column)
         series = ordered[column]
         if pd.api.types.is_numeric_dtype(series.dtype):
-            numeric[key] = [
-                float(value)
-                for value in series.to_numpy(dtype=float, na_value=float("nan"))
-            ]
+            numeric[key] = [float(value) for value in series.to_numpy(dtype=float, na_value=float("nan"))]
         else:
-            nonnumeric[key] = [
-                None if pd.isna(value) else str(value)
-                for value in series.tolist()
-            ]
+            nonnumeric[key] = [None if pd.isna(value) else str(value) for value in series.tolist()]
     return {
         "index": index_values,
         "index_names": [str(name) for name in ordered.index.names],
@@ -393,19 +382,14 @@ def _verify_phase_payload_artifacts(payload: dict) -> dict:
     report = _load_verified_report_artifact(payload["report_artifact"])
 
     metrics = _phase_metrics(report)
-    expected_metrics = payload.get("phase_metrics") or {
-        key: payload.get(key) for key in metrics
-    }
+    expected_metrics = payload.get("phase_metrics") or {key: payload.get(key) for key in metrics}
     mismatches = [
         key
         for key, value in metrics.items()
-        if key not in expected_metrics
-        or not _metric_values_match(expected_metrics.get(key), value)
+        if key not in expected_metrics or not _metric_values_match(expected_metrics.get(key), value)
     ]
     if mismatches:
-        raise RuntimeError(
-            f"Stage-B committed phase metric mismatch: {mismatches}"
-        )
+        raise RuntimeError(f"Stage-B committed phase metric mismatch: {mismatches}")
 
     result_path = Path(payload["result_path"])
     saved = _load_json(result_path)
@@ -426,14 +410,9 @@ def _verify_phase_payload_artifacts(payload: dict) -> dict:
         "report_artifact",
         "result_path",
     )
-    drift = [
-        key for key in persisted_fields
-        if saved.get(key) != payload.get(key)
-    ]
+    drift = [key for key in persisted_fields if saved.get(key) != payload.get(key)]
     if drift:
-        raise RuntimeError(
-            f"Stage-B committed phase result drift {result_path}: {drift}"
-        )
+        raise RuntimeError(f"Stage-B committed phase result drift {result_path}: {drift}")
 
     return {
         "passed": True,
@@ -463,9 +442,7 @@ def _run_signal_backtest(signal):
     # Passing codes=MARKET instead truncates quotes when a holding leaves the
     # index, making it impossible to sell and freezing its end-of-day marks.
     # This path changes future replays; frozen Stage-B artifacts stay immutable.
-    quote_codes = execution_quote_codes(
-        MARKET, RESERVED_EXECUTION_START, RESERVED_EXECUTION_END
-    )
+    quote_codes = execution_quote_codes(MARKET, RESERVED_EXECUTION_START, RESERVED_EXECUTION_END)
     executor = {
         "class": "SimulatorExecutor",
         "module_path": "qlib.backtest.executor",
@@ -550,9 +527,7 @@ def _runtime_manifest(calendar: list[str]) -> dict:
     base_model = _load_task(None)["task"]["model"]
     frozen_candidates = stage_b_candidates()
     candidate_model_config_sha256 = {
-        candidate["candidate_id"]: _stable_json_sha256(
-            _load_task(candidate["model_params"])["task"]["model"]
-        )
+        candidate["candidate_id"]: _stable_json_sha256(_load_task(candidate["model_params"])["task"]["model"])
         for candidate in frozen_candidates
     }
 
@@ -564,9 +539,7 @@ def _runtime_manifest(calendar: list[str]) -> dict:
         "pandas": version("pandas"),
         "modal": version("modal"),
     }
-    current_provider_fingerprint = provider_training_fingerprint(
-        DATA_DIR, MARKET, RESERVED_EXECUTION_END
-    )
+    current_provider_fingerprint = provider_training_fingerprint(DATA_DIR, MARKET, RESERVED_EXECUTION_END)
     current_base_model_sha = _stable_json_sha256(base_model)
     current_strategy_sha = hashlib.sha256(strategy_path.read_bytes()).hexdigest()
     stage_a_manifest = expanded.get("manifest") or {}
@@ -574,14 +547,10 @@ def _runtime_manifest(calendar: list[str]) -> dict:
     if current_provider_fingerprint != stage_a_manifest.get("provider_fingerprint"):
         raise RuntimeError("Stage-B provider fingerprint differs from frozen Stage-A snapshot")
     if current_base_model_sha != stage_a_manifest.get("base_model_config_sha256"):
-        raise RuntimeError(
-            "Stage-B unoverlaid base model config differs from frozen Stage-A base config"
-        )
+        raise RuntimeError("Stage-B unoverlaid base model config differs from frozen Stage-A base config")
     if dict(LGB_REPRO_PARAMS) != (stage_a_manifest.get("lgb_repro_params") or {}):
         raise RuntimeError("Stage-B LightGBM reproducibility controls drifted from Stage A")
-    if current_strategy_sha != stage_a_manifest.get(
-        "deterministic_strategy_source_sha256"
-    ):
+    if current_strategy_sha != stage_a_manifest.get("deterministic_strategy_source_sha256"):
         raise RuntimeError("Stage-B deterministic strategy source drifted from Stage A")
     for package in ("python", "pyqlib", "lightgbm", "numpy", "pandas"):
         if current_runtime[package] != (stage_a_manifest.get("runtime") or {}).get(package):
@@ -619,9 +588,7 @@ def _runtime_manifest(calendar: list[str]) -> dict:
         },
         "runtime": current_runtime,
         "runner_source_sha256": (
-            hashlib.sha256(source_path.read_bytes()).hexdigest()
-            if source_path.is_file()
-            else "unavailable"
+            hashlib.sha256(source_path.read_bytes()).hexdigest() if source_path.is_file() else "unavailable"
         ),
         "core_source_sha256": hashlib.sha256(core_path.read_bytes()).hexdigest(),
         "deterministic_strategy_source_sha256": current_strategy_sha,
@@ -653,8 +620,7 @@ def _worker_assert_snapshot(expected: str) -> dict:
         raise RuntimeError("Stage-B provider snapshot manifest missing")
     if manifest.get("snapshot_token") != expected:
         raise RuntimeError(
-            f"Stage-B snapshot mismatch: expected={expected} "
-            f"actual={manifest.get('snapshot_token')}"
+            f"Stage-B snapshot mismatch: expected={expected} " f"actual={manifest.get('snapshot_token')}"
         )
     return manifest
 
@@ -668,8 +634,7 @@ def _safe_namespace(namespace: str | None) -> Path | None:
     return path
 
 
-def _chunk_dir(snapshot: str, candidate_id: str, phase: int, retrain_asof: str,
-               namespace: str | None = None) -> Path:
+def _chunk_dir(snapshot: str, candidate_id: str, phase: int, retrain_asof: str, namespace: str | None = None) -> Path:
     root = ARTIFACT_ROOT / snapshot
     safe = _safe_namespace(namespace)
     if safe is not None:
@@ -677,8 +642,7 @@ def _chunk_dir(snapshot: str, candidate_id: str, phase: int, retrain_asof: str,
     return root / "chunks" / candidate_id / f"phase{phase:02d}" / retrain_asof
 
 
-def _phase_dir(snapshot: str, candidate_id: str, phase: int,
-               namespace: str | None = None) -> Path:
+def _phase_dir(snapshot: str, candidate_id: str, phase: int, namespace: str | None = None) -> Path:
     root = ARTIFACT_ROOT / snapshot
     safe = _safe_namespace(namespace)
     if safe is not None:
@@ -742,9 +706,7 @@ def prepare_stage_b():
     vol.reload()
     marker = DATA_DIR / ".chenditc"
     if not marker.is_file():
-        raise RuntimeError(
-            "provider snapshot is missing; Stage B must not download/refresh data"
-        )
+        raise RuntimeError("provider snapshot is missing; Stage B must not download/refresh data")
     calendar = read_trading_calendar(DATA_DIR)
     tail = validate_reserved_tail(calendar)
     manifest = _runtime_manifest(calendar)
@@ -771,19 +733,20 @@ def _valid_chunk_result(payload: dict, args: dict) -> bool:
 
 
 def _load_reusable_chunk(args: dict, manifest: dict):
-    result_path = _chunk_dir(
-        args["snapshot_token"],
-        args["candidate"]["candidate_id"],
-        args["phase"],
-        args["retrain_asof"],
-        args.get("artifact_namespace"),
-    ) / "result.json"
+    result_path = (
+        _chunk_dir(
+            args["snapshot_token"],
+            args["candidate"]["candidate_id"],
+            args["phase"],
+            args["retrain_asof"],
+            args.get("artifact_namespace"),
+        )
+        / "result.json"
+    )
     payload = _load_json(result_path)
     if not _valid_chunk_result(payload, args):
         return None
-    expected_model_sha = (manifest.get("candidate_model_config_sha256") or {}).get(
-        args["candidate"]["candidate_id"]
-    )
+    expected_model_sha = (manifest.get("candidate_model_config_sha256") or {}).get(args["candidate"]["candidate_id"])
     if not expected_model_sha or payload.get("model_config_sha256") != expected_model_sha:
         return None
     _load_verified_series_artifact(payload["prediction_artifact"])
@@ -831,9 +794,7 @@ def stage_b_retrain_worker(args: dict):
     dataset_cfg = cfg["task"]["dataset"]["kwargs"]
     segments = dataset_cfg["segments"]
     handler = dataset_cfg["handler"]["kwargs"]
-    train_end = last_matured_sample(
-        calendar, calendar[valid_start_i], LABEL_HORIZON
-    )
+    train_end = last_matured_sample(calendar, calendar[valid_start_i], LABEL_HORIZON)
     segments["train"] = [TRAIN_START, train_end]
     segments["valid"] = [calendar[valid_start_i], calendar[valid_end_i]]
     segments["test"] = [args["retrain_asof"], args["signal_end"]]
@@ -844,17 +805,11 @@ def stage_b_retrain_worker(args: dict):
     purge_cfg_splits(cfg, calendar, horizon=LABEL_HORIZON)
 
     model_config_sha256 = _stable_json_sha256(cfg["task"]["model"])
-    expected_model_sha256 = (
-        manifest.get("candidate_model_config_sha256") or {}
-    ).get(candidate["candidate_id"])
+    expected_model_sha256 = (manifest.get("candidate_model_config_sha256") or {}).get(candidate["candidate_id"])
     if not expected_model_sha256:
-        raise RuntimeError(
-            f"Stage-B manifest is missing candidate model hash: {candidate['candidate_id']}"
-        )
+        raise RuntimeError(f"Stage-B manifest is missing candidate model hash: {candidate['candidate_id']}")
     if model_config_sha256 != expected_model_sha256:
-        raise RuntimeError(
-            f"Stage-B candidate model config drift: {candidate['candidate_id']}"
-        )
+        raise RuntimeError(f"Stage-B candidate model config drift: {candidate['candidate_id']}")
     model = init_instance_by_config(cfg["task"]["model"], accept_types=Model)
     dataset = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
     model.fit(dataset)
@@ -876,9 +831,7 @@ def stage_b_retrain_worker(args: dict):
         args["retrain_asof"],
         args.get("artifact_namespace"),
     )
-    prediction_artifact = _write_series_artifact(
-        prediction, root / "prediction.parquet"
-    )
+    prediction_artifact = _write_series_artifact(prediction, root / "prediction.parquet")
     best_iteration = None
     if getattr(model, "model", None) is not None:
         value = getattr(model.model, "best_iteration", None)
@@ -899,9 +852,7 @@ def stage_b_retrain_worker(args: dict):
         "prediction_artifact": prediction_artifact,
     }
     root.mkdir(parents=True, exist_ok=True)
-    (root / "result.json").write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False)
-    )
+    (root / "result.json").write_text(json.dumps(payload, indent=2, ensure_ascii=False))
     vol.commit()
     return payload
 
@@ -920,9 +871,7 @@ def _assemble_phase_signal(chunk_results: list[dict], calendar: list[str]):
                 "signal_end": row["signal_end"],
                 "best_iteration": row.get("best_iteration"),
                 "model_config_sha256": row.get("model_config_sha256"),
-                "prediction_content_sha256": row["prediction_artifact"][
-                    "content_sha256"
-                ],
+                "prediction_content_sha256": row["prediction_artifact"]["content_sha256"],
                 "source": row.get("source"),
             }
         )
@@ -934,21 +883,14 @@ def _assemble_phase_signal(chunk_results: list[dict], calendar: list[str]):
 
     dates = signal.index.get_level_values(0)
     date_text = dates.astype(str).str[:10]
-    keep = (date_text >= RESERVED_SIGNAL_ANCHOR) & (
-        date_text < RESERVED_EXECUTION_END
-    )
+    keep = (date_text >= RESERVED_SIGNAL_ANCHOR) & (date_text < RESERVED_EXECUTION_END)
     signal = signal[keep].sort_index()
     expected_start = bisect_left(calendar, RESERVED_SIGNAL_ANCHOR)
     expected_end = bisect_left(calendar, RESERVED_EXECUTION_END)
     expected_days = calendar[expected_start:expected_end]
-    actual_days = sorted(
-        {str(value)[:10] for value in signal.index.get_level_values(0).unique()}
-    )
+    actual_days = sorted({str(value)[:10] for value in signal.index.get_level_values(0).unique()})
     if actual_days != expected_days:
-        raise RuntimeError(
-            f"Stage-B signal-day coverage mismatch: "
-            f"{len(actual_days)} != {len(expected_days)}"
-        )
+        raise RuntimeError(f"Stage-B signal-day coverage mismatch: " f"{len(actual_days)} != {len(expected_days)}")
     return signal, metadata
 
 
@@ -967,12 +909,15 @@ def _valid_phase_result(payload: dict, args: dict) -> bool:
 
 
 def _load_reusable_phase(args: dict):
-    result_path = _phase_dir(
-        args["snapshot_token"],
-        args["candidate"]["candidate_id"],
-        args["phase"],
-        args.get("artifact_namespace"),
-    ) / "result.json"
+    result_path = (
+        _phase_dir(
+            args["snapshot_token"],
+            args["candidate"]["candidate_id"],
+            args["phase"],
+            args.get("artifact_namespace"),
+        )
+        / "result.json"
+    )
     payload = _load_json(result_path)
     if not _valid_phase_result(payload, args):
         return None
@@ -1020,9 +965,7 @@ def stage_b_phase_worker(args: dict):
     )
     result_path = root / "result.json"
     report_compare_payload = (
-        _report_compare_payload(report)
-        if args.get("return_report_compare_payload", False)
-        else None
+        _report_compare_payload(report) if args.get("return_report_compare_payload", False) else None
     )
 
     last_persistence_error = None
@@ -1032,9 +975,7 @@ def stage_b_phase_worker(args: dict):
         # retraining any LightGBM model or rerunning the backtest.
         signal_artifact = _write_series_artifact(signal, root / "signal.parquet")
         report_artifact = _write_report_artifact(report, root / "report.parquet")
-        decision_artifact = _write_decision_artifact(
-            decision_audit, root / "decisions.json"
-        )
+        decision_artifact = _write_decision_artifact(decision_audit, root / "decisions.json")
         payload = {
             "protocol": STAGE_B_PROTOCOL_VERSION,
             "snapshot_token": args["snapshot_token"],
@@ -1054,9 +995,7 @@ def stage_b_phase_worker(args: dict):
             **metrics,
         }
         root.mkdir(parents=True, exist_ok=True)
-        result_path.write_text(
-            json.dumps(payload, indent=2, ensure_ascii=False)
-        )
+        result_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False))
         vol.commit()
         vol.reload()
 
@@ -1073,8 +1012,7 @@ def stage_b_phase_worker(args: dict):
                 )
                 continue
             raise RuntimeError(
-                "Stage-B phase artifacts failed commit/reload verification "
-                "after two publish attempts"
+                "Stage-B phase artifacts failed commit/reload verification " "after two publish attempts"
             ) from exc
 
         returned = dict(payload)
@@ -1086,9 +1024,7 @@ def stage_b_phase_worker(args: dict):
             returned["_report_compare_payload"] = report_compare_payload
         return returned
 
-    raise RuntimeError(
-        f"unreachable Stage-B phase persistence failure: {last_persistence_error}"
-    )
+    raise RuntimeError(f"unreachable Stage-B phase persistence failure: {last_persistence_error}")
 
 
 def _numeric_report_diagnostics(left, right):
@@ -1157,28 +1093,20 @@ def _compare_preflight_phase_results(a: dict, b: dict) -> dict:
         raise RuntimeError("Stage-B preflight prediction-chunk lineage mismatch")
     if a["signal_artifact"]["content_sha256"] != b["signal_artifact"]["content_sha256"]:
         raise RuntimeError("Stage-B preflight assembled signal mismatch")
-    if (
-        a["decision_artifact"]["content_sha256"]
-        != b["decision_artifact"]["content_sha256"]
-    ):
+    if a["decision_artifact"]["content_sha256"] != b["decision_artifact"]["content_sha256"]:
         raise RuntimeError("Stage-B preflight decision lineage mismatch")
 
     report_a = a.get("_report_compare_payload")
     report_b = b.get("_report_compare_payload")
     if not report_a or not report_b:
-        raise RuntimeError(
-            "Stage-B preflight is missing in-memory report comparison payload"
-        )
+        raise RuntimeError("Stage-B preflight is missing in-memory report comparison payload")
 
     detail = {
         "passed": True,
         "prediction_chunks_exact": True,
         "signal_exact": True,
         "decision_exact": True,
-        "report_content_exact": (
-            a["report_artifact"]["content_sha256"]
-            == b["report_artifact"]["content_sha256"]
-        ),
+        "report_content_exact": (a["report_artifact"]["content_sha256"] == b["report_artifact"]["content_sha256"]),
         "report_comparison_source": "phase_worker_return_payload_v1",
         "phase_artifacts_durable": bool(
             (a.get("durability_gate") or {}).get("passed")
@@ -1227,17 +1155,11 @@ def _compare_preflight_phase_results(a: dict, b: dict) -> dict:
         detail["canonical_metrics_match"] = False
         detail["errors"].append("canonical_metric_key_mismatch")
     else:
-        mismatches = [
-            key
-            for key in metrics_a
-            if not _metric_values_match(metrics_a[key], metrics_b[key])
-        ]
+        mismatches = [key for key in metrics_a if not _metric_values_match(metrics_a[key], metrics_b[key])]
         if mismatches:
             detail["passed"] = False
             detail["canonical_metrics_match"] = False
-            detail["errors"].append(
-                "canonical_metric_mismatch:" + ",".join(mismatches)
-            )
+            detail["errors"].append("canonical_metric_mismatch:" + ",".join(mismatches))
     detail["canonical_metrics"] = metrics_b
     if not detail["phase_artifacts_durable"]:
         detail["passed"] = False
@@ -1252,9 +1174,7 @@ def _preflight_path(snapshot_token: str) -> Path:
 def _load_passing_preflight(snapshot_token: str) -> dict:
     payload = _load_json(_preflight_path(snapshot_token))
     if not payload or not payload.get("passed"):
-        raise RuntimeError(
-            "Stage-B full run requires a passing preflight under the same manifest"
-        )
+        raise RuntimeError("Stage-B full run requires a passing preflight under the same manifest")
     if payload.get("snapshot_token") != snapshot_token:
         raise RuntimeError("Stage-B preflight snapshot mismatch")
     return payload
@@ -1344,9 +1264,7 @@ def _run_phase_verified(args: dict, *, attempts: int = 2) -> dict:
                     f"error={exc}"
                 )
                 continue
-            raise RuntimeError(
-                "Stage-B phase artifacts were not driver-visible after repair"
-            ) from exc
+            raise RuntimeError("Stage-B phase artifacts were not driver-visible after repair") from exc
     raise RuntimeError(f"unreachable phase verification failure: {last_error}")
 
 
@@ -1354,8 +1272,15 @@ def _public_phase_payload(row: dict) -> dict:
     return {key: value for key, value in row.items() if not key.startswith("_")}
 
 
-def _jobs_for(candidate: dict, phase: int, calendar: list[str], snapshot: str,
-              *, namespace: str | None = None, resume: bool = True) -> list[dict]:
+def _jobs_for(
+    candidate: dict,
+    phase: int,
+    calendar: list[str],
+    snapshot: str,
+    *,
+    namespace: str | None = None,
+    resume: bool = True,
+) -> list[dict]:
     jobs = []
     for geometry in build_phase_jobs(calendar, phase):
         jobs.append(
@@ -1423,11 +1348,13 @@ def stage_b_driver(
                 f"cpu={worker_cpu_value} memory={worker_memory_value}MiB "
                 f"worker cap={worker_cap}"
             )
-            chunks = list(stage_b_retrain_worker.with_options(
-                cpu=worker_cpu_value,
-                memory=worker_memory_value,
-                max_containers=worker_cap,
-            ).map(jobs))
+            chunks = list(
+                stage_b_retrain_worker.with_options(
+                    cpu=worker_cpu_value,
+                    memory=worker_memory_value,
+                    max_containers=worker_cap,
+                ).map(jobs)
+            )
             chunks = _verify_and_repair_chunk_batch(
                 chunks,
                 jobs,
@@ -1449,13 +1376,9 @@ def stage_b_driver(
             )
             repeat_phase_results.append(phase)
 
-        comparison = _compare_preflight_phase_results(
-            repeat_phase_results[0], repeat_phase_results[1]
-        )
+        comparison = _compare_preflight_phase_results(repeat_phase_results[0], repeat_phase_results[1])
         if not comparison["passed"]:
-            raise RuntimeError(
-                f"Stage-B preflight semantic report gate failed: {comparison['errors']}"
-            )
+            raise RuntimeError(f"Stage-B preflight semantic report gate failed: {comparison['errors']}")
         gate = {
             "passed": True,
             "gate_version": "stage_b_baseline_phase0_double_run_v1",
@@ -1538,9 +1461,7 @@ def stage_b_driver(
             expected = len(jobs_by_lineage[key])
             chunks = by_key.get(key) or []
             if len(chunks) != expected:
-                raise RuntimeError(
-                    f"Stage-B lineage incomplete {key}: {len(chunks)} != {expected}"
-                )
+                raise RuntimeError(f"Stage-B lineage incomplete {key}: {len(chunks)} != {expected}")
             phase_jobs.append(
                 {
                     "candidate": candidate,
@@ -1556,10 +1477,7 @@ def stage_b_driver(
     phase_results = list(stage_b_phase_worker.map(phase_jobs))
     vol.reload()
 
-    phase_job_by_key = {
-        (job["candidate"]["candidate_id"], int(job["phase"])): job
-        for job in phase_jobs
-    }
+    phase_job_by_key = {(job["candidate"]["candidate_id"], int(job["phase"])): job for job in phase_jobs}
     verified_phase_results = []
     for row in phase_results:
         key = (row["candidate_id"], int(row["phase"]))
@@ -1571,9 +1489,7 @@ def stage_b_driver(
                 **phase_job_by_key[key],
                 "resume": False,
             }
-            verified_phase_results.append(
-                _run_phase_verified(repair_args)
-            )
+            verified_phase_results.append(_run_phase_verified(repair_args))
     phase_results = verified_phase_results
 
     # The passing repeat_b is the frozen baseline phase-0 confirmation result.
@@ -1584,17 +1500,11 @@ def stage_b_driver(
     results_by_candidate = []
     for candidate in candidates:
         rows = sorted(
-            [
-                _public_phase_payload(row)
-                for row in phase_results
-                if row["candidate_id"] == candidate["candidate_id"]
-            ],
+            [_public_phase_payload(row) for row in phase_results if row["candidate_id"] == candidate["candidate_id"]],
             key=lambda row: int(row["phase"]),
         )
         if [int(row["phase"]) for row in rows] != list(REFERENCE_PHASES):
-            raise RuntimeError(
-                f"Stage-B candidate phase set incomplete: {candidate['candidate_id']}"
-            )
+            raise RuntimeError(f"Stage-B candidate phase set incomplete: {candidate['candidate_id']}")
         results_by_candidate.append(
             {
                 "candidate_id": candidate["candidate_id"],
@@ -1625,20 +1535,14 @@ def stage_b_driver(
         },
         "candidate_count": len(candidates),
         "phase_count": len(REFERENCE_PHASES),
-        "ranking_contract": __import__(
-            "csi1000_stage_b_core"
-        ).phase_ranking_contract(),
+        "ranking_contract": __import__("csi1000_stage_b_core").phase_ranking_contract(),
         "ranked_candidates": ranked,
-        "reserved_tail_policy": (
-            "final_confirmation_only_do_not_retune_on_stage_b_results"
-        ),
+        "reserved_tail_policy": ("final_confirmation_only_do_not_retune_on_stage_b_results"),
         "execution_resources": execution_resources,
     }
     root = ARTIFACT_ROOT / snapshot
     root.mkdir(parents=True, exist_ok=True)
-    (root / "summary.json").write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False)
-    )
+    (root / "summary.json").write_text(json.dumps(payload, indent=2, ensure_ascii=False))
     vol.commit()
     return payload
 

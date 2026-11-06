@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-11-06",
+  "default_historical_status": "LEGACY_EXECUTION_CONTRACT_NOT_REPLAYED",
+  "legacy_roots": [
+    "quant/data/strategy_catalog",
+    "quant/data/round1_stage_ab",
+    "quant/data/round1_audit_evidence",
+    "quant/data/round2_layered_search",
+    "quant/data/pre_tuner_experiments",
+    "quant/data/csi300_csi500_research",
+    "quant/data/current_window_backtest"
+  ],
+  "verified_scope_references": [
+    {
+      "evidence": "quant/docs/07-code-review/2026-11-06-g1-execution-correction.json",
+      "scope": "12 base execution units; only cells explicitly identified by this receipt",
+      "status": "SCOPED_EXECUTION_REPLAY_REFERENCE_ONLY"
+    },
+    {
+      "evidence": "quant/docs/07-code-review/2026-11-06-extension-repair-acceptance.md",
+      "scope": "22 overlay or portfolio units on corrected inputs; not all historical candidates",
+      "status": "SCOPED_OVERLAY_RECOMPUTATION_REFERENCE_ONLY"
+    },
+    {
+      "evidence": "quant/docs/07-code-review/2026-11-06-prelive-revalidation-results.md",
+      "scope": "72 registered scenarios; use each run's own frozen source and provider receipt",
+      "status": "REGISTERED_REPLAY_REFERENCE_ONLY"
+    },
+    {
+      "evidence": "quant/data/daily_schedule/20261106/source-manifest.json",
+      "scope": "three October 8 1M website accounts, through November 4; source bound, with raw session ledgers",
+      "status": "SOURCE_BOUND_CAUSAL_SIMULATION_REFERENCE_ONLY"
+    }
+  ],
+  "arithmetic_audit_is_execution_replay": false,
+  "all_historical_candidates_rerun": false,
+  "production_profile_changed_by_this_review": false,
+  "official_ex_right_reference_prices_verified": false,
+  "historical_daily_st_verified": false,
+  "auction_liquidity_verified": false,
+  "broker_fills_certified": false
+}

@@ -80,10 +80,7 @@ class CSI1000TunerCoreTests(unittest.TestCase):
         folds = [_metric_row(f"fold{i + 1}", rel) for i, rel in enumerate(fold_rels)]
         phases = None
         if phase_rels is not None:
-            phases = [
-                _metric_row(phase, rel, kind="phase")
-                for phase, rel in zip(REFERENCE_PHASES, phase_rels)
-            ]
+            phases = [_metric_row(phase, rel, kind="phase") for phase, rel in zip(REFERENCE_PHASES, phase_rels)]
         return summarize_candidate(candidate, folds, phase_results=phases)
 
     def test_frozen_protocol_is_csi1000_only(self):
@@ -308,12 +305,12 @@ class CSI1000TunerCoreTests(unittest.TestCase):
     def test_runner_syntax_and_audit_hooks_are_present(self):
         source = (ROOT / "quant/code/research/stage_ab/csi1000_tuner.py").read_text()
         ast.parse(source)
-        self.assertIn('validate_reproducibility_pairs(repeat_a, repeat_b)', source)
-        self.assertIn('_compare_repro_reports(repeat_a, repeat_b)', source)
+        self.assertIn("validate_reproducibility_pairs(repeat_a, repeat_b)", source)
+        self.assertIn("_compare_repro_reports(repeat_a, repeat_b)", source)
         self.assertIn('"class": "DeterministicTopkDropoutStrategy"', source)
         self.assertIn('"decision_artifact": decision_artifact', source)
-        self.assertIn('preflight_only: bool = False', source)
-        self.assertIn('vol.reload()\n\n    reproducibility_gate', source)
+        self.assertIn("preflight_only: bool = False", source)
+        self.assertIn("vol.reload()\n\n    reproducibility_gate", source)
         self.assertIn('artifact_namespace": f"_repro/{REPRO_GATE_VERSION}/repeat_a"', source)
         self.assertIn('_assert_reusable_metrics(payload, report, args["fold"])', source)
         self.assertIn('"ranking_contract": ranking_contract("screen")', source)
@@ -334,7 +331,7 @@ class CSI1000TunerCoreTests(unittest.TestCase):
         self.assertIn('"expected_total_new_fits_if_resume_accepts_precheck"', source)
         self.assertIn('"leave_one_fold_out_rankings"', source)
         self.assertIn('"planned_reuse_unchanged"', source)
-        self.assertIn('create_if_missing=False', source)
+        self.assertIn("create_if_missing=False", source)
         self.assertNotIn("vol.commit()", source)
         self.assertNotIn("prepare.remote", source)
         self.assertNotIn("stage_a_fold_worker", source)

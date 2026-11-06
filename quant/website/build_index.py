@@ -3,6 +3,7 @@
 Keeps history discovery offline instead of probing nonexistent calendar days
 from every visitor's browser. Reads published artifacts, never modifies them.
 """
+
 import argparse
 import csv
 import json

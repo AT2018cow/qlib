@@ -140,10 +140,7 @@ class CSI1000StageBCoreTests(unittest.TestCase):
                 {
                     "candidate_id": candidate["candidate_id"],
                     "stage_a_rank": candidate["stage_a_rank"],
-                    "phase_results": [
-                        _phase_row(phase, rel)
-                        for phase, rel in zip(REFERENCE_PHASES, rels)
-                    ],
+                    "phase_results": [_phase_row(phase, rel) for phase, rel in zip(REFERENCE_PHASES, rels)],
                 }
             )
 
@@ -199,7 +196,7 @@ class CSI1000StageBCoreTests(unittest.TestCase):
         # Stage-B must compare that same layer, then fingerprint each frozen
         # candidate separately rather than comparing an overlaid config to the
         # Stage-A base hash.
-        self.assertIn('def _load_task(model_params: dict | None = None)', source)
+        self.assertIn("def _load_task(model_params: dict | None = None)", source)
         self.assertIn('base_model = _load_task(None)["task"]["model"]', source)
         self.assertIn('"candidate_model_config_sha256"', source)
         self.assertIn(
@@ -263,7 +260,6 @@ class CSI1000StageBCoreTests(unittest.TestCase):
         self.assertIn('return root / "phases" / candidate_id', source)
         self.assertIn('return root / "chunks" / candidate_id', source)
 
-
     def test_stage_b_runner_is_deterministic_and_resume_aware(self):
         source = (ROOT / "quant/code/research/stage_ab/csi1000_stage_b.py").read_text()
         ast.parse(source)
@@ -290,7 +286,7 @@ class CSI1000StageBCoreTests(unittest.TestCase):
     def test_stage_a_audit_plans_are_immutable_and_labeled(self):
         source = (ROOT / "quant/code/research/stage_ab/csi1000_tuner_audit.py").read_text()
         ast.parse(source)
-        self.assertIn("plan_label: str = \"\"", source)
+        self.assertIn('plan_label: str = ""', source)
         self.assertIn("plan_label is required in plan mode", source)
         self.assertIn("immutable reuse plan already exists", source)
         self.assertIn("if out_path.exists()", source)

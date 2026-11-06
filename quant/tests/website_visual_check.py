@@ -3,6 +3,7 @@
 Only generated fixture signals are used. This is NOT an audit of the live
 GitHub Pages URL or production paper account.
 """
+
 from __future__ import annotations
 
 import csv
@@ -87,14 +88,14 @@ def make_fixture(root: Path):
                     "candidate_id": "a" * 64,
                     "model_config_sha256": "b" * 64,
                 }
-                paper.update({
-                    "paper_lineage": "stage_b_winner_canonical",
-                    "production_lineage": lineage,
-                    "usage_date": key,
-                })
-                paper["positions"] = {
-                    code: {"shares": 1} for code in previous_codes if code != "SH688146"
-                }
+                paper.update(
+                    {
+                        "paper_lineage": "stage_b_winner_canonical",
+                        "production_lineage": lineage,
+                        "usage_date": key,
+                    }
+                )
+                paper["positions"] = {code: {"shares": 1} for code in previous_codes if code != "SH688146"}
                 paper["pending_orders"] = {
                     "signal_date": days[-2].isoformat(),
                     "execution_date": key,
@@ -145,12 +146,21 @@ def make_fixture(root: Path):
     }
     for mkt, sfx in (("csi1000", ""), ("csi500", "_csi500"), ("csi300", "_csi300")):
         (signals / f"{mkt}_forward_performance.json").write_text(json.dumps(waiting))
-        subprocess.run([
-            sys.executable, str(ROOT / "quant" / "website" / "build_index.py"),
-            "--signals", str(signals),
-            "--market", mkt,
-            "--output", str(signals / f"available_dates{sfx}.json"),
-        ], check=True, capture_output=True, text=True)
+        subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "quant" / "website" / "build_index.py"),
+                "--signals",
+                str(signals),
+                "--market",
+                mkt,
+                "--output",
+                str(signals / f"available_dates{sfx}.json"),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
     performance_path = signals / "csi300_forward_performance.json"
     return performance_path
 
@@ -162,7 +172,10 @@ def inspect_viewport(browser, base_url, width: int):
     statuses = []
     page.on("pageerror", lambda error: errors.append(str(error)))
     page.on("request", lambda request: signals_requests.append(request.url) if "/signals/" in request.url else None)
-    page.on("response", lambda response: statuses.append((response.url, response.status)) if "/signals/" in response.url else None)
+    page.on(
+        "response",
+        lambda response: statuses.append((response.url, response.status)) if "/signals/" in response.url else None,
+    )
     page.goto(base_url + "/index.html", wait_until="domcontentloaded")
     page.locator("#signal-rows tr").first.wait_for(state="attached", timeout=20000)
     assert page.locator("#signal-rows tr").count() == 20
@@ -171,14 +184,16 @@ def inspect_viewport(browser, base_url, width: int):
     assert all(status == 200 for _, status in statuses), statuses
     assert not any("code_name_map.csv" in url for url in signals_requests)
     initial_requests = len(signals_requests)
-    actual = page.evaluate("""() => ({
+    actual = page.evaluate(
+        """() => ({
       overflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth,
       table: getComputedStyle(document.querySelector('.table-wrap')).display,
       cards: getComputedStyle(document.querySelector('.mobile-cards')).display,
       background: getComputedStyle(document.body).backgroundColor,
       chartWidth: document.querySelector('.stock-card .sparkline-svg')?.getBoundingClientRect().width,
       dateRail: getComputedStyle(document.querySelector('.history-buttons')).overflowX,
-    })""")
+    })"""
+    )
     assert actual["overflow"] <= 1, f"{width}px horizontal overflow: {actual}"
     assert actual["background"] == "rgb(12, 18, 27)", actual
     assert actual["dateRail"] == "auto", actual
@@ -216,9 +231,7 @@ def inspect_viewport(browser, base_url, width: int):
     assert "最多调出 1 只" in page.locator("#rebalance-note").inner_text()
     assert page.locator(".trade-column").nth(0).inner_text().startswith("计划调入")
     assert page.locator(".trade-column").nth(1).inner_text().startswith("计划调出")
-    trade_colors = page.evaluate(
-        "[...document.querySelectorAll('.trade-title')].map(el => getComputedStyle(el).color)"
-    )
+    trade_colors = page.evaluate("[...document.querySelectorAll('.trade-title')].map(el => getComputedStyle(el).color)")
     assert trade_colors == ["rgb(139, 189, 255)", "rgb(139, 189, 255)"], trade_colors
     if width <= 860:
         stock_rows = page.locator("#mobile-cards .stock-card")
@@ -237,26 +250,20 @@ def inspect_viewport(browser, base_url, width: int):
     page.screenshot(path=str(OUT / f"dashboard-fixture-awaiting-{width}.png"), full_page=True)
     date_button = page.locator(".date-btn").nth(1)
     date_button.scroll_into_view_if_needed()
-    ranking_top_before = page.evaluate(
-        "document.querySelector('#ranking').getBoundingClientRect().top"
-    )
+    ranking_top_before = page.evaluate("document.querySelector('#ranking').getBoundingClientRect().top")
     date_button.click()
     page.wait_for_function("document.getElementById('stat-lineage')?.textContent === '历史 / 未核验'")
     assert page.locator("#signal-rows tr").first.locator(".tag").inner_text() == "无对照"
     assert page.locator("#rebalance").is_hidden(), "the oldest visible date has no comparison date"
     # Selecting an archive date must not scroll the page back up to #ranking.
-    ranking_top_after = page.evaluate(
-        "document.querySelector('#ranking').getBoundingClientRect().top"
-    )
+    ranking_top_after = page.evaluate("document.querySelector('#ranking').getBoundingClientRect().top")
     assert ranking_top_after < -20, (
-        "date switch jumped to #ranking: "
-        f"before={ranking_top_before:.1f}, after={ranking_top_after:.1f}"
+        "date switch jumped to #ranking: " f"before={ranking_top_before:.1f}, after={ranking_top_after:.1f}"
     )
     after_history = len(signals_requests)
     assert after_history == initial_requests + 3, signals_requests
     metadata_404s = [
-        url for url, status in statuses
-        if re.search(r"_mvp_metadata(_csi500|_csi300)?\.json$", url) and status == 404
+        url for url, status in statuses if re.search(r"_mvp_metadata(_csi500|_csi300)?\.json$", url) and status == 404
     ]
     assert len(metadata_404s) == 1, statuses
     if width in (390, 320):
@@ -290,12 +297,14 @@ def main():
                     print(f"PASS {width}px: {actual}")
                 # A slow chart must not hold the first real Top20 off screen.
                 page = browser.new_page(viewport={"width": 390, "height": 844})
-                page.add_init_script("""
+                page.add_init_script(
+                    """
                     const nativeFetch = window.fetch.bind(window);
                     window.fetch = (url, opts) => /_chart(_csi500|_csi300)?\\.json/.test(String(url))
                       ? new Promise(resolve => setTimeout(() => resolve(nativeFetch(url, opts)), 1200))
                       : nativeFetch(url, opts);
-                """)
+                """
+                )
                 page.goto(url + "/index.html", wait_until="domcontentloaded")
                 page.locator("#signal-rows tr").first.wait_for(state="attached")
                 assert page.locator("#stat-lineage").inner_text() == "核验中"
@@ -316,7 +325,12 @@ def main():
                     "cumulative_return": -0.012,
                     "points": [
                         {"date": previous_date, "nav": 1.02, "daily_return": 0.02, "cumulative_return": 0.02},
-                        {"date": latest_date, "nav": 0.988, "daily_return": 0.988 / 1.02 - 1, "cumulative_return": -0.012},
+                        {
+                            "date": latest_date,
+                            "nav": 0.988,
+                            "daily_return": 0.988 / 1.02 - 1,
+                            "cumulative_return": -0.012,
+                        },
                     ],
                 }
                 performance_path.write_text(json.dumps(active))
@@ -325,17 +339,13 @@ def main():
                 page.locator("#signal-rows tr").first.wait_for(state="attached")
                 assert page.locator("#forward-return").inner_text() == "-1.20%"
                 assert page.locator(".performance-svg").count() == 1
-                line_fill = page.locator(".performance-line").evaluate(
-                    "(el) => getComputedStyle(el).fill"
-                )
+                line_fill = page.locator(".performance-line").evaluate("(el) => getComputedStyle(el).fill")
                 assert line_fill == "none", f"Performance curve must not render as filled polygon: {line_fill}"
                 page.screenshot(path=str(OUT / "dashboard-fixture-active-390.png"), full_page=True)
                 # Selecting the previous ranking date must show that date's
                 # settled return and truncate the curve, not keep the latest.
                 page.locator(".date-btn").nth(1).click()
-                page.wait_for_function(
-                    "document.getElementById('forward-return')?.textContent === '+2.00%'"
-                )
+                page.wait_for_function("document.getElementById('forward-return')?.textContent === '+2.00%'")
                 assert page.locator("#forward-latest").inner_text().startswith("估值日")
                 assert page.locator(".performance-svg").count() == 1
                 page.close()

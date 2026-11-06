@@ -335,8 +335,12 @@ def replay(data, candidate, *, account=1_000_000, slippage_bps=0, progress_every
         }
     )
     return {
-        "metrics": metrics, "report": report_frame, "sessions": reports,
-        "orders": orders, "gaps": gaps, "final_state": pp.to_dict(),
+        "metrics": metrics,
+        "report": report_frame,
+        "sessions": reports,
+        "orders": orders,
+        "gaps": gaps,
+        "final_state": pp.to_dict(),
     }
 
 

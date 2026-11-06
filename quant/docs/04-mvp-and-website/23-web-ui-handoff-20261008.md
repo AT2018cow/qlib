@@ -1,4 +1,6 @@
 > **历史文档（2026-10-08）：** 本文的 CSI1000-only、Top20、2026-10-12 forward 口径已失效。2026-11-02 起网站为 CSI300/CSI500/CSI1000 三市场、每市场独立 1M、分市场 TopK/DropN；当前口径见 `HANDOVER-website.md`、`AGENTS.md` 与 `quant/website/methodology.html`。
+>
+> **2026-11-06 补充：** 当前 `csi*_forward_performance.json` / `csi*_backfill_performance.json` 是 **10/08 网站模拟账户的命名别名**，不是本文所述的 2026-10-12 canonical live-paper forward；canonical live paper 以 `csi*_paper_portfolio.json` 为账本，使用 `audit_paper_nav` 审计（默认从 live 段起算，或 `--start YYYY-MM-DD`）。
 
 # 23 — 独立对话交接：网页体验与数据展示优化（2026-10-08）
 

@@ -9,6 +9,7 @@ Qlib's report columns have important semantics:
 This module centralizes the repository's production/research metrics so individual
 experiments do not mix arithmetic annualization with compounded portfolio risk.
 """
+
 from __future__ import annotations
 
 import math
@@ -98,7 +99,7 @@ def portfolio_performance(
     if (bench_ret <= -1).any():
         raise ValueError("benchmark return <= -100%")
 
-    if 'account' in rep.columns:
+    if "account" in rep.columns:
         account = rep["account"].astype(float).reindex(aligned.index)
         if not np.isfinite(account.to_numpy()).all() or (account <= 0).any():
             raise ValueError("invalid Qlib account path")
@@ -141,11 +142,7 @@ def portfolio_performance(
         if len(active_ret) > 1 and active_std > 0
         else None
     )
-    annual_volatility = (
-        float(net_ret.std(ddof=1) * np.sqrt(annual_sessions))
-        if len(net_ret) > 1
-        else None
-    )
+    annual_volatility = float(net_ret.std(ddof=1) * np.sqrt(annual_sessions)) if len(net_ret) > 1 else None
 
     return {
         "metric_version": "portfolio_compound_v1",

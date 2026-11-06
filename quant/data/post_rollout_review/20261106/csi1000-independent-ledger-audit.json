@@ -1,0 +1,139 @@
+{
+  "status": "PARTIAL_NOT_CERTIFIED",
+  "ledger_status": "PASS",
+  "account_scope": "WEBSITE_OCT08_1M",
+  "market": "csi1000",
+  "audited_reports": 20,
+  "issues": [],
+  "rows": [
+    {
+      "date": "2026-10-08",
+      "independent_close": "987828.8823698744478941091168",
+      "reported_close": "987828.88",
+      "fees": "472.17"
+    },
+    {
+      "date": "2026-10-09",
+      "independent_close": "975936.7477581473658988654407",
+      "reported_close": "975936.74",
+      "fees": "207.63"
+    },
+    {
+      "date": "2026-10-12",
+      "independent_close": "964557.5183803576160194651686",
+      "reported_close": "964557.52",
+      "fees": "172.71"
+    },
+    {
+      "date": "2026-10-13",
+      "independent_close": "967508.6019681449902832113344",
+      "reported_close": "967508.6",
+      "fees": "208.2"
+    },
+    {
+      "date": "2026-10-14",
+      "independent_close": "942857.3370146316083341049434",
+      "reported_close": "942857.34",
+      "fees": "188.95"
+    },
+    {
+      "date": "2026-10-15",
+      "independent_close": "899692.3209737903192929101039",
+      "reported_close": "899692.32",
+      "fees": "185.52"
+    },
+    {
+      "date": "2026-10-16",
+      "independent_close": "894902.3650563600508551910238",
+      "reported_close": "894902.36",
+      "fees": "190.74"
+    },
+    {
+      "date": "2026-10-19",
+      "independent_close": "885924.5846304739511009875452",
+      "reported_close": "885924.58",
+      "fees": "205.83"
+    },
+    {
+      "date": "2026-10-20",
+      "independent_close": "904253.8340875816907744652884",
+      "reported_close": "904253.83",
+      "fees": "140.68"
+    },
+    {
+      "date": "2026-10-21",
+      "independent_close": "900532.5210716052651096732708",
+      "reported_close": "900532.52",
+      "fees": "200.14"
+    },
+    {
+      "date": "2026-10-22",
+      "independent_close": "859789.3971295139255326477081",
+      "reported_close": "859789.4",
+      "fees": "194.05"
+    },
+    {
+      "date": "2026-10-23",
+      "independent_close": "877010.6523525494615191865616",
+      "reported_close": "877010.65",
+      "fees": "219.2"
+    },
+    {
+      "date": "2026-10-26",
+      "independent_close": "847083.2142663037893493807954",
+      "reported_close": "847083.21",
+      "fees": "144.05"
+    },
+    {
+      "date": "2026-10-27",
+      "independent_close": "810209.9145987244371327293771",
+      "reported_close": "810209.92",
+      "fees": "162.83"
+    },
+    {
+      "date": "2026-10-28",
+      "independent_close": "838508.7783026648994092941866",
+      "reported_close": "838508.78",
+      "fees": "183.12"
+    },
+    {
+      "date": "2026-10-29",
+      "independent_close": "789482.8207044072196960072045",
+      "reported_close": "789482.82",
+      "fees": "207.64"
+    },
+    {
+      "date": "2026-10-30",
+      "independent_close": "733177.5729619477339131608185",
+      "reported_close": "733177.58",
+      "fees": "127.27"
+    },
+    {
+      "date": "2026-11-02",
+      "independent_close": "762300.3519710903459418336122",
+      "reported_close": "762300.36",
+      "fees": "130.45"
+    },
+    {
+      "date": "2026-11-03",
+      "independent_close": "719197.9164424534248815658590",
+      "reported_close": "719197.91",
+      "fees": "192.52"
+    },
+    {
+      "date": "2026-11-04",
+      "independent_close": "798650.7876159969588243623708",
+      "reported_close": "798650.79",
+      "fees": "147.83"
+    }
+  ],
+  "total_fees": "3881.53",
+  "warnings": [
+    {
+      "code": "MARKET_EXECUTION_NOT_CERTIFIED",
+      "detail": "Ledger reconciliation cannot certify historical ST, official ex-right reference prices or auction fills."
+    }
+  ],
+  "independent_quotes_provided": false,
+  "independent_calendar_provided": false
+}

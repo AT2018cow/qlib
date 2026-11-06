@@ -4,6 +4,7 @@ This module is intentionally pure Python. It freezes the cheap temporal-fold
 screen, candidate identities, search spaces, and robust ranking rules before
 any Modal/Qlib compute is launched.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -394,10 +395,7 @@ def build_stage_a_folds(
         raise ValueError("provider calendar leaves no reserved tail after the screen cutoff")
 
     span = latest_signal_i - anchor_i
-    anchor_indices = [
-        round(anchor_i + span * fold_index / (n_folds - 1))
-        for fold_index in range(n_folds)
-    ]
+    anchor_indices = [round(anchor_i + span * fold_index / (n_folds - 1)) for fold_index in range(n_folds)]
     if len(set(anchor_indices)) != n_folds:
         raise ValueError("fold anchors collapsed; increase screen span")
 
@@ -569,10 +567,7 @@ def summarize_candidate(
 
 
 def _rank_vector(metric_summary: dict) -> tuple[float, ...]:
-    return tuple(
-        float(metric_summary[field]) * direction
-        for field, direction in SCREEN_RANK_SPECS
-    )
+    return tuple(float(metric_summary[field]) * direction for field, direction in SCREEN_RANK_SPECS)
 
 
 def ranking_contract(stage: str = "screen") -> dict:
@@ -709,9 +704,7 @@ def validate_reproducibility_pairs(
                 raise ValueError(f"{label}: duplicate or missing fold_id {fold_id!r}")
             out[fold_id] = deepcopy(raw)
         if set(out) != expected_folds:
-            raise ValueError(
-                f"{label}: fold set {sorted(out)} != {sorted(expected_folds)}"
-            )
+            raise ValueError(f"{label}: fold set {sorted(out)} != {sorted(expected_folds)}")
         return out
 
     left = index(repeat_a, "repeat_a")
@@ -748,14 +741,9 @@ def validate_reproducibility_pairs(
                 (b.get("decision_artifact") or {}).get("content_sha256"),
             ),
         }
-        mismatches = [
-            key for key, (value_a, value_b) in comparisons.items()
-            if value_a is None or value_a != value_b
-        ]
+        mismatches = [key for key, (value_a, value_b) in comparisons.items() if value_a is None or value_a != value_b]
         if mismatches:
-            raise RuntimeError(
-                f"{fold_id}: reproducibility mismatch in {mismatches}"
-            )
+            raise RuntimeError(f"{fold_id}: reproducibility mismatch in {mismatches}")
 
         candidate_id = candidate_id or a["candidate_id"]
         snapshot_token = snapshot_token or a["snapshot_token"]

@@ -4,6 +4,7 @@ CI trigger note: this file is watched by .github/workflows/csi1000-stage-b-f5-ga
 (push to main). Touching it exercises the F5 gates on main.
 (Actions trigger health-check push: verifies push-to-main runs execute.)
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -14,19 +15,30 @@ from decimal import Decimal
 from pathlib import Path
 
 from audit.stage_b_f5_gates import (
-    audit_failures, check_complete_sell, check_full_buy,
-    require_pass, sha256_file, verify_input,
+    audit_failures,
+    check_complete_sell,
+    check_full_buy,
+    require_pass,
+    sha256_file,
+    verify_input,
 )
 
 
 def valid_gate():
     return dict(
-        calendar_exact=True, decisions_n=424, report_n=424,
-        decision_mismatches=0, tradability_violations=0,
-        lot_violations=0, factor_mismatches=0,
-        buy_amount_mismatches=0, sell_amount_mismatches=0,
-        negative_cash_events=0, max_account_diff=Decimal("0.00000007"),
-        max_return_diff=5e-16, max_fee_diff=Decimal("0.00001"),
+        calendar_exact=True,
+        decisions_n=424,
+        report_n=424,
+        decision_mismatches=0,
+        tradability_violations=0,
+        lot_violations=0,
+        factor_mismatches=0,
+        buy_amount_mismatches=0,
+        sell_amount_mismatches=0,
+        negative_cash_events=0,
+        max_account_diff=Decimal("0.00000007"),
+        max_return_diff=5e-16,
+        max_fee_diff=Decimal("0.00001"),
         max_turnover_diff=Decimal("0.00005"),
         max_fee_rate_diff=Decimal("1e-16"),
         max_turnover_rate_diff=Decimal("1e-16"),

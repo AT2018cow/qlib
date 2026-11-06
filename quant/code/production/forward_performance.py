@@ -26,6 +26,12 @@ CANONICAL_LINEAGES = (
     "raw10d_c98856b4_top10_drop1_canonical",
     "59b93929_top10_drop1_canonical",
 )
+LINEAGE_MARKETS = {
+    **{lineage: market for market, lineage in CANONICAL_PAPER_LINEAGES_BY_MARKET.items()},
+    "c98856b4_top10_drop1_canonical": "csi1000",
+    "raw10d_c98856b4_top10_drop1_canonical": "csi500",
+    "59b93929_top10_drop1_canonical": "csi300",
+}
 
 
 def build_forward_performance(
@@ -42,8 +48,13 @@ def build_forward_performance(
     calendar_snapshots = {}
     calendar_dates = set()
     reported_st_policies = set()
+    skipped_lineages = {}
     for artifact in artifacts:
         if artifact.get("market") != market:
+            continue
+        usage_day = artifact.get("usage_date")
+        if isinstance(usage_day, str) and usage_day < start_date:
+            date.fromisoformat(usage_day)
             continue
         # R06: bind this market's expected canonical lineage by identity, not
         # by membership in a shared set.  A canonical lineage belonging to a
@@ -54,8 +65,9 @@ def build_forward_performance(
             raise ValueError(f"unknown forward-performance market: {market!r}")
         lineage = artifact.get("paper_lineage")
         if lineage != expected_lineage:
-            if lineage in CANONICAL_LINEAGES:
+            if LINEAGE_MARKETS.get(lineage) not in (None, market):
                 raise ValueError(f"cross-market paper lineage mismatch for {market}: {lineage!r}")
+            skipped_lineages[str(lineage)] = skipped_lineages.get(str(lineage), 0) + 1
             continue
         usage_day = artifact.get("usage_date")
         if isinstance(usage_day, str) and usage_day >= start_date:
@@ -153,6 +165,7 @@ def build_forward_performance(
             "latest_date": None,
             "cumulative_return": None,
             "points": [],
+            "skipped_lineages": skipped_lineages,
         }
 
     first = ordered[0]["date"]
@@ -204,6 +217,15 @@ def build_forward_performance(
         "start_date": start_date,
         "inception_date": first,
         "account_identity": account_identity(market),
+        "nav_basis": {
+            "kind": "FORWARD_WINDOW_OPEN_REBASE",
+            "date": first,
+            "value": baseline,
+            "account_initial_cash": account_identity(market)["initial_cash"],
+        },
+        "account_cumulative_return": ordered[-1]["portfolio_value_close"] / account_identity(market)["initial_cash"]
+        - 1,
+        "skipped_lineages": skipped_lineages,
         "trading_dates": sorted(calendar_dates),
         "status": "active",
         "execution_st_policy": execution_st_policy,

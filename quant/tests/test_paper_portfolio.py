@@ -134,7 +134,6 @@ class PaperPortfolioTests(unittest.TestCase):
         self.assertEqual(r["planned_sell"], ["C"])
         self.assertEqual(r["planned_buy"], ["D"])
 
-
     @staticmethod
     def _qlib_adjusted_units(target_amount, factor, trade_unit=100):
         """Reference Exchange.round_amount_by_trade_unit formula (no Cython dependency)."""
@@ -146,8 +145,10 @@ class PaperPortfolioTests(unittest.TestCase):
                 pp = PaperPortfolio(topk=1, nd=1, initial_cash=10000)
                 pp.plan_signal("2026-10-09", "2026-10-12", [("A", 1.0), ("B", 0.0)])
                 report = pp.execute_pending(
-                    "2026-10-12", {"A": 10.0},
-                    close_prices={"A": 11.0}, factors={"A": factor},
+                    "2026-10-12",
+                    {"A": 10.0},
+                    close_prices={"A": 11.0},
+                    factors={"A": factor},
                 )
                 expected_shares = self._qlib_adjusted_units(9500.0 / 10.0, factor)
                 fill = report["executed_buy"][0]
@@ -157,14 +158,15 @@ class PaperPortfolioTests(unittest.TestCase):
                 expected_fee = max(expected_shares * 10.0 * 0.0005, 5.0)
                 expected_cash = 10000 - expected_shares * 10 - expected_fee
                 self.assertAlmostEqual(report["cash"], expected_cash, places=2)
-                self.assertAlmostEqual(report["portfolio_value_close"],
-                                       expected_cash + expected_shares * 11, places=2)
+                self.assertAlmostEqual(report["portfolio_value_close"], expected_cash + expected_shares * 11, places=2)
 
     def test_factor_two_exposes_old_rounding_difference_in_nav(self):
         pp = PaperPortfolio(topk=1, nd=1, initial_cash=10000)
         pp.plan_signal("2026-10-09", "2026-10-12", [("A", 1.0)])
         report = pp.execute_pending(
-            "2026-10-12", {"A": 10.0}, factors={"A": 2.0},
+            "2026-10-12",
+            {"A": 10.0},
+            factors={"A": 2.0},
             close_prices={"A": 11.0},
         )
         self.assertEqual(report["executed_buy"][0]["shares"], 950.0)
@@ -189,8 +191,10 @@ class PaperPortfolioTests(unittest.TestCase):
                 pp = PaperPortfolio(topk=1, nd=1, initial_cash=10000)
                 pp.plan_signal("2026-10-09", "2026-10-12", [("A", 1.0)])
                 report = pp.execute_pending(
-                    "2026-10-12", kwargs.get("open_prices", {"A": 10}),
-                    factors={}, buy_tradable=kwargs.get("buy_tradable"),
+                    "2026-10-12",
+                    kwargs.get("open_prices", {"A": 10}),
+                    factors={},
+                    buy_tradable=kwargs.get("buy_tradable"),
                 )
                 self.assertEqual(report["executed_buy"], [])
                 self.assertEqual(report["portfolio_value_close"], 10000)
@@ -199,7 +203,9 @@ class PaperPortfolioTests(unittest.TestCase):
         pp = PaperPortfolio(topk=1, nd=1, initial_cash=10000, risk_degree=1)
         pp.plan_signal("2026-10-09", "2026-10-12", [("A", 1.0)])
         report = pp.execute_pending(
-            "2026-10-12", {"A": 10.0}, factors={"A": 2.0},
+            "2026-10-12",
+            {"A": 10.0},
+            factors={"A": 2.0},
         )
         fill = report["executed_buy"][0]
         self.assertEqual(fill["shares"], 950)
@@ -219,15 +225,18 @@ class PaperPortfolioTests(unittest.TestCase):
         self.assertEqual(restored.positions["A"]["shares"], shares)
         restored.plan_signal("2026-10-12", "2026-10-13", [("B", 1.0), ("A", 0.0)])
         report = restored.execute_pending(
-            "2026-10-13", {"A": 12.0, "B": 10.0},
-            factors={"B": 1.0}, close_prices={"B": 11.0},
+            "2026-10-13",
+            {"A": 12.0, "B": 10.0},
+            factors={"B": 1.0},
+            close_prices={"B": 11.0},
         )
         self.assertEqual(report["executed_sell"][0]["shares"], shares)
         self.assertNotIn("A", restored.positions)
-        self.assertAlmostEqual(report["portfolio_value_close"],
-                               restored.cash + sum(p["shares"] * p["last_price"]
-                                                   for p in restored.positions.values()), places=2)
-
+        self.assertAlmostEqual(
+            report["portfolio_value_close"],
+            restored.cash + sum(p["shares"] * p["last_price"] for p in restored.positions.values()),
+            places=2,
+        )
 
     def test_verify_ledger_failure_restores_pre_call_state(self):
         from unittest import mock
@@ -239,8 +248,11 @@ class PaperPortfolioTests(unittest.TestCase):
         with mock.patch("paper_portfolio.verify_ledger", side_effect=RuntimeError("boom")):
             with self.assertRaises(RuntimeError):
                 pp.execute_pending(
-                    "2026-10-12", {"A": 10.0}, factors={"A": 1.0},
-                    strict_valuation=True, close_prices={"A": 10.0},
+                    "2026-10-12",
+                    {"A": 10.0},
+                    factors={"A": 1.0},
+                    strict_valuation=True,
+                    close_prices={"A": 10.0},
                 )
         self.assertEqual(json.dumps(pp.to_dict(), sort_keys=True), before)
         self.assertIsNotNone(pp.pending_signal)
@@ -248,8 +260,7 @@ class PaperPortfolioTests(unittest.TestCase):
     def test_nonfinite_market_inputs_fail_before_any_mutation(self):
         cases = (
             {"open_prices": {"A": float("nan")}, "factors": {"A": 1.0}},
-            {"open_prices": {"A": 10.0}, "factors": {"A": 1.0},
-             "close_prices": {"A": float("inf")}},
+            {"open_prices": {"A": 10.0}, "factors": {"A": 1.0}, "close_prices": {"A": float("inf")}},
             {"open_prices": {"A": 10.0}, "factors": {"A": float("nan")}},
         )
         for case in cases:
@@ -259,7 +270,9 @@ class PaperPortfolioTests(unittest.TestCase):
             with self.subTest(case=case):
                 with self.assertRaises(ValueError):
                     pp.execute_pending(
-                        "2026-10-12", case["open_prices"], factors=case["factors"],
+                        "2026-10-12",
+                        case["open_prices"],
+                        factors=case["factors"],
                         close_prices=case.get("close_prices"),
                     )
                 self.assertEqual(json.dumps(pp.to_dict(), sort_keys=True), before)
@@ -282,8 +295,11 @@ class PaperPortfolioTests(unittest.TestCase):
         pp.plan_signal("2026-10-09", "2026-10-12", [("A", 1.0)])
         with mock.patch("paper_portfolio.verify_ledger") as verify:
             report = pp.execute_pending(
-                "2026-10-12", {"A": 10.0}, factors={"A": 1.0},
-                strict_valuation=True, close_prices={"A": 10.0},
+                "2026-10-12",
+                {"A": 10.0},
+                factors={"A": 1.0},
+                strict_valuation=True,
+                close_prices={"A": 10.0},
             )
         verify.assert_called_once()
         self.assertIsNone(pp.pending_signal)

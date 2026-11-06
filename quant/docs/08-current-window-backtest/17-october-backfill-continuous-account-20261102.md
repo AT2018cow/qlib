@@ -1,6 +1,8 @@
 # 17 — 2026-10 至 11/02 连续账户回补（新策略）
 
 > **性质：`BACKFILL_RESEARCH`。** 2026-10-08–2026-11-02 为 point-in-time 回补，不是当时实时发布记录；11/3 起为同一 1M 账户的真实前向 paper。网站标题不标注“回补”，方法论披露。
+>
+> **2026-11-06 补充：** 当前公开网站的 `csi*_forward_performance.json` / `csi*_backfill_performance.json` 已改为 **10/08 独立网站模拟账户的命名别名**，不再表示本文的 canonical live-paper 前向/回补文件；canonical live paper 请使用 `csi*_paper_portfolio.json` 与 `audit_paper_nav`。
 
 ## 1. 口径
 

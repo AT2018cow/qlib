@@ -1,4 +1,5 @@
 """Independent forensic paper NAV regression fixtures; never modify production state."""
+
 from copy import deepcopy
 
 from audit_paper_nav import reconcile
@@ -15,43 +16,47 @@ def fixture():
         "execution_report": None,
     }
     first = deepcopy(initial)
-    first.update({
-        "usage_date": "2026-10-13",
-        "cash": 995.0,
-        "positions": {"A": {"shares": 100, "last_price": 11}},
-        "execution_report": {
-            "date": "2026-10-12",
-            "signal_date": "2026-10-09",
-            "cash": 995,
-            "n_positions": 1,
-            "positions": ["A"],
-            "planned_buy": ["A"],
-            "executed_buy": [{"instrument": "A", "shares": 100, "price": 10, "cost": 5}],
-            "executed_sell": [],
-            "cost": 5,
-            "portfolio_value_pre_trade_open": 2000,
-            "portfolio_value_close": 2095,
-        },
-    })
+    first.update(
+        {
+            "usage_date": "2026-10-13",
+            "cash": 995.0,
+            "positions": {"A": {"shares": 100, "last_price": 11}},
+            "execution_report": {
+                "date": "2026-10-12",
+                "signal_date": "2026-10-09",
+                "cash": 995,
+                "n_positions": 1,
+                "positions": ["A"],
+                "planned_buy": ["A"],
+                "executed_buy": [{"instrument": "A", "shares": 100, "price": 10, "cost": 5}],
+                "executed_sell": [],
+                "cost": 5,
+                "portfolio_value_pre_trade_open": 2000,
+                "portfolio_value_close": 2095,
+            },
+        }
+    )
     second = deepcopy(initial)
-    second.update({
-        "usage_date": "2026-10-14",
-        "cash": 2190,
-        "positions": {},
-        "execution_report": {
-            "date": "2026-10-13",
-            "signal_date": "2026-10-12",
+    second.update(
+        {
+            "usage_date": "2026-10-14",
             "cash": 2190,
-            "n_positions": 0,
-            "positions": [],
-            "planned_buy": [],
-            "executed_buy": [],
-            "executed_sell": [{"instrument": "A", "shares": 100, "price": 12, "cost": 5}],
-            "cost": 5,
-            "portfolio_value_pre_trade_open": 2195,
-            "portfolio_value_close": 2190,
-        },
-    })
+            "positions": {},
+            "execution_report": {
+                "date": "2026-10-13",
+                "signal_date": "2026-10-12",
+                "cash": 2190,
+                "n_positions": 0,
+                "positions": [],
+                "planned_buy": [],
+                "executed_buy": [],
+                "executed_sell": [{"instrument": "A", "shares": 100, "price": 12, "cost": 5}],
+                "cost": 5,
+                "portfolio_value_pre_trade_open": 2195,
+                "portfolio_value_close": 2190,
+            },
+        }
+    )
     quotes = {
         ("2026-10-12", "A"): {"open": "10", "close": "11", "factor": "1"},
         ("2026-10-13", "A"): {"open": "12", "close": "12", "factor": "1"},
@@ -62,10 +67,18 @@ def fixture():
         "latest_date": "2026-10-13",
         "cumulative_return": 2190 / 2000 - 1,
         "points": [
-            {"date": "2026-10-12", "nav": 2095 / 2000, "daily_return": 2095 / 2000 - 1,
-             "cumulative_return": 2095 / 2000 - 1},
-            {"date": "2026-10-13", "nav": 2190 / 2000, "daily_return": 2190 / 2095 - 1,
-             "cumulative_return": 2190 / 2000 - 1},
+            {
+                "date": "2026-10-12",
+                "nav": 2095 / 2000,
+                "daily_return": 2095 / 2000 - 1,
+                "cumulative_return": 2095 / 2000 - 1,
+            },
+            {
+                "date": "2026-10-13",
+                "nav": 2190 / 2000,
+                "daily_return": 2190 / 2095 - 1,
+                "cumulative_return": 2190 / 2000 - 1,
+            },
         ],
     }
     return [initial, first, second], quotes, ["2026-10-12", "2026-10-13"], forward
@@ -86,9 +99,16 @@ def test_double_entry_cash_shares_fees_quotes_and_geometric_returns_pass():
 
 def test_current_public_pre_inception_is_not_called_pass():
     old = {"market": "csi1000", "paper_lineage": "canonical", "usage_date": "2026-10-08"}
-    result = reconcile([old], forward={"start_date": "2026-10-12",
-        "status": "awaiting_first_valuation", "latest_date": None,
-        "cumulative_return": None, "points": []})
+    result = reconcile(
+        [old],
+        forward={
+            "start_date": "2026-10-12",
+            "status": "awaiting_first_valuation",
+            "latest_date": None,
+            "cumulative_return": None,
+            "points": [],
+        },
+    )
     assert result["status"] == "NOT_STARTED"
     assert not result["issues"]
     assert result["audited_reports"] == 0
@@ -111,8 +131,7 @@ def test_legacy_winner_lineage_requires_explicit_mode():
     default = reconcile(legacy, quotes=quotes, calendar=calendar)
     assert default["status"] == "NOT_STARTED"
     assert default["skipped_artifacts"].get("lineage:stage_b_winner_canonical") == 3
-    explicit = reconcile(legacy, quotes=quotes, calendar=calendar, forward=forward,
-                         legacy_winner=True)
+    explicit = reconcile(legacy, quotes=quotes, calendar=calendar, forward=forward, legacy_winner=True)
     assert explicit["status"] == "PASS", explicit
     assert explicit["target"]["lineage"] == "stage_b_winner_canonical"
 
@@ -182,8 +201,7 @@ def test_missing_authoritative_trading_session_is_caught():
     artifacts, quotes, _, _ = fixture()
     artifacts[2]["execution_report"]["date"] = "2026-10-14"
     artifacts[2]["usage_date"] = "2026-10-15"
-    result = reconcile(artifacts, quotes=quotes,
-                       calendar=["2026-10-12", "2026-10-13", "2026-10-14"])
+    result = reconcile(artifacts, quotes=quotes, calendar=["2026-10-12", "2026-10-13", "2026-10-14"])
     assert "MISSING_TRADING_DAY" in codes(result)
 
 
@@ -277,10 +295,13 @@ def test_factor_aware_fractional_share_ledger_reconciles():
     sold["shares"] = 150
     sold["cost"] = 5
     second["cash"] = 2290
-    second["execution_report"].update({
-        "cash": 2290, "portfolio_value_pre_trade_open": 2295,
-        "portfolio_value_close": 2290,
-    })
+    second["execution_report"].update(
+        {
+            "cash": 2290,
+            "portfolio_value_pre_trade_open": 2295,
+            "portfolio_value_close": 2290,
+        }
+    )
     result = reconcile(artifacts, quotes=quotes, calendar=calendar)
     assert result["status"] == "PARTIAL_NOT_CERTIFIED"
     assert not result["issues"], result

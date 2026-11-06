@@ -1,4 +1,5 @@
 """Contract-only prospective shadow tests. No private Modal credentials or returns."""
+
 from copy import deepcopy
 from datetime import datetime, timezone, timedelta
 import pytest
@@ -12,25 +13,39 @@ def sha(symbol):
 
 def sample():
     common = {
-        "usage_date": "2026-10-12", "signal_data_date": "2026-10-09",
-        "calendar_sha256": sha("a"), "provider_fingerprint": sha("b"),
-        "pit_universe_sha256": sha("c"), "feature_asof": "2026-10-09",
+        "usage_date": "2026-10-12",
+        "signal_data_date": "2026-10-09",
+        "calendar_sha256": sha("a"),
+        "provider_fingerprint": sha("b"),
+        "pit_universe_sha256": sha("c"),
+        "feature_asof": "2026-10-09",
     }
     legs = {}
     for key in CANDIDATES:
         legs[key] = {
-            **CANDIDATES[key], **common, "checkpoint_sha256": sha("d"),
-            "signal_file_sha256": sha("e"), "full_ranking_sha256": sha("f"),
-            "top20_sha256": sha("1"), "pending_order_sha256": sha("2"),
-            "train_end": "2026-08-01", "model_fit_asof_utc": "2026-10-10T00:00:00Z",
+            **CANDIDATES[key],
+            **common,
+            "checkpoint_sha256": sha("d"),
+            "signal_file_sha256": sha("e"),
+            "full_ranking_sha256": sha("f"),
+            "top20_sha256": sha("1"),
+            "pending_order_sha256": sha("2"),
+            "train_end": "2026-08-01",
+            "model_fit_asof_utc": "2026-10-10T00:00:00Z",
             "published_utc": "2026-10-11T09:00:00Z",
-            "label_horizon_sessions": 20, "topk": 20, "n_drop": 2,
-            "paper_account_id": "account-" + key, "initial_cash_cny": 100_000_000,
+            "label_horizon_sessions": 20,
+            "topk": 20,
+            "n_drop": 2,
+            "paper_account_id": "account-" + key,
+            "initial_cash_cny": 100_000_000,
         }
     return {
-        "protocol": "47-forward-shadow-v1", "usage_date": "2026-10-12",
-        "created_utc": "2026-10-11T10:00:00Z", "sequence": 1,
-        "previous_pair_hash": None, "legs": legs,
+        "protocol": "47-forward-shadow-v1",
+        "usage_date": "2026-10-12",
+        "created_utc": "2026-10-11T10:00:00Z",
+        "sequence": 1,
+        "previous_pair_hash": None,
+        "legs": legs,
     }
 
 
@@ -95,7 +110,9 @@ def test_dangling_chain_rejected():
     with pytest.raises(ValueError, match="chain"):
         check(p)
     p["previous_pair_hash"] = sha("9")
-    assert validate_pair(p, previous_pair_hash=sha("9"), independently_observed_outcome_utc="2026-10-12T08:00:00Z")["pair_sha256"]
+    assert validate_pair(p, previous_pair_hash=sha("9"), independently_observed_outcome_utc="2026-10-12T08:00:00Z")[
+        "pair_sha256"
+    ]
 
 
 def test_no_realized_data_in_prediction():

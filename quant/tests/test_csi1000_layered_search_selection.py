@@ -1,4 +1,5 @@
 """Deterministic, offline-only tests for the CSI1000 layered selection planner."""
+
 import json
 from pathlib import Path
 

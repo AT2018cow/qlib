@@ -25,6 +25,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+
 def _find_repo_root() -> Path:
     """Locate the repo root in both layouts.
 
@@ -246,7 +247,8 @@ if modal is not None:
 
         src = _source_checks()
         require(
-            src["provider_fingerprint"] == meta["provider_fingerprint"], "STOP_STAGE0_SOURCE: fingerprint identity drift"
+            src["provider_fingerprint"] == meta["provider_fingerprint"],
+            "STOP_STAGE0_SOURCE: fingerprint identity drift",
         )
         qlib.init(provider_uri=str(SOURCE / "cn_data"), region="cn")
         calendar = read_trading_calendar(SOURCE / "cn_data")
@@ -261,8 +263,13 @@ if modal is not None:
             require(quote_sha == spec["expected_quote_sha256"], f"STOP_STAGE0_QUOTE_SHA: {market}")
             require(quote_sha == quote_sha_of(codes), f"STOP_STAGE0_QUOTE_RECOMPUTE: {market}")
             quotes[market] = {"count": len(codes), "quote_sha256": quote_sha}
-            frame = D.features([spec["benchmark"]], ["$close"], start_time=RESERVED_EXECUTION_START,
-                               end_time=RESERVED_EXECUTION_END, freq="day")
+            frame = D.features(
+                [spec["benchmark"]],
+                ["$close"],
+                start_time=RESERVED_EXECUTION_START,
+                end_time=RESERVED_EXECUTION_END,
+                freq="day",
+            )
             closes = frame["$close"] if "$close" in frame else frame.iloc[:, 0]
             import pandas as pd
 
@@ -413,8 +420,10 @@ if modal is not None:
         source_shas = []
         for part in build_phase_jobs(calendar, job["phase"]):
             fit_job = {
-                **{k: job[k] for k in ("run_id", "code_sha", "provider_fingerprint", "source_snapshot_sha256",
-                                       "quote_sha256")},
+                **{
+                    k: job[k]
+                    for k in ("run_id", "code_sha", "provider_fingerprint", "source_snapshot_sha256", "quote_sha256")
+                },
                 "kind": "retrain",
                 "market": job["market"],
                 "benchmark": job["benchmark"],
@@ -441,15 +450,19 @@ if modal is not None:
         codes, quote_sha = static_quote_union(job["market"], RESERVED_EXECUTION_START, RESERVED_EXECUTION_END, D)
         require(quote_sha == job["quote_sha256"], "STOP_STAGE0_QUOTE_SHA_DRIFT")
         report, decisions = backtest_market_signal(
-            signal, job["topk"], job["n_drop"], codes,
-            RESERVED_EXECUTION_START, RESERVED_EXECUTION_END, job["benchmark"],
+            signal,
+            job["topk"],
+            job["n_drop"],
+            codes,
+            RESERVED_EXECUTION_START,
+            RESERVED_EXECUTION_END,
+            job["benchmark"],
         )
         metrics, diagnostics = report_metrics(report)
         require(len(report) == N_EXECUTION_DAYS and report.index.is_unique, "STOP_STAGE0_424_DAY_REPORT")
         require(len(decisions) == N_EXECUTION_DAYS, "STOP_STAGE0_424_DAY_DECISIONS")
         require(
-            diagnostics["max_account_return_delta"] <= 1e-10
-            and diagnostics["max_cost_rate_delta"] <= 1e-10,
+            diagnostics["max_account_return_delta"] <= 1e-10 and diagnostics["max_cost_rate_delta"] <= 1e-10,
             "STOP_STAGE0_NAV_ACCOUNT_DRIFT",
         )
         stressed = {}
@@ -561,9 +574,7 @@ if modal is not None:
         """Immutable marker, no modification after verification."""
         require(key in ("smoke_pass", "stage0_p0_summary"), "STOP_STAGE0_MARKER_KIND")
         research.reload()
-        require(
-            bool(re.fullmatch(r"[a-f0-9]{40}", meta.get("code_sha") or "")), "STOP_STAGE0_MARKER_IDENTITY"
-        )
+        require(bool(re.fullmatch(r"[a-f0-9]{40}", meta.get("code_sha") or "")), "STOP_STAGE0_MARKER_IDENTITY")
         root = RESULTS / prefix_for(meta["run_id"], meta["code_sha"])
         root.mkdir(parents=True, exist_ok=True)
         path = root / (key + ".json")
@@ -691,9 +702,7 @@ if modal is not None:
         if mode == "smoke":
             require(marker_remote.remote(full_meta, "smoke_pass") is None, "STOP_STAGE0_SMOKE_ALREADY_DONE")
             _dispatch_fits(smoke_jobs, max_workers)
-            require(
-                all(row is not None for row in receipts_remote.remote(smoke_jobs)), "STOP_STAGE0_SMOKE_RECEIPT"
-            )
+            require(all(row is not None for row in receipts_remote.remote(smoke_jobs)), "STOP_STAGE0_SMOKE_RECEIPT")
             freeze_remote.remote(
                 full_meta,
                 "smoke_pass",
@@ -711,22 +720,17 @@ if modal is not None:
         require(
             marker is not None
             and marker["status"] == "PASS"
-            and marker["smoke_job_shas"]
-            == [stable_sha(smoke_jobs[0]), stable_sha(smoke_jobs[1])]
+            and marker["smoke_job_shas"] == [stable_sha(smoke_jobs[0]), stable_sha(smoke_jobs[1])]
             and marker["provider_snapshot_sha256"] == inventory["source"]["snapshot_sha256"],
             "STOP_STAGE0_SMOKE_NOT_VERIFIED",
         )
-        require(
-            all(row is not None for row in receipts_remote.remote(smoke_jobs)), "STOP_STAGE0_SMOKE_RECEIPT_MISSING"
-        )
+        require(all(row is not None for row in receipts_remote.remote(smoke_jobs)), "STOP_STAGE0_SMOKE_RECEIPT_MISSING")
         _dispatch_fits(fits, max_workers)
         require(all(row is not None for row in receipts_remote.remote(fits)), "STOP_STAGE0_FITS_NOT_FULL")
         _dispatch_cells(cells, min(max_workers, 16))
         require(all(row is not None for row in receipts_remote.remote(cells)), "STOP_STAGE0_CELLS_NOT_FULL")
         summary = export_summary_remote.remote(full_meta)
-        require(
-            summary["status"] == "PASS" and summary["completed_cells"] == 16, "STOP_STAGE0_SUMMARY_NOT_FULL"
-        )
+        require(summary["status"] == "PASS" and summary["completed_cells"] == 16, "STOP_STAGE0_SUMMARY_NOT_FULL")
         freeze_remote.remote(
             full_meta, "stage0_p0_summary", {k: v for k, v in summary.items() if k not in ("run_id", "code_sha")}
         )

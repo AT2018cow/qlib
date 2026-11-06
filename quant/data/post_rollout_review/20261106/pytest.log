@@ -1,0 +1,35 @@
+........................................................................ [  7%]
+........................................................................ [ 15%]
+........................................................................ [ 23%]
+........................................................................ [ 31%]
+........................................................................ [ 39%]
+..................................................................... [ 46%]
+........................................................................ [ 54%]
+................................................................................................................................ [ 68%]
+......................................................s................. [ 75%]
+........................................................................ [ 83%]
+........................................................................ [ 91%]
+......................................... [ 95%]
+.....................................                                    [100%]
+=============================== warnings summary ===============================
+quant/tests/test_csi1000_l4_inventory.py::test_actual_inventory_remote_local_bootstrap_and_drift
+  /home/ss/git_repos/qlib/.venv/lib/python3.12/site-packages/modal/_functions.py:2139: UserWarning: The inventory_remote function is executing locally and will not have access to the mounted Volume or NetworkFileSystem data
+    warnings.warn(
+
+quant/tests/test_daily_pipeline.py::test_actual_cron_checks_website_after_signal_fast_path[ALREADY_PUBLISHED]
+quant/tests/test_daily_pipeline.py::test_actual_cron_checks_website_after_signal_fast_path[RECOVERED]
+quant/tests/test_daily_pipeline.py::test_actual_cron_checks_website_after_signal_fast_path[SKIPPED_STALE_DATA]
+quant/tests/test_daily_pipeline.py::test_actual_cron_checks_website_after_signal_fast_path[SKIPPED_NON_TRADING_DAY]
+  /home/ss/git_repos/qlib/.venv/lib/python3.12/site-packages/modal/_functions.py:2139: UserWarning: The daily_cron function is executing locally and will not have access to the mounted Volume or NetworkFileSystem data
+    warnings.warn(
+
+quant/tests/test_daily_pipeline.py::test_website_worker_refuses_wrong_deployment_before_fetching_data
+  /home/ss/git_repos/qlib/.venv/lib/python3.12/site-packages/modal/_functions.py:2139: UserWarning: The daily function is executing locally and will not have access to the mounted Volume or NetworkFileSystem data
+    warnings.warn(
+
+quant/tests/test_website_simulation.py::test_cloud_worker_rejects_changed_source_before_accessing_volume
+  /home/ss/git_repos/qlib/.venv/lib/python3.12/site-packages/modal/_functions.py:2139: UserWarning: The build_market function is executing locally and will not have access to the mounted Volume or NetworkFileSystem data
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+922 passed, 1 skipped, 7 warnings, 50 subtests passed in 38.50s

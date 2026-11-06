@@ -32,7 +32,10 @@ import numpy as np
 import pandas as pd
 
 from audit.stage_b_f5_gates import (
-    check_complete_sell, check_full_buy, require_pass, verify_input,
+    check_complete_sell,
+    check_full_buy,
+    require_pass,
+    verify_input,
 )
 
 # ---------------------------------------------------------------------------
@@ -93,6 +96,7 @@ def round_lot(amount_adj: float, factor: float) -> float:
 
 def score_order(pairs):
     """deterministic_score_order semantics: score desc, instrument asc, NaN last."""
+
     def key(item):
         inst, score = item
         score = float(score)
@@ -115,7 +119,7 @@ class QlibLikePosition:
     def __init__(self, cash: float):
         self.cash = cash
         self.amount = {}  # stock -> float adjusted amount
-        self.price = {}   # stock -> float valuation price (adjusted)
+        self.price = {}  # stock -> float valuation price (adjusted)
 
     def buy(self, stock, deal_amount, price):
         trade_val = deal_amount * price
@@ -149,8 +153,14 @@ def load_inputs(args):
     winner = next(c for c in result["ranked_candidates"] if c["candidate_id"] == CANDIDATE_ID)
     phase = next(x for x in winner["phase_results"] if x["phase"] == 0)
 
-    report_path = Path(args.report_file) if args.report_file else (
-        repo / "quant/data/round1_stage_ab/csi1000_stage_b/audit_reports/winner_4e908173705c76fe/phase00__phases.parquet")
+    report_path = (
+        Path(args.report_file)
+        if args.report_file
+        else (
+            repo
+            / "quant/data/round1_stage_ab/csi1000_stage_b/audit_reports/winner_4e908173705c76fe/phase00__phases.parquet"
+        )
+    )
     decisions_file = Path(args.decisions_file) if args.decisions_file else raw / "decisions.json"
     market_file = Path(args.market_file) if args.market_file else raw / "market_data.parquet"
     source_manifest = json.loads(
@@ -177,7 +187,9 @@ def load_inputs(args):
     else:
         expected_report = phase["report_artifact"]["sha256"]
         expected_decisions = phase["decision_artifact"]["sha256"]
-        expected_market = args.expected_market_sha256 or source_manifest["auxiliary_raw"]["market_data.parquet"]["sha256"]
+        expected_market = (
+            args.expected_market_sha256 or source_manifest["auxiliary_raw"]["market_data.parquet"]["sha256"]
+        )
     artifacts = {
         "report": (report_path, expected_report),
         "signal": (raw / "signal.parquet", phase["signal_artifact"]["sha256"]),
@@ -189,16 +201,15 @@ def load_inputs(args):
             source_manifest["auxiliary_raw"]["csi1000_instruments.txt"]["sha256"],
         ),
     }
-    identity = {
-        label: verify_input(src, expected, label)
-        for label, (src, expected) in artifacts.items()
-    }
+    identity = {label: verify_input(src, expected, label) for label, (src, expected) in artifacts.items()}
     if args.provider_snapshot_file:
         expected_snapshot = result["manifest"]
         snapshot_file = Path(args.provider_snapshot_file)
         provider_manifest = json.loads(snapshot_file.read_text())
-        if (provider_manifest.get("snapshot_token") != expected_snapshot["snapshot_token"]
-                or provider_manifest.get("provider_fingerprint") != expected_snapshot["provider_fingerprint"]):
+        if (
+            provider_manifest.get("snapshot_token") != expected_snapshot["snapshot_token"]
+            or provider_manifest.get("provider_fingerprint") != expected_snapshot["provider_fingerprint"]
+        ):
             raise ValueError("original provider fingerprint or snapshot token mismatch")
         identity["provider_snapshot"] = {
             "name": snapshot_file.name,
@@ -220,24 +231,37 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--raw-dir", default="quant/data/round1_audit_evidence/winner_phase0/raw")
     parser.add_argument("--repo-dir", default=".")
-    parser.add_argument("--out-dir", required=True,
-                        help="must be a new path; never overwrite existing derived audit evidence")
-    parser.add_argument("--report-file", default=None,
-                        help="override report parquet (e.g. fixed replay output)")
-    parser.add_argument("--decisions-file", default=None,
-                        help="override decisions json (e.g. fixed replay output)")
-    parser.add_argument("--market-file", default=None,
-                        help="override market parquet (e.g. fixed-path 565-instrument export)")
-    parser.add_argument("--fixed-mode", action="store_true",
-                        help="F5: audit repaired static-union replay; requires externally pinned SHA inputs")
-    parser.add_argument("--expected-report-sha256", default=None,
-                        help="fixed-mode: digest captured separately from the repaired report")
-    parser.add_argument("--expected-decisions-sha256", default=None,
-                        help="fixed-mode: digest captured separately from the repaired decisions")
-    parser.add_argument("--expected-market-sha256", default=None,
-                        help="digest of the ACTUAL --market-file export, pinned before this audit")
-    parser.add_argument("--provider-snapshot-file", default=None,
-                        help="fixed-mode: frozen provider_snapshot.json, matching token and fingerprint")
+    parser.add_argument(
+        "--out-dir", required=True, help="must be a new path; never overwrite existing derived audit evidence"
+    )
+    parser.add_argument("--report-file", default=None, help="override report parquet (e.g. fixed replay output)")
+    parser.add_argument("--decisions-file", default=None, help="override decisions json (e.g. fixed replay output)")
+    parser.add_argument(
+        "--market-file", default=None, help="override market parquet (e.g. fixed-path 565-instrument export)"
+    )
+    parser.add_argument(
+        "--fixed-mode",
+        action="store_true",
+        help="F5: audit repaired static-union replay; requires externally pinned SHA inputs",
+    )
+    parser.add_argument(
+        "--expected-report-sha256", default=None, help="fixed-mode: digest captured separately from the repaired report"
+    )
+    parser.add_argument(
+        "--expected-decisions-sha256",
+        default=None,
+        help="fixed-mode: digest captured separately from the repaired decisions",
+    )
+    parser.add_argument(
+        "--expected-market-sha256",
+        default=None,
+        help="digest of the ACTUAL --market-file export, pinned before this audit",
+    )
+    parser.add_argument(
+        "--provider-snapshot-file",
+        default=None,
+        help="fixed-mode: frozen provider_snapshot.json, matching token and fingerprint",
+    )
     args = parser.parse_args()
 
     out_dir = Path(args.repo_dir) / args.out_dir if not Path(args.out_dir).is_absolute() else Path(args.out_dir)
@@ -258,17 +282,19 @@ def main():
     calendar_rows = []
     for i, e in enumerate(decision_days):
         s = calendar[cal_pos[e] - 1]
-        calendar_rows.append({
-            "exec_day": e,
-            "signal_day": s,
-            "in_provider_calendar": e in cal_pos,
-            "report_day_match": report_days[i] == e,
-        })
+        calendar_rows.append(
+            {
+                "exec_day": e,
+                "signal_day": s,
+                "in_provider_calendar": e in cal_pos,
+                "report_day_match": report_days[i] == e,
+            }
+        )
     calendar_exact = (
         report_days == decision_days
         and all(r["in_provider_calendar"] for r in calendar_rows)
         and len(report_days) == 424
-        and calendar[cal_pos[report_days[0]]: cal_pos[report_days[-1]] + 1] == report_days
+        and calendar[cal_pos[report_days[0]] : cal_pos[report_days[-1]] + 1] == report_days
     )
 
     # ---------------- market data access ----------------
@@ -318,7 +344,7 @@ def main():
     account_prev = Decimal(str(INIT_CASH))
     cum_cost = Decimal("0")
     cum_turnover = Decimal("0")
-    pos_price = {}   # stock -> valuation price (adjusted), updated daily to close
+    pos_price = {}  # stock -> valuation price (adjusted), updated daily to close
     hold_count = {}
 
     total_orders = sum(len(d["orders"]) for d in decisions)
@@ -371,8 +397,9 @@ def main():
             # Frozen compute_limit_masks: without a valid previous close the
             # limit evaluation is skipped entirely (limited = valid_prev & ...),
             # so a missing prev_close does NOT block trading.
-            if not (math.isfinite(o) and math.isfinite(f) and f > 0
-                    and math.isfinite(prev_close_adj) and prev_close_adj > 0):
+            if not (
+                math.isfinite(o) and math.isfinite(f) and f > 0 and math.isfinite(prev_close_adj) and prev_close_adj > 0
+            ):
                 return True, ""
             thr = board_threshold(stock, day)
             raw_open = o / f
@@ -396,13 +423,20 @@ def main():
         dvs_ok = actual_sell_codes == exp_sells and actual_buy_codes == exp_buys
         if not dvs_ok:
             dvs_mismatches += 1
-        dvs_rows.append({
-            "exec_day": e, "signal_day": s, "holdings_n": len(holdings_sorted),
-            "expected_sells": ";".join(exp_sells), "actual_sells": ";".join(actual_sell_codes),
-            "expected_buys": ";".join(exp_buys), "actual_buys": ";".join(actual_buy_codes),
-            "blocked_sells": ";".join(blocked_sells), "blocked_buys": ";".join(blocked_buys),
-            "match": dvs_ok,
-        })
+        dvs_rows.append(
+            {
+                "exec_day": e,
+                "signal_day": s,
+                "holdings_n": len(holdings_sorted),
+                "expected_sells": ";".join(exp_sells),
+                "actual_sells": ";".join(actual_sell_codes),
+                "expected_buys": ";".join(exp_buys),
+                "actual_buys": ";".join(actual_buy_codes),
+                "blocked_sells": ";".join(blocked_sells),
+                "blocked_buys": ";".join(blocked_buys),
+                "match": dvs_ok,
+            }
+        )
 
         # --- execute orders: sells first (frozen order), then buys ---
         day_fees = Decimal("0")
@@ -439,8 +473,7 @@ def main():
                 # Check BEFORE mutation: a sell must request and execute the
                 # entire held quantity. Detect even if replayed NAV happens to match.
                 try:
-                    check_complete_sell(float_pos.amount.get(stock, 0.0),
-                                        amount, deal_amount, stock)
+                    check_complete_sell(float_pos.amount.get(stock, 0.0), amount, deal_amount, stock)
                 except ValueError:
                     sell_amount_mismatches += 1
                 trade_val, cost = float_pos.sell(stock, deal_amount, open_adj)
@@ -453,8 +486,12 @@ def main():
                     buy_value_per = float_pos.cash * RISK_DEGREE / len(buy_list)
                     buys_done = True
                 trade_val, cost = float_pos.buy(stock, deal_amount, open_adj)
-                expected_amount = round_lot(buy_value_per / open_adj, f_mkt) if buy_value_per is not None else float("nan")
-                if math.isfinite(expected_amount) and abs(expected_amount - amount) > max(1e-6, abs(expected_amount) * 1e-9):
+                expected_amount = (
+                    round_lot(buy_value_per / open_adj, f_mkt) if buy_value_per is not None else float("nan")
+                )
+                if math.isfinite(expected_amount) and abs(expected_amount - amount) > max(
+                    1e-6, abs(expected_amount) * 1e-9
+                ):
                     buy_amount_mismatches += 1
                 dec_cash -= Decimal(str(trade_val)) + Decimal(str(cost))
                 if dec_cash < 0:
@@ -465,16 +502,25 @@ def main():
             cum_cost += Decimal(str(cost))
             cum_turnover += Decimal(str(trade_val))
 
-            orders_csv.append({
-                "date": e, "stock": stock, "side": "sell" if direction == 0 else "buy",
-                "requested_qty": amount, "filled_qty": deal_amount,
-                "open_adj": open_adj, "factor": f_mkt,
-                "open_raw": open_adj / f_mkt if f_mkt else float("nan"),
-                "prev_close_adj": prev_close_adj,
-                "tradable": ok_trade, "block_reason": reason,
-                "fee_cny": float(cost), "turnover_cny": trade_val,
-                "factor_match": factor_match, "lot_ok": lot_ok,
-            })
+            orders_csv.append(
+                {
+                    "date": e,
+                    "stock": stock,
+                    "side": "sell" if direction == 0 else "buy",
+                    "requested_qty": amount,
+                    "filled_qty": deal_amount,
+                    "open_adj": open_adj,
+                    "factor": f_mkt,
+                    "open_raw": open_adj / f_mkt if f_mkt else float("nan"),
+                    "prev_close_adj": prev_close_adj,
+                    "tradable": ok_trade,
+                    "block_reason": reason,
+                    "fee_cny": float(cost),
+                    "turnover_cny": trade_val,
+                    "factor_match": factor_match,
+                    "lot_ok": lot_ok,
+                }
+            )
 
         # --- daily valuation (frozen semantics) ---
         for stock in list(float_pos.amount):
@@ -512,27 +558,34 @@ def main():
         max_return_diff = max(max_return_diff, ret_diff)
         if first_divergence is None and (ret_diff > RETURN_TOL or diff_account > ACCOUNT_TOL):
             first_divergence = {
-                "day": e, "return_recon": gross_return, "return_report": float(rep["return"]),
-                "account_recon": str(account_f), "account_report": str(rep_account),
-                "cash_recon": str(float_pos.cash), "cash_report": str(rep_cash),
-                "value_recon": str(value_f), "value_report": str(rep_value),
+                "day": e,
+                "return_recon": gross_return,
+                "return_report": float(rep["return"]),
+                "account_recon": str(account_f),
+                "account_report": str(rep_account),
+                "cash_recon": str(float_pos.cash),
+                "cash_report": str(rep_cash),
+                "value_recon": str(value_f),
+                "value_report": str(rep_value),
             }
 
-        ledger_rows.append({
-            "date": e,
-            "begin_cash": str(Decimal(str(day_open_cash))),
-            "buys_count": len(actual_buys),
-            "sells_count": len(actual_sells),
-            "fees": str(day_fees),
-            "close_cash": str(Decimal(str(float_pos.cash))),
-            "close_value": str(Decimal(str(value_f))),
-            "reconstructed_account": str(Decimal(str(account_f))),
-            "frozen_account": str(rep_account),
-            "absolute_diff": str(diff_account),
-            "reconstructed_gross_return": gross_return,
-            "frozen_return": float(rep["return"]),
-            "return_abs_diff": ret_diff,
-        })
+        ledger_rows.append(
+            {
+                "date": e,
+                "begin_cash": str(Decimal(str(day_open_cash))),
+                "buys_count": len(actual_buys),
+                "sells_count": len(actual_sells),
+                "fees": str(day_fees),
+                "close_cash": str(Decimal(str(float_pos.cash))),
+                "close_value": str(Decimal(str(value_f))),
+                "reconstructed_account": str(Decimal(str(account_f))),
+                "frozen_account": str(rep_account),
+                "absolute_diff": str(diff_account),
+                "reconstructed_gross_return": gross_return,
+                "frozen_return": float(rep["return"]),
+                "return_abs_diff": ret_diff,
+            }
+        )
 
         account_prev = Decimal(str(account_f))
 
@@ -561,11 +614,13 @@ def main():
     chunks = result_json_phase["chunk_predictions"]
     retrain_rows = []
     for c in chunks:
-        retrain_rows.append({
-            "retrain_asof": c["retrain_asof"],
-            "signal_end": c["signal_end"],
-            "prediction_content_sha256": c.get("prediction_content_sha256"),
-        })
+        retrain_rows.append(
+            {
+                "retrain_asof": c["retrain_asof"],
+                "signal_end": c["signal_end"],
+                "prediction_content_sha256": c.get("prediction_content_sha256"),
+            }
+        )
 
     summary = {
         "audit_schema": "csi1000_stage_b_execution_evidence_v1",
@@ -579,7 +634,7 @@ def main():
             "decisions": len(decisions),
             "orders": total_orders,
             "report_days": len(report_days),
-            "calendar_days_span": len(calendar[cal_pos[report_days[0]]: cal_pos[report_days[-1]] + 1]),
+            "calendar_days_span": len(calendar[cal_pos[report_days[0]] : cal_pos[report_days[-1]] + 1]),
         },
         "calendar_exact_match": bool(calendar_exact),
         "decision_reconstruction": {
@@ -642,8 +697,14 @@ def main():
             "calendar_gate": "PASS" if calendar_exact else "FAIL",
             "decision_logic_full_coverage": "PASS" if dvs_mismatches == 0 else "FAIL",
             "order_tradability_and_amounts": (
-                "PASS" if (tradability_violations == 0 and lot_violations == 0
-                           and factor_mismatches == 0 and buy_amount_mismatches == 0) else "FAIL"
+                "PASS"
+                if (
+                    tradability_violations == 0
+                    and lot_violations == 0
+                    and factor_mismatches == 0
+                    and buy_amount_mismatches == 0
+                )
+                else "FAIL"
             ),
             "independent_execution_account": "PASS",
             "f5_internal_evidence_gate": "PASS",
@@ -660,52 +721,62 @@ def main():
 
     out_dir.mkdir(parents=True, exist_ok=False)
     pd.DataFrame(calendar_rows).to_csv(out_dir / "calendar_compare.csv", index=False)
-    (out_dir / "execution_export_manifest.json").write_text(json.dumps({
-        "audit_schema": "csi1000_stage_b_execution_evidence_v1",
-        "frozen_result_commit": FROZEN_RESULT_COMMIT,
-        "snapshot_token": SNAPSHOT,
-        "candidate_id": CANDIDATE_ID,
-        "phase": 0,
-        "provider_fingerprint": result["manifest"]["provider_fingerprint"],
-        "fixed_mode": bool(args.fixed_mode),
-        "verified_inputs": identity,
-        "calendar": {
-            "source": "original cn_data/calendars/day.txt",
-            "lines": len(calendar),
-            "sha256": sha256_file(Path(args.raw_dir) / "day.txt"),
-        },
-        "artifacts": identity,
-        "auxiliary_raw": {
-            "csi1000_instruments.txt": {
-                "sha256": sha256_file(Path(args.raw_dir) / "csi1000_instruments.txt"),
-                "purpose": "point-in-time csi1000 membership spans (dynamic universe replication)",
+    (out_dir / "execution_export_manifest.json").write_text(
+        json.dumps(
+            {
+                "audit_schema": "csi1000_stage_b_execution_evidence_v1",
+                "frozen_result_commit": FROZEN_RESULT_COMMIT,
+                "snapshot_token": SNAPSHOT,
+                "candidate_id": CANDIDATE_ID,
+                "phase": 0,
+                "provider_fingerprint": result["manifest"]["provider_fingerprint"],
+                "fixed_mode": bool(args.fixed_mode),
+                "verified_inputs": identity,
+                "calendar": {
+                    "source": "original cn_data/calendars/day.txt",
+                    "lines": len(calendar),
+                    "sha256": sha256_file(Path(args.raw_dir) / "day.txt"),
+                },
+                "artifacts": identity,
+                "auxiliary_raw": {
+                    "csi1000_instruments.txt": {
+                        "sha256": sha256_file(Path(args.raw_dir) / "csi1000_instruments.txt"),
+                        "purpose": "point-in-time csi1000 membership spans (dynamic universe replication)",
+                    },
+                    "market_data.parquet": {
+                        "sha256": identity["market"]["actual_sha256"],
+                        "purpose": "ACTUAL market input used for this audit (original or fixed export), byte-pinned before run",
+                    },
+                },
+                "listing_st_pit_source": "no historical ST / PIT listing data in provider export; BLOCKED",
+                "audit_asof_utc": datetime.now(timezone.utc).isoformat(),
             },
-            "market_data.parquet": {
-                "sha256": identity["market"]["actual_sha256"],
-                "purpose": "ACTUAL market input used for this audit (original or fixed export), byte-pinned before run",
-            },
-        },
-        "listing_st_pit_source": "no historical ST / PIT listing data in provider export; BLOCKED",
-        "audit_asof_utc": datetime.now(timezone.utc).isoformat(),
-    }, indent=2))
+            indent=2,
+        )
+    )
     pd.DataFrame(orders_csv).to_csv(out_dir / "execution_orders.csv", index=False)
     pd.DataFrame(ledger_rows).to_csv(out_dir / "account_rebuild_daily.csv", index=False)
     pd.DataFrame(dvs_rows).to_csv(out_dir / "decision_vs_signal.csv", index=False)
     (out_dir / "execution_audit_summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False))
 
-    print(json.dumps({
-        "calendar_exact": calendar_exact,
-        "dvs_mismatches": dvs_mismatches,
-        "tradability_violations": tradability_violations,
-        "lot_violations": lot_violations,
-        "factor_mismatches": factor_mismatches,
-        "buy_amount_mismatches": buy_amount_mismatches,
-        "max_account_diff": str(max_account_diff),
-        "max_return_diff": max_return_diff,
-        "max_fee_diff": str(max_fee_diff),
-        "max_turnover_diff": str(max_turnover_diff),
-        "first_divergence": first_divergence,
-    }, indent=1))
+    print(
+        json.dumps(
+            {
+                "calendar_exact": calendar_exact,
+                "dvs_mismatches": dvs_mismatches,
+                "tradability_violations": tradability_violations,
+                "lot_violations": lot_violations,
+                "factor_mismatches": factor_mismatches,
+                "buy_amount_mismatches": buy_amount_mismatches,
+                "max_account_diff": str(max_account_diff),
+                "max_return_diff": max_return_diff,
+                "max_fee_diff": str(max_fee_diff),
+                "max_turnover_diff": str(max_turnover_diff),
+                "first_divergence": first_divergence,
+            },
+            indent=1,
+        )
+    )
 
 
 if __name__ == "__main__":

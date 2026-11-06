@@ -1,4 +1,5 @@
 """Patch rewrite is tested against a structural fixture; full repository integration is separate."""
+
 import ast
 import subprocess
 import sys
@@ -8,7 +9,7 @@ from pathlib import Path
 from apply_qlib_audit_fixes import patch
 
 
-MAIN = '''from pathlib import Path
+MAIN = """from pathlib import Path
 
 def _load_and_patch_cfg():
     from ruamel.yaml import YAML
@@ -70,14 +71,14 @@ def p1_diagnostics():
             turnover = float((w.reindex(prev_w.index).fillna(0) - prev_w.reindex(w.index).fillna(0)).abs().sum()) \\
                 if len(prev_w) else 1.0
             return {"ann_excess_sim": round(ann, 4)}
-'''
-HEALTH = '''def check_data():
+"""
+HEALTH = """def check_data():
     if (
             check_large_step_changes_result is not None
             or check_large_step_changes_result is not None
     ):
         pass
-'''
+"""
 
 
 class PatcherTests(unittest.TestCase):
@@ -94,9 +95,12 @@ class PatcherTests(unittest.TestCase):
             (root / "qlib_audit_fixes.py").write_bytes(
                 (package / "quant/code/execution/qlib_audit_fixes.py").read_bytes()
             )
+
             def call(*args):
-                return subprocess.run([sys.executable, "apply_qlib_audit_fixes.py", *args],
-                                      cwd=d, capture_output=True, text=True)
+                return subprocess.run(
+                    [sys.executable, "apply_qlib_audit_fixes.py", *args], cwd=d, capture_output=True, text=True
+                )
+
             checked = call("--check")
             self.assertEqual(checked.returncode, 0, checked.stderr)
             self.assertEqual((root / "modal_qlib_cn_a10g.py").read_text(), MAIN)
@@ -110,15 +114,15 @@ class PatcherTests(unittest.TestCase):
         new_source, new_health = patch(MAIN, HEALTH)
         ast.parse(new_source)
         ast.parse(new_health)
-        self.assertIn('purge_cfg_splits(cfg, read_trading_calendar(DATA_DIR), horizon=20)', new_source)
+        self.assertIn("purge_cfg_splits(cfg, read_trading_calendar(DATA_DIR), horizon=20)", new_source)
         self.assertIn('pred = model.predict(dataset, segment="valid")', new_source)
-        self.assertNotIn('enumerate(ROLLING_WINDOWS, 1)', new_source)
-        self.assertIn('check_missing_data_result is not None', new_health)
+        self.assertNotIn("enumerate(ROLLING_WINDOWS, 1)", new_source)
+        self.assertIn("check_missing_data_result is not None", new_health)
         self.assertIn('"ranking_only": True', new_source)
         self.assertIn("f'{k}_ndrop3'", new_source)
         with self.assertRaises(RuntimeError):
             patch(new_source, new_health)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

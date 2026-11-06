@@ -49,8 +49,9 @@ def _model_sha(model_params: dict) -> str:
     from qlib_live_retrain import apply_lgb_reproducibility
 
     cfg = YAML(typ="safe", pure=True).load(
-        (Path(core.REPO_ROOT) / "examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158_csi500.yaml")
-        .read_text(encoding="utf-8")
+        (Path(core.REPO_ROOT) / "examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158_csi500.yaml").read_text(
+            encoding="utf-8"
+        )
     )
     cfg["task"]["model"]["kwargs"].update(model_params)
     apply_lgb_reproducibility(cfg)
@@ -76,10 +77,16 @@ def test_stage0_markets_exact():
     assert set(core.MARKETS) == {"csi300", "csi500"}
     assert core.MARKETS["csi300"]["benchmark"] == "SH000300"
     assert core.MARKETS["csi300"]["expected_quote_count"] == 338
-    assert core.MARKETS["csi300"]["expected_quote_sha256"] == "9f3756ea8d2e0ff0bb12c3dce6d81888fe7a5df978a5f5669a4ce07b1a043f5b"
+    assert (
+        core.MARKETS["csi300"]["expected_quote_sha256"]
+        == "9f3756ea8d2e0ff0bb12c3dce6d81888fe7a5df978a5f5669a4ce07b1a043f5b"
+    )
     assert core.MARKETS["csi500"]["benchmark"] == "SH000905"
     assert core.MARKETS["csi500"]["expected_quote_count"] == 643
-    assert core.MARKETS["csi500"]["expected_quote_sha256"] == "cfcbc21efaba156173ff3c0aa09afc4f1fda5e94d9046f32bf37aa8b32f5e4fb"
+    assert (
+        core.MARKETS["csi500"]["expected_quote_sha256"]
+        == "cfcbc21efaba156173ff3c0aa09afc4f1fda5e94d9046f32bf37aa8b32f5e4fb"
+    )
     assert core.COMBOS == (("top20_drop2", 20, 2), ("top10_drop1", 10, 1))
     assert core.PHASES == (0, 10)
     assert core.EXPECTED_PROVIDER_FINGERPRINT == "cd2e68f571c6bd19fbb2b79089e891bb1c43b96ab1fcdb4d2b2a9b1fdd9ce5d5"
@@ -121,7 +128,9 @@ def test_stage0_fit_roster_is_176_unique_and_market_mapped():
     for market in ("csi300", "csi500"):
         for model_key in ("baseline", "c98856b4"):
             for phase in (0, 10):
-                group = [j for j in jobs if j["market"] == market and j["model_key"] == model_key and j["phase"] == phase]
+                group = [
+                    j for j in jobs if j["market"] == market and j["model_key"] == model_key and j["phase"] == phase
+                ]
                 assert len(group) == 22
                 legal = {(p["retrain_asof"], p["signal_end"]) for p in build_phase_jobs(calendar, phase)}
                 assert {(j["retrain_asof"], j["signal_end"]) for j in group} == legal
@@ -158,17 +167,19 @@ def test_stage0_cell_roster_is_16_unique_and_combo_mapped():
 
 def test_stage0_bind_identity():
     job = core.build_stage0_cell_jobs("stage0_p0_20261015_a1", "a" * 40)[0]
-    bound = core.bind_job_identity(job, provider_fingerprint="f" * 64, source_snapshot_sha256="e" * 64,
-                                   quote_sha256="d" * 64)
+    bound = core.bind_job_identity(
+        job, provider_fingerprint="f" * 64, source_snapshot_sha256="e" * 64, quote_sha256="d" * 64
+    )
     assert bound["provider_fingerprint"] == "f" * 64
     assert job["provider_fingerprint"] == ""
     with pytest.raises(ValueError, match="LAYERED_SEARCH_BLOCKED"):
-        core.bind_job_identity(job, provider_fingerprint="zz", source_snapshot_sha256="e" * 64,
-                               quote_sha256="d" * 64)
+        core.bind_job_identity(job, provider_fingerprint="zz", source_snapshot_sha256="e" * 64, quote_sha256="d" * 64)
 
 
 def test_stage0_quote_sha_helper():
-    assert core.quote_sha_of(["SH600000", "SH600001"]) == __import__("hashlib").sha256(b"SH600000\nSH600001\n").hexdigest()
+    assert (
+        core.quote_sha_of(["SH600000", "SH600001"]) == __import__("hashlib").sha256(b"SH600000\nSH600001\n").hexdigest()
+    )
     with pytest.raises(ValueError, match="LAYERED_SEARCH_BLOCKED"):
         core.quote_sha_of([])
     with pytest.raises(ValueError, match="LAYERED_SEARCH_BLOCKED"):
@@ -189,9 +200,19 @@ class _DummyParquet:
 
 
 def _retrain_job():
-    return {**_meta(), "kind": "retrain", "market": "csi300", "benchmark": "SH000300", "model_key": "baseline",
-            "candidate_id": "c" * 64, "model_params": {"learning_rate": 0.1}, "model_sha256": "1" * 64,
-            "phase": 0, "retrain_asof": "2025-01-02", "signal_end": "2025-01-29"}
+    return {
+        **_meta(),
+        "kind": "retrain",
+        "market": "csi300",
+        "benchmark": "SH000300",
+        "model_key": "baseline",
+        "candidate_id": "c" * 64,
+        "model_params": {"learning_rate": 0.1},
+        "model_sha256": "1" * 64,
+        "phase": 0,
+        "retrain_asof": "2025-01-02",
+        "signal_end": "2025-01-29",
+    }
 
 
 def test_stage0_receipt_roundtrip_and_tamper_reject(tmp_path):
@@ -269,23 +290,46 @@ def test_stage0_render_scoreboard(tmp_path):
                 for phase in (0, 10):
                     cells.append(
                         {
-                            "market": market, "benchmark": core.MARKETS[market]["benchmark"], "model_key": model_key,
-                            "candidate_id": core.MODELS[model_key]["candidate_id"], "combo_key": combo_key,
-                            "topk": topk, "n_drop": dropn, "phase": phase,
-                            "metrics": {"n_days": 424, "strategy_total_return": 0.1, "strategy_cagr": 0.06,
-                                        "benchmark_cagr": 0.02, "relative_excess_cagr": 0.04, "sharpe": 1.2,
-                                        "information_ratio": 0.8, "strategy_max_drawdown": -0.1,
-                                        "mean_turnover": 0.3, "total_cost_sum": 0.05,
-                                        "account_return_max_error": 1e-12},
-                            "stressed": {"10bp": {"strategy_total_return": 0.09},
-                                         "20bp": {"strategy_total_return": 0.08}},
+                            "market": market,
+                            "benchmark": core.MARKETS[market]["benchmark"],
+                            "model_key": model_key,
+                            "candidate_id": core.MODELS[model_key]["candidate_id"],
+                            "combo_key": combo_key,
+                            "topk": topk,
+                            "n_drop": dropn,
+                            "phase": phase,
+                            "metrics": {
+                                "n_days": 424,
+                                "strategy_total_return": 0.1,
+                                "strategy_cagr": 0.06,
+                                "benchmark_cagr": 0.02,
+                                "relative_excess_cagr": 0.04,
+                                "sharpe": 1.2,
+                                "information_ratio": 0.8,
+                                "strategy_max_drawdown": -0.1,
+                                "mean_turnover": 0.3,
+                                "total_cost_sum": 0.05,
+                                "account_return_max_error": 1e-12,
+                            },
+                            "stressed": {
+                                "10bp": {"strategy_total_return": 0.09},
+                                "20bp": {"strategy_total_return": 0.08},
+                            },
                         }
                     )
     out = core.render_scoreboard({"cells": cells}, tmp_path / "scoreboard.csv")
     rows = out.read_text(encoding="utf-8").strip().splitlines()
     assert len(rows) == 17
-    assert rows[0].split(",")[:8] == ["market", "benchmark", "model_key", "candidate_id", "combo_key", "topk",
-                                      "n_drop", "phase"]
+    assert rows[0].split(",")[:8] == [
+        "market",
+        "benchmark",
+        "model_key",
+        "candidate_id",
+        "combo_key",
+        "topk",
+        "n_drop",
+        "phase",
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -295,8 +339,17 @@ def test_stage0_render_scoreboard(tmp_path):
 
 def test_stage0_modal_traps_static():
     src = MODAL_SRC.read_text(encoding="utf-8")
-    for token in ("quant/local_backup", "quant/data", ".worktrees", ".venv", "mlruns", "__pycache__", ".git",
-                  ".cpp", ".so"):
+    for token in (
+        "quant/local_backup",
+        "quant/data",
+        ".worktrees",
+        ".venv",
+        "mlruns",
+        "__pycache__",
+        ".git",
+        ".cpp",
+        ".so",
+    ):
         assert token in src, f"image ignore missing: {token}"
     for token in (
         "/root/qlib:",

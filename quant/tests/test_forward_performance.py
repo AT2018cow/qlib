@@ -18,29 +18,36 @@ def _artifact(date, open_value, close_value, lineage=CANONICAL_LINEAGE, pending=
         "opening_positions": {"A": {"shares": 10.0}},
         "opening_marks": {"A": {"shares": 10.0, "price": open_value / 10.0, "reason": "EXCHANGE_OPEN"}},
         "position_marks": {"A": {"shares": 10.0, "price": close_value / 10.0, "reason": "EXCHANGE_CLOSE"}},
-        "executed_buy": [], "executed_sell": [], "cost": 0.0,
+        "executed_buy": [],
+        "executed_sell": [],
+        "cost": 0.0,
     }
     return {
         "market": "csi1000",
         "paper_lineage": lineage,
         "usage_date": date,
-        "trading_calendar": {
-            "source": "akshare.tool_trade_date_hist_sina",
-            "through": date,
-            "dates": [d for d in ("2026-10-12", "2026-10-13", "2026-10-14")
-                      if "2026-10-12" <= d <= date],
-        } if date >= "2026-10-12" else None,
+        "trading_calendar": (
+            {
+                "source": "akshare.tool_trade_date_hist_sina",
+                "through": date,
+                "dates": [d for d in ("2026-10-12", "2026-10-13", "2026-10-14") if "2026-10-12" <= d <= date],
+            }
+            if date >= "2026-10-12"
+            else None
+        ),
         "execution_report": report,
         **({"pending_orders": {"execution_date": pending}} if pending else {}),
     }
 
 
 def test_forward_series_starts_exactly_on_20261012():
-    result = build_forward_performance([
-        _artifact("2026-10-09", 100.0, 110.0),
-        _artifact("2026-10-12", 200.0, 210.0),
-        _artifact("2026-10-13", 211.0, 220.0),
-    ])
+    result = build_forward_performance(
+        [
+            _artifact("2026-10-09", 100.0, 110.0),
+            _artifact("2026-10-12", 200.0, 210.0),
+            _artifact("2026-10-13", 211.0, 220.0),
+        ]
+    )
     assert result["start_date"] == FORWARD_PERFORMANCE_START == "2026-10-12"
     assert result["inception_date"] == "2026-10-12"
     assert [p["date"] for p in result["points"]] == ["2026-10-12", "2026-10-13"]
@@ -55,21 +62,27 @@ def test_first_day_includes_open_to_close_return_and_cost_effects():
 
 
 def test_only_current_winner_lineage_is_public_performance():
-    result = build_forward_performance([
-        _artifact("2026-10-12", 100.0, 150.0, lineage="canonical"),
-        _artifact("2026-10-12", 100.0, 101.0),
-    ])
+    result = build_forward_performance(
+        [
+            _artifact("2026-10-12", 100.0, 150.0, lineage="canonical"),
+            _artifact("2026-10-12", 100.0, 101.0),
+        ]
+    )
     assert len(result["points"]) == 1
     assert abs(result["cumulative_return"] - 0.01) < 1e-12
 
 
 def test_no_report_waits_for_actual_settlement():
-    result = build_forward_performance([{
-        "market": "csi1000",
-        "paper_lineage": CANONICAL_LINEAGE,
-        "pending_orders": {"execution_date": "2026-10-12"},
-        "execution_report": None,
-    }])
+    result = build_forward_performance(
+        [
+            {
+                "market": "csi1000",
+                "paper_lineage": CANONICAL_LINEAGE,
+                "pending_orders": {"execution_date": "2026-10-12"},
+                "execution_report": None,
+            }
+        ]
+    )
     assert result["status"] == "awaiting_first_valuation"
     assert result["points"] == []
 
@@ -90,18 +103,22 @@ def test_changed_cash_and_nav_fail_independent_reconciliation():
 
 def test_conflicting_same_date_reports_fail_closed():
     with pytest.raises(ValueError, match="conflicting performance reports"):
-        build_forward_performance([
-            _artifact("2026-10-12", 100.0, 101.0),
-            _artifact("2026-10-12", 100.0, 102.0),
-        ])
+        build_forward_performance(
+            [
+                _artifact("2026-10-12", 100.0, 101.0),
+                _artifact("2026-10-12", 100.0, 102.0),
+            ]
+        )
 
 
 def test_scheduled_gap_must_not_be_silently_skipped():
     with pytest.raises(ValueError, match="missing scheduled/trading-calendar settlement"):
-        build_forward_performance([
-            _artifact("2026-10-12", 100, 101, pending="2026-10-13"),
-            _artifact("2026-10-14", 100, 102),
-        ])
+        build_forward_performance(
+            [
+                _artifact("2026-10-12", 100, 101, pending="2026-10-13"),
+                _artifact("2026-10-14", 100, 102),
+            ]
+        )
 
 
 def test_later_verified_first_valuation_preserves_real_inception():
@@ -112,10 +129,12 @@ def test_later_verified_first_valuation_preserves_real_inception():
 
 def test_full_calendar_catches_completely_missing_publication_and_report():
     with pytest.raises(ValueError, match="missing scheduled/trading-calendar settlement"):
-        build_forward_performance([
-            _artifact("2026-10-12", 100, 101),
-            _artifact("2026-10-14", 101, 103),
-        ])
+        build_forward_performance(
+            [
+                _artifact("2026-10-12", 100, 101),
+                _artifact("2026-10-14", 101, 103),
+            ]
+        )
 
 
 def test_calendar_cannot_rewrite_prior_trading_days():
@@ -163,7 +182,8 @@ def test_mixed_verified_and_fallback_days_expose_per_point_st_policy():
     assert result["execution_st_policy"] == "MIXED_ST_MODES"
     assert result["st_fallback_dates"] == ["2026-10-12"]
     assert [p["execution_st_policy"] for p in result["points"]] == [
-        REFERENCE_ST_POLICY, VERIFIED_ST_POLICY,
+        REFERENCE_ST_POLICY,
+        VERIFIED_ST_POLICY,
     ]
     assert result["return_interpretation"] == "PAPER_WITH_DISCLOSED_ST_FALLBACK"
 

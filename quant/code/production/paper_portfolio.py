@@ -13,6 +13,7 @@ method_buy=top, method_sell=bottom, only_tradable=False, hold_thresh=1.  The
 buy list is fixed before execution; a blocked buy is NOT replaced by the next
 ranked stock.  Cash sizing follows Qlib's risk_degree convention.
 """
+
 from __future__ import annotations
 
 import copy
@@ -140,12 +141,7 @@ class PaperPortfolio:
         # Match DeterministicTopkDropoutStrategy exactly: holdings never inherit
         # dict/set iteration order, and score ties resolve by instrument asc.
         held = sorted(self.positions, key=str)
-        last = [
-            str(s)
-            for s in deterministic_score_order(
-                (s, scores.get(s, float("-inf"))) for s in held
-            )
-        ]
+        last = [str(s) for s in deterministic_score_order((s, scores.get(s, float("-inf"))) for s in held)]
         held_set = set(last)
 
         n_today = self.nd + self.topk - len(last)
@@ -156,13 +152,8 @@ class PaperPortfolio:
         # boundaries.  Sell iteration is instrument ascending, as in the
         # audited Stage-A/Stage-B deterministic strategy.
         comb_codes = sorted(set(last).union(today), key=str)
-        comb = [
-            str(s)
-            for s in deterministic_score_order(
-                (s, scores.get(s, float("-inf"))) for s in comb_codes
-            )
-        ]
-        bottom = set(comb[-self.nd:]) if self.nd > 0 else set()
+        comb = [str(s) for s in deterministic_score_order((s, scores.get(s, float("-inf"))) for s in comb_codes)]
+        bottom = set(comb[-self.nd :]) if self.nd > 0 else set()
         sell = sorted((s for s in last if s in bottom), key=str)
         n_buy = len(sell) + self.topk - len(last)
         buy = today[:n_buy] if n_buy != 0 else []
@@ -267,9 +258,7 @@ class PaperPortfolio:
             return {"date": execution_date, "status": "no_pending"}
         pending = self.pending_signal
         if str(execution_date) != pending["execution_date"]:
-            raise ValueError(
-                f"pending execution date {pending['execution_date']} != supplied {execution_date}"
-            )
+            raise ValueError(f"pending execution date {pending['execution_date']} != supplied {execution_date}")
         if self.last_execution_date and execution_date <= self.last_execution_date:
             raise ValueError("execution date is not strictly increasing")
 
@@ -326,10 +315,13 @@ class PaperPortfolio:
         if strict_valuation:
             for sym in confirmed_halts:
                 evidence = halt_evidence.get(sym)
-                if (not isinstance(evidence, dict) or evidence.get("date") != execution_date
-                        or evidence.get("scope") != "FULL_SESSION" or not evidence.get("source")
-                        or not (str(evidence.get("start_date", "")) <= execution_date
-                                <= str(evidence.get("end_date", "")))):
+                if (
+                    not isinstance(evidence, dict)
+                    or evidence.get("date") != execution_date
+                    or evidence.get("scope") != "FULL_SESSION"
+                    or not evidence.get("source")
+                    or not (str(evidence.get("start_date", "")) <= execution_date <= str(evidence.get("end_date", "")))
+                ):
                     raise ValueError(f"missing/invalid dated halt evidence for {sym}")
             for sym in self.positions:
                 op = open_prices.get(sym)
@@ -338,7 +330,12 @@ class PaperPortfolio:
             candidates = {sym: dict(pos) for sym, pos in self.positions.items()}
             for sym in decision["buy"]:
                 px = open_prices.get(sym)
-                if buy_tradable.get(sym, True) is not False and px is not None and math.isfinite(float(px)) and float(px) > 0:
+                if (
+                    buy_tradable.get(sym, True) is not False
+                    and px is not None
+                    and math.isfinite(float(px))
+                    and float(px) > 0
+                ):
                     candidates.setdefault(sym, {"shares": 1.0, "last_price": float(px)})
             close_valuation(self.cash, candidates, close_prices, confirmed_halts=confirmed_halts)
         opening_cash = self.cash
@@ -353,8 +350,7 @@ class PaperPortfolio:
             )
         else:
             portfolio_value_pre_trade_open = self.cash + sum(
-                float(pos["shares"])
-                * float(open_prices.get(sym, pos.get("last_price", pos["entry_price"])))
+                float(pos["shares"]) * float(open_prices.get(sym, pos.get("last_price", pos["entry_price"])))
                 for sym, pos in self.positions.items()
             )
             opening_marks = {}
@@ -478,8 +474,7 @@ class PaperPortfolio:
                 pos["last_price"] = float(px)
 
         portfolio_value = self.cash + sum(
-            float(pos["shares"]) * float(pos.get("last_price", pos["entry_price"]))
-            for pos in self.positions.values()
+            float(pos["shares"]) * float(pos.get("last_price", pos["entry_price"])) for pos in self.positions.values()
         )
 
         # Both historical replay and forward publication call the same
@@ -509,8 +504,7 @@ class PaperPortfolio:
                 for pos in self.positions.values()
             )
             position_marks = {
-                sym: {"shares": float(pos["shares"]), "price": float(pos["last_price"]),
-                      "reason": "UNVERIFIED_LEGACY"}
+                sym: {"shares": float(pos["shares"]), "price": float(pos["last_price"]), "reason": "UNVERIFIED_LEGACY"}
                 for sym, pos in self.positions.items()
             }
         report = {

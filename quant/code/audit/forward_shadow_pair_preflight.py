@@ -5,6 +5,7 @@ an externally immutable publication receipt, or actual PaperPortfolio settlement
 Do NOT import historical Stage-A/B results, perform strategy selection, trade,
 or modify stage_b_winner_canonical. See protocol 47.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -27,10 +28,15 @@ CANDIDATES = {
         "model_config_sha256": "793021af66034ec508848ee032f6d309103291981abb63d11ae779da9c5ee7d3",
     },
 }
-COMMON = ("usage_date", "signal_data_date", "calendar_sha256",
-          "provider_fingerprint", "pit_universe_sha256", "feature_asof")
-DIGESTS = ("checkpoint_sha256", "signal_file_sha256",
-           "full_ranking_sha256", "top20_sha256", "pending_order_sha256")
+COMMON = (
+    "usage_date",
+    "signal_data_date",
+    "calendar_sha256",
+    "provider_fingerprint",
+    "pit_universe_sha256",
+    "feature_asof",
+)
+DIGESTS = ("checkpoint_sha256", "signal_file_sha256", "full_ranking_sha256", "top20_sha256", "pending_order_sha256")
 
 
 def _require(cond, detail):
@@ -50,8 +56,9 @@ def _utc(value):
 
 
 def canonical_hash(payload):
-    return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False,
-                                      separators=(",", ":"), allow_nan=False).encode()).hexdigest()
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode()
+    ).hexdigest()
 
 
 def validate_pair(packet, *, previous_pair_hash=None, independently_observed_outcome_utc=None):
@@ -61,7 +68,9 @@ def validate_pair(packet, *, previous_pair_hash=None, independently_observed_out
     bytes, checkpoint, PIT dates, 20-session label maturity, external publication
     receipt preceding any outcome and independent settled paper accounts.
     """
-    _require(isinstance(packet, dict) and set(packet.get("legs", {})) == set(CANDIDATES), "exactly winner+baseline required")
+    _require(
+        isinstance(packet, dict) and set(packet.get("legs", {})) == set(CANDIDATES), "exactly winner+baseline required"
+    )
     _require(packet.get("protocol") == "47-forward-shadow-v1", "wrong pre-registered protocol")
     day = packet.get("usage_date")
     _require(isinstance(day, str), "usage date missing")
@@ -75,9 +84,13 @@ def validate_pair(packet, *, previous_pair_hash=None, independently_observed_out
     if sequence == 1:
         _require(previous_pair_hash is None and packet.get("previous_pair_hash") is None, "invalid first-pair chain")
     else:
-        _require(_digest(previous_pair_hash) and packet.get("previous_pair_hash") == previous_pair_hash,
-                 "broken/missing previous-pair hash chain")
-    _require("execution_report" not in packet and "realized_return" not in packet, "realized outcome embedded in prediction")
+        _require(
+            _digest(previous_pair_hash) and packet.get("previous_pair_hash") == previous_pair_hash,
+            "broken/missing previous-pair hash chain",
+        )
+    _require(
+        "execution_report" not in packet and "realized_return" not in packet, "realized outcome embedded in prediction"
+    )
     accounts = set()
     anchor = None
     for name, frozen in CANDIDATES.items():
@@ -97,18 +110,27 @@ def validate_pair(packet, *, previous_pair_hash=None, independently_observed_out
             _require(anchor == comparable, "legs have unequal as-of/PIT/calendar/provider")
         for field in DIGESTS:
             _require(_digest(leg.get(field)), "missing/bad artifact hash " + name + "." + field)
-        _require(isinstance(leg.get("train_end"), str) and leg["train_end"] <= leg["signal_data_date"],
-                 "future training labels: " + name)
+        _require(
+            isinstance(leg.get("train_end"), str) and leg["train_end"] <= leg["signal_data_date"],
+            "future training labels: " + name,
+        )
         _require(_utc(leg.get("model_fit_asof_utc")) <= created, "model fit from the future: " + name)
         _require(_utc(leg.get("published_utc")) <= created, "late individual leg: " + name)
-        _require(leg.get("label_horizon_sessions") == 20 and leg.get("topk") == 20 and
-                 leg.get("n_drop") == 2, "frozen training/trading protocol drift")
+        _require(
+            leg.get("label_horizon_sessions") == 20 and leg.get("topk") == 20 and leg.get("n_drop") == 2,
+            "frozen training/trading protocol drift",
+        )
         account_id = leg.get("paper_account_id")
-        _require(isinstance(account_id, str) and account_id and account_id not in accounts,
-                 "shared/invalid paper account id")
+        _require(
+            isinstance(account_id, str) and account_id and account_id not in accounts, "shared/invalid paper account id"
+        )
         accounts.add(account_id)
         _require(leg.get("initial_cash_cny") == CAPITAL, "independent account not CNY100m")
-    return {"status": "STRUCTURAL_PREFLIGHT_ONLY_NEEDS_IMMUTABLE_RECEIPT_AND_SETTLEMENT",
-            "pair_sha256": canonical_hash(packet), "usage_date": day,
-            "training_performed": False, "promotion_authorized": False,
-            "production_winner_unchanged": True}
+    return {
+        "status": "STRUCTURAL_PREFLIGHT_ONLY_NEEDS_IMMUTABLE_RECEIPT_AND_SETTLEMENT",
+        "pair_sha256": canonical_hash(packet),
+        "usage_date": day,
+        "training_performed": False,
+        "promotion_authorized": False,
+        "production_winner_unchanged": True,
+    }

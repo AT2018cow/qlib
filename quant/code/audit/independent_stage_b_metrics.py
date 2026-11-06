@@ -3,6 +3,7 @@
 Uses a frozen evidence manifest, raw Parquet files and the provider trading
 calendar. Does NOT import portfolio_performance, Stage-B helpers or Qlib.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -91,7 +92,7 @@ def metrics(dates, values):
         "information_ratio": _ratio(r, b),
         "annual_volatility": statistics.stdev(r) * math.sqrt(ANNUAL_SESSIONS),
         "mean_daily_net_return": _mean(r),
-        "mean_daily_active_return": _mean([x-y for x, y in zip(r, b)]),
+        "mean_daily_active_return": _mean([x - y for x, y in zip(r, b)]),
         "account_return_max_error": max(abs(x) for x in delta),
         "mean_turnover": _mean(values["turnover"]),
         "total_cost_sum": math.fsum(values["cost"]),
@@ -103,8 +104,10 @@ def metrics(dates, values):
         "sharpe_238_rf0_ddof0": _mean(r) / statistics.pstdev(r) * math.sqrt(238) if statistics.pstdev(r) else None,
     }
     # Cumulative absolute fee and turnover columns need first differences.
-    inc_cost = [values["total_cost"][0]] + [values["total_cost"][i] - values["total_cost"][i-1] for i in range(1, n)]
-    inc_turnover = [values["total_turnover"][0]] + [values["total_turnover"][i] - values["total_turnover"][i-1] for i in range(1, n)]
+    inc_cost = [values["total_cost"][0]] + [values["total_cost"][i] - values["total_cost"][i - 1] for i in range(1, n)]
+    inc_turnover = [values["total_turnover"][0]] + [
+        values["total_turnover"][i] - values["total_turnover"][i - 1] for i in range(1, n)
+    ]
     diagnostics = {
         "max_account_return_delta": result["account_return_max_error"],
         "max_value_plus_cash_discrepancy": max(abs(a[i] - values["value"][i] - values["cash"][i]) for i in range(n)),
@@ -119,10 +122,19 @@ def metrics(dates, values):
         "min_net_return": min(r),
     }
     daily = [
-        {"date": dates[i].isoformat(), "account": a[i], "reported_net": r[i],
-         "account_implied_net": implied[i], "difference": delta[i], "benchmark": b[i],
-         "cost_rate": values["cost"][i], "total_cost": values["total_cost"][i],
-         "cash": values["cash"][i], "value": values["value"][i], "turnover": values["turnover"][i]}
+        {
+            "date": dates[i].isoformat(),
+            "account": a[i],
+            "reported_net": r[i],
+            "account_implied_net": implied[i],
+            "difference": delta[i],
+            "benchmark": b[i],
+            "cost_rate": values["cost"][i],
+            "total_cost": values["total_cost"][i],
+            "cash": values["cash"][i],
+            "value": values["value"][i],
+            "turnover": values["turnover"][i],
+        }
         for i in range(n)
     ]
     return result, sensitivity, diagnostics, daily
@@ -141,10 +153,19 @@ def audit_one(item, snapshot, artifact_root, calendar, out_dir):
     volume_prefix = Path("/vol/csi1000_stage_b") / snapshot
     rel = source.relative_to(volume_prefix)
     path = artifact_root / rel
-    row = {"cohort": item["cohort"], "phase": item["phase"], "source_path": str(source),
-           "local_path": str(path), "expected_sha256": item["expected_report"]["sha256"],
-           "original": item["reported_metrics"], "recomputed": None, "comparison": None,
-           "metric_formula": "BLOCKED", "daily_account": "BLOCKED", "execution_integrity": "BLOCKED"}
+    row = {
+        "cohort": item["cohort"],
+        "phase": item["phase"],
+        "source_path": str(source),
+        "local_path": str(path),
+        "expected_sha256": item["expected_report"]["sha256"],
+        "original": item["reported_metrics"],
+        "recomputed": None,
+        "comparison": None,
+        "metric_formula": "BLOCKED",
+        "daily_account": "BLOCKED",
+        "execution_integrity": "BLOCKED",
+    }
     if not path.is_file():
         row["reason"] = "raw report bytes unavailable"
         return row
@@ -156,6 +177,7 @@ def audit_one(item, snapshot, artifact_root, calendar, out_dir):
         return row
     try:
         import pandas as pd
+
         frame = pd.read_parquet(path)
         if list(frame.columns) != item["expected_report"]["columns"] or set(frame.columns) != set(REQUIRED):
             raise ValueError("schema does not match manifest")
@@ -189,8 +211,13 @@ def audit_one(item, snapshot, artifact_root, calendar, out_dir):
             new = numbers[k]
             tol = 1e-8 if k.startswith("mean_daily") else (1e-10 if k == "account_return_max_error" else 1e-6)
             if isinstance(old, (float, int)):
-                errors[k] = {"saved": old, "recomputed": new, "absolute_error": abs(old - new), "tolerance": tol,
-                             "within_tolerance": abs(old - new) <= tol}
+                errors[k] = {
+                    "saved": old,
+                    "recomputed": new,
+                    "absolute_error": abs(old - new),
+                    "tolerance": tol,
+                    "within_tolerance": abs(old - new) <= tol,
+                }
         row["comparison"] = errors
         wrong = [k for k, v in errors.items() if not v["within_tolerance"]]
         accounting_issues = []
@@ -205,8 +232,11 @@ def audit_one(item, snapshot, artifact_root, calendar, out_dir):
         row["daily_account"] = "FAIL" if accounting_issues else "PASS"
         wrong.extend(accounting_issues)
         row["metric_formula"] = "FAIL" if wrong else ("PASS" if calendar is not None else "BLOCKED")
-        row["reason"] = ("metric mismatches: " + ", ".join(wrong)) if wrong else (
-            "calendar missing" if calendar is None else "metrics agree; execution not examined")
+        row["reason"] = (
+            ("metric mismatches: " + ", ".join(wrong))
+            if wrong
+            else ("calendar missing" if calendar is None else "metrics agree; execution not examined")
+        )
         with (out_dir / f"{label}_daily.csv").open("w", newline="") as handle:
             writer = csv.DictWriter(handle, fieldnames=list(daily[0]))
             writer.writeheader()
@@ -219,9 +249,15 @@ def audit_one(item, snapshot, artifact_root, calendar, out_dir):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--manifest", type=Path, default=Path(__file__).resolve().parents[3] / "quant/data/round1_audit_evidence/csi1000_stage_b_frozen_manifest_20261009.json")
-    parser.add_argument("--artifact-root", required=True, type=Path,
-                        help="Read-only mirror of /vol/csi1000_stage_b/<snapshot>/")
+    parser.add_argument(
+        "--manifest",
+        type=Path,
+        default=Path(__file__).resolve().parents[3]
+        / "quant/data/round1_audit_evidence/csi1000_stage_b_frozen_manifest_20261009.json",
+    )
+    parser.add_argument(
+        "--artifact-root", required=True, type=Path, help="Read-only mirror of /vol/csi1000_stage_b/<snapshot>/"
+    )
     parser.add_argument("--calendar", type=Path, help="Original provider calendars/day.txt; required for calendar PASS")
     parser.add_argument("--all", action="store_true", help="Check all ten frozen phases; otherwise winner phase 0 only")
     parser.add_argument("--output", required=True, type=Path)
@@ -229,14 +265,36 @@ def main():
     manifest = json.loads(args.manifest.read_text())
     calendar = load_calendar(args.calendar) if args.calendar else None
     args.output.mkdir(parents=True, exist_ok=True)
-    items = manifest["phases"] if args.all else [next(x for x in manifest["phases"] if x["cohort"] == "winner" and x["phase"] == 0)]
+    items = (
+        manifest["phases"]
+        if args.all
+        else [next(x for x in manifest["phases"] if x["cohort"] == "winner" and x["phase"] == 0)]
+    )
     rows = [audit_one(i, manifest["snapshot_token"], args.artifact_root, calendar, args.output) for i in items]
-    out = {"frozen_commit": manifest["frozen_commit"], "raw_data_scope": "all" if args.all else "winner_phase0",
-           "audits": rows, "overall": "FAIL" if any(x["metric_formula"] == "FAIL" for x in rows) else "BLOCKED"}
+    out = {
+        "frozen_commit": manifest["frozen_commit"],
+        "raw_data_scope": "all" if args.all else "winner_phase0",
+        "audits": rows,
+        "overall": "FAIL" if any(x["metric_formula"] == "FAIL" for x in rows) else "BLOCKED",
+    }
     (args.output / "comparisons.json").write_text(json.dumps(out, indent=2, allow_nan=False) + "\n")
-    print(json.dumps({"overall": out["overall"], "phases": [
-        {"cohort": x["cohort"], "phase": x["phase"], "metric_formula": x["metric_formula"], "reason": x["reason"]} for x in rows
-    ]}, indent=2))
+    print(
+        json.dumps(
+            {
+                "overall": out["overall"],
+                "phases": [
+                    {
+                        "cohort": x["cohort"],
+                        "phase": x["phase"],
+                        "metric_formula": x["metric_formula"],
+                        "reason": x["reason"],
+                    }
+                    for x in rows
+                ],
+            },
+            indent=2,
+        )
+    )
     return 1 if out["overall"] == "FAIL" else (2 if out["overall"] == "BLOCKED" else 0)
 
 

@@ -3,6 +3,7 @@
 Usage: modal run quant/code/audit/modal_stage_b_ledger.py --candidate baseline --phases phase0
 Never deploy or schedule this app. Existing data Volume is mounted only for reads.
 """
+
 from __future__ import annotations
 
 import json
@@ -17,14 +18,16 @@ SNAPSHOT = "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1"
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .apt_install("build-essential")
-    .pip_install("numpy==1.26.4", "pandas==2.2.3", "pyarrow==17.0.0",
-                 "Cython", "setuptools-scm")
-    .add_local_dir(".", remote_path=REPO_DIR, copy=True,
-                   ignore=lambda path: (
-                       any(part in str(path) for part in
-                           (".git", ".venv", "__pycache__", "mlruns"))
-                       or str(path).endswith((".so", ".cpp"))
-                   ))
+    .pip_install("numpy==1.26.4", "pandas==2.2.3", "pyarrow==17.0.0", "Cython", "setuptools-scm")
+    .add_local_dir(
+        ".",
+        remote_path=REPO_DIR,
+        copy=True,
+        ignore=lambda path: (
+            any(part in str(path) for part in (".git", ".venv", "__pycache__", "mlruns"))
+            or str(path).endswith((".so", ".cpp"))
+        ),
+    )
     .run_commands(
         "cd /root/qlib && pip install . --no-build-isolation 'numpy==1.26.4'"
         # Pin numpy: without it pip re-resolves qlib's loose bounds to numpy
@@ -49,17 +52,30 @@ def audit_once(candidate: str, phases: str) -> dict:
         # pip-installed Cython-compiled package in site-packages instead of
         # the uncompiled source tree. The verifier only needs stdlib + pandas
         # + qlib; all repo inputs are read via absolute --repo-root paths.
-        proc = subprocess.run([
-            "python", f"{REPO_DIR}/quant/code/audit/verify_stage_b_fixed_ledger.py",
-            "--repo-root", REPO_DIR,
-            "--provider-uri", "/vol/cn_data",
-            "--provider-snapshot",
-            "/vol/csi1000_stage_b/provider_snapshot.json",
-            "--candidate", candidate,
-            "--phases", phases,
-            "--output-dir", str(result_dir),
-        ], cwd="/tmp", check=False, timeout=3300,
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        proc = subprocess.run(
+            [
+                "python",
+                f"{REPO_DIR}/quant/code/audit/verify_stage_b_fixed_ledger.py",
+                "--repo-root",
+                REPO_DIR,
+                "--provider-uri",
+                "/vol/cn_data",
+                "--provider-snapshot",
+                "/vol/csi1000_stage_b/provider_snapshot.json",
+                "--candidate",
+                candidate,
+                "--phases",
+                phases,
+                "--output-dir",
+                str(result_dir),
+            ],
+            cwd="/tmp",
+            check=False,
+            timeout=3300,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
         # On mismatches the verifier exits nonzero AFTER writing its report.
         # Always return that evidence to the local CLI before /tmp vanishes.
         accounting = result_dir / "independent_ledger.json"
@@ -78,8 +94,7 @@ def audit_once(candidate: str, phases: str) -> dict:
 
 
 @app.local_entrypoint()
-def main(candidate: str = "baseline", phases: str = "phase0",
-         output: str = "/tmp/csi1000-independent-ledger.json"):
+def main(candidate: str = "baseline", phases: str = "phase0", output: str = "/tmp/csi1000-independent-ledger.json"):
     if candidate not in ("baseline", "runnerup", "both") or phases not in ("phase0", "all"):
         raise ValueError("unsupported audit scope")
     dest = Path(output).expanduser().resolve()
@@ -87,7 +102,9 @@ def main(candidate: str = "baseline", phases: str = "phase0",
         raise ValueError("output path must not exist and parent must exist")
     result = audit_once.remote(candidate, phases)
     dest.write_text(json.dumps(result, indent=2, allow_nan=False) + "\n")
-    print(f"Audit JSON written locally: {dest}; cells={len(result.get('cells', []))}; "
-          f"exit={result['modal_command_exit_code']}")
+    print(
+        f"Audit JSON written locally: {dest}; cells={len(result.get('cells', []))}; "
+        f"exit={result['modal_command_exit_code']}"
+    )
     if result["modal_command_exit_code"] != 0:
         raise RuntimeError(f"Audit did not pass; inspect the retained local JSON: {dest}")

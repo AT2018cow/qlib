@@ -224,9 +224,7 @@ def job_id(job: dict[str, Any]) -> str:
     require(job.get("phase") in (0, 10), "STAGE1_M1 invalid phase")
     model_short = job["candidate_id"][:8]
     if job["kind"] == "retrain":
-        require(
-            bool(re.fullmatch(r"\d{4}-\d\d-\d\d", job.get("retrain_asof", "") or "")), "STAGE1_M1 invalid as-of"
-        )
+        require(bool(re.fullmatch(r"\d{4}-\d\d-\d\d", job.get("retrain_asof", "") or "")), "STAGE1_M1 invalid as-of")
         return (
             f"retrain/{job['market']}/{job['model_key']}/{model_short}"
             f"/h{int(job['label_horizon'])}/phase{job['phase']:02d}/{job['retrain_asof']}"
@@ -465,8 +463,14 @@ def load_stage0_anchor_cells(volume_root: str | Path, stage0_prefix: str = STAGE
     summary_path = root / "stage0_p0_summary.json"
     require(summary_path.is_file(), "STAGE1_M1 Stage 0 summary missing")
     summary = _json.loads(summary_path.read_text(encoding="utf-8"))
-    require(summary.get("status") == "PASS" and int(summary.get("completed_cells", -1)) == 16, "STAGE1_M1 Stage 0 summary not PASS/16")
-    require(summary.get("run_id") == STAGE0_RUN_ID and summary.get("code_sha") == STAGE0_CODE_SHA, "STAGE1_M1 Stage 0 lineage drift")
+    require(
+        summary.get("status") == "PASS" and int(summary.get("completed_cells", -1)) == 16,
+        "STAGE1_M1 Stage 0 summary not PASS/16",
+    )
+    require(
+        summary.get("run_id") == STAGE0_RUN_ID and summary.get("code_sha") == STAGE0_CODE_SHA,
+        "STAGE1_M1 Stage 0 lineage drift",
+    )
     cells = summary.get("cells")
     require(isinstance(cells, list) and len(cells) == 16, "STAGE1_M1 Stage 0 must carry exactly 16 cells")
     out = []
@@ -481,7 +485,10 @@ def load_stage0_anchor_cells(volume_root: str | Path, stage0_prefix: str = STAGE
         )
         require(rec_path.is_file(), f"STAGE1_M1 Stage 0 receipt missing: {rec_path}")
         rec = _json.loads(rec_path.read_text(encoding="utf-8"))
-        require(rec.get("status") == "PASS" and rec.get("job_sha256") == cell.get("job_sha256"), "STAGE1_M1 Stage 0 receipt drift")
+        require(
+            rec.get("status") == "PASS" and rec.get("job_sha256") == cell.get("job_sha256"),
+            "STAGE1_M1 Stage 0 receipt drift",
+        )
         for name, digest in (rec.get("artifact_sha256") or {}).items():
             target = rec_path.parent / name
             require(target.is_file() and sha256_file(target) == digest, f"STAGE1_M1 Stage 0 bytes drift: {name}")
@@ -504,7 +511,9 @@ def rank_market_cells(cells_48: list[dict[str, Any]]) -> list[dict[str, Any]]:
         require(cell["phase"] in (0, 10), "STAGE1_M1 ranking phase invalid")
         require(cell["phase"] not in by_pair.setdefault(key, {}), "STAGE1_M1 duplicate ranking cell")
         by_pair[key][cell["phase"]] = cell
-    require(len(by_pair) == 24 and all(set(v) == {0, 10} for v in by_pair.values()), "STAGE1_M1 ranking pairs incomplete")
+    require(
+        len(by_pair) == 24 and all(set(v) == {0, 10} for v in by_pair.values()), "STAGE1_M1 ranking pairs incomplete"
+    )
     rows = []
     for (model_key, combo_key), phases in by_pair.items():
         m0, m10 = phases[0]["metrics"], phases[10]["metrics"]
@@ -516,8 +525,11 @@ def rank_market_cells(cells_48: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "label_horizon": int(phases[0].get("label_horizon", 20)),
                 "phase0_relative_excess_cagr": float(m0["relative_excess_cagr"]),
                 "phase10_relative_excess_cagr": float(m10["relative_excess_cagr"]),
-                "worst_relative_excess_cagr": min(float(m0["relative_excess_cagr"]), float(m10["relative_excess_cagr"])),
-                "mean_relative_excess_cagr": 0.5 * (float(m0["relative_excess_cagr"]) + float(m10["relative_excess_cagr"])),
+                "worst_relative_excess_cagr": min(
+                    float(m0["relative_excess_cagr"]), float(m10["relative_excess_cagr"])
+                ),
+                "mean_relative_excess_cagr": 0.5
+                * (float(m0["relative_excess_cagr"]) + float(m10["relative_excess_cagr"])),
                 "worst_strategy_cagr": min(float(m0["strategy_cagr"]), float(m10["strategy_cagr"])),
                 "mean_strategy_cagr": 0.5 * (float(m0["strategy_cagr"]) + float(m10["strategy_cagr"])),
                 "mean_sharpe": 0.5 * (float(m0["sharpe"]) + float(m10["sharpe"])),
@@ -603,12 +615,12 @@ def render_stage1_scoreboard(summary: dict[str, Any], csv_path: str | Path) -> P
                     "strategy_max_drawdown": metrics.get("strategy_max_drawdown"),
                     "mean_turnover": metrics.get("mean_turnover"),
                     "total_cost_sum": metrics.get("total_cost_sum"),
-                    "stressed10bp_strategy_total_return": (cell.get("stressed") or {}).get("10bp", {}).get(
-                        "strategy_total_return"
-                    ),
-                    "stressed20bp_strategy_total_return": (cell.get("stressed") or {}).get("20bp", {}).get(
-                        "strategy_total_return"
-                    ),
+                    "stressed10bp_strategy_total_return": (cell.get("stressed") or {})
+                    .get("10bp", {})
+                    .get("strategy_total_return"),
+                    "stressed20bp_strategy_total_return": (cell.get("stressed") or {})
+                    .get("20bp", {})
+                    .get("strategy_total_return"),
                     "account_return_max_error": metrics.get("account_return_max_error"),
                 }
             )

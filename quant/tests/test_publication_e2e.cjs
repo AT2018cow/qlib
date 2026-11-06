@@ -26,7 +26,8 @@ const { POOLS } = vm.runInNewContext(
   sliceBetween('const CSV_BASE', 'const POOL_ORDER') + ';({ POOLS })'
 );
 const { evaluateMvpContract } = vm.runInNewContext(
-  sliceBetween('const TOP10_PROFILES', 'function buildRows') + ';({ evaluateMvpContract })'
+  sliceBetween('const TOP10_PROFILES', 'function buildRows') + ';({ evaluateMvpContract })',
+  { formatDate: value => value }
 );
 const { normalizeForwardPerformance } = vm.runInNewContext(
   sliceBetween('const FORWARD_START', 'function isWinnerCanonical') +
@@ -135,3 +136,23 @@ for (const market of MARKETS) {
     }
   });
 }
+
+test('actual November 6 legacy override is a frozen reference, including after status migration', () => {
+  for (const market of MARKETS) {
+    const date = '2026-11-06';
+    const rows = readRows(path.join(signals, `${date}_top20_lgb158${market.suffix}.csv`), market.topk);
+    const paper = readJSON(path.join(signals, `${date}_paper_portfolio${market.suffix}.json`));
+    const metadata = readJSON(path.join(signals, `${date}_mvp_metadata${market.suffix}.json`));
+    for (const status of ['PASS', 'PASS_OPERATOR_OVERRIDE']) {
+      metadata.publication.status = status;
+      const contract = evaluateMvpContract(metadata, paper, date, rows,
+        { key: market.key, expectedPitCount: market.pit });
+      assert.equal(contract.ok, true, contract.errors.join('; '));
+      assert.equal(contract.lagged, true);
+      assert.match(contract.publicationWarning, /2026-11-04.*滞后 1 个交易日.*旧订单保持冻结/);
+    }
+    paper.pending_orders.execution_date = date;
+    assert.equal(evaluateMvpContract(metadata, paper, date, rows,
+      { key: market.key, expectedPitCount: market.pit }).ok, false);
+  }
+});

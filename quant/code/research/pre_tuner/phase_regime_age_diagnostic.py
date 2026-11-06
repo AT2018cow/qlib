@@ -74,15 +74,11 @@ def _load_report(result: dict):
     report = pd.read_parquet(path).sort_index()
     expected_rows = int(artifact.get("rows", -1))
     if expected_rows >= 0 and len(report) != expected_rows:
-        raise RuntimeError(
-            f"report row mismatch: {path} got={len(report)} expected={expected_rows}"
-        )
+        raise RuntimeError(f"report row mismatch: {path} got={len(report)} expected={expected_rows}")
     expected_hash = artifact.get("content_sha256")
     actual_hash = _frame_sha256(report)
     if not expected_hash or actual_hash != expected_hash:
-        raise RuntimeError(
-            f"report content hash mismatch: {path} got={actual_hash} expected={expected_hash}"
-        )
+        raise RuntimeError(f"report content hash mismatch: {path} got={actual_hash} expected={expected_hash}")
     return report
 
 
@@ -123,14 +119,8 @@ def regime_model_age_driver(
     if not years:
         raise ValueError("regime_years is empty")
 
-    sensitivity_path = (
-        VOL_ROOT / "freq_phase_sensitivity" / f"phase_{market}_freq{freq}.json"
-    )
-    attribution_path = (
-        VOL_ROOT
-        / "freq_phase_attribution"
-        / f"phase_{market}_freq{freq}_zero_fit.json"
-    )
+    sensitivity_path = VOL_ROOT / "freq_phase_sensitivity" / f"phase_{market}_freq{freq}.json"
+    attribution_path = VOL_ROOT / "freq_phase_attribution" / f"phase_{market}_freq{freq}_zero_fit.json"
     baseline_path = VOL_ROOT / "freq_experiment" / f"results_{market}.json"
     if not baseline_path.is_file() and market == "csi1000":
         baseline_path = VOL_ROOT / "freq_experiment" / "results.json"
@@ -148,9 +138,7 @@ def regime_model_age_driver(
         raise RuntimeError("prior attribution is not marked zero-fit")
     if sensitivity.get("reproducibility") != prior_attribution.get("reproducibility"):
         raise RuntimeError("phase sensitivity and prior attribution manifest mismatch")
-    if sensitivity.get("reproducibility_gate") != prior_attribution.get(
-        "reproducibility_gate"
-    ):
+    if sensitivity.get("reproducibility_gate") != prior_attribution.get("reproducibility_gate"):
         raise RuntimeError("phase sensitivity and prior attribution gate mismatch")
     if sensitivity.get("reproducibility") != baseline.get("reproducibility"):
         raise RuntimeError("phase sensitivity and baseline manifest mismatch")
@@ -172,13 +160,9 @@ def regime_model_age_driver(
         expected_report_hash = prior.get("report_content_sha256")
         current_report_hash = (result.get("report_artifact") or {}).get("content_sha256")
         if not expected_report_hash or expected_report_hash != current_report_hash:
-            raise RuntimeError(
-                f"phase {phase} report hash differs from prior zero-fit attribution"
-            )
+            raise RuntimeError(f"phase {phase} report hash differs from prior zero-fit attribution")
         if prior.get("signal_sha256") != result.get("signal_sha256"):
-            raise RuntimeError(
-                f"phase {phase} signal hash differs from prior zero-fit attribution"
-            )
+            raise RuntimeError(f"phase {phase} signal hash differs from prior zero-fit attribution")
 
         report = _load_report(result)
         dates = _retrain_dates(phase, result, baseline_freq)
@@ -212,9 +196,7 @@ def regime_model_age_driver(
         if not reference_bench.equals(candidate):
             max_err = float((reference_bench - candidate).abs().max())
             if max_err > 1e-15:
-                raise RuntimeError(
-                    f"phase {phase} benchmark values differ; max_abs_error={max_err}"
-                )
+                raise RuntimeError(f"phase {phase} benchmark values differ; max_abs_error={max_err}")
 
     pairwise = {}
     for phase in requested:

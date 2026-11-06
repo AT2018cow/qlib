@@ -10,6 +10,7 @@ These tests pin every structural element that production depends on, so
 any future edit that drops one fails fast in the test run instead of in
 production. Run from repo root:  python -m pytest tests/test_modal_structure.py
 """
+
 import os
 import re
 import tempfile
@@ -24,17 +25,46 @@ src = open(MODAL_FILE).read()
 
 # 最近一次成功 deploy（2026-09-29，含 schedule 修复）输出的函数清单
 EXPECTED_FUNCTIONS = [
-    "bench_years", "independent_recheck", "verify_integrity", "debug_data",
-    "prepare_data", "check_gpu", "train", "train_cpu", "build_fund_factors",
-    "daily_signal", "daily_signal_cpu", "train_ensemble", "tune_one",
-    "tune_driver", "dual_horizon", "p0_diagnostics", "p1_diagnostics",
-    "version_check_0911", "version_check_0916", "batch_c_window", "batch_c",
-    "p2_rolling", "topk_grid", "batch_a", "batch_b", "daily_standalone",
-    "daily_cron", "daily_cron_second_chance", "attest_paper_state_bootstrap",
-    "freq_window", "freq_driver", "backfill_signals",
-    "seed_backfill_state", "emit_backfill_artifacts", "reanchor_paper_state_backfill",
+    "bench_years",
+    "independent_recheck",
+    "verify_integrity",
+    "debug_data",
+    "prepare_data",
+    "check_gpu",
+    "train",
+    "train_cpu",
+    "build_fund_factors",
+    "daily_signal",
+    "daily_signal_cpu",
+    "train_ensemble",
+    "tune_one",
+    "tune_driver",
+    "dual_horizon",
+    "p0_diagnostics",
+    "p1_diagnostics",
+    "version_check_0911",
+    "version_check_0916",
+    "batch_c_window",
+    "batch_c",
+    "p2_rolling",
+    "topk_grid",
+    "batch_a",
+    "batch_b",
+    "daily_standalone",
+    "daily_cron",
+    "daily_cron_second_chance",
+    "attest_paper_state_bootstrap",
+    "freq_window",
+    "freq_driver",
+    "backfill_signals",
+    "seed_backfill_state",
+    "emit_backfill_artifacts",
+    "reanchor_paper_state_backfill",
     # Satellite/universe-expansion batch functions (kept in the cron image).
-    "verify_universe", "build_star_chn_bench", "batch_a_star_chn", "batch_b_one",
+    "verify_universe",
+    "build_star_chn_bench",
+    "batch_a_star_chn",
+    "batch_b_one",
 ]
 
 
@@ -47,9 +77,8 @@ def _decorator_block(func_name):
     assert decorator_pos >= 0, f"function {func_name} not decorated"
     end_marker = f")\ndef {func_name}("
     decorator_end = src.find(end_marker, decorator_pos)
-    assert decorator_end >= 0 and decorator_end < func_pos, \
-        f"decorator for {func_name} is not immediately adjacent"
-    return src[decorator_pos + len("@app.function("):decorator_end]
+    assert decorator_end >= 0 and decorator_end < func_pos, f"decorator for {func_name} is not immediately adjacent"
+    return src[decorator_pos + len("@app.function(") : decorator_end]
 
 
 def test_all_functions_defined():
@@ -62,11 +91,13 @@ def test_all_functions_defined():
 
 def test_daily_cron_decorator_complete():
     params = _decorator_block("daily_cron")
-    assert 'schedule=modal.Cron("0 7 * * 1-5", timezone="Asia/Shanghai")' in params, \
-        "cron schedule line missing — next morning's run would silently never fire!"
+    assert 'schedule=modal.Cron("07**1-5",timezone="Asia/Shanghai")' in re.sub(
+        r"\s+", "", params
+    ), "cron schedule line missing — next morning's run would silently never fire!"
     assert 'modal.Secret.from_name(_GH_SECRET_NAME := "github-push")' in params
     assert "nonpreemptible=True" in params
-    assert "timeout=5 * 3600" in params
+    assert "timeout=MAIN_TIMEOUT_SECONDS" in params
+    assert "retries=0" in params
 
 
 def test_daily_cron_single_execution_contract():
@@ -74,14 +105,13 @@ def test_daily_cron_single_execution_contract():
     Modal platform (`max_containers=1`) because Volumes have no atomic CAS.
     Removing it would let the 07:00 run and the 08:00 second chance overlap."""
     params = _decorator_block("daily_cron")
-    assert "max_containers=1" in params, \
-        "max_containers=1 missing — overlapping cron runs could double-publish!"
+    assert "max_containers=1" in params, "max_containers=1 missing — overlapping cron runs could double-publish!"
     # No wall-clock lease / pseudo-CAS on Volume files may be reintroduced.
     assert "PublicationLease" not in src
     assert "expires_at" not in src
     assert "PUBLICATION_LEASE_WAIT_SECONDS" not in src
     # Each invocation gets a globally unique id (never a PID, which can repeat).
-    cron = src[src.index("def daily_cron(allow_lag: bool = False):"):src.index("# ===================== 第六步")]
+    cron = src[src.index("def daily_cron(allow_lag: bool = False):") : src.index("# ===================== 第六步")]
     assert "invocation_id = uuid.uuid4().hex" in cron
     assert "os.getpid()" not in cron
     assert "max_containers=1 的平台单执行" in cron
@@ -89,17 +119,18 @@ def test_daily_cron_single_execution_contract():
 
 def test_production_functions_nonpreemptible():
     for fn in ("daily_standalone", "backfill_signals"):
-        assert "nonpreemptible=True" in _decorator_block(fn), \
-            f"{fn} lost nonpreemptible=True — preemption would drop that day's run"
+        assert "nonpreemptible=True" in _decorator_block(
+            fn
+        ), f"{fn} lost nonpreemptible=True — preemption would drop that day's run"
 
 
 def test_daily_standalone_resource_contract():
     params = _decorator_block("daily_standalone")
     assert "cpu=CPU_COUNT" in params
     assert "memory=16384" in params
-    assert "timeout=2 * 3600" in params
+    assert "timeout=SIGNAL_WORKER_TIMEOUT_SECONDS" in params
     assert "max_containers=1" in params
-    assert 'gpu=' not in params
+    assert "gpu=" not in params
 
 
 def test_partial_live_model_cache_self_heals_to_retrain():
@@ -125,8 +156,8 @@ def test_partial_live_model_cache_self_heals_to_retrain():
 
 
 def test_image_helper_modules_copied():
-    assert '.add_local_dir(' in src, "image add_local_dir (repo -> /root/qlib) missing"
-    assert 'pip install . --no-build-isolation --no-deps' in src, "qlib pip install step missing"
+    assert ".add_local_dir(" in src, "image add_local_dir (repo -> /root/qlib) missing"
+    assert "pip install . --no-build-isolation --no-deps" in src, "qlib pip install step missing"
     cp = re.search(r'run_commands\(\s*"(cp .*?)"\s*\)', src, re.DOTALL)
     assert cp is not None, "helper-module cp step missing"
     for helper in (
@@ -142,8 +173,9 @@ def test_image_helper_modules_copied():
         "name_map_sync.py",
         "daily_pipeline.py",
     ):
-        assert helper in cp.group(1), \
-            f"{helper} not copied to /root/ — container import would fail (ModuleNotFoundError)"
+        assert helper in cp.group(
+            1
+        ), f"{helper} not copied to /root/ — container import would fail (ModuleNotFoundError)"
 
 
 def test_constants_intact():
@@ -215,9 +247,7 @@ def test_daily_chart_uses_calendar_aligned_series():
 def test_factor_aware_paper_execution_context_cannot_silently_drop_qlib_factor():
     """A source-only guard: production must pass same-day adjusted-price factors."""
     context = Path(ROOT, "quant/code/production/paper_execution_context.py").read_text()
-    settlement = src.split("def _apply_paper_portfolio(", 1)[1].split(
-        "\ndef ", 1
-    )[0]
+    settlement = src.split("def _apply_paper_portfolio(", 1)[1].split("\ndef ", 1)[0]
     assert '"$open", "Ref($close,1)", "$close", "$factor"' in context
     assert "factor_by_symbol[inst] = factor" in context
     assert '"factors": factor_by_symbol' in context
