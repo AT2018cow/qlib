@@ -1,0 +1,15 @@
+{
+  "scope": "SIMULATION_WEBSITE_ONLY",
+  "initial_cash_per_market_cny": 1000000,
+  "first_execution": "2026-10-08",
+  "first_signal": "2026-09-30",
+  "drawdown_limit_enabled": false,
+  "single_weight_limit_enabled": false,
+  "strategy_switch": false,
+  "broker_access_required": false,
+  "production_environment": "EXISTING_PRODUCTION_ENVIRONMENT",
+  "research_environment": "AUTHORIZED_RESEARCH_ENVIRONMENT",
+  "old_current_website_returns": "REPLACE_WITH_CORRECTED_RECONSTRUCTION",
+  "upstream_latest_release": "2026-11-04",
+  "source_manifest_sha256": "fe9e428f7d41845032d319dc67e1f8d6df698251f9c1aa10b3fbb86b01f3cc4f"
+}

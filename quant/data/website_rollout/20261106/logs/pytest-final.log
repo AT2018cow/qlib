@@ -1,0 +1,23 @@
+........................................................................ [  8%]
+........................................................................ [ 16%]
+........................................................................ [ 25%]
+........................................................................ [ 33%]
+..................................................................... [ 41%]
+........................................................................ [ 50%]
+........................................................................ [ 58%]
+........................................................ [ 65%]
+............................................................s........... [ 73%]
+........................................................................ [ 82%]
+........................................................................ [ 90%]
+...............................................................................                                   [100%]
+=============================== warnings summary ===============================
+quant/tests/test_csi1000_l4_inventory.py::test_actual_inventory_remote_local_bootstrap_and_drift
+  <checkout>/.venv/lib/python3.12/site-packages/modal/_functions.py:2139: UserWarning: The inventory_remote function is executing locally and will not have access to the mounted Volume or NetworkFileSystem data
+    warnings.warn(
+
+quant/tests/test_website_simulation.py::test_cloud_worker_rejects_changed_source_before_accessing_volume
+  <checkout>/.venv/lib/python3.12/site-packages/modal/_functions.py:2139: UserWarning: The build_market function is executing locally and will not have access to the mounted Volume or NetworkFileSystem data
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+851 passed, 1 skipped, 2 warnings, 50 subtests passed in 28.23s

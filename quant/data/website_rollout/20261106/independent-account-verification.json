@@ -1,0 +1,45 @@
+{
+  "status": "PASS",
+  "method": "raw float32 provider files, independent cash/inventory/fee computation; no Qlib D or PaperPortfolio calls",
+  "accounts": [
+    {
+      "market": "csi300",
+      "sessions": 20,
+      "fills": 48,
+      "end": "2026-11-04",
+      "nav_cny": 791553.4020176884,
+      "cumulative_return": -0.20844659798231158,
+      "total_fees_cny": 4089.7799999999997,
+      "unrounded_fees_cny": 4089.7921662534964,
+      "max_nav_error_cny": 0.004986376268789172,
+      "first_execution": "2026-10-08",
+      "raw_quotes_fees_cash_inventory": "PASS"
+    },
+    {
+      "market": "csi500",
+      "sessions": 20,
+      "fills": 96,
+      "end": "2026-11-04",
+      "nav_cny": 892974.2374802616,
+      "cumulative_return": -0.10702576251973839,
+      "total_fees_cny": 3741.6200000000003,
+      "unrounded_fees_cny": 3741.6146062339,
+      "max_nav_error_cny": 0.004855587496422231,
+      "first_execution": "2026-10-08",
+      "raw_quotes_fees_cash_inventory": "PASS"
+    },
+    {
+      "market": "csi1000",
+      "sessions": 20,
+      "fills": 48,
+      "end": "2026-11-04",
+      "nav_cny": 798650.789325187,
+      "cumulative_return": -0.20134921067481304,
+      "total_fees_cny": 3881.5299999999997,
+      "unrounded_fees_cny": 3881.5461996520457,
+      "max_nav_error_cny": 0.00496409519109875,
+      "first_execution": "2026-10-08",
+      "raw_quotes_fees_cash_inventory": "PASS"
+    }
+  ]
+}

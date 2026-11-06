@@ -1,0 +1,9 @@
+{
+  "status": "TRANSFERRED_AND_READBACK_VERIFIED",
+  "source_sha256": "202c66c42a3385de3d7bb051c709b41576c0df3d08d9aa73498a276dbb20716b",
+  "asset_sha256": "dc917293925635189e982f47d35b960c3db8a9c3f11312c937673c8afdec21aa",
+  "files": 49,
+  "models": 6,
+  "bytes": 5317917,
+  "canonical_paper_state_changed": false
+}

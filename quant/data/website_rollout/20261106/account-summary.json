@@ -1,0 +1,29 @@
+[
+  {
+    "market": "csi300",
+    "sessions": 20,
+    "end": "2026-11-04",
+    "final_nav_cny": 791553.4,
+    "cumulative_return": -0.20844659999999993,
+    "fees_cny": 4089.7799999999997,
+    "new_fits": 1
+  },
+  {
+    "market": "csi500",
+    "sessions": 20,
+    "end": "2026-11-04",
+    "final_nav_cny": 892974.24,
+    "cumulative_return": -0.10702575999999997,
+    "fees_cny": 3741.6200000000003,
+    "new_fits": 2
+  },
+  {
+    "market": "csi1000",
+    "sessions": 20,
+    "end": "2026-11-04",
+    "final_nav_cny": 798650.79,
+    "cumulative_return": -0.20134920999999995,
+    "fees_cny": 3881.5299999999997,
+    "new_fits": 2
+  }
+]

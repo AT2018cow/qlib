@@ -1,0 +1,239 @@
+✓ Initialized. View run at 
+Modal app ap-kfMrm46i3XYhawXeAcOGaY
+Building image im-jQy8YpGNDCZ2gtetmOVXJ5
+
+=> Step 0: FROM base
+
+=> Step 1: COPY . /
+Saving image...
+Image saved, took 1.84s
+
+Built image im-jQy8YpGNDCZ2gtetmOVXJ5 in 3.45s
+
+
+Building image im-JjTkKyBhbQholNbWqUI2QO
+
+=> Step 0: FROM base
+
+=> Step 1: RUN cd /root/qlib && python setup.py build_ext --inplace && pip install . --no-build-isolation --no-deps
+/usr/local/lib/python3.11/site-packages/setuptools/config/_apply_pyprojecttoml.py:82: SetuptoolsDeprecationWarning: `project.license` as a TOML table is deprecated
+!!
+
+        ********************************************************************************
+        Please use a simple string containing a SPDX expression for `project.license`. You can also use `project.license-files`. (Both options available on setuptools>=77.0.0).
+
+        By 2027-Feb-18, you need to update your project and remove deprecated calls
+        or your builds will no longer be supported.
+
+        See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#license for details.
+        ********************************************************************************
+
+!!
+  corresp(dist, value, root_dir)
+/usr/local/lib/python3.11/site-packages/setuptools/config/_apply_pyprojecttoml.py:55: SetuptoolsDeprecationWarning: 'tool.setuptools.license-files' is deprecated in favor of 'project.license-files' (available on setuptools>=77.0.0).
+!!
+
+        ********************************************************************************
+
+        By 2027-Feb-18, you need to update your project and remove deprecated calls
+        or your builds will no longer be supported.
+
+        See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#license-files for details.
+        ********************************************************************************
+
+!!
+  _apply_tool_table(dist, config, filename)
+/usr/local/lib/python3.11/site-packages/setuptools/config/_apply_pyprojecttoml.py:61: SetuptoolsDeprecationWarning: License classifiers are deprecated.
+!!
+
+        ********************************************************************************
+        Please consider removing the following classifiers in favor of a SPDX license expression:
+
+        License :: OSI Approved :: MIT License
+
+        See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#license for details.
+        ********************************************************************************
+
+!!
+  dist._finalize_license_expression()
+/usr/local/lib/python3.11/site-packages/setuptools/dist.py:765: SetuptoolsDeprecationWarning: License classifiers are deprecated.
+!!
+
+        ********************************************************************************
+        Please consider removing the following classifiers in favor of a SPDX license expression:
+
+        License :: OSI Approved :: MIT License
+
+        See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#license for details.
+        ********************************************************************************
+
+!!
+  self._finalize_license_expression()
+running build_ext
+Compiling qlib/data/_libs/rolling.pyx because it changed.
+[1/1] Cythonizing qlib/data/_libs/rolling.pyx
+building 'qlib.data._libs.rolling' extension
+g++ -Wsign-compare -DNDEBUG -g -fwrapv -O3 -Wall -fPIC -I/usr/local/lib/python3.11/site-packages/numpy/core/include -I/usr/local/include/python3.11 -c qlib/data/_libs/rolling.cpp -o build/temp.linux-x86_64-cpython-311/qlib/data/_libs/rolling.o
+In file included from /usr/local/lib/python3.11/site-packages/numpy/core/include/numpy/ndarraytypes.h:1929,
+                 from /usr/local/lib/python3.11/site-packages/numpy/core/include/numpy/ndarrayobject.h:12,
+                 from /usr/local/lib/python3.11/site-packages/numpy/core/include/numpy/arrayobject.h:5,
+                 from qlib/data/_libs/rolling.cpp:1295:
+/usr/local/lib/python3.11/site-packages/numpy/core/include/numpy/npy_1_7_deprecated_api.h:17:2: warning: #warning "Using deprecated NumPy API, disable it with " "#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION" [-Wcpp]
+   17 | #warning "Using deprecated NumPy API, disable it with " \
+      |  ^~~~~~~
+g++ -Wsign-compare -DNDEBUG -g -fwrapv -O3 -Wall -shared build/temp.linux-x86_64-cpython-311/qlib/data/_libs/rolling.o -L/usr/local/lib -o build/lib.linux-x86_64-cpython-311/qlib/data/_libs/rolling.cpython-311-x86_64-linux-gnu.so
+Compiling qlib/data/_libs/expanding.pyx because it changed.
+[1/1] Cythonizing qlib/data/_libs/expanding.pyx
+building 'qlib.data._libs.expanding' extension
+g++ -Wsign-compare -DNDEBUG -g -fwrapv -O3 -Wall -fPIC -I/usr/local/lib/python3.11/site-packages/numpy/core/include -I/usr/local/include/python3.11 -c qlib/data/_libs/expanding.cpp -o build/temp.linux-x86_64-cpython-311/qlib/data/_libs/expanding.o
+In file included from /usr/local/lib/python3.11/site-packages/numpy/core/include/numpy/ndarraytypes.h:1929,
+                 from /usr/local/lib/python3.11/site-packages/numpy/core/include/numpy/ndarrayobject.h:12,
+                 from /usr/local/lib/python3.11/site-packages/numpy/core/include/numpy/arrayobject.h:5,
+                 from qlib/data/_libs/expanding.cpp:1295:
+/usr/local/lib/python3.11/site-packages/numpy/core/include/numpy/npy_1_7_deprecated_api.h:17:2: warning: #warning "Using deprecated NumPy API, disable it with " "#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION" [-Wcpp]
+   17 | #warning "Using deprecated NumPy API, disable it with " \
+      |  ^~~~~~~
+g++ -Wsign-compare -DNDEBUG -g -fwrapv -O3 -Wall -shared build/temp.linux-x86_64-cpython-311/qlib/data/_libs/expanding.o -L/usr/local/lib -o build/lib.linux-x86_64-cpython-311/qlib/data/_libs/expanding.cpython-311-x86_64-linux-gnu.so
+copying build/lib.linux-x86_64-cpython-311/qlib/data/_libs/rolling.cpython-311-x86_64-linux-gnu.so -> qlib/data/_libs
+copying build/lib.linux-x86_64-cpython-311/qlib/data/_libs/expanding.cpython-311-x86_64-linux-gnu.so -> qlib/data/_libs
+Looking in indexes: http://pypi-mirror.modal.local:5555/simple
+Processing /root/qlib
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: pyqlib
+  Building wheel for pyqlib (pyproject.toml): started
+  Building wheel for pyqlib (pyproject.toml): finished with status 'done'
+  Created wheel for pyqlib: filename=pyqlib-0.0.0-cp311-cp311-linux_x86_64.whl size=1419491 sha256=7ad73d65ac3cd89dab7935fa8662f03f2b8b201ca4aa0ab23ac71fa65c8cddee
+  Stored in directory: /tmp/pip-ephem-wheel-cache-yfl76a0p/wheels/8a/ac/64/f88c7ac84944a20272007d6cddfbefc44854b8bdf0b03cbb33
+Successfully built pyqlib
+Installing collected packages: pyqlib
+Successfully installed pyqlib-0.0.0
+
+[notice] A new release of pip is available: 25.2 -> 26.3
+[notice] To update, run: pip install --upgrade pip
+Saving image...
+Image saved, took 2.28s
+
+Built image im-JjTkKyBhbQholNbWqUI2QO in 15.10s
+
+
+Building image im-E339W5qnGf3XDmg9lSFCTY
+
+=> Step 0: FROM base
+
+=> Step 1: RUN cp /root/qlib/quant/code/execution/qlib_audit_fixes.py /root/qlib/quant/code/execution/qlib_live_retrain.py /root/qlib/quant/code/execution/board_rules.py /root/qlib/quant/code/execution/board_execution.py /root/qlib/quant/code/production/paper_portfolio.py /root/qlib/quant/code/execution/portfolio_performance.py /root/qlib/quant/code/production/github_commit.py /root/qlib/quant/code/research/stage_ab/csi1000_tuner_core.py /root/qlib/quant/code/production/csi1000_production_config.py /root/qlib/quant/code/production/csi1000_mvp_contract.py /root/qlib/quant/code/production/chart_series.py /root/qlib/quant/code/production/signal_publication_gate.py /root/qlib/quant/code/production/paper_accounting.py /root/qlib/quant/code/execution/execution_limits.py /root/qlib/quant/code/production/provider_archive.py /root/qlib/quant/code/production/publication_journal.py /root/qlib/quant/code/production/artifact_io.py /root/qlib/quant/code/production/coordinate_contract.py /root/qlib/quant/code/production/paper_execution_context.py /root/qlib/quant/code/execution/order_quantity.py /root/qlib/quant/code/production/portfolio_diagnostics.py /root/qlib/quant/code/execution/st_history.py /root/qlib/quant/code/execution/liquidity_contract.py /root/qlib/quant/code/production/name_map_sync.py /root/
+Saving image...
+Image saved, took 2.28s
+
+Built image im-E339W5qnGf3XDmg9lSFCTY in 3.74s
+
+
+✓ Created objects.
+├── ✓ Uploaded 
+│   <control-root>/frozen-source/quant/code/ops/website_simulation_
+│   modal.py
+├── ✓ Uploaded <control-root>/frozen-source
+├── ✓ Created Function build_market.
+└── ✓ Created Function daily.
+[provider] downloaded 64MiB
+[provider] downloaded 128MiB
+[provider] downloaded 192MiB
+[provider] downloaded 256MiB
+[provider] downloaded 320MiB
+[provider] downloaded 384MiB
+[provider] downloaded 448MiB
+[provider] downloaded 512MiB
+[provider] digest passed; extracting to container scratch
+[2:MainThread](2026-11-06 05:08:46,891) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+[2:MainThread](2026-11-06 05:08:47,923) INFO - qlib.Initialization - [__init__.py:82] - qlib successfully initialized based on client settings.
+[2:MainThread](2026-11-06 05:08:47,924) INFO - qlib.Initialization - [__init__.py:84] - data_path={'__DEFAULT_FREQ': PosixPath('/tmp/october-provider-dc91729392563518/qlib_bin')}
+[2:MainThread](2026-11-06 05:09:09,993) INFO - qlib.timer - [log.py:127] - Time cost: 21.047s | Loading data Done
+[2:MainThread](2026-11-06 05:09:10,354) INFO - qlib.timer - [log.py:127] - Time cost: 0.134s | DropnaLabel Done
+[2:MainThread](2026-11-06 05:09:11,959) INFO - qlib.timer - [log.py:127] - Time cost: 1.605s | CSZScoreNorm Done
+[2:MainThread](2026-11-06 05:09:11,960) INFO - qlib.timer - [log.py:127] - Time cost: 1.967s | fit & process data Done
+[2:MainThread](2026-11-06 05:09:11,963) INFO - qlib.timer - [log.py:127] - Time cost: 23.018s | Init data Done
+[website] fit csi300 2026-09-30..2026-10-23
+ModuleNotFoundError. CatBoostModel are skipped. (optional: maybe installing CatBoostModel can fix it.)
+ModuleNotFoundError. XGBModel is skipped(optional: maybe installing xgboost can fix it).
+Training until validation scores don't improve for 50 rounds
+[20]    train's l2: 0.982746    valid's l2: 0.991577
+[40]    train's l2: 0.976488    valid's l2: 0.991721
+[60]    train's l2: 0.971037    valid's l2: 0.992525
+Early stopping, best iteration is:
+[27]    train's l2: 0.98027     valid's l2: 0.991004
+[2:MainThread](2026-11-06 05:09:18,127) WARNING - qlib.workflow - [expm.py:230] - No valid experiment found. Create a new experiment with name website-simulation.
+[2:MainThread](2026-11-06 05:09:18,134) INFO - qlib.workflow - [exp.py:258] - Experiment 671528666078551607 starts running ...
+2026/11/06 05:09:18 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git SHA is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+2026/11/06 05:09:18 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git branch is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+2026/11/06 05:09:18 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git repository URL is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+[2:MainThread](2026-11-06 05:09:18,488) INFO - qlib.workflow - [recorder.py:345] - Recorder 270a41b81a234ad088ac777b1036af3b starts running under Experiment 671528666078551607 ...
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 05:09:18,492) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git diff.
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 05:09:18,495) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git status.
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 05:09:18,497) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git diff --cached.
+[2:MainThread](2026-11-06 05:09:39,553) INFO - qlib.timer - [log.py:127] - Time cost: 19.977s | Loading data Done
+[2:MainThread](2026-11-06 05:09:39,922) INFO - qlib.timer - [log.py:127] - Time cost: 0.138s | DropnaLabel Done
+[2:MainThread](2026-11-06 05:09:41,375) INFO - qlib.timer - [log.py:127] - Time cost: 1.452s | CSZScoreNorm Done
+[2:MainThread](2026-11-06 05:09:41,376) INFO - qlib.timer - [log.py:127] - Time cost: 1.822s | fit & process data Done
+[2:MainThread](2026-11-06 05:09:41,377) INFO - qlib.timer - [log.py:127] - Time cost: 21.802s | Init data Done
+[2:MainThread](2026-11-06 05:09:41,465) WARNING - qlib.Initialization - [__init__.py:51] - Skip initialization because `skip_if_reg is True`
+[inputs] csi300 frozen signal loaded, names=299 dates=2026-09-30..2026-10-23
+[inputs] csi300 quotes loaded: 3900 rows
+[replay] 59b93929_top10_drop1_10d extra=0bp 12/12 date=2026-10-23 elapsed=0.0s
+[website] csi300 SMOKE_PASS days=12 return=-13.5208%
+[batch] csi300 SMOKE_PASS seconds=76.7
+Stopping app - local entrypoint completed.
+[modal-client] 2026-11-06T05:09:44+0000 Detected 1 background thread(s) [Thread-9 (run)] still running after container exit. This will prevent runner shutdown for up to 30 seconds.
+[2:MainThread](2026-11-06 05:09:44,787) INFO - qlib.timer - [log.py:127] - Time cost: 0.000s | waiting `async_log` Done
+✓ App completed. View run at 
+Modal app ap-kfMrm46i3XYhawXeAcOGaY

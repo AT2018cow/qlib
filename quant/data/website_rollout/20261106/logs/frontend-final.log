@@ -1,0 +1,68 @@
+✔ pool metadata matches the frozen per-market production profiles (1.723834ms)
+✔ csi300: every published date has a passing dashboard contract (17.053552ms)
+✔ csi500: every published date has a passing dashboard contract (14.088268ms)
+✔ csi1000: every published date has a passing dashboard contract (10.058758ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 49.648015
+✔ legacy short data retains missing calendar prefix (1.829482ms)
+✔ null is not interpreted as zero or squeezed out (0.605195ms)
+✔ chart trend color follows first and last valid values (0.294553ms)
+✔ desktop table-cell layout remains intact; mobile uses flex only (0.50654ms)
+✔ forward panel rejects pre-inception, malformed and contradictory data (0.963517ms)
+✔ forward awaiting state is not confused with a zero return (0.525215ms)
+✔ validated forward curve labels dates and flags possibly stale valuations (0.454252ms)
+✔ forward return follows the selected historical ranking date (0.668594ms)
+✔ date selection is latest-request-wins and the daily ranking leads the archive (0.919896ms)
+✔ sparkline placeholders explain missing, discontinuous and loading data visibly (2.139603ms)
+✔ Pages index replaces weekday probing and first-render barrier (0.438694ms)
+✔ ranking change labels reflect position, not paper account holdings (1.377234ms)
+✔ rebalance separates Drop1 sells from ranked-out holdings (2.416363ms)
+✔ ST-free forward NAV is explicitly shown as research reference (0.49014ms)
+✔ mixed ST modes disclose exactly which forward dates skipped ST (0.464241ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 27.705131
+✔ segmented NAV preserves ST fallback and backfill identity (2.818579ms)
+✔ old CSV cannot repaint while the next market index is pending or empty (7.800823ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16.840343
+✔ escapeHtml neutralizes markup and attribute breakers (0.922561ms)
+✔ sanitizeNameMap drops markup/control/oversized names (0.871775ms)
+✔ parseCSV rejects hostile or malformed rows and keeps valid files (1.304277ms)
+✔ renderers escape name/instrument/url instead of emitting live markup (0.337783ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.231913
+✔ October 8 first-close return is displayed with correct market identity (1.789417ms)
+✔ incorrect old capital, missing dates and inconsistent fees cannot display a return (0.441588ms)
+✔ current market panel refuses an obsolete cumulative-return file (0.193874ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9.706378

@@ -2,3 +2,4 @@
 # Source, tests and documentation retain the normal whitespace checks.
 data/prelive_revalidation/**/logs/*.log -whitespace
 data/review_fixes/**/logs/*.log -whitespace
+data/website_rollout/**/logs/*.log -whitespace

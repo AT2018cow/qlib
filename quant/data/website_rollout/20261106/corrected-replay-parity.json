@@ -1,0 +1,62 @@
+{
+  "status": "PASS",
+  "accounts": [
+    {
+      "market": "csi300",
+      "closing_nav_cash_positions_exact": true,
+      "sessions": 20,
+      "maximum_absolute_errors": {
+        "account": 0.0,
+        "return": 0.0,
+        "cost": 0.0,
+        "bench": 0.0,
+        "turnover": 2.220446049250313e-16,
+        "cash": 0.0,
+        "n_positions": 0.0,
+        "max_single_weight": 0.0,
+        "blocked_buy": 0.0,
+        "blocked_sell": 0.0,
+        "quote_gap_count": 0.0
+      },
+      "allowed_nondollar_float_tolerance": 1e-12
+    },
+    {
+      "market": "csi500",
+      "closing_nav_cash_positions_exact": true,
+      "sessions": 20,
+      "maximum_absolute_errors": {
+        "account": 0.0,
+        "return": 0.0,
+        "cost": 0.0,
+        "bench": 0.0,
+        "turnover": 1.1102230246251565e-16,
+        "cash": 0.0,
+        "n_positions": 0.0,
+        "max_single_weight": 0.0,
+        "blocked_buy": 0.0,
+        "blocked_sell": 0.0,
+        "quote_gap_count": 0.0
+      },
+      "allowed_nondollar_float_tolerance": 1e-12
+    },
+    {
+      "market": "csi1000",
+      "closing_nav_cash_positions_exact": true,
+      "sessions": 20,
+      "maximum_absolute_errors": {
+        "account": 0.0,
+        "return": 0.0,
+        "cost": 0.0,
+        "bench": 0.0,
+        "turnover": 0.0,
+        "cash": 0.0,
+        "n_positions": 0.0,
+        "max_single_weight": 0.0,
+        "blocked_buy": 0.0,
+        "blocked_sell": 0.0,
+        "quote_gap_count": 0.0
+      },
+      "allowed_nondollar_float_tolerance": 1e-12
+    }
+  ]
+}

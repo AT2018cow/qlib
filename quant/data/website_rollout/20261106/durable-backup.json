@@ -1,0 +1,9 @@
+{
+  "status": "BACKED_UP",
+  "files": 86,
+  "manifest_sha256": "833f329283db6c5c98b171fe435536833c988f2249d6ecaecc81f52b556e8bb9",
+  "remote_manifest_verified": true,
+  "storage": "PRIVATE_PRODUCTION_BACKUP_VOLUME",
+  "prefix": "/20261106/833f329283db6c5c98b171fe435536833c988f2249d6ecaecc81f52b556e8bb9",
+  "restore_requires_explicit_state_hash_checks": true
+}

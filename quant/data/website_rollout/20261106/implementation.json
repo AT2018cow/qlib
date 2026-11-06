@@ -1,0 +1,8 @@
+{
+  "implementation_commit": "b682960664ceb5a13a457296b1b0b2dc04d76f9e",
+  "integrated_remote_head": "2b18766474ecc95578dc10675e38248a4c555233",
+  "training_source_manifest_sha256": "202c66c42a3385de3d7bb051c709b41576c0df3d08d9aa73498a276dbb20716b",
+  "git_committed_source_verified": true,
+  "integration_commit": "a6b039ede",
+  "final_implementation_commit": "a5ef8c6f40af5f44c4cd3adf5151a0697d68ccf4"
+}

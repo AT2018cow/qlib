@@ -1,0 +1,78 @@
+{
+  "status": "PASS",
+  "backup_files": 86,
+  "backup_bytes": 12172246,
+  "journal_chain_verified": true,
+  "accounts": {
+    "csi1000": {
+      "initial_cash": 1000000.0,
+      "cash": 4459.442284336939,
+      "positions": 10,
+      "last_execution_date": "2026-11-04",
+      "pending_execution_date": "2026-11-05",
+      "verified_ledgers": 2,
+      "state_sha256": "474d20bc19230f998fc027bb0ed6221b40d3cae8c72ba46841b8f45c01549038"
+    },
+    "csi500": {
+      "initial_cash": 1000000.0,
+      "cash": 11356.821388700133,
+      "positions": 20,
+      "last_execution_date": "2026-11-04",
+      "pending_execution_date": "2026-11-05",
+      "verified_ledgers": 2,
+      "state_sha256": "92bcf983f1e4b128de80e9ea8619d04cebaeaed3decc2a30b31adcc8b428d607"
+    },
+    "csi300": {
+      "initial_cash": 1000000.0,
+      "cash": 11057.410516895368,
+      "positions": 10,
+      "last_execution_date": "2026-11-04",
+      "pending_execution_date": "2026-11-05",
+      "verified_ledgers": 2,
+      "state_sha256": "99f951ca3ff3553a92072cde230e735d8738b5bcb5b99a2cbf81ce32898bf487"
+    }
+  },
+  "actual_snapshot_recovery_cases": [
+    {
+      "transaction_day": "2026-11-05",
+      "real_trading_state_transition": true,
+      "interruption": "before_push",
+      "status": "PASS",
+      "github_pushes": 1,
+      "duplicate_state_unchanged": true
+    },
+    {
+      "transaction_day": "2026-11-05",
+      "real_trading_state_transition": true,
+      "interruption": "after_push",
+      "status": "PASS",
+      "github_pushes": 1,
+      "duplicate_state_unchanged": true
+    },
+    {
+      "transaction_day": "2026-11-05",
+      "real_trading_state_transition": true,
+      "interruption": "after_github_mark",
+      "status": "PASS",
+      "github_pushes": 1,
+      "duplicate_state_unchanged": true
+    },
+    {
+      "transaction_day": "2026-11-05",
+      "real_trading_state_transition": true,
+      "interruption": "mid_states",
+      "status": "PASS",
+      "github_pushes": 1,
+      "duplicate_state_unchanged": true
+    },
+    {
+      "transaction_day": "2026-11-05",
+      "real_trading_state_transition": true,
+      "interruption": "before_volume_commit",
+      "status": "PASS",
+      "github_pushes": 1,
+      "duplicate_state_unchanged": true
+    }
+  ],
+  "production_mutated": false
+}

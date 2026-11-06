@@ -1,0 +1,26 @@
+{
+  "status": "DEPLOYED_CALCULATION_VERIFIED_ONLINE_ACCEPTANCE_PENDING",
+  "implementation_commit": "a5ef8c6f40af5f44c4cd3adf5151a0697d68ccf4",
+  "training_source_manifest_sha256": "202c66c42a3385de3d7bb051c709b41576c0df3d08d9aa73498a276dbb20716b",
+  "python_tests": {
+    "passed": 852,
+    "skipped": 1,
+    "exit_code": 0
+  },
+  "frontend_tests": {
+    "passed": 28,
+    "exit_code": 0
+  },
+  "cloud_smoke_exit": 0,
+  "cloud_full_exit": 0,
+  "deploy_production_exit": 0,
+  "deploy_website_exit": 0,
+  "markets": 3,
+  "sessions_per_market": 20,
+  "data_end": "2026-11-04",
+  "canonical_profiles_changed": false,
+  "production_paper_accounts_overwritten": false,
+  "broker_orders_sent": false,
+  "browser_local_pass": true,
+  "live_website_verified": false
+}
