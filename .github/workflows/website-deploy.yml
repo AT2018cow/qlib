@@ -91,7 +91,7 @@ jobs:
           path: _site
       - name: Deploy mirror to Cloudflare Pages
         if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
-        run: npx --yes wrangler@4 pages deploy _site --project-name=qliba158 --branch=main
+        run: bash quant/website/deploy_cloudflare.sh _site
 
   deploy:
     needs: build
