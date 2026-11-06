@@ -359,7 +359,7 @@ def test_reference_execution_context_requires_explicit_mode_and_keeps_price_gate
     src = (Path(__file__).resolve().parents[2] / "quant/code/production/modal_qlib_cn_a10g.py").read_text()
     assert "from paper_execution_context import build_paper_execution_context" in src
     context = (Path(__file__).resolve().parents[2] / "quant/code/production/paper_execution_context.py").read_text()
-    cron = src.split("def daily_cron():", 1)[1].split(
+    cron = src.split("def daily_cron(allow_lag: bool = False):", 1)[1].split(
         "\n# ===================== 第六步", 1
     )[0]
     assert 'execution_st_policy == REFERENCE_ST_POLICY' in context

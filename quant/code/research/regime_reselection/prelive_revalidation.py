@@ -334,7 +334,10 @@ def replay(data, candidate, *, account=1_000_000, slippage_bps=0, progress_every
             "live_approved": False,
         }
     )
-    return {"metrics": metrics, "report": report_frame, "sessions": reports, "orders": orders, "gaps": gaps}
+    return {
+        "metrics": metrics, "report": report_frame, "sessions": reports,
+        "orders": orders, "gaps": gaps, "final_state": pp.to_dict(),
+    }
 
 
 def write_result(result, output):

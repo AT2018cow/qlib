@@ -62,7 +62,13 @@ image = (
     .apt_install("build-essential")
     # mlflow>=3.16 默认禁用 file:// 存储后端（maintenance mode），qlib 的
     # MLflowExpManager 用的就是 file:// uri，必须显式放行。
-    .env({"MLFLOW_ALLOW_FILE_STORE": "true"})
+    .env({
+        "MLFLOW_ALLOW_FILE_STORE": "true",
+        # The image excludes .git, so setuptools_scm cannot infer a version from
+        # tags.  A fixed build-time version avoids the setuptools_scm /
+        # vcs-versioning resolver incompatibility seen on 2026-11-06.
+        "SETUPTOOLS_SCM_PRETEND_VERSION": "0.0.0",
+    })
     .pip_install(
         "numpy==1.26.4",
         "cython",
@@ -70,14 +76,14 @@ image = (
         "pyyaml",
         "ruamel.yaml",
         "fire",
-        "lightgbm",
+        "lightgbm==4.7.0",
         "mlflow",
         "dill",
         "filelock",
         "tqdm",
         "loguru",
         "joblib",
-        "pyarrow",
+        "pyarrow==19.0.1",
         "pydantic-settings",
         "redis",
         "python-redis-lock",
@@ -91,6 +97,10 @@ image = (
         "akshare",
     )
     .pip_install("torch")
+    .run_commands(
+        'python -c "import io; import pandas as pd; b=io.BytesIO(); '
+        'pd.DataFrame({\'x\':[1]}).to_parquet(b); b.seek(0); assert pd.read_parquet(b).iloc[0,0] == 1"'
+    )
     # 把当前仓库（含本文件同目录的 qlib/ + examples/）打进镜像，并在构建期编译
     # qlib/data/_libs/{rolling,expanding}.pyx（否则 ImportError: qlib.data._libs）。
     # copy=True：后续还有 run_commands 步骤，必须直接拷入镜像而非运行时挂载。
@@ -104,7 +114,10 @@ image = (
             str(path).endswith((".cpp", ".so"))
             or any(
                 part in str(path)
-                for part in (".venv", ".worktrees", "mlruns", "__pycache__", "quant/local_backup", "quant/data")
+                for part in (
+                    ".venv", ".worktrees", "mlruns", "__pycache__", "quant/local_backup", "quant/data",
+                    ".pytest_cache", ".mypy_cache", ".ruff_cache", ".black_cache", ".codex", ".agents", ".aws",
+                )
             )
             or str(path).startswith(".git/")
             or "/.git/" in str(path)
@@ -114,7 +127,9 @@ image = (
     # --no-deps：上面已预装全部运行时依赖。若不带它，pip 会对 pyqlib 的未锁版本依赖
     # （如 numpy）重新解析并升级到 2.x，导致按 1.26 头文件编译的 Cython 扩展在运行时
     # 报 "numpy.core.multiarray failed to import"。非 editable 安装避免 namespace 歧义。
-    .run_commands("cd /root/qlib && pip install . --no-build-isolation --no-deps")
+    .run_commands(
+        "cd /root/qlib && python setup.py build_ext --inplace && pip install . --no-build-isolation --no-deps"
+    )
     # 审计 PR 的 helper 模块随 add_local_dir 进了 /root/qlib/，但 Modal 入口脚本挂在
     # /root/ 运行（sys.path 首位是 /root）——必须复制到 /root/ 否则 ModuleNotFoundError。
     .run_commands(
@@ -4071,6 +4086,32 @@ def _current_st_risk_snapshot(instruments: list[str]) -> dict:
     }
 
 
+def _is_one_session_provider_lag(detail: str) -> bool:
+    """Return True only for a single-session upstream data lag.
+
+    A missing provider release is an upstream availability event, not a cron
+    computation failure.  The canonical T-close -> T+1-open contract still
+    forbids publishing a stale signal, so the scheduled run must skip without
+    advancing paper state and wait for the provider to backfill the session.
+    Multi-session lags remain hard failures and require investigation.
+    """
+    return "got lag=1" in detail or "数据滞后 1 个交易日" in detail
+
+
+def _skip_stale_data(signal_date: str, data_date: str, detail: str) -> dict:
+    print(f"[cron] SKIPPED_STALE_DATA: {detail}")
+    print(
+        "[cron] 上游缺少一个交易日的数据：不发布陈旧信号、不推进 paper state；"
+        "等待数据源补发后回补该交易日"
+    )
+    return {
+        "status": "SKIPPED_STALE_DATA",
+        "signal_date": signal_date,
+        "data_date": data_date,
+        "detail": detail,
+    }
+
+
 def _early_gate(cal, signal_date: str) -> str:
     """Gate 前移的预判定（成本优化，语义最小化）。
 
@@ -4105,8 +4146,13 @@ def _early_gate(cal, signal_date: str) -> str:
     max_containers=1,
     retries=modal.Retries(max_retries=5, initial_delay=30, backoff_coefficient=2.0, max_delay=60),  # 平台限制单次延迟≤60s：30/60×4 共 5 次覆盖瞬断；重跑幂等
 )
-def daily_cron():
+def daily_cron(allow_lag: bool = False):
     """云端全自动每日信号：三池 canonical（csi1000/csi500/csi300）→ GitHub API 提交。
+
+    ``allow_lag`` is an explicit operator override for a single-session
+    upstream data lag.  It publishes the ranking only; the existing paper
+    pending order is frozen and no new paper order is invented.  Scheduled
+    cron calls use the default ``False`` and remain fail-closed.
 
     每次发布（R01 多市场快照校验 + R02 事务日志）：
       - quant/data/signals/<date>_top20_lgb158[_csi500|_csi300].csv
@@ -4251,7 +4297,17 @@ def daily_cron():
     if action == "skip":
         return
     if action == "raise":
-        raise RuntimeError(detail)
+        if _is_one_session_provider_lag(detail):
+            if not allow_lag:
+                return _skip_stale_data(signal_date, data_date, detail)
+            print("[cron] OPERATOR_OVERRIDE lag=1: publishing ranking only; paper pending stays frozen")
+            detail = (
+                "⚠️ OPERATOR_OVERRIDE lag=1 ranking-only; paper pending frozen: "
+                f"{detail}"
+            )
+            action = "publish"
+        else:
+            raise RuntimeError(detail)
 
     # CSI1000 Stage-B winner is stricter than the legacy generic gate:
     # it must preserve the frozen T-close -> T+1-open contract exactly.
@@ -4262,7 +4318,17 @@ def daily_cron():
     if csi_action == "skip":
         return
     if csi_action == "raise":
-        raise RuntimeError(csi_detail)
+        if _is_one_session_provider_lag(csi_detail):
+            if not allow_lag:
+                return _skip_stale_data(signal_date, data_date, csi_detail)
+            print("[cron] OPERATOR_OVERRIDE lag=1: publishing ranking only; paper pending stays frozen")
+            csi_detail = (
+                "⚠️ OPERATOR_OVERRIDE lag=1 ranking-only; paper pending frozen: "
+                f"{csi_detail}"
+            )
+            csi_action = "publish"
+        else:
+            raise RuntimeError(csi_detail)
 
     # R01: each market must independently prove lag=0 freshness, matching
     # provider calendar end and an identical immutable snapshot (archive +
@@ -4276,7 +4342,17 @@ def daily_cron():
     if multi_action == "skip":
         return
     if multi_action == "raise":
-        raise RuntimeError(multi_detail)
+        if _is_one_session_provider_lag(multi_detail):
+            if not allow_lag:
+                return _skip_stale_data(signal_date, data_date, multi_detail)
+            print("[cron] OPERATOR_OVERRIDE lag=1: publishing ranking only; paper pending stays frozen")
+            multi_detail = (
+                "⚠️ OPERATOR_OVERRIDE lag=1 ranking-only; paper pending frozen: "
+                f"{multi_detail}"
+            )
+            multi_action = "publish"
+        else:
+            raise RuntimeError(multi_detail)
 
     # R28: build stateful paper artifacts only after the data/publication gate
     # has passed.  State is proposed now but persisted only after immutable

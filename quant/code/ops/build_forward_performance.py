@@ -28,6 +28,17 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    # The October 8 reconstruction has its own identity and complete ledger.
+    # It must never be spliced onto the older scheduled paper account.
+    website = args.signals / f"{args.market}_website_performance.json"
+    if website.is_file():
+        from website_simulation import validate_website_series
+
+        result = validate_website_series(json.loads(website.read_text()), market=args.market)
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
+        return
+
     pattern = "*_paper_portfolio.json" if args.market == "csi1000" else f"*_paper_portfolio_{args.market}.json"
     artifacts = []
     for path in sorted(args.signals.glob(pattern)):

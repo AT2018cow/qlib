@@ -138,7 +138,7 @@ def should_retrain(calendar: list[str], asof: str, previous_fit: str | None,
 
 
 def provider_training_fingerprint(provider_dir, market: str, cutoff: str,
-                                  fields=("open", "high", "low", "close", "volume", "factor")) -> str:
+                                  fields=("open", "high", "low", "close", "volume", "factor", "vwap")) -> str:
     """Hash only provider data that could have been visible to a cached model.
 
     The hash is clipped at cutoff (normally the model fit_asof), so appending

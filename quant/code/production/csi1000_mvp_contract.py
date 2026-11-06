@@ -378,7 +378,22 @@ def summarize_paper_state(
     pending = paper.get("pending_orders")
     if not isinstance(pending, dict):
         raise ValueError("paper pending_orders missing")
-    if pending.get("signal_date") != signal_data_date or pending.get("execution_date") != usage_date:
+    pending_signal_date = pending.get("signal_date")
+    pending_execution_date = pending.get("execution_date")
+    # A one-session stale provider freezes the prior pending order.  The
+    # ranking may still be published, but the paper order must remain the old
+    # one and must never be relabelled as a new publication order.
+    awaiting_execution_data = (
+        pending.get("status") == "awaiting_execution_data"
+        and isinstance(pending_signal_date, str)
+        and isinstance(pending_execution_date, str)
+        and pending_signal_date <= signal_data_date
+        and pending_execution_date < usage_date
+    )
+    if not awaiting_execution_data and (
+        pending_signal_date != signal_data_date
+        or pending_execution_date != usage_date
+    ):
         raise ValueError("paper pending order dates mismatch publication")
     buys = pending.get("buy")
     sells = pending.get("sell")
@@ -397,6 +412,8 @@ def summarize_paper_state(
         "status": pending.get("status") or "planned",
         "signal_date": signal_data_date,
         "execution_date": usage_date,
+        "pending_signal_date": pending_signal_date,
+        "pending_execution_date": pending_execution_date,
         "planned_buy_count": len(buys),
         "planned_sell_count": len(sells),
         "prior_execution_report": "present" if isinstance(report, dict) else "none",
@@ -508,6 +525,15 @@ def build_mvp_metadata(
             or risk["st"]["top20_st_count"] != len(risk["st"]["top20_st"])
         ):
             raise ValueError("verified ST paper requires a genuine frozen source snapshot")
+        # A stale ranking publication keeps the prior pending order and its
+        # frozen pre-open ST snapshot.  Validate that snapshot against the
+        # pending execution date, not the newer ranking date.
+        pending_for_st = paper.get("pending_orders") or {}
+        st_validation_date = (
+            pending_for_st.get("execution_date")
+            if pending_for_st.get("status") == "awaiting_execution_data"
+            else usage_date
+        )
         validate_verified_st_snapshot(
             {
                 "date": risk["st"].get("date"),
@@ -517,7 +543,7 @@ def build_mvp_metadata(
                 "source_row_count": risk["st"].get("source_row_count"),
                 "st_symbols": risk["st"]["top20_st"],
             },
-            usage_date,
+            st_validation_date,
         )
 
     public_pit = {k: v for k, v in pit_universe.items() if k != "active_members"}

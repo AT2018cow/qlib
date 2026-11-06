@@ -219,6 +219,15 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
 
+    live = json.loads(args.live.read_text())
+    if live.get("schema_version") == 3:
+        from website_simulation import validate_website_series
+
+        merged = validate_website_series(live)
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(merged, ensure_ascii=False, indent=2) + "\n")
+        return
+
     prefix = json.loads(args.prefix.read_text()) if args.prefix and args.prefix.is_file() else None
     if prefix is not None and prefix.get("market"):
         market = prefix["market"]

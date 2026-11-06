@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def _daily_cron_source() -> str:
     src = (ROOT / "quant/code/production/modal_qlib_cn_a10g.py").read_text()
-    start = src.index("def daily_cron():")
+    start = src.index("def daily_cron(allow_lag: bool = False):")
     end = src.index("# ===================== 第六步", start)
     return src[start:end]
 
@@ -91,7 +91,7 @@ def test_dashboard_dark_theme_and_responsive_layout():
     assert ".table-wrap { display: none; }" in styles
     assert ".mobile-cards { display: grid;" in styles
     assert ".doc-grid { grid-template-columns: 1fr;" in styles
-    assert 'src="app.js?v=45"' in index
+    assert 'src="app.js?v=46"' in index
 
 
 def test_rebalance_distinguishes_drop1_sells_from_ranked_out_holdings():
@@ -285,7 +285,7 @@ def test_st_free_reference_return_is_explicit_not_certified():
     app = (ROOT / "quant" / "website" / "app.js").read_text()
     method = (ROOT / "quant" / "website" / "methodology.html").read_text()
     for phrase in ("策略累计收益 · 模拟盘参考",
-                   "ST 核验失败时按参考口径计算",
+                   "历史重建未核实逐日 ST 和开盘成交量",
                    "ST_IGNORED_REFERENCE_ONLY"):
         assert phrase in app, f"site missing reference-only disclosure: {phrase}"
     assert "外部接口连接故障时降级为不考虑 ST" in method

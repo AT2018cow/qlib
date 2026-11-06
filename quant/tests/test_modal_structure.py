@@ -81,7 +81,7 @@ def test_daily_cron_single_execution_contract():
     assert "expires_at" not in src
     assert "PUBLICATION_LEASE_WAIT_SECONDS" not in src
     # Each invocation gets a globally unique id (never a PID, which can repeat).
-    cron = src[src.index("def daily_cron():"):src.index("# ===================== 第六步")]
+    cron = src[src.index("def daily_cron(allow_lag: bool = False):"):src.index("# ===================== 第六步")]
     assert "invocation_id = uuid.uuid4().hex" in cron
     assert "os.getpid()" not in cron
     assert "max_containers=1 的平台单执行" in cron

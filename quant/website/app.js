@@ -255,7 +255,7 @@ async function loadDateContext(date, fresh = false, pool = currentPool) {
 
 // Frontend trust boundary: only a validated forward-only artifact may
 // produce a numerical return. Never silently turn missing/null data into 0%.
-const FORWARD_START = '2026-09-30';
+const FORWARD_START = '2026-10-08';
 
 function dateKeyToUTC(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return NaN;
@@ -263,9 +263,49 @@ function dateKeyToUTC(value) {
   return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === value ? time : NaN;
 }
 
-function normalizeForwardPerformance(raw) {
+function normalizeWebsiteSimulation(raw, market = null) {
   const invalid = { status: 'invalid' };
-  const allowedStart = raw && raw.start_date === FORWARD_START;
+  const identity = raw.account_identity;
+  const pool = POOLS[raw.market];
+  if (!pool || (market && market !== raw.market) || !identity || identity.market !== raw.market ||
+      identity.initial_cash !== 1000000 || identity.topk !== pool.topk || identity.nd !== pool.nd ||
+      identity.horizon !== pool.horizonDays || raw.initial_cash !== 1000000 || raw.initial_nav !== 1 ||
+      raw.status !== 'active' || raw.data_mode !== 'CAUSAL_SIMULATION' ||
+      raw.execution_st_policy !== 'ST_HISTORY_UNVERIFIED_REFERENCE_ONLY' ||
+      raw.start_date !== FORWARD_START || raw.inception_date !== FORWARD_START ||
+      !/^[0-9a-f]{64}$/.test(raw.source_manifest_sha256 || '') ||
+      !/^[0-9a-f]{64}$/.test(raw.provider_archive_sha256 || '') ||
+      !Array.isArray(raw.points) || !raw.points.length || !Array.isArray(raw.trading_dates) ||
+      raw.trading_dates[0] !== FORWARD_START ||
+      JSON.stringify(raw.trading_dates) !== JSON.stringify(raw.points.map(p => p?.date))) return invalid;
+  const profiles = { csi300: '59b93929_top10_drop1_10d',
+    csi500: 'raw10d_c98856b4_top20_drop2_20d', csi1000: 'c98856b4_top10_drop1' };
+  if (identity.profile !== profiles[raw.market] ||
+      identity.paper_lineage !== profiles[raw.market] + '_website_oct08_v2') return invalid;
+  let previousNav = 1, previousDate = '', fees = 0;
+  for (const p of raw.points) {
+    if (!p || !Number.isFinite(dateKeyToUTC(p.date)) || p.date <= previousDate ||
+        p.data_mode !== 'CAUSAL_SIMULATION' ||
+        ['nav', 'daily_return', 'cumulative_return', 'portfolio_value_close', 'cost', 'cash']
+          .some(k => typeof p[k] !== 'number' || !Number.isFinite(p[k])) ||
+        p.nav <= 0 || p.cost < 0 || p.cash < -0.01 ||
+        Math.abs(p.portfolio_value_close / 1000000 - p.nav) > 1e-9 ||
+        Math.abs(p.nav - 1 - p.cumulative_return) > 1e-9 ||
+        Math.abs(p.nav / previousNav - 1 - p.daily_return) > 1e-9) return invalid;
+    previousNav = p.nav; previousDate = p.date; fees += p.cost;
+  }
+  if (raw.latest_date !== previousDate || typeof raw.cumulative_return !== 'number' ||
+      !Number.isFinite(raw.cumulative_return) || Math.abs(raw.cumulative_return - previousNav + 1) > 1e-9 ||
+      typeof raw.total_fees !== 'number' || !Number.isFinite(raw.total_fees) ||
+      Math.abs(raw.total_fees - fees) > 0.011) return invalid;
+  return raw;
+}
+
+function normalizeForwardPerformance(raw, market = null) {
+  const invalid = { status: 'invalid' };
+  if (raw?.schema_version === 3) return normalizeWebsiteSimulation(raw, market);
+  if (market) return invalid;
+  const allowedStart = raw && raw.start_date === '2026-09-30';
   if (!allowedStart || !Array.isArray(raw.points)) return invalid;
   const stModes = ['ST_IGNORED_REFERENCE_ONLY', 'ST_VERIFIED_PREOPEN'];
   const segmented = raw.schema_version === 2;
@@ -339,7 +379,7 @@ function isPossiblyStale(latestDate, now = new Date()) {
 async function loadForwardPerformance(pool = currentPool) {
   const text = await fetchText(pool.forwardUrl, true);
   if (text === null) return { status: 'unavailable' };
-  return normalizeForwardPerformance(parseJSONLoose(text));
+  return normalizeForwardPerformance(parseJSONLoose(text), pool.key);
 }
 
 function formatReturn(value, digits = 2) {
@@ -352,7 +392,7 @@ function formatReturn(value, digits = 2) {
 function makePerformanceChart(points, w = 760, h = 180, lastLabel = '最近估值') {
   const rows = Array.isArray(points) ? points : [];
   if (!rows.length) {
-    return '<div class="performance-empty">从模拟账户启用（2026.09.30）开始记录，首个收盘估值将在下一交易日数据更新后显示。</div>';
+    return '<div class="performance-empty">从 2026.10.08 开盘首次建仓，收盘估值在数据更新后显示。</div>';
   }
 
   if (rows.some(p => !p || typeof p.cumulative_return !== 'number' || !Number.isFinite(p.cumulative_return))) {
@@ -406,7 +446,7 @@ function renderForwardPerformance(data, date = null) {
     value.textContent = unavailable ? '暂不可用' : invalid ? '数据异常' : '待开始';
     latest.textContent = unavailable ? '收益文件加载失败' :
       invalid ? '估值数据校验未通过' : '等待首个估值';
-    status.textContent = '模拟账户 · 2026.09.30 起';
+    status.textContent = '模拟账户 · 2026.10.08 起';
     const message = unavailable ? '暂时无法读取累计收益数据。' :
       invalid ? '估值数据校验未通过，已停止展示。' :
       '等待首个估值。';
@@ -451,6 +491,7 @@ function renderForwardPerformance(data, date = null) {
   if (stale) latest.textContent += ' · 可能滞后';
   if (stale) latest.classList.add('stale');
   status.textContent = '模拟账户 · ' + formatDate(data.inception_date) + ' 起';
+  if (data.data_mode === 'CAUSAL_SIMULATION') status.textContent += ' · 历史重建参考 · 含交易费用';
   if (chartPoints.some(p => p.data_mode === 'BACKFILL_RESEARCH') || data.data_mode === 'BACKFILL_RESEARCH') {
     status.textContent += ' · 含历史回填';
   }
@@ -908,7 +949,7 @@ function pageShell(dates) {
         <div class="performance-head">
           <div>
             <h2>策略累计收益 · 模拟盘参考</h2>
-            <p id="forward-status" class="performance-status">模拟账户 · 2026.09.30 起</p>
+            <p id="forward-status" class="performance-status">模拟账户 · 2026.10.08 起</p>
           </div>
           <div class="performance-summary">
             <div id="forward-return" class="performance-value">待开始</div>
@@ -916,7 +957,7 @@ function pageShell(dates) {
           </div>
         </div>
         <div id="forward-chart" class="performance-chart">
-          <div class="performance-empty">从 2026.09.30 起记录，首个估值将在下一交易日显示。</div>
+          <div class="performance-empty">从 2026.10.08 开盘建仓，收盘后计算估值。</div>
         </div>
       </section>
 
@@ -939,7 +980,7 @@ function pageShell(dates) {
           </div>
           <ul class="governance-list">
             <li>CSI300/CSI1000 为 Top10/Drop1，CSI500 为 Top20/Drop2；新进榜单不等于立即买入。</li>
-            <li>2026.10.08–11.02 为回补，11.03 起为真实 paper；模拟收益不代表实盘成交，ST 核验失败时按参考口径计算。</li>
+            <li>三个独立 100 万元模拟账户自 2026.10.08 开盘建仓，按策略连续调仓并扣费；历史重建未核实逐日 ST 和开盘成交量，收益为模拟参考。</li>
           </ul>
         </div>
       </section>
