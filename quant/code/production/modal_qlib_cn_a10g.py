@@ -4262,8 +4262,13 @@ def _early_gate(cal, signal_date: str) -> str:
     max_containers=1,
     retries=modal.Retries(max_retries=5, initial_delay=30, backoff_coefficient=2.0, max_delay=60),  # 平台限制单次延迟≤60s：30/60×4 共 5 次覆盖瞬断；重跑幂等
 )
-def daily_cron():
+def daily_cron(allow_lag: bool = False):
     """云端全自动每日信号：三池 canonical（csi1000/csi500/csi300）→ GitHub API 提交。
+
+    ``allow_lag`` is an explicit operator override for a single-session
+    upstream data lag.  It publishes the ranking only; the existing paper
+    pending order is frozen and no new paper order is invented.  Scheduled
+    cron calls use the default ``False`` and remain fail-closed.
 
     每次发布（R01 多市场快照校验 + R02 事务日志）：
       - quant/data/signals/<date>_top20_lgb158[_csi500|_csi300].csv
@@ -4409,8 +4414,16 @@ def daily_cron():
         return
     if action == "raise":
         if _is_one_session_provider_lag(detail):
-            return _skip_stale_data(signal_date, data_date, detail)
-        raise RuntimeError(detail)
+            if not allow_lag:
+                return _skip_stale_data(signal_date, data_date, detail)
+            print("[cron] OPERATOR_OVERRIDE lag=1: publishing ranking only; paper pending stays frozen")
+            detail = (
+                "⚠️ OPERATOR_OVERRIDE lag=1 ranking-only; paper pending frozen: "
+                f"{detail}"
+            )
+            action = "publish"
+        else:
+            raise RuntimeError(detail)
 
     # CSI1000 Stage-B winner is stricter than the legacy generic gate:
     # it must preserve the frozen T-close -> T+1-open contract exactly.
@@ -4422,8 +4435,16 @@ def daily_cron():
         return
     if csi_action == "raise":
         if _is_one_session_provider_lag(csi_detail):
-            return _skip_stale_data(signal_date, data_date, csi_detail)
-        raise RuntimeError(csi_detail)
+            if not allow_lag:
+                return _skip_stale_data(signal_date, data_date, csi_detail)
+            print("[cron] OPERATOR_OVERRIDE lag=1: publishing ranking only; paper pending stays frozen")
+            csi_detail = (
+                "⚠️ OPERATOR_OVERRIDE lag=1 ranking-only; paper pending frozen: "
+                f"{csi_detail}"
+            )
+            csi_action = "publish"
+        else:
+            raise RuntimeError(csi_detail)
 
     # R01: each market must independently prove lag=0 freshness, matching
     # provider calendar end and an identical immutable snapshot (archive +
@@ -4438,8 +4459,16 @@ def daily_cron():
         return
     if multi_action == "raise":
         if _is_one_session_provider_lag(multi_detail):
-            return _skip_stale_data(signal_date, data_date, multi_detail)
-        raise RuntimeError(multi_detail)
+            if not allow_lag:
+                return _skip_stale_data(signal_date, data_date, multi_detail)
+            print("[cron] OPERATOR_OVERRIDE lag=1: publishing ranking only; paper pending stays frozen")
+            multi_detail = (
+                "⚠️ OPERATOR_OVERRIDE lag=1 ranking-only; paper pending frozen: "
+                f"{multi_detail}"
+            )
+            multi_action = "publish"
+        else:
+            raise RuntimeError(multi_detail)
 
     # R28: build stateful paper artifacts only after the data/publication gate
     # has passed.  State is proposed now but persisted only after immutable
