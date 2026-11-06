@@ -525,6 +525,15 @@ def build_mvp_metadata(
             or risk["st"]["top20_st_count"] != len(risk["st"]["top20_st"])
         ):
             raise ValueError("verified ST paper requires a genuine frozen source snapshot")
+        # A stale ranking publication keeps the prior pending order and its
+        # frozen pre-open ST snapshot.  Validate that snapshot against the
+        # pending execution date, not the newer ranking date.
+        pending_for_st = paper.get("pending_orders") or {}
+        st_validation_date = (
+            pending_for_st.get("execution_date")
+            if pending_for_st.get("status") == "awaiting_execution_data"
+            else usage_date
+        )
         validate_verified_st_snapshot(
             {
                 "date": risk["st"].get("date"),
@@ -534,7 +543,7 @@ def build_mvp_metadata(
                 "source_row_count": risk["st"].get("source_row_count"),
                 "st_symbols": risk["st"]["top20_st"],
             },
-            usage_date,
+            st_validation_date,
         )
 
     public_pit = {k: v for k, v in pit_universe.items() if k != "active_members"}
