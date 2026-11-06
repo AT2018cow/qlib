@@ -26,6 +26,24 @@ from portfolio_performance import portfolio_performance
 from stage0_p0_core import apply_cost_stress
 
 
+def audit_website_series(signals, market):
+    """Validate the independent reconstruction and every current derived copy."""
+    from website_simulation import validate_website_series
+
+    signals = Path(signals)
+    path = signals / f"{market}_website_performance.json"
+    if not path.is_file():
+        return None
+    series = validate_website_series(json.loads(path.read_text()), market=market)
+    hashes = {}
+    for kind in ("website", "forward", "backfill"):
+        derived = signals / f"{market}_{kind}_performance.json"
+        if json.loads(derived.read_text()) != series:
+            raise ValueError(f"website derived output mismatch: {derived.name}")
+        hashes[derived.name] = hashlib.sha256(derived.read_bytes()).hexdigest()
+    return series, hashes
+
+
 def report_initial_capital(path, report, root, archive_contracts):
     """Read declared capital; never infer it from the first day's closing NAV."""
     declarations = []
@@ -169,6 +187,18 @@ def audit(root):
         except (ValueError, OverflowError) as exc:
             inventory["stress_errors"].append({"file": rel, "reason": str(exc)})
     for market in ("csi300", "csi500", "csi1000"):
+        website = audit_website_series(signals, market)
+        if website is not None:
+            series, hashes = website
+            inputs.update({str((signals / name).relative_to(root)): sha for name, sha in hashes.items()})
+            inventory["merged_live"][market] = {
+                "latest_date": series["latest_date"],
+                "cumulative_return": series["cumulative_return"],
+                "data_mode": series["data_mode"],
+                "source_manifest_sha256": series["source_manifest_sha256"],
+                "st_history_verified": False,
+            }
+            continue
         suffix = "" if market == "csi1000" else f"_{market}"
         prefix = json.loads((signals / f"{market}_backfill_performance.json").read_text())
         closing = json.loads((signals / f"{prefix['end']}_paper_portfolio{suffix}.json").read_text())

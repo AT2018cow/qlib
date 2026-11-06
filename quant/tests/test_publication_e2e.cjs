@@ -30,7 +30,7 @@ const { evaluateMvpContract } = vm.runInNewContext(
 );
 const { normalizeForwardPerformance } = vm.runInNewContext(
   sliceBetween('const FORWARD_START', 'function isWinnerCanonical') +
-  ';({ normalizeForwardPerformance })'
+  ';({ normalizeForwardPerformance })', { POOLS }
 );
 
 const MARKETS = [
@@ -90,15 +90,17 @@ for (const market of MARKETS) {
     );
 
     const forward = normalizeForwardPerformance(
-      readJSON(path.join(signals, `${market.key}_forward_performance.json`))
+      readJSON(path.join(signals, `${market.key}_forward_performance.json`)), market.key
     );
     assert.equal(forward.status, 'active', `${market.key} forward series`);
-    assert.equal(forward.start_date, '2026-09-30');
-    assert.equal(forward.inception_date, '2026-09-30');
-    assert.ok(forward.latest_date >= '2026-11-02', `${market.key} latest valuation`);
-    assert.ok(forward.points.length >= EXPECTED_DATES.length + 1);
+    assert.equal(forward.schema_version, 3);
+    assert.equal(forward.start_date, '2026-10-08');
+    assert.equal(forward.inception_date, '2026-10-08');
+    assert.equal(forward.initial_cash, 1000000);
+    assert.ok(forward.latest_date >= '2026-11-04', `${market.key} latest valuation`);
+    assert.ok(forward.points.length >= EXPECTED_DATES.length + 2);
     const forwardDates = new Set(forward.points.map(p => p.date));
-    for (const date of EXPECTED_DATES) {
+    for (const date of [...EXPECTED_DATES, '2026-11-03', '2026-11-04']) {
       assert.ok(forwardDates.has(date), `${market.key} forward missing ${date}`);
     }
 

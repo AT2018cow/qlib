@@ -162,6 +162,20 @@ def test_build_and_merge_cli_select_corrected_account_without_splicing(tmp_path,
     assert json.loads(final.read_text()) == raw
 
 
+def test_audit_reads_new_continuous_account_and_rejects_stale_derived_output(tmp_path):
+    from audit_repair_impact import audit_website_series
+
+    series, _ = example_series()
+    for kind in ("website", "forward", "backfill"):
+        (tmp_path / f"csi300_{kind}_performance.json").write_text(json.dumps(series))
+    actual, hashes = audit_website_series(tmp_path, "csi300")
+    assert actual == series and len(hashes) == 3
+    assert actual["start_date"] == "2026-10-08"
+    (tmp_path / "csi300_forward_performance.json").write_text('{"obsolete_return":0.5}')
+    with pytest.raises(ValueError, match="website derived output mismatch"):
+        audit_website_series(tmp_path, "csi300")
+
+
 def test_cloud_worker_rejects_changed_source_before_accessing_volume():
     import importlib.util
     from pathlib import Path
