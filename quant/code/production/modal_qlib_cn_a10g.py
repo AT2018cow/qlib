@@ -145,7 +145,8 @@ image = (
         "/root/qlib/quant/code/production/paper_execution_context.py /root/qlib/quant/code/execution/order_quantity.py "
         "/root/qlib/quant/code/production/portfolio_diagnostics.py "
         "/root/qlib/quant/code/execution/st_history.py /root/qlib/quant/code/execution/liquidity_contract.py "
-        "/root/qlib/quant/code/production/name_map_sync.py /root/"
+        "/root/qlib/quant/code/production/name_map_sync.py "
+        "/root/qlib/quant/code/production/daily_pipeline.py /root/"
     )
 )
 
@@ -4136,17 +4137,47 @@ def _early_gate(cal, signal_date: str) -> str:
     # ⚠️ 此 schedule 行曾被重构编辑意外吞掉（2026-09-28 gate 上线时），导致 09-29 静默无调度——
     #    任何触碰此装饰器的编辑后必须运行 tests/test_cron_gate.py 的守护测试。
     secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
-    # infi 等研究 workspace 需一次性建空占位（modal secret create github-push）解锁 modal run；
-    # 空 secret 只过 spec 校验，cron 真实推送仍需 GITHUB_TOKEN（生产部署只在 at2018cow）
-    timeout=2 * 3600,
+    # Research placeholders cannot authorize publication; production needs GITHUB_TOKEN.
+    timeout=5 * 3600,  # 统一入口覆盖信号发布与最长 3h 的网站收益更新。
     nonpreemptible=True,  # 调度入口：被抢占则当天任务丢失；自身运行时间短，3x 成本增量极小
-    # ⚠️ R02 序列化契约：max_containers=1 使 Modal 平台串行执行 daily_cron——07:45 补跑转发
+    # ⚠️ R02 序列化契约：max_containers=1 使 Modal 平台串行执行 daily_cron——08:00 补跑转发
     #    的调用必须排队等待当前运行结束，两个容器永不重叠。严禁提高此值：Volume 没有原子
     #    CAS，跨容器互斥只能由平台单执行保证；若必须并发，先引入外部锁服务并暂停自动发布。
     max_containers=1,
     retries=modal.Retries(max_retries=5, initial_delay=30, backoff_coefficient=2.0, max_delay=60),  # 平台限制单次延迟≤60s：30/60×4 共 5 次覆盖瞬断；重跑幂等
 )
 def daily_cron(allow_lag: bool = False):
+    """Publish signals and website returns under the same serialized daily run."""
+    from daily_pipeline import run_daily_pipeline
+
+    return run_daily_pipeline(lambda: _run_daily_signal_cycle(allow_lag), _update_website_returns)
+
+
+def _update_website_returns():
+    """Call the deployed website worker only when both code identities agree."""
+    import sys
+
+    # The serialized production entry runs from /root; identity must be loaded
+    # from its original tree so its default repository root remains correct.
+    try:
+        from research_identity import source_manifest
+    except ModuleNotFoundError:
+        sys.path.insert(0, "/root/qlib/quant/code/execution")
+        from research_identity import source_manifest
+
+    expected_source = source_manifest("training")["sha256"]
+    worker = modal.Function.from_name("qlib-website-nav", "daily")
+    result = worker.remote(expected_source_sha256=expected_source)
+    if (
+        not isinstance(result, dict)
+        or result.get("status") not in ("PUBLISHED", "ALREADY_PUBLISHED")
+        or result.get("source_sha256") != expected_source
+    ):
+        raise RuntimeError("website publication did not return a matching successful receipt")
+    return result
+
+
+def _run_daily_signal_cycle(allow_lag: bool = False):
     """云端全自动每日信号：三池 canonical（csi1000/csi500/csi300）→ GitHub API 提交。
 
     ``allow_lag`` is an explicit operator override for a single-session
@@ -4186,7 +4217,7 @@ def daily_cron(allow_lag: bool = False):
         ) from e
 
     # ---- R02: 先恢复/校验中断的 publication，再决定今天的流程 ----
-    # 平台已以 max_containers=1 串行化本函数（含 07:45 补跑转发的调用），
+    # 平台已以 max_containers=1 串行化本函数（含 08:00 补跑转发的调用），
     # 因此这里无需、也不允许再加任何跨容器锁；invocation_id 仅作审计标识。
     from csi1000_production_config import (
         CANONICAL_ND_BY_MARKET,
@@ -4228,7 +4259,7 @@ def daily_cron(allow_lag: bool = False):
             _verify_committed_record(record, journal, headers)
         if candidate["signal_date"] == signal_date:
             _update_code_name_map(headers)
-            return
+            return {"status": "RECOVERED", "signal_date": signal_date}
 
     # ---- R02/B06: 严格跨日哈希链 + 账户状态锚点校验 ----
     # 必须在任何 paper 状态加载、训练、发布副作用之前执行；任一市场偏离
@@ -4249,12 +4280,12 @@ def daily_cron(allow_lag: bool = False):
         _verify_committed_record(committed, journal, headers)
         _update_code_name_map(headers)
         print(f"[cron] {signal_date} publication 已提交且校验一致；无需重复运行")
-        return
+        return {"status": "ALREADY_PUBLISHED", "signal_date": signal_date}
 
     early = _early_gate(cal, signal_date)
     if early == "skip":
         print(f"[cron] {signal_date} 非 A 股交易日（假日），gate 前移零成本跳过；最近排名见最近一份已发布信号")
-        return
+        return {"status": "SKIPPED_NON_TRADING_DAY", "signal_date": signal_date}
 
     print(f"[cron] {signal_date} 为交易日——启动 CSI1000/500/300 canonical")
 
@@ -4482,6 +4513,7 @@ def daily_cron(allow_lag: bool = False):
 
     _update_code_name_map(headers)
     print(f"[cron] ✅ {signal_date} 三池 canonical 已按 journal 发布并提交")
+    return {"status": "PUBLISHED", "signal_date": signal_date, "data_date": data_date}
 
 
 def _github_existing_files(paths, headers):
@@ -4653,19 +4685,20 @@ def _update_code_name_map(headers):
 
 
 @app.function(
-    schedule=modal.Cron("45 7 * * 1-5", timezone="Asia/Shanghai"),  # 周一~周五 07:45 幂等补跑
-    timeout=3 * 3600,  # 覆盖 daily_cron 的 2h 上限与其中间重试等待
+    schedule=modal.Cron("0 8 * * 1-5", timezone="Asia/Shanghai"),  # 周一~周五 08:00 幂等补跑
+    timeout=24 * 3600,  # 含排队等待；转发到唯一的 daily_cron，绝不另开并发写入者。
     nonpreemptible=True,  # 与 daily_cron 同语义：补跑被抢占会丢当天兜底
+    max_containers=1,
 )
 def daily_cron_second_chance():
-    """07:45 幂等二次调度：转发调用 daily_cron。
+    """08:00 幂等二次调度：信号和网站收益均重新核验，恢复未完成部分。
 
     转发调用由 Modal 平台按 max_containers=1 排队：首跑未结束前本补跑不会启动；
-    首跑成功后 daily_cron 走 journal 已提交快速路径（校验 GitHub 与 Volume 状态
-    一致后立即返回）；首跑中断时按冻结载荷完成推送与三池状态提交。平台单执行
+    信号已成功时仅核验 journal，再继续检查网站收益；首跑中断时按冻结载荷
+    完成推送与三池状态提交。网站收益使用独立、幂等的发布收据。平台单执行
     保证两次运行不重叠，无需任何跨容器文件锁。
     """
-    daily_cron.remote()
+    return daily_cron.remote()
 
 
 @app.function(

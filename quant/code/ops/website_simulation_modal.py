@@ -2,7 +2,7 @@
 
 Run ``--mode smoke`` before ``--mode full`` in an attached foreground Modal
 session. Deploy this app in the existing production environment only after
-validation. Research runs never publish; the scheduled entry publishes three
+validation. Research runs never publish; the production orchestrator publishes three
 markets together, retaining content-addressed snapshots and an idempotent receipt.
 """
 
@@ -404,18 +404,20 @@ def publish_results(results, source, asset, *, token):
 @app.function(
     volumes={"/simulation": simulation},
     secrets=[modal.Secret.from_name("github-push")],
-    schedule=modal.Cron("15 8 * * 1-5", timezone="Asia/Shanghai"),
     timeout=10800,
     cpu=1,
     memory=2048,
     max_containers=1,
     retries=0,
 )
-def daily():
+def daily(expected_source_sha256: str):
     import os
     from research_identity import source_manifest
 
-    source, asset = source_manifest("training"), latest_asset()
+    source = source_manifest("training")
+    if expected_source_sha256 != source["sha256"]:
+        raise ValueError("signal/website deployments have different source identities")
+    asset = latest_asset()
     build_market.remote(make_job(asset, source, "csi300", "smoke"))
     results = list(
         build_market.map(

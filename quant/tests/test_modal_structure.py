@@ -66,13 +66,13 @@ def test_daily_cron_decorator_complete():
         "cron schedule line missing — next morning's run would silently never fire!"
     assert 'modal.Secret.from_name(_GH_SECRET_NAME := "github-push")' in params
     assert "nonpreemptible=True" in params
-    assert "timeout=2 * 3600" in params
+    assert "timeout=5 * 3600" in params
 
 
 def test_daily_cron_single_execution_contract():
     """R02 serialization contract: cross-run mutual exclusion is provided by the
     Modal platform (`max_containers=1`) because Volumes have no atomic CAS.
-    Removing it would let the 07:00 run and the 07:45 second chance overlap."""
+    Removing it would let the 07:00 run and the 08:00 second chance overlap."""
     params = _decorator_block("daily_cron")
     assert "max_containers=1" in params, \
         "max_containers=1 missing — overlapping cron runs could double-publish!"
@@ -140,6 +140,7 @@ def test_image_helper_modules_copied():
         "provider_archive.py",
         "publication_journal.py",
         "name_map_sync.py",
+        "daily_pipeline.py",
     ):
         assert helper in cp.group(1), \
             f"{helper} not copied to /root/ — container import would fail (ModuleNotFoundError)"

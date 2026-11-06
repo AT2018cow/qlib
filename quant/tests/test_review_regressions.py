@@ -70,7 +70,7 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn("start_time=te_s", src)
 
     def test_daily_cron_isolates_both_pools_and_repairs_missing_files(self):
-        src = function_source("quant/code/production/modal_qlib_cn_a10g.py", "daily_cron")
+        src = function_source("quant/code/production/modal_qlib_cn_a10g.py", "_run_daily_signal_cycle")
         self.assertIn('market="csi1000"', src)
         self.assertIn('CANONICAL_PROFILE', src)
         self.assertIn("daily_standalone.remote(", src)
@@ -111,7 +111,7 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn("--features--", helper)
 
     def test_r28_daily_cron_publishes_paper_portfolio_and_commits_state_after_push(self):
-        cron = function_source("quant/code/production/modal_qlib_cn_a10g.py", "daily_cron")
+        cron = function_source("quant/code/production/modal_qlib_cn_a10g.py", "_run_daily_signal_cycle")
         self.assertIn("_apply_paper_portfolio", cron)
         self.assertIn("_paper_portfolio.json", cron)
         self.assertIn("_mvp_metadata.json", cron)

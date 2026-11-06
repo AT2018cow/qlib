@@ -2,6 +2,8 @@
 
 本目录按研发演进阶段整理了全部实验报告、审计记录与生产合同：
 
+**统一每日调度**：[`07:00 主跑 / 08:00 补跑`](07-code-review/2026-11-06-unified-daily-schedule.md)跟踪将网站收益并入信号日任务、取消独立 08:15 调度的实施与实际验收。
+
 **最新扩展层审查与修复**：[`计算与逻辑审查`](07-code-review/2026-11-06-extension-calculation-and-logic-audit.md)记录修复前 Q01–Q16；[`2026-11-06 修复与验收`](07-code-review/2026-11-06-extension-repair-acceptance.md)记录实现、回归、380 份历史账本影响及外部证据待办。代码已修复；后续生产部署与网站收益修正见下方“网站模拟收益上线”。
 
 **使用前复验与择优**：[`已批准方案`](07-code-review/2026-11-06-prelive-revalidation-plan.md)、[`输入与候选登记`](07-code-review/2026-11-06-prelive-execution-register.json)、[`执行与结果`](07-code-review/2026-11-06-prelive-revalidation-results.md)、[`具体使用与部署审核包`](07-code-review/2026-11-06-limited-use-review-package.md)。已完成 72 个登记场景与 10/08 起四账户回填；实盘使用包保留为历史审核记录。用户随后明确本轮用途为三个独立 1M 网站模拟账户，已批准并完成下方网站部署，未实施券商账户迁移或下单。
