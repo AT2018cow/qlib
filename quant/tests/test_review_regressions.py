@@ -58,7 +58,6 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn('"Fillna"', src)
         self.assertNotIn('"infer_processors": []', src)
 
-
     def test_batch_c_bootstraps_previous_signal_day(self):
         src = function_source("quant/code/production/modal_qlib_cn_a10g.py", "batch_c_window")
         self.assertIn("signal_start = _cal[_te_i - 1]", src)
@@ -90,7 +89,6 @@ class ReviewRegressionTests(unittest.TestCase):
         daily = function_source("quant/code/production/modal_qlib_cn_a10g.py", "daily_standalone")
         self.assertIn("runtime_lineage = _runtime_cache_lineage()", daily)
         self.assertIn("saved.get(\"runtime_lineage\") != runtime_lineage", daily)
-
 
     def test_r24_research_backtests_use_custom_exchange_config(self):
         src = (ROOT / "quant/code/execution/board_execution.py").read_text()
@@ -125,7 +123,6 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn('"ranking_full": ranking_full', daily)
         self.assertIn('"paper_context": paper_context', daily)
 
-
     def test_batch_c_artifact_has_board_aware_protocol(self):
         src = function_source("quant/code/production/modal_qlib_cn_a10g.py", "batch_c")
         self.assertIn('"protocol": "board_aware_open_bootstrap_v5_repro"', src)
@@ -149,8 +146,6 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn("uniform_open_exchange(", src)
         self.assertIn("high_open_block=0.05", src)
         self.assertIn("_filter_signal_excluding_growth_boards", src)
-
-
 
     def test_pre_tuner_audit_matrix_includes_all_three_frozen_pools(self):
         src = (ROOT / "quant/code/research/pre_tuner/freq_experiment.py").read_text()
@@ -205,7 +200,7 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn("apply_lgb_reproducibility(cfg)", src)
 
     def test_paper_execution_uses_factor_and_no_high_open_overlay(self):
-        src = function_source("quant/code/production/modal_qlib_cn_a10g.py", "_paper_execution_context")
+        src = function_source("quant/code/production/paper_execution_context.py", "build_paper_execution_context")
         self.assertIn('"$factor"', src)
         self.assertIn("factors=factors", src)
         self.assertIn("high_open_block=None", src)
@@ -252,7 +247,6 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn('"continuous_account_cagr": None', summary)
         self.assertIn('"continuous_account_max_drawdown": None', summary)
         self.assertIn("ann_excess_approx_legacy_arithmetic", summary)
-
 
     def test_phase_extension_reuses_only_matching_completed_phases(self):
         src = (ROOT / "quant/code/research/pre_tuner/phase_audit_extend.py").read_text()

@@ -126,6 +126,10 @@ image = (
         "/root/qlib/quant/code/production/chart_series.py /root/qlib/quant/code/production/signal_publication_gate.py "
         "/root/qlib/quant/code/production/paper_accounting.py /root/qlib/quant/code/execution/execution_limits.py "
         "/root/qlib/quant/code/production/provider_archive.py /root/qlib/quant/code/production/publication_journal.py "
+        "/root/qlib/quant/code/production/artifact_io.py /root/qlib/quant/code/production/coordinate_contract.py "
+        "/root/qlib/quant/code/production/paper_execution_context.py /root/qlib/quant/code/execution/order_quantity.py "
+        "/root/qlib/quant/code/production/portfolio_diagnostics.py "
+        "/root/qlib/quant/code/execution/st_history.py /root/qlib/quant/code/execution/liquidity_contract.py "
         "/root/qlib/quant/code/production/name_map_sync.py /root/"
     )
 )
@@ -1278,7 +1282,6 @@ def _board_listing_dates(provider_uri, symbols) -> dict:
     return sub.groupby("symbol")["start"].min().to_dict()
 
 
-
 def _paper_state_path(market: str, lineage: str = "canonical") -> Path:
     """Return the persistent paper-state path for one explicit lineage."""
     if not lineage or any(ch not in "abcdefghijklmnopqrstuvwxyz0123456789_-" for ch in lineage):
@@ -1287,158 +1290,18 @@ def _paper_state_path(market: str, lineage: str = "canonical") -> Path:
     return VOL_ROOT / "paper_portfolio" / f"{state_key}.json"
 
 
-def _paper_execution_context(
-    data_dir,
-    market: str,
-    calendar: list[str],
-    asof: str,
-    *,
-    lineage: str = "canonical",
-) -> dict:
-    """Read paper state without mutating it and prepare data for pending execution.
+def _paper_execution_context(data_dir, market, calendar, asof, *, lineage="canonical"):
+    from paper_execution_context import build_paper_execution_context
 
-    daily_standalone runs before publication gating, so it must never mutate
-    portfolio state.  It only returns the exact historical open/tradability
-    context needed by daily_cron after the signal has passed the gate.
-    """
-    import json as _json
-    import numpy as _np
-    import pandas as _pd
-    from qlib.data import D
-
-    state_path = _paper_state_path(market, lineage)
-    if not state_path.exists():
-        return {"status": "no_state", "execution_date": None}
-    raw = _json.loads(state_path.read_text())
-    pending = raw.get("pending_signal")
-    if not pending:
-        return {"status": "no_pending", "execution_date": None}
-    execution_date = str(pending["execution_date"])
-    if execution_date > str(asof):
-        return {"status": "awaiting_data", "execution_date": execution_date}
-    if execution_date not in calendar:
-        raise RuntimeError(f"paper pending execution date {execution_date} not in provider calendar")
-
-    symbols = set(raw.get("positions", {}))
-    symbols.update(pending.get("planned_sell", []))
-    symbols.update(pending.get("planned_buy", []))
-    if not symbols:
-        return {
-            "status": "ready",
-            "execution_date": execution_date,
-            "open_prices": {},
-            "close_prices": {},
-            "factors": {},
-            "buy_tradable": {},
-            "sell_tradable": {},
-        }
-
-    df = D.features(
-        sorted(symbols),
-        ["$open", "Ref($close,1)", "$close", "$factor"],
-        start_time=execution_date,
-        end_time=execution_date,
-        freq="day",
+    return build_paper_execution_context(
+        data_dir,
+        market,
+        calendar,
+        asof,
+        lineage=lineage,
+        state_path=_paper_state_path(market, lineage),
+        listing_dates_fn=_board_listing_dates,
     )
-    rows = {}
-    for idx, row in df.iterrows():
-        inst = str(idx[0] if isinstance(idx, tuple) else idx)
-        rows[inst] = row
-
-    insts = sorted(symbols)
-    from csi1000_mvp_contract import (
-        REFERENCE_ST_POLICY, VERIFIED_ST_POLICY, validate_verified_st_snapshot,
-    )
-
-    pending_metadata = pending.get("metadata") or {}
-    execution_st_policy = pending_metadata.get("execution_st_policy")
-    snapshot = pending_metadata.get("execution_st_snapshot") or {}
-    if execution_st_policy == REFERENCE_ST_POLICY:
-        # Reference P&L deliberately ignores ST risk: NEVER convert a missing
-        # feed to an empty *verified* ST list. Continue enforcing price limits,
-        # factors, real quotes and independent full-session halt evidence.
-        if execution_date < "2026-10-12":
-            raise RuntimeError("reference ST policy cannot apply before forward inception")
-        st_symbols = set()
-    else:
-        if execution_date >= "2026-10-12":
-            if execution_st_policy != VERIFIED_ST_POLICY:
-                return {"status": "unverified_preopen_st", "execution_date": execution_date}
-            st_symbols = validate_verified_st_snapshot(snapshot, execution_date)
-        else:
-            st_symbols = set(snapshot.get("st_symbols", []))
-    opens, prevs, close_na, factors = [], [], [], []
-    open_prices = {}
-    close_prices = {}
-    factor_by_symbol = {}
-    for inst in insts:
-        row = rows.get(inst)
-        op = float(row["$open"]) if row is not None and _pd.notna(row["$open"]) else _np.nan
-        prev = float(row["Ref($close,1)"]) if row is not None and _pd.notna(row["Ref($close,1)"]) else _np.nan
-        close = float(row["$close"]) if row is not None and _pd.notna(row["$close"]) else _np.nan
-        factor = float(row["$factor"]) if row is not None and _pd.notna(row["$factor"]) else _np.nan
-        opens.append(op)
-        prevs.append(prev)
-        close_na.append(not _np.isfinite(close))
-        factors.append(factor)
-        if _np.isfinite(op):
-            open_prices[inst] = op
-        if _np.isfinite(close):
-            close_prices[inst] = close
-        if _np.isfinite(factor) and factor > 0:
-            factor_by_symbol[inst] = factor
-
-    # Only a dated full-session, independent suspension record can justify
-    # carrying a previously held mark. An isolated missing OHLC quote is not
-    # enough; never infer a halt from a provider NaN.
-    held_missing = {sym for sym in raw.get("positions", {})
-                    if sym not in open_prices or sym not in close_prices}
-    halt_evidence = {}
-    if held_missing:
-        inconsistent = [sym for sym in held_missing
-                        if (sym in open_prices) != (sym in close_prices)]
-        if inconsistent:
-            raise RuntimeError(f"partial held quote is not a certified halt: {inconsistent}")
-        import datetime as _datetime
-        import akshare as _ak
-        from paper_halt_evidence import certify_full_session_halts
-
-        try:
-            suspension_rows = _ak.stock_tfp_em(date=execution_date.replace("-", "")).to_dict("records")
-            halt_evidence = certify_full_session_halts(
-                execution_date, held_missing, suspension_rows,
-                fetched_utc=_datetime.datetime.now(_datetime.timezone.utc).isoformat(),
-            )
-        except Exception as exc:
-            raise RuntimeError(
-                f"cannot certify missing held quotes for {execution_date}: {sorted(held_missing)}"
-            ) from exc
-
-    listing = _board_listing_dates(data_dir, insts)
-    limit_buy, limit_sell = compute_limit_masks(
-        insts,
-        [execution_date] * len(insts),
-        opens,
-        prevs,
-        close_na,
-        high_open_block=None,
-        listing_dates=listing,
-        calendar=calendar,
-        factors=factors,
-        st_symbols=st_symbols,
-    )
-    return {
-        "status": "ready",
-        "execution_date": execution_date,
-        "execution_st_policy": execution_st_policy,
-        "open_prices": open_prices,
-        "close_prices": close_prices,
-        "factors": factor_by_symbol,
-        "confirmed_halts": sorted(halt_evidence),
-        "halt_evidence": halt_evidence,
-        "buy_tradable": {inst: not bool(v) for inst, v in zip(insts, limit_buy)},
-        "sell_tradable": {inst: not bool(v) for inst, v in zip(insts, limit_sell)},
-    }
 
 
 def _reload_volume_strict(attempts: int = 3) -> None:
@@ -1478,8 +1341,9 @@ def _apply_paper_portfolio(
     the Modal Volume, preventing a failed GitHub push from advancing the
     account lineage.
     """
-    import json as _json
+    import artifact_io as _json
     from paper_portfolio import PaperPortfolio
+    from portfolio_diagnostics import portfolio_diagnostics
     from csi1000_mvp_contract import (
         REFERENCE_ST_POLICY, VERIFIED_ST_POLICY, require_reference_preopen,
     )
@@ -1657,18 +1521,20 @@ def _apply_paper_portfolio(
                             if "2026-10-12" <= str(d) <= usage_date)
     artifact = {
         "state_version": 2,
-        "trading_calendar": {
-            "source": "akshare.tool_trade_date_hist_sina",
-            "through": usage_date,
-            "dates": calendar_dates,
-        } if verified_calendar else None,
+        "trading_calendar": (
+            {
+                "source": "akshare.tool_trade_date_hist_sina",
+                "through": usage_date,
+                "dates": calendar_dates,
+            }
+            if verified_calendar
+            else None
+        ),
         "market": market,
         "paper_lineage": lineage,
         "production_lineage": res.get("production_lineage"),
         "execution_st_policy": (
-            (pp.pending_signal or {}).get("metadata")
-            or (execution_report or {}).get("metadata")
-            or {}
+            (pp.pending_signal or {}).get("metadata") or (execution_report or {}).get("metadata") or {}
         ).get("execution_st_policy"),
         "signal_data_date": res["date"],
         "usage_date": usage_date,
@@ -1677,6 +1543,15 @@ def _apply_paper_portfolio(
         "cash": round(pp.cash, 2),
         "n_positions": len(pp.positions),
         "positions": pp.positions,
+        "portfolio_risk": portfolio_diagnostics(
+            pp.cash,
+            pp.positions,
+            calendar=sorted(verified_calendar or ()),
+            data_date=res["date"],
+            model_fit_asof=res["model_fit_asof"],
+            last_execution_date=pp.last_execution_date,
+            report=execution_report,
+        ),
         "model_fit_asof": res["model_fit_asof"],
         "training_contract": res.get("training_contract"),
         "provider_calendar_end": (res.get("provider_identity") or {}).get("calendar_end"),

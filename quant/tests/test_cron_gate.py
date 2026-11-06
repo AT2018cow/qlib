@@ -280,6 +280,7 @@ def test_paper_planner_prefers_st_and_only_transport_fallback(tmp_path, monkeypa
             self.positions = {}
             self.history = []
             self.pending_signal = None
+            self.last_execution_date = None
 
         def plan_signal(self, *, signal_date, execution_date, ranking, metadata):
             self.pending_signal = {
@@ -356,9 +357,8 @@ def test_reference_execution_context_requires_explicit_mode_and_keeps_price_gate
     from pathlib import Path
 
     src = (Path(__file__).resolve().parents[2] / "quant/code/production/modal_qlib_cn_a10g.py").read_text()
-    context = src.split("def _paper_execution_context(", 1)[1].split(
-        "\ndef _apply_paper_portfolio(", 1
-    )[0]
+    assert "from paper_execution_context import build_paper_execution_context" in src
+    context = (Path(__file__).resolve().parents[2] / "quant/code/production/paper_execution_context.py").read_text()
     cron = src.split("def daily_cron():", 1)[1].split(
         "\n# ===================== 第六步", 1
     )[0]

@@ -81,6 +81,9 @@ image = (
         "/root/qlib/quant/code/execution/qlib_live_retrain.py "
         "/root/qlib/quant/code/execution/board_rules.py "
         "/root/qlib/quant/code/execution/board_execution.py "
+        "/root/qlib/quant/code/execution/execution_limits.py "
+        "/root/qlib/quant/code/execution/order_quantity.py "
+        "/root/qlib/quant/code/execution/st_history.py "
         "/root/qlib/quant/code/execution/portfolio_performance.py /root/",
         "cp /root/qlib/quant/code/production/csi1000_production_config.py "
         "/root/qlib/quant/code/research/stage_ab/csi1000_tuner_core.py /root/",

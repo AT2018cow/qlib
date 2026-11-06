@@ -1,0 +1,382 @@
+{
+  "status": "PASS",
+  "verified_at_utc": "2026-11-06T02:05:00.165559+00:00",
+  "source_files": 120,
+  "source_hashes_match": true,
+  "historical_scenarios": 72,
+  "recent_accounts": 4,
+  "original_receipt_file_hashes_match": true,
+  "compressed_ledgers_decompress_to_original_sha": true,
+  "disabled_risk_caps_not_reported_missing": true,
+  "documentation_links_exist": true,
+  "private_paths_and_workspace_names_absent": true,
+  "upstream_changes": false,
+  "python_tests": {
+    "passed": 806,
+    "skipped": 1,
+    "subtests_passed": 50,
+    "exit_code": 0
+  },
+  "scenario_account_checks": [
+    {
+      "path": "primary/csi1000_A_S01/extra_0bp",
+      "sessions": 1698,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "primary/csi1000_A_S01/extra_5bp",
+      "sessions": 1698,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "primary/csi1000_A_S01/extra_10bp",
+      "sessions": 1698,
+      "return_error": 6.938893903907228e-18
+    },
+    {
+      "path": "primary/csi1000_A_S02/extra_0bp",
+      "sessions": 1698,
+      "return_error": 3.469446951953614e-18
+    },
+    {
+      "path": "primary/csi1000_A_S02/extra_5bp",
+      "sessions": 1698,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "primary/csi1000_A_S02/extra_10bp",
+      "sessions": 1698,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "primary/csi300_A_S01/extra_0bp",
+      "sessions": 1698,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "primary/csi300_A_S01/extra_5bp",
+      "sessions": 1698,
+      "return_error": 3.469446951953614e-18
+    },
+    {
+      "path": "primary/csi300_A_S01/extra_10bp",
+      "sessions": 1698,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "primary/csi300_A_S02/extra_0bp",
+      "sessions": 1698,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "primary/csi300_A_S02/extra_5bp",
+      "sessions": 1698,
+      "return_error": 3.469446951953614e-18
+    },
+    {
+      "path": "primary/csi300_A_S02/extra_10bp",
+      "sessions": 1698,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "primary/csi300_B_S01/extra_0bp",
+      "sessions": 1698,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "primary/csi300_B_S01/extra_5bp",
+      "sessions": 1698,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "primary/csi300_B_S01/extra_10bp",
+      "sessions": 1698,
+      "return_error": 3.469446951953614e-18
+    },
+    {
+      "path": "primary/csi300_B_S02/extra_0bp",
+      "sessions": 1698,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "primary/csi300_B_S02/extra_5bp",
+      "sessions": 1698,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "primary/csi300_B_S02/extra_10bp",
+      "sessions": 1698,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "primary/csi500_A_S01/extra_0bp",
+      "sessions": 1698,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "primary/csi500_A_S01/extra_5bp",
+      "sessions": 1698,
+      "return_error": 3.469446951953614e-18
+    },
+    {
+      "path": "primary/csi500_A_S01/extra_10bp",
+      "sessions": 1698,
+      "return_error": 3.469446951953614e-18
+    },
+    {
+      "path": "primary/csi500_A_S02/extra_0bp",
+      "sessions": 1698,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "primary/csi500_A_S02/extra_5bp",
+      "sessions": 1698,
+      "return_error": 8.673617379884035e-19
+    },
+    {
+      "path": "primary/csi500_A_S02/extra_10bp",
+      "sessions": 1698,
+      "return_error": 3.469446951953614e-18
+    },
+    {
+      "path": "primary/csi500_B_S01/extra_0bp",
+      "sessions": 1698,
+      "return_error": 8.673617379884035e-19
+    },
+    {
+      "path": "primary/csi500_B_S01/extra_5bp",
+      "sessions": 1698,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "primary/csi500_B_S01/extra_10bp",
+      "sessions": 1698,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "primary/csi500_B_S02/extra_0bp",
+      "sessions": 1698,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "primary/csi500_B_S02/extra_5bp",
+      "sessions": 1698,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "primary/csi500_B_S02/extra_10bp",
+      "sessions": 1698,
+      "return_error": 3.469446951953614e-18
+    },
+    {
+      "path": "extension/csi1000_A_S01/extra_0bp",
+      "sessions": 2122,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "extension/csi1000_A_S01/extra_5bp",
+      "sessions": 2122,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "extension/csi1000_A_S01/extra_10bp",
+      "sessions": 2122,
+      "return_error": 6.938893903907228e-18
+    },
+    {
+      "path": "extension/csi1000_A_S02/extra_0bp",
+      "sessions": 2122,
+      "return_error": 3.469446951953614e-18
+    },
+    {
+      "path": "extension/csi1000_A_S02/extra_5bp",
+      "sessions": 2122,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "extension/csi1000_A_S02/extra_10bp",
+      "sessions": 2122,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "extension/csi300_B_S01/extra_0bp",
+      "sessions": 2122,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "extension/csi300_B_S01/extra_5bp",
+      "sessions": 2122,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "extension/csi300_B_S01/extra_10bp",
+      "sessions": 2122,
+      "return_error": 3.469446951953614e-18
+    },
+    {
+      "path": "extension/csi300_B_S02/extra_0bp",
+      "sessions": 2122,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "extension/csi300_B_S02/extra_5bp",
+      "sessions": 2122,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "extension/csi300_B_S02/extra_10bp",
+      "sessions": 2122,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "extension/csi500_B_S01/extra_0bp",
+      "sessions": 2122,
+      "return_error": 8.673617379884035e-19
+    },
+    {
+      "path": "extension/csi500_B_S01/extra_5bp",
+      "sessions": 2122,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "extension/csi500_B_S01/extra_10bp",
+      "sessions": 2122,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "extension/csi500_B_S02/extra_0bp",
+      "sessions": 2122,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "extension/csi500_B_S02/extra_5bp",
+      "sessions": 2122,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "extension/csi500_B_S02/extra_10bp",
+      "sessions": 2122,
+      "return_error": 3.469446951953614e-18
+    },
+    {
+      "path": "phases/csi1000_A_S01_phase00/extra_0bp",
+      "sessions": 1683,
+      "return_error": 8.673617379884035e-19
+    },
+    {
+      "path": "phases/csi1000_A_S01_phase00/extra_5bp",
+      "sessions": 1683,
+      "return_error": 3.469446951953614e-18
+    },
+    {
+      "path": "phases/csi1000_A_S01_phase00/extra_10bp",
+      "sessions": 1683,
+      "return_error": 3.469446951953614e-18
+    },
+    {
+      "path": "phases/csi1000_A_S01_phase04/extra_0bp",
+      "sessions": 1683,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "phases/csi1000_A_S01_phase04/extra_5bp",
+      "sessions": 1683,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "phases/csi1000_A_S01_phase04/extra_10bp",
+      "sessions": 1683,
+      "return_error": 3.469446951953614e-18
+    },
+    {
+      "path": "phases/csi1000_A_S01_phase06/extra_0bp",
+      "sessions": 1683,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "phases/csi1000_A_S01_phase06/extra_5bp",
+      "sessions": 1683,
+      "return_error": 6.938893903907228e-18
+    },
+    {
+      "path": "phases/csi1000_A_S01_phase06/extra_10bp",
+      "sessions": 1683,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "phases/csi1000_A_S01_phase15/extra_0bp",
+      "sessions": 1683,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "phases/csi1000_A_S01_phase15/extra_5bp",
+      "sessions": 1683,
+      "return_error": 3.469446951953614e-18
+    },
+    {
+      "path": "phases/csi1000_A_S01_phase15/extra_10bp",
+      "sessions": 1683,
+      "return_error": 3.469446951953614e-18
+    },
+    {
+      "path": "phases/csi1000_A_S02_phase00/extra_0bp",
+      "sessions": 1683,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "phases/csi1000_A_S02_phase00/extra_5bp",
+      "sessions": 1683,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "phases/csi1000_A_S02_phase00/extra_10bp",
+      "sessions": 1683,
+      "return_error": 3.469446951953614e-18
+    },
+    {
+      "path": "phases/csi1000_A_S02_phase04/extra_0bp",
+      "sessions": 1683,
+      "return_error": 3.469446951953614e-18
+    },
+    {
+      "path": "phases/csi1000_A_S02_phase04/extra_5bp",
+      "sessions": 1683,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "phases/csi1000_A_S02_phase04/extra_10bp",
+      "sessions": 1683,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "phases/csi1000_A_S02_phase06/extra_0bp",
+      "sessions": 1683,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "phases/csi1000_A_S02_phase06/extra_5bp",
+      "sessions": 1683,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "phases/csi1000_A_S02_phase06/extra_10bp",
+      "sessions": 1683,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "phases/csi1000_A_S02_phase15/extra_0bp",
+      "sessions": 1683,
+      "return_error": 1.734723475976807e-18
+    },
+    {
+      "path": "phases/csi1000_A_S02_phase15/extra_5bp",
+      "sessions": 1683,
+      "return_error": 3.469446951953614e-18
+    },
+    {
+      "path": "phases/csi1000_A_S02_phase15/extra_10bp",
+      "sessions": 1683,
+      "return_error": 3.469446951953614e-18
+    }
+  ]
+}

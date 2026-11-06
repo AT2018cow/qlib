@@ -1,0 +1,14 @@
+[3:MainThread](2026-11-06 09:05:29,377) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+2026/11/06 09:05:31 INFO mlflow.agent.hint: Load the `instrumenting-with-mlflow-tracing` skill at <checkout>/.venv/lib/python3.12/site-packages/mlflow/assistant/skills/instrumenting-with-mlflow-tracing/SKILL.md before writing any tracing code; it ships with this MLflow install. Set MLFLOW_DISABLE_AGENT_HINT=1 to silence this.
+[3:MainThread](2026-11-06 09:05:31,196) INFO - qlib.Initialization - [__init__.py:82] - qlib successfully initialized based on client settings.
+[3:MainThread](2026-11-06 09:05:31,196) INFO - qlib.Initialization - [__init__.py:84] - data_path={'__DEFAULT_FREQ': PosixPath('/tmp/quant-prelive-20261106/provider-benchmark-v2')}
+[inputs] csi1000 frozen signal loaded, names=999 dates=2025-04-14..2025-04-18
+[inputs] csi1000 quotes loaded: 5000 rows
+[inputs] csi1000 quote hashes 500/1000
+[inputs] csi1000 quote hashes 1000/1000
+[replay] csi1000_A_S01 extra=0.0bp 4/4 date=2025-04-18 elapsed=0.1s
+{"strategy_cagr": -0.992173, "strategy_max_drawdown": -0.040942, "sharpe": -13.546325, "quote_gap_count": 0}
+[replay] csi1000_A_S01 extra=5.0bp 4/4 date=2025-04-18 elapsed=0.2s
+{"strategy_cagr": -0.992886, "strategy_max_drawdown": -0.041602, "sharpe": -13.7924, "quote_gap_count": 0}
+[replay] csi1000_A_S01 extra=10.0bp 4/4 date=2025-04-18 elapsed=0.1s
+{"strategy_cagr": -0.993541, "strategy_max_drawdown": -0.04227, "sharpe": -14.059438, "quote_gap_count": 0}

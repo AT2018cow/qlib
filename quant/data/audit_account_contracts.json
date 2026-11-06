@@ -1,0 +1,1716 @@
+{
+  "basis": "quant/docs/07-code-review/2026-11-06-extension-repair-acceptance.md#\u5386\u53f2\u5f71\u54cd\u626b\u63cf",
+  "copied_archive_manifest": "quant/data/repair_validation/20261106/SHA256SUMS.json",
+  "copied_archive_manifest_sha256": "c1cd70cca3c34b7bfcb0b116a37de73b4ab7daf1f17c0e086d661ac60f37d2b1",
+  "note": "These exact reports were explicitly audited under the historical 100M contract. New or changed reports must supply their own declared capital; no blanket 100M default.",
+  "reports": {
+    "quant/data/repair_validation/20261106/corrected_execution/csi1000/A/S01/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "f5f671334b29d1b079f26ed56be176e5b01e922043eb817d58478fadb3e25a7c"
+    },
+    "quant/data/repair_validation/20261106/corrected_execution/csi1000/A/S02/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "56458ee9d68efb1d4d368b67c1c3ba8c67e03661866e872c88ec97e5703b8021"
+    },
+    "quant/data/repair_validation/20261106/corrected_execution/csi1000/B/S01/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "a1f539f6ed55b400e6934520034954083017352972121d92add9c89e3c45088c"
+    },
+    "quant/data/repair_validation/20261106/corrected_execution/csi1000/B/S02/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "02620fd168c858b9e6b9e5ec9f76d241f2910da662f42f63fd4ccb012e0e6955"
+    },
+    "quant/data/repair_validation/20261106/corrected_execution/csi300/A/S01/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "584793b888e0b0cbb7404953c1261f57588022fb27bc62c8cba1f6568dd45f9d"
+    },
+    "quant/data/repair_validation/20261106/corrected_execution/csi300/A/S02/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "142d15b6ea76ab6897f35ee62bea4197f441ab8ae98327252c2698701a1ddb99"
+    },
+    "quant/data/repair_validation/20261106/corrected_execution/csi300/B/S01/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "4fd9d4215b9f20a0f33b0742945cd78c4386477becd8a1ea8a8ffa11f2cbf9f9"
+    },
+    "quant/data/repair_validation/20261106/corrected_execution/csi300/B/S02/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "caba9484527fa8e711eae591702d5e00bf5236470d7e052255f13ab69e566a11"
+    },
+    "quant/data/repair_validation/20261106/corrected_execution/csi500/A/S01/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "917ed61561a2dffdbf15c0c0352b28673723f9bb98b0aee47d0e8b81320b5bdb"
+    },
+    "quant/data/repair_validation/20261106/corrected_execution/csi500/A/S02/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "73f2fd9703212104a9eae9afe67bd98e9deeb6fb2a724a7bc40fac0cd9f45fbc"
+    },
+    "quant/data/repair_validation/20261106/corrected_execution/csi500/B/S01/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "1b3796e13153b15607f44b96cc4adda3906f2543c3570e682f0bf7e556dd1add"
+    },
+    "quant/data/repair_validation/20261106/corrected_execution/csi500/B/S02/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "a4392fedc2008a85a1c2a2e7854199b5593660049ff5d747e531eb2b6088dea4"
+    },
+    "quant/data/repair_validation/20261106/corrected_overlay_corrected_base/S16/csi1000/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "f5f8bf70598ed39972df5a78ece5a9eead961c2f8b4f67b4ac6eb76221a74234"
+    },
+    "quant/data/repair_validation/20261106/corrected_overlay_corrected_base/S16/csi300/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "918830aa10b9c824f79e7b4e1ac2019087f6fbdb2fbb3deb92cc606dfb6a897b"
+    },
+    "quant/data/repair_validation/20261106/corrected_overlay_corrected_base/S16/csi500/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "ea8847693dfb5579968d8aead85d7a206c4c2f764bd0a17c3528ac505ba9746d"
+    },
+    "quant/data/repair_validation/20261106/corrected_overlay_corrected_base/S17/best_equal/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "d32302c4a71ac63e0a6cf2a6249dc6a28d82b48dc1e634471d67cc9a726e2ef4"
+    },
+    "quant/data/repair_validation/20261106/corrected_overlay_corrected_base/S17/best_riskparity/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "418cb85832d3f24c6439376677460b4030f639cafcde2cb54a79451014b1afc0"
+    },
+    "quant/data/repair_validation/20261106/corrected_overlay_corrected_base/S17/current_equal/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "155e21eaf74e9037d0fcd0c115daedf53f523c9362402a42f4ae1312c8a365fb"
+    },
+    "quant/data/repair_validation/20261106/corrected_overlay_corrected_base/S17/current_riskparity/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "5783ca2915d024fd729348500004e077ba975adaf66e83a77f1bbe0811982e55"
+    },
+    "quant/data/repair_validation/20261106/corrected_overlay_corrected_base/S18/S17_best_equal/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "f57495174d7c8ae2c0870ec4a7a4bce77461fffe3a0d95eeb07808bbfe136ee4"
+    },
+    "quant/data/repair_validation/20261106/corrected_overlay_corrected_base/S18/csi1000/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "1709e4ccbe52c71cf1303817bd8c9029bb08c46af5e31535725a265e7de97fea"
+    },
+    "quant/data/repair_validation/20261106/corrected_overlay_corrected_base/S18/csi300/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "fd47e888a5510587b3c99a3584ca5f2c9f4b7e6965993312492be56be23de150"
+    },
+    "quant/data/repair_validation/20261106/corrected_overlay_corrected_base/S18/csi500/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "65c20ca1b1bcdf76dd2a3ec12262739ec994d9e2eb0839061955656440d8fb2f"
+    },
+    "quant/data/repair_validation/20261106/corrected_overlay_frozen_base/S16/csi1000/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "45fd04c9aee69728002cb9c259123f400149eb5918ba31223d80eecb06651872"
+    },
+    "quant/data/repair_validation/20261106/corrected_overlay_frozen_base/S16/csi300/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "ad87c8cf4062354e1ca3ad71475891e9f6d311358a2403e9b34b9fc93066292a"
+    },
+    "quant/data/repair_validation/20261106/corrected_overlay_frozen_base/S16/csi500/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "8546ca0a9f83b8a13fd34138e6e05991f6e67fb52a035999401ce9eed4e420a8"
+    },
+    "quant/data/repair_validation/20261106/corrected_overlay_frozen_base/S17/best_equal/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "ae515cca61660f32b2dfd83d8aa6eea8e38133b50da7d79037309c133cd93289"
+    },
+    "quant/data/repair_validation/20261106/corrected_overlay_frozen_base/S17/best_riskparity/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "5f8c03a0da8cbfe6cac42abd0235a7160ec5ae7cf1908c8f2d833a16ba292621"
+    },
+    "quant/data/repair_validation/20261106/corrected_overlay_frozen_base/S17/current_equal/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "cf185a6e64a856ac8c54c402ed2a3c8850d106149a3c06bd42d90506612cd0db"
+    },
+    "quant/data/repair_validation/20261106/corrected_overlay_frozen_base/S17/current_riskparity/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "27eb857db029ffc4d6e6cb7a2edd3bc5fcd071dd1298bb6d38500c3f6a06c928"
+    },
+    "quant/data/repair_validation/20261106/corrected_overlay_frozen_base/S18/S17_best_equal/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "c846baaecbfa537c5b0726d5b922c47282e437ac0fa8b09a0f00b5b14babb0ae"
+    },
+    "quant/data/repair_validation/20261106/corrected_overlay_frozen_base/S18/csi1000/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "1d9216468bde38338fa19a183d518835422ece973a1e1add8f4901df5a195041"
+    },
+    "quant/data/repair_validation/20261106/corrected_overlay_frozen_base/S18/csi300/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "ce0bcba52d47431b958c64b5a7b7e38e0ac27a92fb7f1d13843019dd8956edfe"
+    },
+    "quant/data/repair_validation/20261106/corrected_overlay_frozen_base/S18/csi500/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "96f76df53b0f1c25368756cadc841bc5aabeb763a441e2bb8e9ff90be0c5091d"
+    },
+    "quant/data/repair_validation/20261106/frozen_baseline/csi1000/A/S01/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "7e81b0a5c99b275e76be6704ed5babf6a06b1d62ab0e8ea835f6ade670e9ecef"
+    },
+    "quant/data/repair_validation/20261106/frozen_baseline/csi1000/A/S02/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "10f172c9a2b45c5ec506bbb634986f18586fae204e165c80b7d2c45cb7ecb978"
+    },
+    "quant/data/repair_validation/20261106/frozen_baseline/csi1000/B/S01/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "60cb741d44e157e858ef8686e207d541d6e2daada1768251194d21dcd762e502"
+    },
+    "quant/data/repair_validation/20261106/frozen_baseline/csi1000/B/S02/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "cfaa5676d52ec2798768be95de8e1613404634075d0a31ad715949bace1929e4"
+    },
+    "quant/data/repair_validation/20261106/frozen_baseline/csi300/A/S01/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "357cebef0ece1f2c395085a14d11d833e7c588dbcaae9abe3000133e1ccd135b"
+    },
+    "quant/data/repair_validation/20261106/frozen_baseline/csi300/A/S02/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "d861f9f7519c915c3c57246aceab6b751b4c25d046708264e8694edb1aa92352"
+    },
+    "quant/data/repair_validation/20261106/frozen_baseline/csi300/B/S01/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "b3ae5ff760bb6f864003427181a0b28030d2b684bd40c865c726dcbd57ccec76"
+    },
+    "quant/data/repair_validation/20261106/frozen_baseline/csi300/B/S02/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "05ffcdf76cd81ee815ea8c94b354e38381f899caf84a70b88dc702a849c0915d"
+    },
+    "quant/data/repair_validation/20261106/frozen_baseline/csi500/A/S01/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "0a46e6c3131d357bb6ba652a165523062764ba6fd80df1bed51ba2c27e797d99"
+    },
+    "quant/data/repair_validation/20261106/frozen_baseline/csi500/A/S02/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "5f719d8bab5ff9100ae2b2ef72ba0d8f9fae4f585bc89f03406f9d98a7309805"
+    },
+    "quant/data/repair_validation/20261106/frozen_baseline/csi500/B/S01/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "9dabacf35f9a2615d8bb26d2bdab66774d1fb0c1570447d69967324465006aaa"
+    },
+    "quant/data/repair_validation/20261106/frozen_baseline/csi500/B/S02/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "7010e1225a30c2cd4e378bbbfae6689f13aa8d50aafc454a4b6ea1f565ce164d"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/17dbfe28fea8d7a7_p00/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "0f7bc1bf6c103c377009120b12b6f4f05746f7c2f570fb0109be509060f8066c"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/17dbfe28fea8d7a7_p04/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "ddaf1b3a0614cc22b31f848a81b88910568ee0a5a7dff4cf2f324e34fd57f136"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/17dbfe28fea8d7a7_p06/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "7b5e6a2c4c3f5db4c7c197f293aaa9e2499647cfaa3f502497fd933c917b2b3c"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/17dbfe28fea8d7a7_p10/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "590baf5418ef0c5a59c258c547d57e0d97ae12b096b93ba2473857459cf70b56"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/17dbfe28fea8d7a7_p15/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "4bdc4208da4cc23e94bce392dff6a7498ab4ff76b47766d987b89a96f4129bc9"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/1db146eec9deda00_p00/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "274ad887784d3299c5db38d16e3aaadb36d7a9442d3e426b09ec1a74dc0f3c21"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/1db146eec9deda00_p04/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "c96c2e1d369c2fce093cb3e58aca2d28ab08a0d16825d4658fd1e9f70c0d7be4"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/1db146eec9deda00_p06/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "89e7e2c193c8e3b4f64e3eecbf474f85769daa705b5ddaae92ef75ed4f368194"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/1db146eec9deda00_p10/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "b630ab31f0a4f0f8c666aa43b1622cdb52ab72e87c00b897cf2ef887bdbc2e37"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/1db146eec9deda00_p15/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "6f3258291e48edad0d9cb498405a88f4074798ed22a49c2b411184537081c4af"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/23b92de05cf36c82_p00/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "7d8fbf8f03c608fc6e4e839ef116a9e34d439d772cacf04569fa85785d52f436"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/23b92de05cf36c82_p04/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "4995fb1b9a47f20ccdfe9faf4a06be548e657131ff554c613882cc5d486a94b0"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/23b92de05cf36c82_p06/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "466e08b8064367f5ad3455e5d683f40f797f9eb63ab649bf2901b34ac3668122"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/23b92de05cf36c82_p10/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "8fe6b85f13f310a54a2746f2bccbc696d8b75e529b46986174fe14a0ee60507a"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/23b92de05cf36c82_p15/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "bafd06f67194aa3dbbd59116e5066d14e887658b8e080ff170f3724550900070"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/40b872dfe452b649_p00/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "775f5d08560efe41085ac4728970ecbc56740e7b53d9f7ef2f205b94631296de"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/40b872dfe452b649_p04/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "7060fbf447214015fd844740ec51147f2852e483bac04c2eec50927b080b8efc"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/40b872dfe452b649_p06/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "e46050b6fd10b785bc77c0d0debd8eacf726411aa91958aeb7aac429106124b4"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/40b872dfe452b649_p10/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "9b5e81aef29035955ffb865a5ea4593552e4d8a280404fdbbfcd9e2d6b52dc08"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/40b872dfe452b649_p15/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "f52ebfbb7779ae7e03c3fa9ecc54e5e81a954bba5dc38094bc5b8972e7e54f70"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/4e908173705c76fe_p00/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "68614f86434f2ba023d7a4158a527c3accb672c6a0f1fee7de311b07d9aecc06"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/4e908173705c76fe_p04/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "7905f1ab129975fcbdb41166f0995b3c6d5053b0478fa66e9cc9feae3d3e8ff8"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/4e908173705c76fe_p06/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "8ef4f42e5fe0ae0e935c0c741116bb7d4798b281300d2eb56dc643d6fca6f1b8"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/4e908173705c76fe_p10/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "ca83b2bb95edfef8101926cadcfe15c1b62cc10fa73950388a9b63915ff87ea7"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/4e908173705c76fe_p15/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "31ae2b05c076a17fd510f0f3cb89573ce9157007fe73fa3e7bce16e95f827190"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/59b93929bff1e736_p00/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "4742320647f998cc99023ff0dd4f31b784c80928aec0b3c98389ceeec84e54f6"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/59b93929bff1e736_p04/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "799e1162ed04b7dd2c0c4e121d097a3580ec0f6c8d4665b169c552987e1a123c"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/59b93929bff1e736_p06/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "7e9d031f9601c1a8167e6391714fdba1ba29dddf228533c0a0cadb859c5c22d8"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/59b93929bff1e736_p10/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "364860ef06121c49d147c7a61404cbbde79869220b858d39f7afce868128d96d"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/59b93929bff1e736_p15/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "4fd0d27fc1df745dafbe7c196893ba38d0ea543fa24a4380c5c5643c739e2a2f"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/a419047ab97ec027_p00/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "20c10780c94401353ef7b2d4ffa73d56694a567e80525e96772657ed5e0ca1cc"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/a419047ab97ec027_p04/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "3605c8d789357546cdfddcc9d364347b563da473f4cbebe043ecb4be34a9a743"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/a419047ab97ec027_p06/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "4f5be4de680fd7b09e377af410c40561872a7ee0de79f6818babc7fabf4496b1"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/a419047ab97ec027_p10/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "19e55a850a98f0157b05690bfd98a99170cacdb0898dcad71afd750b79f6546d"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/a419047ab97ec027_p15/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "dae20306d1efd141ad1281b7a3af21a351388e820e3df15eb57559ce7c15fae6"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/b034ac4645fb45bb_p00/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "6f980eb258fe47257510a92a9410352f4de4be2c8b6b7827df86c662d922f7c8"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/b034ac4645fb45bb_p04/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "7bf4dccd76e674d7cae2ce82a107387bc0419d282735716d86201c04ea75d747"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/b034ac4645fb45bb_p06/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "8ac79e2bddf7f698db9500181052dd868372e0c7aff576d1bd3c445846cef52b"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/b034ac4645fb45bb_p10/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "d38e15ac911fd3282329a83ca556d34c6d26c644741a0e20801e62bc271155ed"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/b034ac4645fb45bb_p15/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "b236c2ea1930fa4d7aaa7e12e42edbb15c5d9903c5bac04559a646b9134d4dc5"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c04ca4163f77e6e2_p00/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "1506676e3c8c7dd67c27d0d33d2d89bcc6bbd2744d86cca46acc37b4cb9c9626"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c04ca4163f77e6e2_p04/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "798d39a551e8eb4e291ac55207ef0e797cdc14ca9c94b7179448217de47cca3f"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c04ca4163f77e6e2_p06/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "dcff704bfcf58aef10f3cd6022e7f120c23c910ddcfc686f70847b19b4c56b00"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c04ca4163f77e6e2_p10/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "64396a9228c5b0e2c634078c8ca1072902e3fd691fa726aca9720782d30e393a"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c04ca4163f77e6e2_p15/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "83e764e8e15dd9cfd28503c6af17ddae9cab6848f62fae9cb9d3dc37ccc0a9c0"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c98856b460aba687_p00/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "359f1a9672215e8e967893da636c4af21a2a6fa32c1ed4638082edec42c3ed0c"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c98856b460aba687_p04/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "70ce6472b5b1f60ba1a90ae475b44bd7d23542d36c1f45746fb8816f5e1d62f5"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c98856b460aba687_p06/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "ddba5a7c5c38d5c17d4a5659adec6ddb21afb22f0cddecfda27d50a1a365fdf4"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c98856b460aba687_p10/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "b2a5e8d6982f9290a47a8de1c1297ee9cf07010b1e0aed621770d2d5bd5894c6"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c98856b460aba687_p15/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "8c604582d5783581f63483b88a4da49d39fbdd9d6f1f34c3e582019a3e220df9"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/e74b3bbe2278aa89_p00/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "33789b519b638bfd03c3148d5546ccd337f240fe05caecbbcaa59109956216e0"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/e74b3bbe2278aa89_p04/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "fafdc3bee2cd6efabf4ff1c2e8414e109fa1186154e89368df84d6bef880c2bc"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/e74b3bbe2278aa89_p06/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "0b4dd1f3a6601d2d99657caebdfb0a3ed79d1d69f487ed8f196df3e2108fc113"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/e74b3bbe2278aa89_p10/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "65a7de20af5ff7b73ca478b5bef9a277173ab4e5be5964864c3530e2b83ca9ef"
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/e74b3bbe2278aa89_p15/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "46c472f96fb8ea7f000773baf44353c60ffac06670a1d4d8ff98ea54f1947578"
+    },
+    "quant/data/round1_audit_evidence/winner_phase0_fixed/fixed_diagnostic_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "0e9ba034b94d363117dbb924639178f26af4a116763e9868d9960f321b601048"
+    },
+    "quant/data/round1_stage_ab/csi1000_strategy_selection_evidence/pr64/981741b8c68e6542464cf0cb65311d991e4c3a15/controls/cells/23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785/fold1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "d93aa62dba74dae997b36598d54455bcd2b894b48cad44c0ba646a0e405efa30"
+    },
+    "quant/data/round1_stage_ab/csi1000_strategy_selection_evidence/pr64/981741b8c68e6542464cf0cb65311d991e4c3a15/controls/cells/23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785/fold2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "10d12f21d631161677599abbdff798c90d75f22e7f231fdd139c94014a12b901"
+    },
+    "quant/data/round1_stage_ab/csi1000_strategy_selection_evidence/pr64/981741b8c68e6542464cf0cb65311d991e4c3a15/controls/cells/23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785/fold3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "2e3db79c4c7331604e4b25c15feb24c3a98a939064cdc9aa67c4aa9523a1c1b8"
+    },
+    "quant/data/round1_stage_ab/csi1000_strategy_selection_evidence/pr64/981741b8c68e6542464cf0cb65311d991e4c3a15/controls/cells/23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785/fold4/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "08f51b35f7d7404704c00dfb797f57f1e70040b8d6c06451feb7bcf79825b164"
+    },
+    "quant/data/round1_stage_ab/csi1000_strategy_selection_evidence/pr64/981741b8c68e6542464cf0cb65311d991e4c3a15/controls/cells/4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2/fold1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "ceaed72ebea9935c2bdcc44dc3b095f63dcee553ccc58d55d52a10007903265c"
+    },
+    "quant/data/round1_stage_ab/csi1000_strategy_selection_evidence/pr64/981741b8c68e6542464cf0cb65311d991e4c3a15/controls/cells/4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2/fold2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "102c43258cec36d9ddc2d69488b1184a98c180a379d684a8793b427a4b157f59"
+    },
+    "quant/data/round1_stage_ab/csi1000_strategy_selection_evidence/pr64/981741b8c68e6542464cf0cb65311d991e4c3a15/controls/cells/4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2/fold3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "a07e7c5e015e6cc2b02e6008d746b14071dfdd623b8b7986ae5b11327c12c6bf"
+    },
+    "quant/data/round1_stage_ab/csi1000_strategy_selection_evidence/pr64/981741b8c68e6542464cf0cb65311d991e4c3a15/controls/cells/4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2/fold4/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "489a0e0cf0594ac9bfdf5c1f41aa9718924f0fc1d80f5b13bbb37a47b7e91cc1"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k10_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "83812fad29058a844dc7997339cfd0c533dc9069f1f23adf037cbeb024e7e650"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k10_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "7968ee1ec20aa42af50b49a93b01d624dbc9a8967d397c94178c0df29b8a3eea"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k10_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "59f6d259ff7f30d7532bead74b1d5ad497e04d846f7f95c419af564ab6473578"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k20_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "3cf71bf9d01896a7033464f1c00ad88f7fe085c29800aba10b70566dbc89a879"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "b77924eb378ef9ab4f6d869f741365eafa4147282424417ef418003cd1e9d4f6"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k20_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "c4a68f452fdbcf553e00aa9e8ed63652df593dd20ee8a642e0502235662c3ef9"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k20_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "bb4ef5e059ba860b551011c5aff4eac43bc90d51a3166429552132794355d0f9"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k30_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "d3f45037e40719766b86b052c91987e7186014844885df17925fe5da9c2aa834"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k30_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "8a905700373d5556eafdd9c5a5529ce0827824533e3b6012ec258e66fee023ae"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k30_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "0467946fe68f3cd9584e8632b2956b5c25f0768a4e2d4b45dfdf04dc2f63d05c"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k50_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "191ccacf00512d4c4e57b4edf074b02f6eefb7dd2efa30c6a38ad7ddccecf9a5"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k50_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "f72489ea2fc73bcfdba326ff117308448ef0978dd1a6d0579869d373c4ecb900"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k10_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "4201f714705938e6f1163509ad1ffbcf6879b5666db8004dca90fbe8a8be9d43"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k10_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "55e4f80e4a94ac2f76d299fc27bbaa62e8f969ff279ec2e416d54d519743faa0"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k10_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "aac9c19f1e4a70a578920fd8d070a5b228f5470e4b8b519f82bdb4525fbd6ba6"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k20_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "177fce888592d7a193f215520f8bcb183f48bc545e1bd8399655d0b8b54c1ced"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "dd8a0e0fd1b77cf44920ca22b5b851c077966c3b39835a5f859129e80b5cdd90"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k20_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "99a0a99d151a28869e5f10efa1359459d0eaa516ea2cb27d27d2751a7612864c"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k20_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "6a28169632f7f7bf3891d8480cb1c6e70be95116d9ca13a70e74d9288375a516"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k30_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "10526084dabdd8f932e74b03991571bc6e447d1e5d1a7481269dcf918a925976"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k30_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "40c1c203cdeba22ef6410a7d651faac5f5fa54baa0ed600edb2f9d7b00bff581"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k30_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "189432e6f1eea4ee7af0af5db7b851b4c033c8a0e9d47a85a75e361867976485"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k50_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "a490168eb7841d3cb1c45d4e1da90dea87a271b549cbdce312ef9c76ff540e5d"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k50_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "db97268ac3ebaf5f668bc1cf97aad3f4c624d4613e3a73aee7d1c25f8197827c"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k10_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "7b8d4fcd0379ef0c42d09919d12e92d309562aebfaae9eb4e01f0f9cdb3d0678"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k10_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "20697c763560f584739e3222f65a0091636c2bed2f2209aa3e9e9d81ecf9fd5d"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k10_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "eac0ae29a63c41027cbaeb15718d66e517c88f7201a397416e9373997b0be0ae"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k20_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "42c0099de0ffc333b5cbd2b0bb7cf3d58597b8bf3149fc75e8906d14769347b9"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "a12586805606f33690545541b9f4a51ba0267b7a14b7cda79c152efad09a7de2"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k20_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "62cb4645f4b0e399b7bcc593bbbc28d0f3378ede6de248adb8866ba55695033f"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k20_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "eecbafe00fd8cf03aa4198f2ea4203876e578c43cd2fc3375af35468f5ad21f2"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k30_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "eb615c23b8daeab62853d718628972701686771d08dde025c41f4da5d3b320e7"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k30_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "6a90af56b203dd3cf55d11b7eb751e874835f26249dd6ed1d4244076fd7ddfae"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k30_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "df8362d084b968256b276afc91c1354531efc96401105d090961eaf193cd47b4"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k50_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "3f21cabdb666ce6a98d93e37e9964e05905e42f539f0d3501f675ffd38544811"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k50_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "42d25831bbde08f9b518c1d3c9d39c896e08527e1cf5336d55038c0fe55ccb15"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k10_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "dc79885cdffcb4bd4ed62859d694b9b4d1eb09d9161d7c2800c9519c2914c0f4"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k10_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "249f4d458c49ca7bc2068532c16f4cd63fd3c7e7e858f33ccec41aa514c1b9d1"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k10_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "8f83fbeda591710067aae3d0a14a841b388b7da8e794f8c999954d6e70d7aec5"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k20_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "03e0d9b3d54b25ad6425442147be84a76ff3fffc945bceeb5abf308f7821f528"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "ba316206e5669c9429ddf24c218fa1d1207f617af9a63ecb966a17a8394b04d1"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k20_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "78465454c200c1025363a3140f4885f85e6f6abcfd74fb7abd5f2d9d80e38e9a"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k20_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "b3d61e23a05d8d36e233abbcee6298ac70c0cf989ece9e1eca8e44c79eaf3864"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k30_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "183b56c67bc30f8f0f77d27cdb2342f4ffe1f777f216a6459f34f136070dcca5"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k30_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "1d5c61ba7c93331dcec9c376da03ac5a5c7023188659a850222f38fcc85334a3"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k30_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "e58efa9e6f3ad79e5e31149ff51083811f7b412f94e9a0cb5ba7add8807c40b4"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k50_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "fa13e46c096464c22abc3616c36145e9f09cfcefd73571b1c130eea9713caea8"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k50_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "273ad0d74013242a9810a95c4646e152c6f7b95aa8059622b136225ea7235f01"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k10_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "e90261cc0344051764aaf87bc00b4bd96edb7a559b4703d7b95dc553dd700447"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k10_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "096a4c032ea70badc951fafe4122d9570b0c2518dd9bce2ad4a8f4e5b12cc5c6"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k10_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "a7c9348b41ff720eeb895a5ae37e6f72159f1e2ab8b273b7f19689639503fe2c"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k20_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "3c1bd883103a379a7e344d75d746a46cbb275dd3ca11e2b13d64bf2e728352b3"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "fc996bf37e1b9efc3180f8f48dc773083abf8f05203098fec5241900bf350b78"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k20_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "c0ed743135e51c40175bf47f08b14de5039906b1fd0bc3a841cd89c4312aaaa6"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k20_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "7df1d1ca6ca0ff66c8e8fbfc0899b4785499e4c3c7051a7fa61d87872c6d53d4"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k30_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "e4897b663e5dbe5c4a589842875bcf1b1c699a94f8d09d7b01c08e88a5e08a44"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k30_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "993a72bf8e7ecac8efc6627c27aa961bd4e9b78e9c0bec9706279f2fa44c1714"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k30_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "ab04e0ffed993e4dd0a93d6ec7444df5f4e1d197ceba999c1c805bf314e782ed"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k50_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "29b356ba244ec6ad37e44cb5c5839e3262648265bc4bd6364411e5b25dbee967"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k50_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "13090413aef841c72e21c044b58b6acf2fb3ad98a24db8f3cadd358e242ce3ba"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k10_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "3bca4cc482c38b16600c11260cc31da36c05941477a150479e8c085dc5e0b630"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k10_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "d8b6dabc085ae1489521832c31c6e22a3babd9c4a8f0c782ce5058e649e2deb8"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k10_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "ad78cb5e6a1eb093fb3120c85ad0d9ad3ef421d501e0e1178a8cd39a27225e62"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k20_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "c5a6a351e0d9b8d605d2966a4e0029b1b3ca5daaee643bebbc532903112fb394"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "9927f91d4afe3644ea05338118c39229418b1852b8bb4334e789e5725cd82b67"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k20_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "98be4b863c741d350018d96d41fca587d4d6fb50ab1112302687b97db8e5cc4d"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k20_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "515a83e097551d8dd8331d2d7ba1a3ec58f60b7df85710c3b21c4a367d3eaa2b"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k30_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "05df1d7341a6f81ce3223fc2e0097a7623c1d37a685f01b7ba968d8db45ddea0"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k30_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "121f6605cb5fb9026cbd49237819fb4fd7250af082f4321edb29469a844b1068"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k30_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "ce7e41aaf16d939c45fae743bdc1344ec0563ac03665c948578e2a0ad02b7adf"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k50_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "d87a2d52f0ff77ab4628f142fd5ae0bd7bdd9d345107abf00ba3c1a194b7902d"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k50_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "ef08ce1584b05ec6974e8083e3ba9cdf7f567ef3d1c7913c1835b8be03fd5fe7"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k10_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "8c1cbf340e3e112fd4d0ee7a6e1aa6ad86a9357836bb85ee4f888805efd2587e"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k10_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "9f1291541f01553ac21e97f9e284ce111ed97f1da3925a7f2e01bb2af542cea7"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k10_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "63ce5e939d8ccca327adf099a76bdb0fa0f4e29a128a238c8157369fc7d7f194"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k20_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "a7fe2322f1c5690439fddd9234b5506ee371d09a815ff5c43ba06420c1cf2ade"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "582963cbf926b1a55caa450b115d8e0507f9bda7b21d3505d09d5f3fb9cf1c78"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k20_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "a713a604b8d8da2b57b53b6cb31b9a18d5f72ee289b01319ba805fe620b84a42"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k20_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "fcac617174ca226f6cfbae164ba1be4786dca83334f7976b74f29ff1b75c78bd"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k30_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "7cd0532eb66da5a2f57e5426cb86d37ebf8923cfa8906596bb19c9b9a2139f34"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k30_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "f86fd530279f2320c7c9a0c6e316b3ff0c6fcda70fd241e030fc4650a62d8797"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k30_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "951c61009687551458fa19db19f8bce78f8847a66305c6a762893bc68f77e136"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k50_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "9c0bf39e435b7f7f01a71e3e42102a59d5e4888eeb458adcef971feb8d613170"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k50_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "ce9599211dca057cc82fe0fa5868965080f380f7fe7727e31752135a47678927"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k10_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "d309098eb305f6d74323e77ede769754752cba1a7104c25cf6dfc946b25dcd72"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k10_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "47b3d629e3e2cd60081ce34755be09ec6f2f2bb5e6a2bf53cd165b6c7f8ffd55"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k10_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "d3a9446ea1549bad2c642c91a2e49fed135e09c0c88168dd352648e09920d828"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k20_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "092f70fd2aff2d91a468ef682c6ef9e7c0056b43cff5113a2906a61d39f7d40d"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "4217b55206b727c116e9619ab99361603bcaeba61a989fb0448474d49aa5a74b"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k20_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "67ee98b0726310b07b79a8b13c1c9d294d013cf0d3d8239b9ffb311b8ccf97af"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k20_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "ee895c954ba876b8f8d6bf841bbbe95014d0375db2399f529f3cac968d60998c"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k30_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "1e61d501a79873599d197e75b977e217ca9bb1995a0be5c72e5ab2e108e96cfd"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k30_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "14babb18934081e3e76fc0af1467624855846d2692e7a39ee5de439073e1c12a"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k30_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "4947e0735d6e5784d8e9d65f16a415415a992902126e758aa44962955df1d831"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k50_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "896837ebefe7936590066343945d6c078b278d8cbd5da1fc2b53384060f14d1e"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k50_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "84b2df4c95b682eedaffe3bee8f398aa379d7694095d9b5774f47935a6c5c9d7"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k10_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "1b59b4566f6f855eacf09e440859da51ed070deda0a4a2a5c45ae951a47f8832"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k10_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "fc198eff926a9804c44029d755f4972aa14e7e847fcd27cdd74129f493ac640b"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k10_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "7e9d6a3ac0be7c10ae0012a248498af51bee401a8a38b734d245eec83b1f5e44"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k20_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "99c90b4df15958fbfc1750f705781ac38de2b68e7d047b3cca1852f06a5d540d"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "588a6d60dc0a891dabe4e5fd1222f154a213f548d632d99ece34f5a52deca52d"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k20_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "6d356fcf9f04a331b771530640bb1dad733ff5b9662c69a4a3ba5aa233ee6fe6"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k20_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "4679fec7be6537d5f4a7c98b03b3190fb4d717ac8350dda79ccc03f354d81188"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k30_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "01345dd6a2cfda100f92885aec40a1597cf03a99e8a1c49a6f2bc10672ac61d8"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k30_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "58a72cca26ffbe4e5e0957e54ebf338c05ed675d1fc6239cfd1c090924d1f976"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k30_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "09354098e17a76f432e0922b8ceee99314198019bc83cad5ddcd4887e75dfe90"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k50_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "65e8b6aec684cdb0676f98b1c4a720187f5716d070b5328e2fb4147cc3d5a23b"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k50_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "24d89dd4486c2be1e4834df96bb169b4240c1d8332b1e8b1f2ae7c8f18b9bf0c"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k10_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "7f8e3255fb65bd8bf1d26d1e75f18c1939c610762224c29e87edf13029d87e5a"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k10_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "988f7260d4db6f18e4ebc5c13116bafa8afac53d6b8ef554a0f9dc157ef79347"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k10_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "fadc2cba7779c52df5f9434d8ee37841ce37f9eaeda55765c9b4db55035f42df"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k20_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "b757068ab8e50fd633428f6df894d32f4a3b599f1a2d89c4fae5cf8f97e49463"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "58fcac3c58ed94f5084bf8460bc523ca07cf234bb0e1c7fa6d386d28266a68ac"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k20_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "ad41322b7feb08f75bfb685af0601316b04083e7eac6d8782003d55b25a79369"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k20_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "6385ad409c53fdf44a5f548a36099fe7f0ae2d425384cf74fffa64a068b04c14"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k30_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "c0d8f34bdb79848cb96d9eb0e7a9d29c7f8312a2b6f7bb60d9be12dd721be955"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k30_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "a3c55670468286f3bac816732c78485d4279ac80180df5ce27c4a555b294f48d"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k30_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "e0743021023e2a65fafd630cca8dbe0030e9e45bf638bf99e623f055b9d67409"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k50_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "31f1510134e704de1a7b82241b0689bcfe8c89b406346c7403c2d36775d970d1"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k50_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "e114ff1e8015b276c2a6c2c13c14ec38a070ed8934c66d558bbba2c08e428245"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k10_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "d4974d2243197d400bc72549fdf1d0cd2266b6b4a088db71f6417929f38b6485"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k10_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "59564e41f64c1622282964009f669468a6825b1be3c876e8b79e9ad4d747b5f4"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k10_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "7145cee2dd9714e352f672436a7223b3b4c579fe1abbeecc16b97d9240d5eb0f"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k20_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "f0073a10ae39f5084faade89f5b0dda17c9464c4742d89186b60364c20dcd82a"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "077b8257025c14e7f29e86ba027414dcb55f5c03dfa566d06863d06b6d495d62"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k20_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "382ac880bc1e55a5f36ba8c8774a2da3e090542574a34d15e0ed7d855c3ae10c"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k20_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "caad2f786525a31944c1b2185264a8e22988e129cc98d99d35d9f6a643e8cd37"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k30_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "3105afc6fa7cd69cb7e9cf1b8a57570f3494e4760f89fa2c6e8584da4329bd9b"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k30_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "365aed517c3c1868a73b288855e5de85d6e4b4d463b45e202245c39215b4a12c"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k30_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "d81494a68671bcc8774b3d2fa7e210e6d1378acf1b9d1bac646ed4e832c4b85d"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k50_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "9240e060846d2fc9f6bb39e4ee426079f0e9395584006d31191a42eb5be5bc54"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k50_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "a04d93cb5ed242900308b36ec4a535cd06c57f0cddcedd478c6235254c82fbc5"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k10_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "fd7e26555b14550ac6e6ec4a69308900afcaa41831ab435e204df552f61092eb"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k10_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "76b18337de2f84311d0a4ea8a089915a6216589da00140dd93e7d14f0250c0c0"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k10_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "fcdac632c40522a464834120a4b651d8ebe2865d3f77c888f7b784b1f507660a"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k20_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "971ec8e635150cb449cf3bf88cc49917ce5d84db237621e9a74cfa99983db0e2"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "1323f8fd5ce6eb0cc22de9e11752aa12ae97aac542b352eab2b0c43f82867322"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k20_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "20abdc32ec6638ab8ea1dbf74e91af4bb64fa72188742ae5e63c47eedfdcb429"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k20_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "6beabb78a9ac7463340cb39de66a92f677eeb93b08b79a59e07c9456fd09582d"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k30_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "860e3ddcaf4c02297bc3ffe3178ce2be72aea32dd70ec7d40f7309394bbcd6e1"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k30_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "c3028b2c4edc5dca3850967b8ec8ac54a90924763aa428dfb26794ba57e2dbb5"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k30_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "697086431b9218cec1d95969bcb62b55c3e5bf82e89cffaa87899b0bc01ec45a"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k50_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "88c181ad52830d0aa013d1633c2c693c8c8be2ac026336b5382eed7794fcd31d"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k50_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "98989688726ac5e9ebd99afeb3473e2ade929defa13e73d101d5c8fa1c729d53"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k10_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "3932e21ca13a2ffb1bcc67abb35050de6e05b06e3a003863e5306e05fb21afb4"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k10_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "820880bcd03b152b5ac540d775254b6b81b28f1b68a08f34c584316e9891e979"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k10_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "34bb699c276f70494dec7d9b3a503317a07e11ef3b96ec7f76fd386e262e8b50"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k20_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "53428bd61bb0e8f9e804f7336413a9cf9bbc0ee1558450d5c0ce918100e963b3"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "4b712ef2baa46306b4d3ec964aad1bbc890fd0f8c1f3d95d03ca48636d98447f"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k20_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "4414dd37e3bd97a997db398b23b3a6d6470da46edb26cdd17b6d3ec5a41daec9"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k20_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "8f090e173385e1342db3fb4f54098ec1b9f8b15a4110d6eb623dcfc7de9b31b2"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k30_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "15db596407bf45b6684d27fce94d044a661ff0daa78b6b4765a4467fe667a6d3"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k30_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "3d8c117e1ade0202242437556e2b69dc3d1c9d7f1cc068cc0e4e9ed9b3e6b5b8"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k30_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "28c09ea6a208c42502f11eef3f283054f323a409afe6a2c0c32f7e57e08d0db0"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k50_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "9dbd547af5d2221cd594c394b730f73a8fed27bd8e35ddb43522afe80267f201"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k50_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "0de7796c642b7e0cc6f354575c69709856e6f4761b2c027b340bd303526d0ba2"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k10_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "68c3ea541bb611384971e98abf9b498e2755135454b7a808e8bc1122560d9287"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k10_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "33e13bc4e6f8fe0ec7917a1ac96a6fc9534ad559e7d1c6eb716914b2aba45d2a"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k10_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "7d3e62a3fd3b2f8ac7e8abc9f4f6a3c5db6a908a4fb28585ba7047faf8f4f560"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k20_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "1c0dcfd0ed484ccd7cd0044eddb332f71fe321ab3e773df9bb5150b6123858dd"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "6b077111aaeb42bab209f7a6340d9fe88f991f2ddd5abc57a93ea9d83d0ed0d4"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k20_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "b292959a6449472a0f34172f053bd07ec4e5f7400e00c91dc3840e1b836c1e55"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k20_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "87cae85031efadfe3a6428d9fc72ad2bf72723b5d7fc9cf55944d08756aadcbe"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k30_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "60af148c3f96d18a17f2739821bab96c65388a60ca5f6c37c1ccfe1cdc853038"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k30_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "d0100fc6252bb4630f2d4a5264f7982c9750e8ffe050d4be9f9f7d37bf05f9d5"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k30_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "d41ab401e7863bb98ef9a33695a938db7205075cb53acf62a58538bf353daaaf"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k50_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "1a592b696ce42fb82b67d480b475649c267e8434f950b096f1746e1a895fb31c"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k50_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "a80e50caec4962132d708dcf728abf282486a07e214f3f03d7ebb544e7a608fd"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k10_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "1c1c4ad246d698fd23c9c92be9445b120b42fb292f140f7cae793b5e82b2eeba"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k10_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "e5e02941b5fb3475ddd024a2f7cca7d4fc1da95d4ccd8583c186df51c69fe861"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k10_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "03bbd48331e066f9423fa25840c86eb22012ed1893679d8c85cd6bf488d60335"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k20_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "089532234a4c3037e6f9013f6a150ed0b8cc0ba4b0550c733ca4a1ae870b619a"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "266ebef25a94c7cdb638243ed80f43a9a87faabe2a3704db89d52a9d3457eea2"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k20_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "2dc5f3fb27ec03a71959521719cad2aa7968f8c72369d7544d4fd6831766510e"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k20_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "abcda515d133fce58c52cf715e719ff4a0f857d7e6124a88f6e1dd81cce1980f"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k30_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "816611dddc94dcac18083d3354dd95c871cd10426c15e021b88b741fdf5e4423"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k30_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "f268753c3fa466531d6ec382da48294d016bdfbb68f36c0599fea8fd2301f324"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k30_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "3a0350815ca86d94238acc027f5320fc04420f643f54deae5a7f4b71b90b07aa"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k50_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "5e22b6903b7adaaabe8b91fcd67ad9789b5112a87d512b0c921c2ab125745efa"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k50_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "5b4a68ca569f65cfdd8258f9d758784a6f356429ba044f325cb826214f34ba9c"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k10_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "ceb9552599cad029279c42ca4fdab721376cb30a02e9a541731af1817fb266c4"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k10_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "d046657bd9624472de97d7689fdc0fbd3878cde22aa7886198e188513ad61644"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k10_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "aaab2c0f4734216373b4e7a78a05b6670b0a7d058b84f87712765a7c03af61f8"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k20_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "de76fcd80159e478c127fd7ceb960a0808badbe6c90ce36e5845794239e47007"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "c84842af0948357559d6ba7555cf3bac843b545794c903a6b6448b29398860cc"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k20_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "c4c1872ccaf9b54abd7eca6415b652898f39450793729822e0d1a6dcb6640167"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k20_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "f8da940a3f873a82309403f85c82b25c80ec60910702ba2e4d1dbd26e36196ae"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k30_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "357a528f8997e8158e0f755b12c0267b25e13caccdddb0c07480cc713228ac2b"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k30_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "e39350a28309e7f31a55d6a85bc727703b26a4781731d4fb63b699c54a58a75a"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k30_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "00305ba66c2f3768ee474f84887e71a5c5aec50bb1286760168991eb0146590b"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k50_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "6a78c66dcbcf1ffadbb1d2b3dc59a7fe625a9d9f8df13c091ad7f3ceda6b1fe1"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k50_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "04916da8f719389a807ebf071d4ecc6ecea78eaa5ada8ffe6edff556bfe85bb8"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k10_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "fd68d405611743466d4d7baecb5047200feecddee67577fec1ed1999ad4daa3c"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k10_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "01d45ddacbd28fe3b8475c3674b3e603f2dcc4e2fceb9768fd9d19d9a22a4839"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k10_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "921dedf97500f62740c83fa9089cc80817de39a2689bdb2bd5b204133acdb9ff"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k20_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "a3bbee765ec9c7b3659ea96a0458e97a1f5fb1bc34ffd2f734d2ed124699b03b"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "a7af12f11dae15d2733f6f10c56ec3b0a24f401df14646428de39a0a62c79c93"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k20_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "698a2e6c295f2cade0024b9fc8f528944c7f24e1b4a32a53c12d25403c048773"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k20_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "84450d720d965584c867fc18aa98e79138990635889920be4f985beccb37042f"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k30_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "07f2dc39e958c6834cbe9372c7bc23321cfb0cfe4047a98223f4179c5f7cc8f9"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k30_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "27375a01273a2174753bce0263a324c9de8dd7afba320794c9274c9f1d75ec68"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k30_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "5af5089f5d9652c63991de307aa40e6365bbe504abeece83c22e31a171aeb565"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k50_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "5dad32ae916ebbc09ec3b034b7482162fb99578f5327433ce27ad92beef9595c"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k50_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "f282ec5da63a79da86231bce4b50d2c49f900bbeeb1150af6d3cc0ed5f258ea3"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k10_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "0faa4e56ab8d51e36528ffd5c4d4cd49cdd730991775a22a4281703d75520bd4"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k10_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "429d6c28abd541271ef6598e4ecbcf53417c9c94698d1959d239f4cafc7556d7"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k10_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "35be96b3ddd272b9bca7945b16fd395d56476cb6111d0d366cf1aa8de4811ffc"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k20_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "b2c2665261fbd067361e688c370257b0c2cdd7b53fada2afdcdf25d7b72253d5"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "4d72480eda23407c09fe28f72266a451aa30aae3dad03e7ed489892a58c728bf"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k20_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "91de12e96c9a77ae3fc0f0f5243994e6681084400de37e3eef3f1b7a43108499"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k20_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "d34279a4465a18bc8e4d669aa28a0d05ebd07371d863022540deee720ec79255"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k30_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "b5b50b337479300ac6083de0b425b8398955da812c577f91bd6cee26279483c6"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k30_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "63fbf6b6e2792bb714bddf14e553908e03fce6080e811001a413b110ca12e0f9"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k30_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "49203d95ab8f7a136d3f819b051d131c79bec2e785b854a678340f6fd9969260"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k50_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "f4358e4d9b1342f96398030f39c6b7e5d181fa9a0285b1e32db24dddb20784f0"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k50_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "f090977b8ba18cbd4c8248c238171367b633a9dc535a55fc02a2776553d5d3bf"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k10_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "1196856729d95989694fcef3d954b192c226cddc89bf22eb9207e301df9e315e"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k10_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "691b6e034648c6d0540076abb6ba2bc0759872becdb2dac529d8600981d1cac5"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k10_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "292ca68089fb29704806e17c26b909e51b52ed5efeda87a51af60e39dee79ac8"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k20_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "e5f0605ff98fbad418e1e614db208925af1867d92dca49a08a42f1d2848a3aa3"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "3f8a2e8979d5a9779d8043fdcd85e93e66f5e58ff720a7d393f70e55cf7bb512"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k20_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "9b4d5692a48d7b9b3794c8b6d271a9c51a1efbd5becdcd477b2bd073648ada2e"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k20_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "07caf4e3848dfce6b5421a70e85130cfd24cb32d280420037395660edc4661ef"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k30_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "37eeac1bb2a7e14edb903ee5eaa9876cb6d0dfa578060f36ca1a2680c1ff6ac3"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k30_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "7c56a3d138052a7016881266493a433243de63757f61c4640d09421c95fcae14"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k30_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "98360ea24701b6d6aaf7744d85f7ab1d1d47245576ff825545c9abe01c7544dd"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k50_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "c662b71c0f6101ffcff3fc3645591c842a138be5c516d266acb7b6e01607c510"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k50_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "1938f0eaf21d81653a69b5b9869b37f99b4baa90c74f5fcc592c256745a2a02e"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k10_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "05b5036015451dafb46acc175945914283a6de82ec0093afd0bec8a07ba82de7"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k10_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "d419fda9ff29e6357bf667145d8732658757c5b097cea1728beb5da4ca1222e9"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k10_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "bca9eeb1db47829c75f8f4d6eae37c09ae1d9e7dcce8636a59096c40ebfbc07d"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k20_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "542d513e02e03ad348601131d1f6286dc5f2351e77c980954865614436300c7d"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "2503b48c1ee5e9b2816f19ff69d1332520b26f4b7249fc330205053da31f1eb0"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k20_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "4d792df40686e6719d1fbde58da7f62224b3bd6ff487f81bcbeafd2c0681f5a9"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k20_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "f91307eab4d88a032581c7f84738a837dd2d1182d530cf89bf228e628c387c55"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k30_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "7e1d0e92ff7acf2e7e701b9ca684b72567f70900a94c1b3068569844e979e5b1"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k30_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "6bbf9ec729e200a8d1dd2849b275a5f1018abbafde7fc1bcf4b3d1337bb77398"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k30_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "9c3bc04ec6cc4b142329eba2507024537eb218f9ffdc2ab13ac5ccbe4cbb8f5a"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k50_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "e2146fafa50746380707ec207f2abc06fde2673bfdc0016befb44cf77012e02a"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k50_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "64b38894f3224043c531839c76ad408a69e0de69dd1e025fcb3b52b89feeb6b7"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k10_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "4f68eac9a63079c0287b62db80bac81e2b27959da6d19195f9e2d9acca54ea05"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k10_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "1e4931504608cdad1cfa4dc3afb175638fff96e31c7c37c52938b39390e54837"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k10_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "18f75512b4f1bb4584883ed8d47a90601fa2e54efcbdbc3ffc7d0dd18700323f"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k20_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "ec203dfbd979a0b05c5d081c2a6dcbc311a24e6a02d74877b5fb667c5f2bd595"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "6de8746a70b1d9afd8c265bc18b6c9fd9fc99de7ee3a83d50b798dc456d0e5e2"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k20_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "a747899a816225cd80dbe5eec7b892cbc06b9df06205a626243a9726a9c1ca19"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k20_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "68f17c72df8b5d4508a04cbf45aa355b67b264f1cdb02a64336801c99abb223e"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k30_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "559a6e4d8c2a07cd502cd7f05c3a4e4371219e904b2af6a2d78958dcbb266c96"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k30_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "96db7258d324d4fbc30091ec0d18d3665b96c22f2dcd2f2527b5303c2bb26f11"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k30_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "b7079046116732e2dd9190d0a62e7d2897d05e5f91980274057580768fac2869"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k50_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "350666995d31b23feba2599d53c4970d0fce20a70b86d83e0129487c6527b9f3"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k50_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "e267794762e6d703d8001a54c117b275f513d62360e45d0f9041042773c822ed"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k10_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "bbba0abf134e5dd8be02727c84556de55d4379b090207284f21c2b77be4a8825"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k10_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "d638b4fd34f084b6e78d1d94dc27736d258990f83c09c36e472976e298d90c0c"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k10_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "c3ebac3dcb53bc952ec758fa108a94f24fadd6817eb22dd46530e7a86541d32f"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k20_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "ceda5c3f2b7344872096ef865a4f3c647935f6f174327c676320452b24ec8b1e"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "e0364adb80f90c4144d6c36fe7f93462a4ea82e0f1f1b113234204f0d3ff2c53"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k20_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "49b27ab0521f104f1c582fa741075a1739c643e33209c2a70fbe8adb12fb203a"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k20_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "f2a54e2b5e1c950f4b0a2e3c1d2b63dbdb97f86d808859842d16017c8e0c7460"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k30_d1/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "45f0cc6c3cd1239611f0d5de5366250886aea3f16e683dd06537189582ea50d5"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k30_d3/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "1470f44db0aa3a086f972d33ffb0806f7cf3a912cb0048e748070109c45b2b05"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k30_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "ae3ca69bf4ee3d0157429b3e673bb57a957db7702de7e601abacd8a79a295d7e"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k50_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "ecbf05243f366c16c2ebf269681b3595b4cc42c19503a4ed7b3e78346acdf7bc"
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k50_d5/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "9a7506df4291007ad0926866902e213e6978a2982e090c102afe75d531033800"
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/phase/165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf/phase0/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "f5afe24d78471551c6ddbc5b8929fd87f956c65892a23554dd6ffe5015b5e70b"
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/phase/165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf/phase10/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "7070a7e14be64526667a84ae318dc311970a92879bcb548fdd288e248884b56f"
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/phase/1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2/phase0/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "186c95ecd004f036f14debd61fbe533638fa3b2dd673870aee8e4826ac290dfe"
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/phase/1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2/phase10/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "af97f80d1067783a7bd462fcdffd84496b53788af0e75e5519e4dd899c0a3951"
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/phase/33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740/phase0/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "8d48a4157ff62dddc8064393c0f1ffa0c923b58e25a4538c9c1ad6637fa211e9"
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/phase/33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740/phase10/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "ed6626e6a1c5b35c5a848c690a4c07b763c9130ea76634df665ee1be5f766c2c"
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/phase/a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b/phase0/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "383d9e760a225fbb46e82bc06ba67eb0e5a730859347230d59ee2cdd88db9994"
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/phase/a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b/phase10/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "e53e4be9928956e2ac73c6ca6b7c83c69953a76c38827a00a737800adf2923a9"
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/231ee1ab4e38e0448b875ba84c7d54671b5853766d5e3c804b116552efd879ad/fold1/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "6007b2facf1322d92443f4a8c1a30960e86bc7fd585d670c2171f34a66bdfb6d"
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/231ee1ab4e38e0448b875ba84c7d54671b5853766d5e3c804b116552efd879ad/fold2/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "494f1ce6bf489e14d9357c8850f7182dbdfa5498083c84fc743d015025c41bd0"
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/231ee1ab4e38e0448b875ba84c7d54671b5853766d5e3c804b116552efd879ad/fold3/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "c3dd0fe5dd03e33bf1323bd5800c72bf8701382bd1c37a161671f6617a15ed79"
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/231ee1ab4e38e0448b875ba84c7d54671b5853766d5e3c804b116552efd879ad/fold4/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "304c1bce9d86e71fd96efd17f4fc8846d46f039cf5140e6b2bfc76890adfd805"
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/9fcfd8327f51051ed3c8aaa659bc529dd1c82d505a99e5ecd26398feeb59c7f9/fold1/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "f6f8ea388012db058a1f86befbc35323bd2d6f12b7435ada869408798158763a"
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/9fcfd8327f51051ed3c8aaa659bc529dd1c82d505a99e5ecd26398feeb59c7f9/fold2/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "8552e14ad1a601b63e49c0e6d1a34f11fe0f835bfd9b64b9ecd6864147728bcc"
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/9fcfd8327f51051ed3c8aaa659bc529dd1c82d505a99e5ecd26398feeb59c7f9/fold3/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "fe5de70811dcdfddc4d4b6ebe29e13771a028ee62f5b30678389fc655b7aa600"
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/9fcfd8327f51051ed3c8aaa659bc529dd1c82d505a99e5ecd26398feeb59c7f9/fold4/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "38209929877058847ab023225a220fc65e1dff185b8d9777faf030855341cea6"
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/ccb9b983e0dc6ae38f48c8f409a1bc7fbf17d711a862c1089b2cb6c3df09097b/fold1/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "09ab416de484520f3268daaccf39ac1f5f5306bb1b0e0383db49f0c6dba16cd4"
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/ccb9b983e0dc6ae38f48c8f409a1bc7fbf17d711a862c1089b2cb6c3df09097b/fold2/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "02f95b3d6b2883bde06e3341a8312fbc0ba861f6b2ce103157bf0f78731e529e"
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/ccb9b983e0dc6ae38f48c8f409a1bc7fbf17d711a862c1089b2cb6c3df09097b/fold3/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "495e276c0c209e0e144d60a29f3b6473fcd5fd485aff7a87fc1dd665ed16db20"
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/ccb9b983e0dc6ae38f48c8f409a1bc7fbf17d711a862c1089b2cb6c3df09097b/fold4/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "147953f87bf15a6406654ea70d83375a4cfa2f69f6c6cc01e4e0bc6634d7d7fa"
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/e01070fd3e80580cc375287bb4cb847e1ffd375a8cb013491392adc8914cfe74/fold1/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "f7a3461124f4fed37e3908f525a8f2363ba4fb9e4e62b26c7f88c62549a44ad6"
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/e01070fd3e80580cc375287bb4cb847e1ffd375a8cb013491392adc8914cfe74/fold2/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "037cdd25a86c2621ae51919790edd0de3def190c6f83cd5c2143de7455dde2db"
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/e01070fd3e80580cc375287bb4cb847e1ffd375a8cb013491392adc8914cfe74/fold3/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "02e0169f3d904708952af38da6449e5f61d4fba0e8da71adf450299aaa8fbd04"
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/e01070fd3e80580cc375287bb4cb847e1ffd375a8cb013491392adc8914cfe74/fold4/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "dc617f10364e319786d260bea5f24132b264cb9819c6104e2f735cad48787fbd"
+    },
+    "quant/data/round2_layered_search/l3_retrain_horizon/cells/r20_f10_p00/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "a5f11fed39b003bc5cd278cd22de98042db95cdcd95d9c9fa28537475c2e2001"
+    },
+    "quant/data/round2_layered_search/l3_retrain_horizon/cells/r20_f10_p05/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "ef6cdbdd839823f02bf813222abce3fff33d169d5a3f83950587cb6efea345ed"
+    },
+    "quant/data/round2_layered_search/l3_retrain_horizon/cells/r20_f40_p00/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "b9e58cb3c103c7935bc05d1006487fa6a89aa987770bc1202f4b7765f5c55aef"
+    },
+    "quant/data/round2_layered_search/l3_retrain_horizon/cells/r20_f40_p20/report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "c7e339ebeb3ecb4913205a228922f26acb21efe0f3d0bafd75d414b3d4872d8b"
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/1ca6fae56e8c/phase00/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "b5cf6d73d536e22b3857b97badeb2a3cb3be2b9aa93b0a497b2852468f05f161"
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/1ca6fae56e8c/phase04/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "2e521e443f8254c9de1673a7400c13f47459cd4926ec6f1467134976378fe0f0"
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/1ca6fae56e8c/phase06/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "dd9b67f6e7789509eaa98546296fe965681a9806e535f14f1abb64f9e19ef5fd"
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/1ca6fae56e8c/phase10/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "61430cdacb05baa92487753837d5e7270876349d9ff478813a638df0a3452812"
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/1ca6fae56e8c/phase15/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "04fefb5c8628817acd1bb14238aa888a6e75008c9581ed3904c955eef255055e"
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/3ddff2cd6138/phase00/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "754d5f501b090298baa716a65ea47851d83df76e2ae3569fd045e79db2478db8"
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/3ddff2cd6138/phase04/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "24fa65a8d03e9f36c5cf4c5fa4e8f78a8e19f2c20567b20d3a1808a93d783938"
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/3ddff2cd6138/phase06/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "6b84d882a0e1776bdfe928945c8e80b94041c08141e1900d71934d91db3892cb"
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/3ddff2cd6138/phase10/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "00c306f131433e85cc0f0c7dc3653c3e0973680be5e576974c01db14a3980f67"
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/3ddff2cd6138/phase15/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "e965f010fabe4ae020b791cf3a7fb5a352291c69de1881814dbe055a46307d7e"
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/95ae81ba885d/phase00/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "452850dfd0b21bc5742d6afed63be789cf6b3ac2dbb801ff63c754ebf94bba87"
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/95ae81ba885d/phase04/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "9e5a32bb70b997e02c0309d6146a7d0f3e500291e2a8d6241818b809ff984690"
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/95ae81ba885d/phase06/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "1415cdfb2f6fb5067079bd48928fbc597017270aa7622d0ba2f3438e917f7c3e"
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/95ae81ba885d/phase10/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "e281440088e7786bed7b617553647e59459c5c30dc84114e4170237b51aff155"
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/95ae81ba885d/phase15/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "10ab2bd2ee57a36efb094a57931f2d64a3b0c50524d86006879e1406ff6722dc"
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/e7d1fab6c5e8/phase00/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "382f2661c06691d4fb2e8cf757c8f3163954c41cadff96105b1d4e3b133ea20c"
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/e7d1fab6c5e8/phase04/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "2ed8f29d2c79c7ba17e345328e931039c9daa73ef2e81ac72febfb50a926d713"
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/e7d1fab6c5e8/phase06/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "cb94099d25c6e48bb05dd742837f3c3398fe77592733a9efe30e09ca23435b63"
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/e7d1fab6c5e8/phase10/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "37eda43d34a34d151ae01812915c6c717267b054abd29fa40ed3c026b8618f95"
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/e7d1fab6c5e8/phase15/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "74218bc27cd2a9009e3708de2c65974bb680fa7fa33a68ae482c118bdd2b05c2"
+    },
+    "quant/data/round2_layered_search/p0_gate/cells/23b92de0_p00_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "66528735f6b9b56b190d09958a499592c27f8c3c0c845e295aca34f0538c1478"
+    },
+    "quant/data/round2_layered_search/p0_gate/cells/23b92de0_p10_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "0b7a012e640a4cfdf0d3324206990c90974b34f88e8e45df55c9475effa08679"
+    },
+    "quant/data/round2_layered_search/p0_gate/cells/4e908173_p00_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "17b2426b59c27707fc0ff4683dd4a5e57deac25c9b9824ac084edcc52fe531c6"
+    },
+    "quant/data/round2_layered_search/p0_gate/cells/4e908173_p10_k20_d2/fixed_report.parquet": {
+      "initial_cash": 100000000,
+      "report_sha256": "d01158d66a7bda9e9865b0cefa2a5f8565ab80236984fef08c2130d616a6760c"
+    }
+  },
+  "schema_version": 1,
+  "scope": "EXACT_FROZEN_100M_ARCHIVES_ONLY",
+  "source_inventory": "quant/docs/07-code-review/2026-11-06-repair-impact.json",
+  "source_inventory_sha256": "6a2aae5137ba72d7d4be3287284cfd7cdc5e589b8526269b717f08e18fc1a565"
+}

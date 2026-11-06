@@ -1,0 +1,159 @@
+{
+  "status": "PASS",
+  "method": "Independent raw little-endian float32 files; no Qlib D, PaperPortfolio, or shared valuation code",
+  "benchmark_closes": [
+    {
+      "market": "csi300",
+      "points": 21,
+      "maximum_close_error_index_points": 0.005113718909342424,
+      "official_window_return": -0.05881192026840332
+    },
+    {
+      "market": "csi500",
+      "points": 21,
+      "maximum_close_error_index_points": 0.004313238746362913,
+      "official_window_return": -0.10936281129121639
+    },
+    {
+      "market": "csi1000",
+      "points": 21,
+      "maximum_close_error_index_points": 0.0048813312332640635,
+      "official_window_return": -0.1078270186139676
+    }
+  ],
+  "accounts": [
+    {
+      "candidate": "csi1000_A_S01",
+      "sessions": 20,
+      "orders": 48,
+      "raw_binary_open_factor_close_checks": "PASS",
+      "maximum_nav_error_cny": 0.00802890956401825,
+      "fees_cny": 3881.5461996520457,
+      "final_nav_cny": 798650.79,
+      "total_pnl_cny": -201349.20999999996,
+      "attribution_rounding_error_cny": -0.0006748132000211626,
+      "largest_losses_cny": [
+        [
+          "SH688141",
+          -31521.33183444538
+        ],
+        [
+          "SH688146",
+          -29893.997099004086
+        ],
+        [
+          "SH688372",
+          -29150.960756002194
+        ],
+        [
+          "SZ300870",
+          -27473.114146593776
+        ],
+        [
+          "SZ002484",
+          -25457.758213271023
+        ]
+      ]
+    },
+    {
+      "candidate": "csi1000_A_S02",
+      "sessions": 20,
+      "orders": 96,
+      "raw_binary_open_factor_close_checks": "PASS",
+      "maximum_nav_error_cny": 0.008409804431721568,
+      "fees_cny": 3895.7363953966196,
+      "final_nav_cny": 837850.96,
+      "total_pnl_cny": -162149.04000000004,
+      "attribution_rounding_error_cny": -0.0024947327910922468,
+      "largest_losses_cny": [
+        [
+          "SZ300870",
+          -16483.868487956264
+        ],
+        [
+          "SH688141",
+          -15744.889474863105
+        ],
+        [
+          "SH688146",
+          -14917.28284662033
+        ],
+        [
+          "SH688668",
+          -13211.603284549747
+        ],
+        [
+          "SH605376",
+          -12561.686214198584
+        ]
+      ]
+    },
+    {
+      "candidate": "csi300_B_S01",
+      "sessions": 20,
+      "orders": 48,
+      "raw_binary_open_factor_close_checks": "PASS",
+      "maximum_nav_error_cny": 0.0063208360224962234,
+      "fees_cny": 4089.7921662534964,
+      "final_nav_cny": 791553.4,
+      "total_pnl_cny": -208446.59999999998,
+      "attribution_rounding_error_cny": 0.0020176884427201003,
+      "largest_losses_cny": [
+        [
+          "SZ002384",
+          -50581.998356953
+        ],
+        [
+          "SH688521",
+          -37343.11380671502
+        ],
+        [
+          "SZ301308",
+          -20871.78982547573
+        ],
+        [
+          "SZ301165",
+          -19732.017972757174
+        ],
+        [
+          "SZ300308",
+          -17236.555420261837
+        ]
+      ]
+    },
+    {
+      "candidate": "csi500_B_S02",
+      "sessions": 20,
+      "orders": 96,
+      "raw_binary_open_factor_close_checks": "PASS",
+      "maximum_nav_error_cny": 0.007863848353736103,
+      "fees_cny": 3741.6146062339,
+      "final_nav_cny": 892974.24,
+      "total_pnl_cny": -107025.76000000001,
+      "attribution_rounding_error_cny": -0.002519738394767046,
+      "largest_losses_cny": [
+        [
+          "SH688702",
+          -23411.008080503518
+        ],
+        [
+          "SH688347",
+          -13706.68823873841
+        ],
+        [
+          "SZ301200",
+          -13591.941740889366
+        ],
+        [
+          "SH688629",
+          -11292.525990097409
+        ],
+        [
+          "SZ301611",
+          -10700.931581251401
+        ]
+      ]
+    }
+  ],
+  "limitations": "Verifies arithmetic and agreement with this provider vintage, not historical availability, ST, auction liquidity, corporate action delivery or actual fills."
+}

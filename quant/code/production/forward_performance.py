@@ -12,6 +12,7 @@ from datetime import date
 from typing import Any, Iterable, Mapping
 
 from paper_accounting import verify_ledger
+from account_boundary import account_identity
 from csi1000_mvp_contract import REFERENCE_ST_POLICY, VERIFIED_ST_POLICY
 from csi1000_production_config import CANONICAL_PAPER_LINEAGES_BY_MARKET
 
@@ -34,6 +35,8 @@ def build_forward_performance(
     market: str = "csi1000",
 ) -> dict:
     date.fromisoformat(start_date)
+    if market not in CANONICAL_PAPER_LINEAGES_BY_MARKET:
+        raise ValueError(f"unknown forward-performance market: {market!r}")
     reports = {}
     scheduled = set()
     calendar_snapshots = {}
@@ -110,6 +113,7 @@ def build_forward_performance(
             raise ValueError(f"invalid NAV report {day}")
         item = {
             "date": day,
+            "execution_rule_version": report.get("execution_rule_version", "LEGACY_UNVERSIONED"),
             "execution_st_policy": None if policy == "UNSPECIFIED" else policy,
             "portfolio_value_pre_trade_open": opening,
             "portfolio_value_close": closing,
@@ -180,6 +184,7 @@ def build_forward_performance(
         points.append(
             {
                 "date": row["date"],
+                "execution_rule_version": row["execution_rule_version"],
                 "execution_st_policy": row["execution_st_policy"],
                 "nav": close / baseline,
                 "daily_return": close / base - 1,
@@ -189,12 +194,17 @@ def build_forward_performance(
                 # account value on the boundary date.
                 "portfolio_value_pre_trade_open": row["portfolio_value_pre_trade_open"],
                 "portfolio_value_close": close,
+                "data_mode": "LIVE_PAPER",
+                "opening_state": {"cash": row["opening_cash"], "shares": row["opening_shares"]},
+                "closing_state": {"cash": row["cash"], "shares": row["position_shares"]},
             }
         )
         prev = row
     return {
         "start_date": start_date,
         "inception_date": first,
+        "account_identity": account_identity(market),
+        "trading_dates": sorted(calendar_dates),
         "status": "active",
         "execution_st_policy": execution_st_policy,
         "st_fallback_dates": fallback_dates,

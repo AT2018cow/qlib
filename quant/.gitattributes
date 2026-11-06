@@ -1,0 +1,4 @@
+# Preserve captured CLI output byte-for-byte, including its trailing spaces.
+# Source, tests and documentation retain the normal whitespace checks.
+data/prelive_revalidation/**/logs/*.log -whitespace
+data/review_fixes/**/logs/*.log -whitespace

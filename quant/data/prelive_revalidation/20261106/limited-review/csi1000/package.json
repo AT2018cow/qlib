@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "kind": "CONCRETE_LIMITED_REVIEW_PACKAGE_NOT_APPROVED",
+  "market": "csi1000",
+  "profile": "c98856b4_top10_drop1",
+  "budget_cny": 1000000,
+  "shared_account": false,
+  "execution_mode": "MANUAL_CONFIRMATION",
+  "paper_automation_allowed": true,
+  "broker_automation_authorized": false,
+  "drawdown_limit_enabled": false,
+  "max_drawdown_fraction": null,
+  "single_weight_limit_enabled": false,
+  "max_single_weight": null,
+  "max_single_order_cny": null,
+  "max_daily_order_cny": null,
+  "first_simulated_execution": "2026-10-08",
+  "usage_date": "2026-11-09",
+  "usage_date_note": "Intended next-week start; requires exchange calendar and previous-session data acceptance.",
+  "data_date": "2026-11-04",
+  "verified_calendar": [],
+  "source_manifest_sha256": "6ff5c679b04cd1ea23ae5929bb14249745312bbfb486306ba3680b7f115172c1",
+  "checks": {
+    "corrected_replay": {
+      "status": "REFERENCE_ONLY",
+      "market": "csi1000",
+      "source_manifest_sha256": "6ff5c679b04cd1ea23ae5929bb14249745312bbfb486306ba3680b7f115172c1",
+      "usage_date": "2026-11-09"
+    },
+    "container_runtime": {
+      "status": "PASS_RESEARCH_CONTAINER_ONLY",
+      "market": "csi1000",
+      "source_manifest_sha256": "6ff5c679b04cd1ea23ae5929bb14249745312bbfb486306ba3680b7f115172c1",
+      "usage_date": "2026-11-09"
+    },
+    "account_reconciliation": {
+      "status": "PENDING_TARGET_SESSION",
+      "market": "csi1000",
+      "source_manifest_sha256": "6ff5c679b04cd1ea23ae5929bb14249745312bbfb486306ba3680b7f115172c1",
+      "usage_date": "2026-11-09"
+    },
+    "order_legality": {
+      "status": "PENDING_TARGET_SESSION",
+      "market": "csi1000",
+      "source_manifest_sha256": "6ff5c679b04cd1ea23ae5929bb14249745312bbfb486306ba3680b7f115172c1",
+      "usage_date": "2026-11-09"
+    },
+    "coordinate_consistency": {
+      "status": "PENDING_TARGET_SESSION",
+      "market": "csi1000",
+      "source_manifest_sha256": "6ff5c679b04cd1ea23ae5929bb14249745312bbfb486306ba3680b7f115172c1",
+      "usage_date": "2026-11-09"
+    },
+    "dated_preopen_st": {
+      "status": "PENDING_TARGET_SESSION",
+      "market": "csi1000",
+      "source_manifest_sha256": "6ff5c679b04cd1ea23ae5929bb14249745312bbfb486306ba3680b7f115172c1",
+      "usage_date": "2026-11-09"
+    },
+    "current_quotes": {
+      "status": "PENDING_TARGET_SESSION",
+      "market": "csi1000",
+      "source_manifest_sha256": "6ff5c679b04cd1ea23ae5929bb14249745312bbfb486306ba3680b7f115172c1",
+      "usage_date": "2026-11-09"
+    },
+    "duplicate_run": {
+      "status": "PENDING_TARGET_SESSION",
+      "market": "csi1000",
+      "source_manifest_sha256": "6ff5c679b04cd1ea23ae5929bb14249745312bbfb486306ba3680b7f115172c1",
+      "usage_date": "2026-11-09"
+    },
+    "failure_recovery": {
+      "status": "PENDING_TARGET_SESSION",
+      "market": "csi1000",
+      "source_manifest_sha256": "6ff5c679b04cd1ea23ae5929bb14249745312bbfb486306ba3680b7f115172c1",
+      "usage_date": "2026-11-09"
+    }
+  },
+  "research_account_result": {
+    "candidate": "csi1000_A_S01",
+    "market": "csi1000",
+    "incumbent": true,
+    "start": "2026-10-08",
+    "end": "2026-11-04",
+    "sessions": 20,
+    "initial_cash": 1000000,
+    "final_nav_cny": 798650.79,
+    "net_return": -0.201349,
+    "max_drawdown": -0.280802,
+    "cash": 5191.59,
+    "positions": 10,
+    "total_fees": 3881.53,
+    "quote_gap_count": 0,
+    "evidence": "REFERENCE_ONLY",
+    "live_trading_approved": false
+  },
+  "research_evidence": {
+    "analysis": "../../final-analysis.json",
+    "backfill_summary": "../../october/accounts/summary.json",
+    "independent_raw_quote_verification": "../../october-independent-verification.json"
+  },
+  "production_deployment": false,
+  "production_account_migration": false,
+  "canonical_profile_switch": false,
+  "live_trading_approved": false
+}

@@ -1,0 +1,65 @@
+✓ Initialized. View run at 
+https://modal.com/apps/<authorized-workspace>/main/ap-1UbRA9M1hJnhDOCHpPzZxU
+Building image im-xscnD5i6TEZctXXuWMbkr9
+
+=> Step 0: FROM base
+
+=> Step 1: COPY . /
+Saving image...
+Image saved, took 1.24s
+
+Built image im-xscnD5i6TEZctXXuWMbkr9 in 4.75s
+
+
+Building image im-whzlU9w5QXuOo5Fd1kwl1y
+
+=> Step 0: FROM base
+
+=> Step 1: RUN cd /root/qlib && pip install . --no-build-isolation --no-deps
+Looking in indexes: http://pypi-mirror.modal.local:5555/simple
+Processing /root/qlib
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: pyqlib
+  Building wheel for pyqlib (pyproject.toml): started
+  Building wheel for pyqlib (pyproject.toml): finished with status 'done'
+  Created wheel for pyqlib: filename=pyqlib-0.9.8.dev32-cp311-cp311-linux_x86_64.whl size=1211336 sha256=ddfc9a253ffe40e6ef1a6a0b6d400046ec2aea418d150c3079df799754080833
+  Stored in directory: /tmp/pip-ephem-wheel-cache-ibikzzu6/wheels/8a/ac/64/f88c7ac84944a20272007d6cddfbefc44854b8bdf0b03cbb33
+Successfully built pyqlib
+Installing collected packages: pyqlib
+Successfully installed pyqlib-0.9.8.dev32
+
+[notice] A new release of pip is available: 25.2 -> 26.3
+[notice] To update, run: pip install --upgrade pip
+Saving image...
+Image saved, took 1.84s
+
+Built image im-whzlU9w5QXuOo5Fd1kwl1y in 13.19s
+
+
+Building image im-WXCoavjwT4tQsKW5xLcQb5
+
+=> Step 0: FROM base
+
+=> Step 1: RUN cp /root/qlib/quant/code/execution/qlib_audit_fixes.py /root/qlib/quant/code/execution/qlib_live_retrain.py /root/qlib/quant/code/execution/board_rules.py /root/qlib/quant/code/execution/board_execution.py /root/qlib/quant/code/production/paper_portfolio.py /root/qlib/quant/code/execution/portfolio_performance.py /root/qlib/quant/code/production/github_commit.py /root/qlib/quant/code/research/stage_ab/csi1000_tuner_core.py /root/qlib/quant/code/production/csi1000_production_config.py /root/qlib/quant/code/production/csi1000_mvp_contract.py /root/qlib/quant/code/production/chart_series.py /root/qlib/quant/code/production/signal_publication_gate.py /root/qlib/quant/code/production/paper_accounting.py /root/qlib/quant/code/execution/execution_limits.py /root/qlib/quant/code/production/provider_archive.py /root/qlib/quant/code/production/publication_journal.py /root/qlib/quant/code/production/artifact_io.py /root/qlib/quant/code/production/coordinate_contract.py /root/qlib/quant/code/production/paper_execution_context.py /root/qlib/quant/code/execution/order_quantity.py /root/qlib/quant/code/production/portfolio_diagnostics.py /root/qlib/quant/code/execution/st_history.py /root/qlib/quant/code/execution/liquidity_contract.py /root/qlib/quant/code/production/name_map_sync.py /root/
+Saving image...
+Image saved, took 3.03s
+
+Built image im-WXCoavjwT4tQsKW5xLcQb5 in 5.98s
+
+
+✓ Created objects.
+├── ✓ Uploaded 
+│   <checkout>/quant/code/research/regime_reselection/prelive_modal
+│   .py
+├── ✓ Uploaded <checkout>
+├── ✓ Created Function io_smoke.
+└── ✓ Created Function inspect_environment.
+[inspect] imports passed, source calendar ends 2026-09-30, paper state present=False
+[io-smoke] reading raw feature
+[io-smoke] reading frozen prediction bytes
+[io-smoke] parsed 509700 prediction rows
+[io-smoke] evidence read/write/commit passed
+Stopping app - local entrypoint completed.
+✓ App completed. View run at 
+https://modal.com/apps/<authorized-workspace>/main/ap-1UbRA9M1hJnhDOCHpPzZxU

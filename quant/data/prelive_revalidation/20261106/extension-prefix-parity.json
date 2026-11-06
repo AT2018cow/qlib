@@ -1,0 +1,110 @@
+[
+  {
+    "candidate": "csi500_B_S01",
+    "scenario": "extra_0bp",
+    "prefix_days": 1698,
+    "status": "EXACT_PREFIX_MATCH"
+  },
+  {
+    "candidate": "csi500_B_S01",
+    "scenario": "extra_5bp",
+    "prefix_days": 1698,
+    "status": "EXACT_PREFIX_MATCH"
+  },
+  {
+    "candidate": "csi500_B_S01",
+    "scenario": "extra_10bp",
+    "prefix_days": 1698,
+    "status": "EXACT_PREFIX_MATCH"
+  },
+  {
+    "candidate": "csi300_B_S02",
+    "scenario": "extra_0bp",
+    "prefix_days": 1698,
+    "status": "EXACT_PREFIX_MATCH"
+  },
+  {
+    "candidate": "csi300_B_S02",
+    "scenario": "extra_5bp",
+    "prefix_days": 1698,
+    "status": "EXACT_PREFIX_MATCH"
+  },
+  {
+    "candidate": "csi300_B_S02",
+    "scenario": "extra_10bp",
+    "prefix_days": 1698,
+    "status": "EXACT_PREFIX_MATCH"
+  },
+  {
+    "candidate": "csi300_B_S01",
+    "scenario": "extra_0bp",
+    "prefix_days": 1698,
+    "status": "EXACT_PREFIX_MATCH"
+  },
+  {
+    "candidate": "csi300_B_S01",
+    "scenario": "extra_5bp",
+    "prefix_days": 1698,
+    "status": "EXACT_PREFIX_MATCH"
+  },
+  {
+    "candidate": "csi300_B_S01",
+    "scenario": "extra_10bp",
+    "prefix_days": 1698,
+    "status": "EXACT_PREFIX_MATCH"
+  },
+  {
+    "candidate": "csi500_B_S02",
+    "scenario": "extra_0bp",
+    "prefix_days": 1698,
+    "status": "EXACT_PREFIX_MATCH"
+  },
+  {
+    "candidate": "csi500_B_S02",
+    "scenario": "extra_5bp",
+    "prefix_days": 1698,
+    "status": "EXACT_PREFIX_MATCH"
+  },
+  {
+    "candidate": "csi500_B_S02",
+    "scenario": "extra_10bp",
+    "prefix_days": 1698,
+    "status": "EXACT_PREFIX_MATCH"
+  },
+  {
+    "candidate": "csi1000_A_S02",
+    "scenario": "extra_0bp",
+    "prefix_days": 1698,
+    "status": "EXACT_PREFIX_MATCH"
+  },
+  {
+    "candidate": "csi1000_A_S02",
+    "scenario": "extra_5bp",
+    "prefix_days": 1698,
+    "status": "EXACT_PREFIX_MATCH"
+  },
+  {
+    "candidate": "csi1000_A_S02",
+    "scenario": "extra_10bp",
+    "prefix_days": 1698,
+    "status": "EXACT_PREFIX_MATCH"
+  },
+  {
+    "candidate": "csi1000_A_S01",
+    "scenario": "extra_0bp",
+    "prefix_days": 1698,
+    "status": "EXACT_PREFIX_MATCH"
+  },
+  {
+    "candidate": "csi1000_A_S01",
+    "scenario": "extra_5bp",
+    "prefix_days": 1698,
+    "status": "EXACT_PREFIX_MATCH"
+  },
+  {
+    "candidate": "csi1000_A_S01",
+    "scenario": "extra_10bp",
+    "prefix_days": 1698,
+    "status": "EXACT_PREFIX_MATCH"
+  }
+]

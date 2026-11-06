@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "market": "csi500",
+  "profile": "raw10d_c98856b4_top20_drop2_20d",
+  "usage_date": "2026-11-09",
+  "status": "BLOCKED",
+  "reasons": [
+    "VERIFIED_USAGE_CALENDAR_REQUIRED",
+    "CHECK_NOT_PASS:corrected_replay",
+    "CHECK_NOT_PASS:container_runtime",
+    "CHECK_NOT_PASS:account_reconciliation",
+    "CHECK_NOT_PASS:order_legality",
+    "CHECK_NOT_PASS:coordinate_consistency",
+    "CHECK_NOT_PASS:dated_preopen_st",
+    "CHECK_NOT_PASS:current_quotes",
+    "CHECK_NOT_PASS:duplicate_run",
+    "CHECK_NOT_PASS:failure_recovery"
+  ],
+  "live_trading_approved": false,
+  "research_promotion_eligible": false,
+  "external_receipts_require_independent_review": true,
+  "scope": "CONCRETE_PACKAGE_REVIEW_PREPARATION_ONLY"
+}

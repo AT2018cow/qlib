@@ -1,0 +1,13 @@
+{
+  "tag_name": "2026-11-04",
+  "published_at": "2026-11-04T15:58:24Z",
+  "assets": [
+    {
+      "name": "qlib_bin.tar.gz",
+      "size": 570637931,
+      "url": "https://github.com/chenditc/investment_data/releases/download/2026-11-04/qlib_bin.tar.gz",
+      "updated_at": "2026-11-04T15:58:54Z",
+      "digest": "sha256:dc917293925635189e982f47d35b960c3db8a9c3f11312c937673c8afdec21aa"
+    }
+  ]
+}

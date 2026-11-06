@@ -193,7 +193,8 @@ def test_winner_paper_context_uses_canonical_lineage_and_close_prices():
     assert "state_path = _paper_state_path(market, lineage)" in src
     assert "paper_lineage=CANONICAL_PAPER_LINEAGE" in src
     assert "lineage=paper_lineage" in src
-    assert '"close_prices": close_prices' in src
+    context_src = Path(ROOT, "quant/code/production/paper_execution_context.py").read_text()
+    assert '"close_prices": close_prices' in context_src
     assert 'close_prices=ctx.get("close_prices", {})' in src
 
 
@@ -210,12 +211,9 @@ def test_daily_chart_uses_calendar_aligned_series():
     assert "window=60" in src
 
 
-
 def test_factor_aware_paper_execution_context_cannot_silently_drop_qlib_factor():
     """A source-only guard: production must pass same-day adjusted-price factors."""
-    context = src.split("def _paper_execution_context(", 1)[1].split(
-        "\ndef _apply_paper_portfolio(", 1
-    )[0]
+    context = Path(ROOT, "quant/code/production/paper_execution_context.py").read_text()
     settlement = src.split("def _apply_paper_portfolio(", 1)[1].split(
         "\ndef ", 1
     )[0]

@@ -1,0 +1,271 @@
+✓ Initialized. View run at 
+https://modal.com/apps/<authorized-workspace>/main/ap-Mx4Zx3fKkY2xUxD8VQihfl
+✓ Created objects.
+├── ✓ Uploaded 
+│   <checkout>/quant/code/research/regime_reselection/prelive_modal
+│   .py
+├── ✓ Uploaded <checkout>
+├── ✓ Created Function io_smoke.
+├── ✓ Created Function freeze_existing_provider.
+├── ✓ Created Function inspect_environment.
+└── ✓ Created Function replay_cell.
+{"status": "PASS_IMPORTS", "calendar_start": "2000-01-04", "calendar_end": "2026-09-30", "imports": {"paper_portfolio": "55b7e28ce0e428fcfeedd2f67ed4714120ec3c6bbc8e52734b6ce71970480823", "paper_execution_context": "9b0783c27a1019927e86c80e7ee84ffde558ea7f01fdc0835bfa65a502b90846", "paper_accounting": "47a6ada0d3a8f2f15e3cb3da4ee04cc055e47f60826636db6b8cc4922b0b7a2f", "coordinate_contract": "641569f942f0bbe04b7c603d171ce6e654610190bd79a0e806c0b8749fb0e4d3", "order_quantity": "103f65da299eda5cfeb0f26f69bca0ad87d8225803d2b7210a732b9fd2b51898", "portfolio_diagnostics": "33ac3f3c918f683601560e78007105f7bf1ef3e6a9d50abc622d53c1ef9add49", "publication_journal": "f8853256ea0118c6cce5b5f59c20cc7106e1927d6622f9b1b93f6b4b3a4137b6", "signal_publication_gate": "fd0fd6d590fa76b15f74a85c6ce198382b7b32bb797439cd5706745042f6a89a"}, "python": "3.11.12", "packages": {"pyqlib": "0.9.8.dev32", "numpy": "1.26.4", "pandas": "2.2.3", "lightgbm": "4.7.0"}, "root_directories": ["batch_a_chinext", "batch_a_star", "batch_a_star_chn", "batch_b_chinext", "batch_c", "cn_data", "csi1000_stage_b", "csi1000_tuner", "execution_attribution", "freq_experiment", "freq_phase_attribution", "freq_phase_regime_age", "freq_phase_sensitivity", "freq_repro", "live_models", "mlruns", "regime_reselection", "signals"], "paper_state_directory_present": false, "source_mounted_read_only": true, "production_mutation": false, "dated_st_candidates": [], "halt_candidates": []}
+[freeze] reading prediction regime_reselection/spines/regime_g2_csi1000_20261102_a1/csi1000/A/signal.parquet
+[freeze] reading prediction regime_reselection/spines/regime_g2_csi300_20261102_a1/csi300/A/signal.parquet
+[freeze] reading prediction regime_reselection/spines/regime_g2_csi300_20261102_a1/csi300/B/signal.parquet
+[freeze] reading prediction regime_reselection/spines/regime_g2_csi500_20261102_a1/csi500/A/signal.parquet
+[freeze] reading prediction regime_reselection/spines/regime_g2_csi500_20261102_a1/csi500/B/signal.parquet
+[freeze] reading prediction regime_reselection/spines/regime_g2_ext_20261103_a1/csi300/B/signal.parquet
+[freeze] reading prediction regime_reselection/spines/regime_g2_ext_20261103_a1/csi500/B/signal.parquet
+[freeze] reading prediction regime_reselection/spines/regime_g2_ext_20261103_a1/csi1000/A/signal.parquet
+[freeze] files selected=12556; compressing to container scratch
+[freeze] 1000/12556 files elapsed=37.7s
+[freeze] 2000/12556 files elapsed=38.8s
+[freeze] 3000/12556 files elapsed=39.6s
+[freeze] 4000/12556 files elapsed=40.9s
+[freeze] 5000/12556 files elapsed=57.3s
+Timeout (0:01:00)!
+Thread 0x00002b6bf42006c0 (most recent call first):
+  File "/usr/local/lib/python3.11/pathlib.py", line 1051 in read_bytes
+  File "/root/prelive_modal.py", line 104 in read
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 58 in run
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 83 in _worker
+  File "/usr/local/lib/python3.11/threading.py", line 982 in run
+  File "/usr/local/lib/python3.11/threading.py", line 1045 in _bootstrap_inner
+  File "/usr/local/lib/python3.11/threading.py", line 1002 in _bootstrap
+
+Thread 0x00002b6bebe616c0 (most recent call first):
+  File "/usr/local/lib/python3.11/threading.py", line 403 in notify_all
+  File "/usr/local/lib/python3.11/concurrent/futures/_base.py", line 104 in set_result
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 58 in run
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 83 in _worker
+  File "/usr/local/lib/python3.11/threading.py", line 982 in run
+  File "/usr/local/lib/python3.11/threading.py", line 1045 in _bootstrap_inner
+  File "/usr/local/lib/python3.11/threading.py", line 1002 in _bootstrap
+
+Thread 0x00002b6bebc606c0 (most recent call first):
+  File "/usr/local/lib/python3.11/pathlib.py", line 1050 in read_bytes
+  File "/root/prelive_modal.py", line 104 in read
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 58 in run
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 83 in _worker
+  File "/usr/local/lib/python3.11/threading.py", line 982 in run
+  File "/usr/local/lib/python3.11/threading.py", line 1045 in _bootstrap_inner
+  File "/usr/local/lib/python3.11/threading.py", line 1002 in _bootstrap
+
+Thread 0x00002b6beaec96c0 (most recent call first):
+  File "/usr/local/lib/python3.11/pathlib.py", line 1050 in read_bytes
+  File "/root/prelive_modal.py", line 104 in read
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 58 in run
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 83 in _worker
+  File "/usr/local/lib/python3.11/threading.py", line 982 in run
+  File "/usr/local/lib/python3.11/threading.py", line 1045 in _bootstrap_inner
+  File "/usr/local/lib/python3.11/threading.py", line 1002 in _bootstrap
+
+Thread 0x00002b6beacc86c0 (most recent call first):
+  File "/usr/local/lib/python3.11/pathlib.py", line 1051 in read_bytes
+  File "/root/prelive_modal.py", line 104 in read
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 58 in run
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 83 in _worker
+  File "/usr/local/lib/python3.11/threading.py", line 982 in run
+  File "/usr/local/lib/python3.11/threading.py", line 1045 in _bootstrap_inner
+  File "/usr/local/lib/python3.11/threading.py", line 1002 in _bootstrap
+
+Thread 0x00002b6beaac76c0 (most recent call first):
+  File "/usr/local/lib/python3.11/pathlib.py", line 1051 in read_bytes
+  File "/root/prelive_modal.py", line 104 in read
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 58 in run
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 83 in _worker
+  File "/usr/local/lib/python3.11/threading.py", line 982 in run
+  File "/usr/local/lib/python3.11/threading.py", line 1045 in _bootstrap_inner
+  File "/usr/local/lib/python3.11/threading.py", line 1002 in _bootstrap
+
+Thread 0x00002b6bea8c66c0 (most recent call first):
+  File "/usr/local/lib/python3.11/pathlib.py", line 1044 in open
+  File "/usr/local/lib/python3.11/pathlib.py", line 1051 in read_bytes
+  File "/root/prelive_modal.py", line 104 in read
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 58 in run
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 83 in _worker
+  File "/usr/local/lib/python3.11/threading.py", line 982 in run
+  File "/usr/local/lib/python3.11/threading.py", line 1045 in _bootstrap_inner
+  File "/usr/local/lib/python3.11/threading.py", line 1002 in _bootstrap
+
+Thread 0x00002b6bea6c56c0 (most recent call first):
+  File "/usr/local/lib/python3.11/pathlib.py", line 1051 in read_bytes
+  File "/root/prelive_modal.py", line 104 in read
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 58 in run
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 83 in _worker
+  File "/usr/local/lib/python3.11/threading.py", line 982 in run
+  File "/usr/local/lib/python3.11/threading.py", line 1045 in _bootstrap_inner
+  File "/usr/local/lib/python3.11/threading.py", line 1002 in _bootstrap
+
+Thread 0x00002b6bc8bfd6c0 (most recent call first):
+  File "/usr/local/lib/python3.11/selectors.py", line 468 in select
+  File "/usr/local/lib/python3.11/asyncio/base_events.py", line 1898 in _run_once
+  File "/usr/local/lib/python3.11/asyncio/base_events.py", line 608 in run_forever
+  File "/usr/local/lib/python3.11/asyncio/base_events.py", line 641 in run_until_complete
+  File "/usr/local/lib/python3.11/asyncio/runners.py", line 118 in run
+  File "/usr/local/lib/python3.11/asyncio/runners.py", line 190 in run
+  File "/pkg/synchronicity/synchronizer.py", line 240 in thread_inner
+  File "/usr/local/lib/python3.11/threading.py", line 982 in run
+  File "/usr/local/lib/python3.11/threading.py", line 1045 in _bootstrap_inner
+  File "/usr/local/lib/python3.11/threading.py", line 1002 in _bootstrap
+
+Thread 0x00002b6bc6aaab80 (most recent call first):
+  File "/usr/local/lib/python3.11/tarfile.py", line 237 in calc_chksums
+Runner segmentation fault (SIGSEGV), exit code: 139.
+[freeze] reading prediction regime_reselection/spines/regime_g2_csi1000_20261102_a1/csi1000/A/signal.parquet
+[freeze] reading prediction regime_reselection/spines/regime_g2_csi300_20261102_a1/csi300/A/signal.parquet
+[freeze] reading prediction regime_reselection/spines/regime_g2_csi300_20261102_a1/csi300/B/signal.parquet
+[freeze] reading prediction regime_reselection/spines/regime_g2_csi500_20261102_a1/csi500/A/signal.parquet
+[freeze] reading prediction regime_reselection/spines/regime_g2_csi500_20261102_a1/csi500/B/signal.parquet
+[freeze] reading prediction regime_reselection/spines/regime_g2_ext_20261103_a1/csi300/B/signal.parquet
+[freeze] reading prediction regime_reselection/spines/regime_g2_ext_20261103_a1/csi500/B/signal.parquet
+[freeze] reading prediction regime_reselection/spines/regime_g2_ext_20261103_a1/csi1000/A/signal.parquet
+[freeze] files selected=12556; compressing to container scratch
+  File ???Timeout (0:01:00)!
+Thread 0x00002b3e6aa7a6c0 (most recent call first):
+  File "/usr/local/lib/python3.11/pathlib.py", line 1051 in read_bytes
+  File "/root/prelive_modal.py", line 104 in read
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 58 in run
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 83 in _worker
+  File "/usr/local/lib/python3.11/threading.py", line 982 in run
+  File "/usr/local/lib/python3.11/threading.py", line 1045 in _bootstrap_inner
+  File "/usr/local/lib/python3.11/threading.py", line 1002 in _bootstrap
+
+Thread 0x00002b3e6a8796c0 (most recent call first):
+  File "/usr/local/lib/python3.11/pathlib.py", line 1044 in open
+  File "/usr/local/lib/python3.11/pathlib.py", line 1050 in read_bytes
+  File "/root/prelive_modal.py", line 104 in read
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 58 in run
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 83 in _worker
+  File "/usr/local/lib/python3.11/threading.py", line 982 in run
+  File "/usr/local/lib/python3.11/threading.py", line 1045 in _bootstrap_inner
+  File "/usr/local/lib/python3.11/threading.py", line 1002 in _bootstrap
+
+Thread 0x00002b3e6a6786c0 (most recent call first):
+  File "/usr/local/lib/python3.11/pathlib.py", line 1051 in read_bytes
+  File "/root/prelive_modal.py", line 104 in read
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 58 in run
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 83 in _worker
+  File "/usr/local/lib/python3.11/threading.py", line 982 in run
+  File "/usr/local/lib/python3.11/threading.py", line 1045 in _bootstrap_inner
+  File "/usr/local/lib/python3.11/threading.py", line 1002 in _bootstrap
+
+Thread 0x00002b3e69ce76c0 (most recent call first):
+  File "/usr/local/lib/python3.11/pathlib.py", line 1044 in open
+  File "/usr/local/lib/python3.11/pathlib.py", line 1050 in read_bytes
+  File "/root/prelive_modal.py", line 104 in read
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 58 in run
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 83 in _worker
+  File "/usr/local/lib/python3.11/threading.py", line 982 in run
+  File "/usr/local/lib/python3.11/threading.py", line 1045 in _bootstrap_inner
+  File "/usr/local/lib/python3.11/threading.py", line 1002 in _bootstrap
+
+Thread 0x00002b3e69ae26c0 (most recent call first):
+  File "/usr/local/lib/python3.11/pathlib.py", line 1051 in read_bytes
+  File "/root/prelive_modal.py", line 104 in read
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 58 in run
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 83 in _worker
+  File "/usr/local/lib/python3.11/threading.py", line 982 in run
+  File "/usr/local/lib/python3.11/threading.py", line 1045 in _bootstrap_inner
+  File "/usr/local/lib/python3.11/threading.py", line 1002 in _bootstrap
+
+Thread 0x00002b3e698e16c0 (most recent call first):
+  File "/usr/local/lib/python3.11/pathlib.py", line 1044 in open
+  File "/usr/local/lib/python3.11/pathlib.py", line 1050 in read_bytes
+  File "/root/prelive_modal.py", line 104 in read
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 58 in run
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 83 in _worker
+  File "/usr/local/lib/python3.11/threading.py", line 982 in run
+  File "/usr/local/lib/python3.11/threading.py", line 1045 in _bootstrap_inner
+  File "/usr/local/lib/python3.11/threading.py", line 1002 in _bootstrap
+
+Thread 0x00002b3e696e06c0 (most recent call first):
+  File "/usr/local/lib/python3.11/pathlib.py", line 1051 in read_bytes
+  File "/root/prelive_modal.py", line 104 in read
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 58 in run
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 83 in _worker
+  File "/usr/local/lib/python3.11/threading.py", line 982 in run
+  File "/usr/local/lib/python3.11/threading.py", line 1045 in _bootstrap_inner
+  File "/usr/local/lib/python3.11/threading.py", line 1002 in _bootstrap
+
+Thread 0x00002b3e694df6c0 (most recent call first):
+  File "/usr/local/lib/python3.11/pathlib.py", line 1050 in read_bytes
+  File "/root/prelive_modal.py", line 104 in read
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 58 in run
+  File "/usr/local/lib/python3.11/concurrent/futures/thread.py", line 83 in _worker
+  File "/usr/local/lib/python3.11/threading.py", line 982 in run
+  File "/usr/local/lib/python3.11/threading.py", line 1045 in _bootstrap_inner
+  File "/usr/local/lib/python3.11/threading.py", line 1002 in _bootstrap
+
+Thread 0x00002b3e47a186c0 (most recent call first):
+  File "/usr/local/lib/python3.11/selectors.py", line 468 in select
+  File "/usr/local/lib/python3.11/asyncio/base_events.py", line 1898 in _run_once
+  File "/usr/local/lib/python3.11/asyncio/base_events.py", line 608 in run_forever
+  File "/usr/local/lib/python3.11/asyncio/base_events.py", line 641 in run_until_complete
+  File "/usr/local/lib/python3.11/asyncio/runners.py", line 118 in run
+  File "/usr/local/lib/python3.11/asyncio/runners.py", line 190 in run
+  File "/pkg/synchronicity/synchronizer.py", line 240 in thread_inner
+  File "/usr/local/lib/python3.11/threading.py", line 982 in run
+  File "/usr/local/lib/python3.11/threading.py", line 1045 in _bootstrap_inner
+  File "/usr/local/lib/python3.11/threading.py", line 1002 in _bootstrap
+
+Thread 0x00002b3e458c5b80 (most recent call first):
+  File "/usr/local/lib/python3.11/gzip.py", line 289 in write
+  File "/usr/local/lib/python3.11/tarfile.py", line 255 in copyfileobj
+  File "/usr/local/lib/python3.11/tarfile.py", line 2238 in addfile
+  File "/root/prelive_modal.py", line 111 in freeze_existing_provider
+  File "/pkg/modal/_runtime/container_io_manager.py", line 266 in call_function_sync
+  File "/pkg/modal/_container_entrypoint.py", line 189 in run_input_sync
+  File "/pkg/modal/_container_entrypoint.py", line 264 in call_function
+  File "/pkg/modal/_container_entrypoint.py", line 459 in run_function
+  File "/pkg/modal/_container_entrypoint.py", line 466 in main
+  File "/pkg/modal/_container_entrypoint.py", line 484 in <module>
+  File "<frozen runpy>", line 88 in _run_code
+  File "<frozen runpy>", line 198 in _run_module_as_main
+Stopping app - user stopped from CLI.
+Runner terminated.
+╭───────────────────── Traceback (most recent call last) ──────────────────────╮
+│ <checkout>/quant/code/research/regime_reselection/prelive_modal │
+│ .py:291 in main                                                              │
+│                                                                              │
+│   290 │   │   │   paths.append(f"regime_reselection/spines/regime_g2_ext_202 │
+│ ❱ 291 │   │   manifest = freeze_existing_provider.remote(run_id, paths)      │
+│   292 │   │   (out / f"{run_id}_provider_manifest.json").write_text(json.dum │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_object.py: │
+│ 49 in wrapped                                                                │
+│                                                                              │
+│    48 │   │   await self.hydrate()                                           │
+│ ❱  49 │   │   return await method(self, *args, **kwargs)                     │
+│    50                                                                        │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_functions. │
+│ py:2067 in remote                                                            │
+│                                                                              │
+│   2066 │   │                                                                 │
+│ ❱ 2067 │   │   return await self._call_function(args, kwargs)                │
+│   2068                                                                       │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_functions. │
+│ py:2004 in _call_function                                                    │
+│                                                                              │
+│   2003 │   │                                                                 │
+│ ❱ 2004 │   │   return await invocation.run_function()                        │
+│   2005                                                                       │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_functions. │
+│ py:496 in run_function                                                       │
+│                                                                              │
+│    495 │   │   │   if await_response.output.result.status in TERMINAL_STATUS │
+│ ❱  496 │   │   │   │   return await _process_result(                         │
+│    497 │   │   │   │   │   await_response.output.result, await_response.outp │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_utils/func │
+│ tion_utils.py:574 in _process_result                                         │
+│                                                                              │
+│   573 │   │                                                                  │
+│ ❱ 574 │   │   raise RemoteError(result.exception)                            │
+│   575                                                                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+RemoteError

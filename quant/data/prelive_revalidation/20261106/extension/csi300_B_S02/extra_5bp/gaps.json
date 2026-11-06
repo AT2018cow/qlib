@@ -1,0 +1,3632 @@
+[
+  {
+    "date": "2018-05-02",
+    "instrument": "SH600074",
+    "field": "open"
+  },
+  {
+    "date": "2018-05-02",
+    "instrument": "SH600074",
+    "field": "close"
+  },
+  {
+    "date": "2019-01-21",
+    "instrument": "SZ000895",
+    "field": "open"
+  },
+  {
+    "date": "2019-01-21",
+    "instrument": "SZ000895",
+    "field": "close"
+  },
+  {
+    "date": "2019-01-22",
+    "instrument": "SZ000895",
+    "field": "open"
+  },
+  {
+    "date": "2019-01-22",
+    "instrument": "SZ002450",
+    "field": "open"
+  },
+  {
+    "date": "2019-01-22",
+    "instrument": "SZ000895",
+    "field": "close"
+  },
+  {
+    "date": "2019-01-22",
+    "instrument": "SZ002450",
+    "field": "close"
+  },
+  {
+    "date": "2019-01-23",
+    "instrument": "SZ000895",
+    "field": "open"
+  },
+  {
+    "date": "2019-01-23",
+    "instrument": "SZ000895",
+    "field": "close"
+  },
+  {
+    "date": "2019-01-24",
+    "instrument": "SZ000895",
+    "field": "open"
+  },
+  {
+    "date": "2019-01-24",
+    "instrument": "SZ000895",
+    "field": "close"
+  },
+  {
+    "date": "2019-01-25",
+    "instrument": "SZ000895",
+    "field": "open"
+  },
+  {
+    "date": "2019-01-25",
+    "instrument": "SZ000895",
+    "field": "close"
+  },
+  {
+    "date": "2019-04-01",
+    "instrument": "SZ000651",
+    "field": "open"
+  },
+  {
+    "date": "2019-04-01",
+    "instrument": "SZ000651",
+    "field": "close"
+  },
+  {
+    "date": "2019-04-02",
+    "instrument": "SZ000651",
+    "field": "open"
+  },
+  {
+    "date": "2019-04-02",
+    "instrument": "SZ000651",
+    "field": "close"
+  },
+  {
+    "date": "2019-04-03",
+    "instrument": "SZ000651",
+    "field": "open"
+  },
+  {
+    "date": "2019-04-03",
+    "instrument": "SZ000651",
+    "field": "close"
+  },
+  {
+    "date": "2019-04-04",
+    "instrument": "SZ000651",
+    "field": "open"
+  },
+  {
+    "date": "2019-04-04",
+    "instrument": "SZ000651",
+    "field": "close"
+  },
+  {
+    "date": "2019-04-08",
+    "instrument": "SZ000651",
+    "field": "open"
+  },
+  {
+    "date": "2019-04-08",
+    "instrument": "SZ000651",
+    "field": "close"
+  },
+  {
+    "date": "2019-04-30",
+    "instrument": "SZ002450",
+    "field": "open"
+  },
+  {
+    "date": "2019-04-30",
+    "instrument": "SZ002450",
+    "field": "close"
+  },
+  {
+    "date": "2019-05-20",
+    "instrument": "SH600518",
+    "field": "open"
+  },
+  {
+    "date": "2019-05-20",
+    "instrument": "SH600518",
+    "field": "close"
+  },
+  {
+    "date": "2019-06-03",
+    "instrument": "SH600487",
+    "field": "open"
+  },
+  {
+    "date": "2019-06-03",
+    "instrument": "SH600487",
+    "field": "close"
+  },
+  {
+    "date": "2019-06-04",
+    "instrument": "SH600487",
+    "field": "open"
+  },
+  {
+    "date": "2019-06-04",
+    "instrument": "SH600487",
+    "field": "close"
+  },
+  {
+    "date": "2019-06-05",
+    "instrument": "SH600487",
+    "field": "open"
+  },
+  {
+    "date": "2019-06-05",
+    "instrument": "SH600487",
+    "field": "close"
+  },
+  {
+    "date": "2019-06-06",
+    "instrument": "SH600487",
+    "field": "open"
+  },
+  {
+    "date": "2019-06-06",
+    "instrument": "SH600487",
+    "field": "close"
+  },
+  {
+    "date": "2019-06-10",
+    "instrument": "SH600487",
+    "field": "open"
+  },
+  {
+    "date": "2019-06-10",
+    "instrument": "SH600487",
+    "field": "close"
+  },
+  {
+    "date": "2019-06-11",
+    "instrument": "SH600487",
+    "field": "open"
+  },
+  {
+    "date": "2019-06-11",
+    "instrument": "SH600487",
+    "field": "close"
+  },
+  {
+    "date": "2019-06-12",
+    "instrument": "SH600487",
+    "field": "open"
+  },
+  {
+    "date": "2019-06-12",
+    "instrument": "SH600487",
+    "field": "close"
+  },
+  {
+    "date": "2019-06-13",
+    "instrument": "SH600487",
+    "field": "open"
+  },
+  {
+    "date": "2019-06-13",
+    "instrument": "SH600487",
+    "field": "close"
+  },
+  {
+    "date": "2019-06-14",
+    "instrument": "SH600487",
+    "field": "open"
+  },
+  {
+    "date": "2019-06-14",
+    "instrument": "SH600487",
+    "field": "close"
+  },
+  {
+    "date": "2019-06-17",
+    "instrument": "SH600487",
+    "field": "open"
+  },
+  {
+    "date": "2019-06-17",
+    "instrument": "SH600487",
+    "field": "close"
+  },
+  {
+    "date": "2019-06-24",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2019-06-24",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2019-10-08",
+    "instrument": "SZ002236",
+    "field": "open"
+  },
+  {
+    "date": "2019-10-08",
+    "instrument": "SZ002236",
+    "field": "close"
+  },
+  {
+    "date": "2019-10-09",
+    "instrument": "SZ002236",
+    "field": "open"
+  },
+  {
+    "date": "2019-10-09",
+    "instrument": "SZ002236",
+    "field": "close"
+  },
+  {
+    "date": "2019-10-23",
+    "instrument": "SZ300015",
+    "field": "open"
+  },
+  {
+    "date": "2019-10-23",
+    "instrument": "SZ300015",
+    "field": "close"
+  },
+  {
+    "date": "2019-10-24",
+    "instrument": "SZ300015",
+    "field": "open"
+  },
+  {
+    "date": "2019-10-24",
+    "instrument": "SZ300015",
+    "field": "close"
+  },
+  {
+    "date": "2019-10-25",
+    "instrument": "SZ300015",
+    "field": "open"
+  },
+  {
+    "date": "2019-10-25",
+    "instrument": "SZ300015",
+    "field": "close"
+  },
+  {
+    "date": "2019-10-28",
+    "instrument": "SZ300015",
+    "field": "open"
+  },
+  {
+    "date": "2019-10-28",
+    "instrument": "SZ300015",
+    "field": "close"
+  },
+  {
+    "date": "2019-10-29",
+    "instrument": "SZ300015",
+    "field": "open"
+  },
+  {
+    "date": "2019-10-29",
+    "instrument": "SZ300015",
+    "field": "close"
+  },
+  {
+    "date": "2020-03-24",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-03-24",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-03-25",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-03-25",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-03-26",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-03-26",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-03-27",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-03-27",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-03-30",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-03-30",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-03-31",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-03-31",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-04-01",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-04-01",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-04-02",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-04-02",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-04-03",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-04-03",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-04-07",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-04-07",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-04-08",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-04-08",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-04-09",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-04-09",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-04-10",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-04-10",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-04-13",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-04-13",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-04-14",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-04-14",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-04-15",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-04-15",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-04-16",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-04-16",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-04-17",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-04-17",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-04-20",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-04-20",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-04-21",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-04-21",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-04-22",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-04-22",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-04-23",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-04-23",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-04-24",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-04-24",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-04-27",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-04-27",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-04-28",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-04-28",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-04-29",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-04-29",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-04-30",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-04-30",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-05-06",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-05-06",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-05-07",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-05-07",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-05-08",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-05-08",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-05-11",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-05-11",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-05-12",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-05-12",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-05-13",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-05-13",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-05-14",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-05-14",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-05-15",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-05-15",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-05-18",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-05-18",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-05-19",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-05-19",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-05-20",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-05-20",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-05-21",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-05-21",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-05-22",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-05-22",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-05-25",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-05-25",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-05-26",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-05-26",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-05-27",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-05-27",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-05-28",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-05-28",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2020-05-29",
+    "instrument": "SH600816",
+    "field": "open"
+  },
+  {
+    "date": "2020-05-29",
+    "instrument": "SH600816",
+    "field": "close"
+  },
+  {
+    "date": "2021-02-05",
+    "instrument": "SZ002352",
+    "field": "open"
+  },
+  {
+    "date": "2021-02-05",
+    "instrument": "SZ002352",
+    "field": "close"
+  },
+  {
+    "date": "2021-02-08",
+    "instrument": "SZ002352",
+    "field": "open"
+  },
+  {
+    "date": "2021-02-08",
+    "instrument": "SZ002352",
+    "field": "close"
+  },
+  {
+    "date": "2021-02-09",
+    "instrument": "SZ002352",
+    "field": "open"
+  },
+  {
+    "date": "2021-02-09",
+    "instrument": "SZ002352",
+    "field": "close"
+  },
+  {
+    "date": "2021-11-24",
+    "instrument": "SZ002142",
+    "field": "open"
+  },
+  {
+    "date": "2021-11-24",
+    "instrument": "SZ002142",
+    "field": "close"
+  },
+  {
+    "date": "2021-11-25",
+    "instrument": "SZ002142",
+    "field": "open"
+  },
+  {
+    "date": "2021-11-25",
+    "instrument": "SZ002142",
+    "field": "close"
+  },
+  {
+    "date": "2021-11-26",
+    "instrument": "SZ002142",
+    "field": "open"
+  },
+  {
+    "date": "2021-11-26",
+    "instrument": "SZ002142",
+    "field": "close"
+  },
+  {
+    "date": "2021-11-29",
+    "instrument": "SZ002142",
+    "field": "open"
+  },
+  {
+    "date": "2021-11-29",
+    "instrument": "SZ002142",
+    "field": "close"
+  },
+  {
+    "date": "2021-11-30",
+    "instrument": "SZ002142",
+    "field": "open"
+  },
+  {
+    "date": "2021-11-30",
+    "instrument": "SZ002142",
+    "field": "close"
+  },
+  {
+    "date": "2021-12-01",
+    "instrument": "SZ002142",
+    "field": "open"
+  },
+  {
+    "date": "2021-12-01",
+    "instrument": "SZ002142",
+    "field": "close"
+  },
+  {
+    "date": "2022-04-08",
+    "instrument": "SH600009",
+    "field": "open"
+  },
+  {
+    "date": "2022-04-08",
+    "instrument": "SH600009",
+    "field": "close"
+  },
+  {
+    "date": "2025-08-13",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-08-13",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-08-14",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-08-14",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-08-15",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-08-15",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-08-18",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-08-18",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-08-19",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-08-19",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-08-20",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-08-20",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-08-21",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-08-21",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-08-22",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-08-22",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-08-25",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-08-25",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-08-26",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-08-26",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-08-27",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-08-27",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-08-28",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-08-28",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-08-29",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-08-29",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-09-01",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-09-01",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-09-02",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-09-02",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-09-03",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-09-03",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-09-04",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-09-04",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-09-05",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-09-05",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-09-08",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-09-08",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-09-09",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-09-09",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-09-10",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-09-10",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-09-11",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-09-11",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-09-12",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-09-12",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-09-15",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-09-15",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-09-16",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-09-16",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-09-17",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-09-17",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-09-18",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-09-18",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-09-19",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-09-19",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-09-22",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-09-22",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-09-23",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-09-23",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-09-24",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-09-24",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-09-25",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-09-25",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-09-26",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-09-26",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-09-29",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-09-29",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-09-30",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-09-30",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-10-09",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-10-09",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-10-10",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-10-10",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-10-13",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-10-13",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-10-14",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-10-14",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-10-15",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-10-15",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-10-16",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-10-16",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-10-17",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-10-17",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-10-20",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-10-20",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-10-21",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-10-21",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-10-22",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-10-22",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-10-23",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-10-23",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-10-24",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-10-24",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-10-27",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-10-27",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-10-28",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-10-28",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-10-29",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-10-29",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-10-30",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-10-30",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-10-31",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-10-31",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-11-03",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-11-03",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-11-04",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-11-04",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-11-05",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-11-05",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-11-06",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-11-06",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-11-07",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-11-07",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-11-10",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-11-10",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-11-11",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-11-11",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-11-12",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-11-12",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-11-13",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-11-13",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-11-14",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-11-14",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-11-17",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-11-17",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-11-18",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-11-18",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-11-19",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-11-19",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-11-20",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-11-20",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-11-21",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-11-21",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-11-24",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-11-24",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-11-25",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-11-25",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-11-26",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-11-26",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-11-27",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-11-27",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-11-28",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-11-28",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-12-01",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-12-01",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-12-02",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-12-02",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-12-03",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-12-03",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-12-04",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-12-04",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-12-05",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-12-05",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-12-08",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-12-08",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-12-09",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-12-09",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-12-10",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-12-10",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-12-11",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-12-11",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-12-12",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-12-12",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-12-15",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-12-15",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-12-16",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-12-16",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-12-17",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-12-17",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-12-18",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-12-18",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-12-19",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-12-19",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-12-22",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-12-22",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-12-23",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-12-23",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-12-24",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-12-24",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-12-25",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-12-25",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-12-26",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-12-26",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-12-29",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-12-29",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-12-30",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-12-30",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2025-12-31",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2025-12-31",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-01-05",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-01-05",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-01-06",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-01-06",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-01-07",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-01-07",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-01-08",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-01-08",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-01-09",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-01-09",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-01-12",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-01-12",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-01-13",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-01-13",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-01-14",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-01-14",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-01-15",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-01-15",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-01-16",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-01-16",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-01-19",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-01-19",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-01-20",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-01-20",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-01-21",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-01-21",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-01-22",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-01-22",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-01-23",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-01-23",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-01-26",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-01-26",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-01-27",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-01-27",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-01-28",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-01-28",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-01-29",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-01-29",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-01-30",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-01-30",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-02-02",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-02-02",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-02-03",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-02-03",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-02-04",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-02-04",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-02-05",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-02-05",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-02-06",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-02-06",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-02-09",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-02-09",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-02-10",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-02-10",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-02-11",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-02-11",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-02-12",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-02-12",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-02-13",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-02-13",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-02-24",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-02-24",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-02-25",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-02-25",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-02-26",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-02-26",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-02-27",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-02-27",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-03-02",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-03-02",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-03-03",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-03-03",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-03-04",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-03-04",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-03-05",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-03-05",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-03-06",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-03-06",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-03-09",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-03-09",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-03-10",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-03-10",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-03-11",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-03-11",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-03-12",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-03-12",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-03-13",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-03-13",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-03-16",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-03-16",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-03-17",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-03-17",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-03-18",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-03-18",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-03-19",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-03-19",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-03-20",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-03-20",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-03-23",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-03-23",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-03-24",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-03-24",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-03-25",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-03-25",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-03-26",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-03-26",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-03-27",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-03-27",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-03-30",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-03-30",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-03-31",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-03-31",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-04-01",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-04-01",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-04-02",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-04-02",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-04-03",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-04-03",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-04-07",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-04-07",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-04-08",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-04-08",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-04-09",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-04-09",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-04-10",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-04-10",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-04-13",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-04-13",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-04-14",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-04-14",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-04-15",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-04-15",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-04-16",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-04-16",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-04-17",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-04-17",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-04-20",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-04-20",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-04-21",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-04-21",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-04-22",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-04-22",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-04-23",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-04-23",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-04-24",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-04-24",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-04-27",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-04-27",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-04-28",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-04-28",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-04-29",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-04-29",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-04-30",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-04-30",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-05-06",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-05-06",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-05-07",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-05-07",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-05-08",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-05-08",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-05-11",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-05-11",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-05-12",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-05-12",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-05-13",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-05-13",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-05-14",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-05-14",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-05-15",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-05-15",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-05-18",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-05-18",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-05-19",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-05-19",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-05-20",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-05-20",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-05-21",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-05-21",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-05-22",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-05-22",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-05-25",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-05-25",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-05-26",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-05-26",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-05-27",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-05-27",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-05-28",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-05-28",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-05-29",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-05-29",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-06-01",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-06-01",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-06-02",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-06-02",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-06-03",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-06-03",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-06-04",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-06-04",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-06-05",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-06-05",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-06-08",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-06-08",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-06-09",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-06-09",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-06-10",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-06-10",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-06-11",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-06-11",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-06-12",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-06-12",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-06-15",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-06-15",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-06-16",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-06-16",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-06-17",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-06-17",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-06-18",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-06-18",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-06-22",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-06-22",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-06-23",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-06-23",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-06-24",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-06-24",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-06-25",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-06-25",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-06-26",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-06-26",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-06-29",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-06-29",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-06-30",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-06-30",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-07-01",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-07-01",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-07-02",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-07-02",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-07-03",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-07-03",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-07-06",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-07-06",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-07-07",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-07-07",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-07-08",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-07-08",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-07-09",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-07-09",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-07-10",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-07-10",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-07-13",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-07-13",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-07-14",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-07-14",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-07-15",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-07-15",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-07-16",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-07-16",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-07-17",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-07-17",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-07-20",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-07-20",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-07-21",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-07-21",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-07-22",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-07-22",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-07-23",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-07-23",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-07-24",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-07-24",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-07-27",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-07-27",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-07-28",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-07-28",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-07-29",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-07-29",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-07-30",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-07-30",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-07-31",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-07-31",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-08-03",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-08-03",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-08-04",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-08-04",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-08-05",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-08-05",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-08-06",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-08-06",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-08-07",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-08-07",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-08-10",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-08-10",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-08-11",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-08-11",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-08-12",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-08-12",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-08-13",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-08-13",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-08-14",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-08-14",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-08-17",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-08-17",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-08-18",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-08-18",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-08-19",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-08-19",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-08-20",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-08-20",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-08-21",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-08-21",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-08-24",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-08-24",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-08-25",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-08-25",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-08-26",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-08-26",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-08-27",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-08-27",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-08-28",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-08-28",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-08-31",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-08-31",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-09-01",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-09-01",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-09-02",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-09-02",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-09-03",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-09-03",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-09-04",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-09-04",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-09-07",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-09-07",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-09-08",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-09-08",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-09-09",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-09-09",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-09-10",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-09-10",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-09-11",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-09-11",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-09-14",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-09-14",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-09-15",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-09-15",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-09-16",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-09-16",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-09-17",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-09-17",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-09-18",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-09-18",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-09-21",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-09-21",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-09-22",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-09-22",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-09-23",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-09-23",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-09-24",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-09-24",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-09-28",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-09-28",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-09-29",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-09-29",
+    "instrument": "SH601989",
+    "field": "close"
+  },
+  {
+    "date": "2026-09-30",
+    "instrument": "SH601989",
+    "field": "open"
+  },
+  {
+    "date": "2026-09-30",
+    "instrument": "SH601989",
+    "field": "close"
+  }
+]

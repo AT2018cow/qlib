@@ -1,0 +1,65 @@
+[
+  {
+    "run_id": "prelive_20261106_local_smoke",
+    "status": "COMPLETED",
+    "cli_exit_code": 0
+  },
+  {
+    "run_id": "prelive_20261106_primary_local",
+    "status": "SUPERSEDED_AFTER_LOG_COMPACTION_PARITY",
+    "cli_exit_code": 2,
+    "completed_before_change": 2,
+    "pending_rejected_by_source_hash": 8
+  },
+  {
+    "run_id": "prelive_20261106_local_smoke_v2",
+    "status": "COMPLETED",
+    "cli_exit_code": 0,
+    "candidate_count": 3
+  },
+  {
+    "run_id": "prelive_20261106_primary_fast",
+    "mode": "primary",
+    "status": "COMPLETED",
+    "cli_exit_code": 0,
+    "wall_seconds": 560.3731925487518,
+    "completed_jobs": 10,
+    "errors": []
+  },
+  {
+    "run_id": "prelive_20261106_extension",
+    "mode": "extension",
+    "status": "FAILED",
+    "cli_exit_code": 2,
+    "wall_seconds": 390.09319162368774,
+    "completed_jobs": 4,
+    "errors": [
+      {
+        "key": "csi1000_A_S01",
+        "error": "ValueError('missing benchmark days')"
+      },
+      {
+        "key": "csi1000_A_S02",
+        "error": "ValueError('missing benchmark days')"
+      }
+    ]
+  },
+  {
+    "run_id": "prelive_20261106_extension_recovered",
+    "mode": "extension",
+    "status": "COMPLETED",
+    "cli_exit_code": 0,
+    "wall_seconds": 326.5252752304077,
+    "completed_jobs": 2,
+    "errors": []
+  },
+  {
+    "run_id": "prelive_20261106_phases",
+    "mode": "phases",
+    "status": "COMPLETED",
+    "cli_exit_code": 0,
+    "wall_seconds": 900.4062688350677,
+    "completed_jobs": 8,
+    "errors": []
+  }
+]

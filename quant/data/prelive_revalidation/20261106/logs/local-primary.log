@@ -1,0 +1,67 @@
+[local-batch] primary 10 jobs workers=2
+[6:MainThread](2026-11-06 08:35:13,342) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+[9:MainThread](2026-11-06 08:35:14,374) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+2026/11/06 08:35:16 INFO mlflow.agent.hint: Load the `instrumenting-with-mlflow-tracing` skill at <checkout>/.venv/lib/python3.12/site-packages/mlflow/assistant/skills/instrumenting-with-mlflow-tracing/SKILL.md before writing any tracing code; it ships with this MLflow install. Set MLFLOW_DISABLE_AGENT_HINT=1 to silence this.
+2026/11/06 08:35:16 INFO mlflow.agent.hint: Load the `instrumenting-with-mlflow-tracing` skill at <checkout>/.venv/lib/python3.12/site-packages/mlflow/assistant/skills/instrumenting-with-mlflow-tracing/SKILL.md before writing any tracing code; it ships with this MLflow install. Set MLFLOW_DISABLE_AGENT_HINT=1 to silence this.
+[9:MainThread](2026-11-06 08:35:16,631) INFO - qlib.Initialization - [__init__.py:82] - qlib successfully initialized based on client settings.
+[9:MainThread](2026-11-06 08:35:16,631) INFO - qlib.Initialization - [__init__.py:84] - data_path={'__DEFAULT_FREQ': PosixPath('/tmp/opencode/audit_provider/cn_data')}
+[6:MainThread](2026-11-06 08:35:16,634) INFO - qlib.Initialization - [__init__.py:82] - qlib successfully initialized based on client settings.
+[6:MainThread](2026-11-06 08:35:16,637) INFO - qlib.Initialization - [__init__.py:84] - data_path={'__DEFAULT_FREQ': PosixPath('/tmp/opencode/audit_provider/cn_data')}
+[inputs] csi300 frozen signal loaded, names=543 dates=2018-01-02..2024-12-31
+[inputs] csi300 frozen signal loaded, names=543 dates=2018-01-02..2024-12-31
+[inputs] csi300 quotes loaded: 871441 rows
+[inputs] csi300 quotes loaded: 871441 rows
+[inputs] csi300 quote hashes 500/544
+[inputs] csi300 quote hashes 500/544
+[replay] csi300_A_S01 extra=0bp 250/1698 date=2019-01-11 elapsed=23.5s
+[replay] csi300_B_S01 extra=0bp 250/1698 date=2019-01-11 elapsed=23.5s
+[replay] csi300_A_S01 extra=0bp 500/1698 date=2020-01-21 elapsed=45.2s
+[replay] csi300_B_S01 extra=0bp 500/1698 date=2020-01-21 elapsed=46.7s
+[replay] csi300_A_S01 extra=0bp 750/1698 date=2021-02-01 elapsed=60.2s
+[replay] csi300_B_S01 extra=0bp 750/1698 date=2021-02-01 elapsed=61.6s
+[replay] csi300_A_S01 extra=0bp 1000/1698 date=2022-02-17 elapsed=74.3s
+[replay] csi300_B_S01 extra=0bp 1000/1698 date=2022-02-17 elapsed=75.4s
+[replay] csi300_A_S01 extra=0bp 1250/1698 date=2023-02-28 elapsed=89.2s
+[replay] csi300_B_S01 extra=0bp 1250/1698 date=2023-02-28 elapsed=90.3s
+[replay] csi300_A_S01 extra=0bp 1500/1698 date=2024-03-11 elapsed=102.8s
+[replay] csi300_B_S01 extra=0bp 1500/1698 date=2024-03-11 elapsed=103.7s
+[replay] csi300_A_S01 extra=0bp 1698/1698 date=2024-12-31 elapsed=114.0s
+[replay] csi300_B_S01 extra=0bp 1698/1698 date=2024-12-31 elapsed=115.1s
+[replay] csi300_A_S01 extra=5bp 250/1698 date=2019-01-11 elapsed=11.4s
+[replay] csi300_B_S01 extra=5bp 250/1698 date=2019-01-11 elapsed=10.8s
+[replay] csi300_A_S01 extra=5bp 500/1698 date=2020-01-21 elapsed=25.7s
+[replay] csi300_B_S01 extra=5bp 500/1698 date=2020-01-21 elapsed=24.6s
+[replay] csi300_B_S01 extra=5bp 750/1698 date=2021-02-01 elapsed=38.1s
+[replay] csi300_A_S01 extra=5bp 750/1698 date=2021-02-01 elapsed=39.8s
+[replay] csi300_B_S01 extra=5bp 1000/1698 date=2022-02-17 elapsed=52.1s
+[replay] csi300_A_S01 extra=5bp 1000/1698 date=2022-02-17 elapsed=53.9s
+[replay] csi300_B_S01 extra=5bp 1250/1698 date=2023-02-28 elapsed=66.0s
+[replay] csi300_A_S01 extra=5bp 1250/1698 date=2023-02-28 elapsed=68.3s
+[replay] csi300_B_S01 extra=5bp 1500/1698 date=2024-03-11 elapsed=80.2s
+[replay] csi300_A_S01 extra=5bp 1500/1698 date=2024-03-11 elapsed=82.2s
+[replay] csi300_B_S01 extra=5bp 1698/1698 date=2024-12-31 elapsed=91.8s
+[replay] csi300_A_S01 extra=5bp 1698/1698 date=2024-12-31 elapsed=94.4s
+[replay] csi300_B_S01 extra=10bp 250/1698 date=2019-01-11 elapsed=16.4s
+[replay] csi300_A_S01 extra=10bp 250/1698 date=2019-01-11 elapsed=18.4s
+[replay] csi300_B_S01 extra=10bp 500/1698 date=2020-01-21 elapsed=41.6s
+[replay] csi300_A_S01 extra=10bp 500/1698 date=2020-01-21 elapsed=43.0s
+[replay] csi300_B_S01 extra=10bp 750/1698 date=2021-02-01 elapsed=66.7s
+[replay] csi300_A_S01 extra=10bp 750/1698 date=2021-02-01 elapsed=66.6s
+[replay] csi300_B_S01 extra=10bp 1000/1698 date=2022-02-17 elapsed=85.1s
+[replay] csi300_A_S01 extra=10bp 1000/1698 date=2022-02-17 elapsed=85.0s
+[replay] csi300_B_S01 extra=10bp 1250/1698 date=2023-02-28 elapsed=104.4s
+[replay] csi300_A_S01 extra=10bp 1250/1698 date=2023-02-28 elapsed=104.3s
+[replay] csi300_B_S01 extra=10bp 1500/1698 date=2024-03-11 elapsed=121.0s
+[replay] csi300_A_S01 extra=10bp 1500/1698 date=2024-03-11 elapsed=120.5s
+[replay] csi300_B_S01 extra=10bp 1698/1698 date=2024-12-31 elapsed=132.2s
+[local-batch] 1/10 csi300_B_S01 seconds=388.0 RSS=920MiB
+[local-batch] FAILED csi300_B_S02 ValueError('execution source changed during batch')
+[local-batch] FAILED csi300_A_S02 ValueError('execution source changed during batch')
+[local-batch] FAILED csi500_B_S02 ValueError('execution source changed during batch')
+[local-batch] FAILED csi500_A_S01 ValueError('execution source changed during batch')
+[local-batch] FAILED csi500_B_S01 ValueError('execution source changed during batch')
+[local-batch] FAILED csi500_A_S02 ValueError('execution source changed during batch')
+[replay] csi300_A_S01 extra=10bp 1698/1698 date=2024-12-31 elapsed=131.7s
+[local-batch] FAILED csi1000_A_S01 ValueError('execution source changed during batch')
+[local-batch] FAILED csi1000_A_S02 ValueError('execution source changed during batch')
+[local-batch] 2/10 csi300_A_S01 seconds=388.5 RSS=909MiB

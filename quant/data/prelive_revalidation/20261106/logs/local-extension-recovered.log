@@ -1,0 +1,67 @@
+[local-batch] extension 2 jobs workers=1
+[6:MainThread](2026-11-06 09:06:26,677) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+2026/11/06 09:06:28 INFO mlflow.agent.hint: Load the `instrumenting-with-mlflow-tracing` skill at <checkout>/.venv/lib/python3.12/site-packages/mlflow/assistant/skills/instrumenting-with-mlflow-tracing/SKILL.md before writing any tracing code; it ships with this MLflow install. Set MLFLOW_DISABLE_AGENT_HINT=1 to silence this.
+[6:MainThread](2026-11-06 09:06:28,546) INFO - qlib.Initialization - [__init__.py:82] - qlib successfully initialized based on client settings.
+[6:MainThread](2026-11-06 09:06:28,547) INFO - qlib.Initialization - [__init__.py:84] - data_path={'__DEFAULT_FREQ': PosixPath('/tmp/quant-prelive-20261106/provider-benchmark-v2')}
+[inputs] csi1000 frozen signal loaded, names=2436 dates=2018-01-02..2026-09-30
+[inputs] csi1000 quotes loaded: 4574774 rows
+[inputs] csi1000 quote hashes 500/2437
+[inputs] csi1000 quote hashes 1000/2437
+[inputs] csi1000 quote hashes 1500/2437
+[inputs] csi1000 quote hashes 2000/2437
+[replay] csi1000_A_S01 extra=0bp 250/2122 date=2019-01-11 elapsed=14.6s
+[replay] csi1000_A_S01 extra=0bp 500/2122 date=2020-01-21 elapsed=25.1s
+[replay] csi1000_A_S01 extra=0bp 750/2122 date=2021-02-01 elapsed=31.2s
+[replay] csi1000_A_S01 extra=0bp 1000/2122 date=2022-02-17 elapsed=37.0s
+[replay] csi1000_A_S01 extra=0bp 1250/2122 date=2023-02-28 elapsed=42.8s
+[replay] csi1000_A_S01 extra=0bp 1500/2122 date=2024-03-11 elapsed=48.3s
+[replay] csi1000_A_S01 extra=0bp 1750/2122 date=2025-03-24 elapsed=52.8s
+[replay] csi1000_A_S01 extra=0bp 2000/2122 date=2026-04-03 elapsed=55.8s
+[replay] csi1000_A_S01 extra=0bp 2122/2122 date=2026-09-30 elapsed=57.7s
+[replay] csi1000_A_S01 extra=5bp 250/2122 date=2019-01-11 elapsed=3.7s
+[replay] csi1000_A_S01 extra=5bp 500/2122 date=2020-01-21 elapsed=7.2s
+[replay] csi1000_A_S01 extra=5bp 750/2122 date=2021-02-01 elapsed=10.7s
+[replay] csi1000_A_S01 extra=5bp 1000/2122 date=2022-02-17 elapsed=14.8s
+[replay] csi1000_A_S01 extra=5bp 1250/2122 date=2023-02-28 elapsed=18.6s
+[replay] csi1000_A_S01 extra=5bp 1500/2122 date=2024-03-11 elapsed=22.2s
+[replay] csi1000_A_S01 extra=5bp 1750/2122 date=2025-03-24 elapsed=25.9s
+[replay] csi1000_A_S01 extra=5bp 2000/2122 date=2026-04-03 elapsed=29.5s
+[replay] csi1000_A_S01 extra=5bp 2122/2122 date=2026-09-30 elapsed=31.1s
+[replay] csi1000_A_S01 extra=10bp 250/2122 date=2019-01-11 elapsed=3.7s
+[replay] csi1000_A_S01 extra=10bp 500/2122 date=2020-01-21 elapsed=7.6s
+[replay] csi1000_A_S01 extra=10bp 750/2122 date=2021-02-01 elapsed=11.3s
+[replay] csi1000_A_S01 extra=10bp 1000/2122 date=2022-02-17 elapsed=18.4s
+[replay] csi1000_A_S01 extra=10bp 1250/2122 date=2023-02-28 elapsed=25.3s
+[replay] csi1000_A_S01 extra=10bp 1500/2122 date=2024-03-11 elapsed=29.6s
+[replay] csi1000_A_S01 extra=10bp 1750/2122 date=2025-03-24 elapsed=33.9s
+[replay] csi1000_A_S01 extra=10bp 2000/2122 date=2026-04-03 elapsed=37.1s
+[replay] csi1000_A_S01 extra=10bp 2122/2122 date=2026-09-30 elapsed=38.6s
+[local-batch] 1/2 csi1000_A_S01 seconds=227.1 RSS=3418MiB
+[replay] csi1000_A_S02 extra=0bp 250/2122 date=2019-01-11 elapsed=3.2s
+[replay] csi1000_A_S02 extra=0bp 500/2122 date=2020-01-21 elapsed=6.3s
+[replay] csi1000_A_S02 extra=0bp 750/2122 date=2021-02-01 elapsed=9.5s
+[replay] csi1000_A_S02 extra=0bp 1000/2122 date=2022-02-17 elapsed=12.7s
+[replay] csi1000_A_S02 extra=0bp 1250/2122 date=2023-02-28 elapsed=15.9s
+[replay] csi1000_A_S02 extra=0bp 1500/2122 date=2024-03-11 elapsed=19.0s
+[replay] csi1000_A_S02 extra=0bp 1750/2122 date=2025-03-24 elapsed=22.2s
+[replay] csi1000_A_S02 extra=0bp 2000/2122 date=2026-04-03 elapsed=25.2s
+[replay] csi1000_A_S02 extra=0bp 2122/2122 date=2026-09-30 elapsed=26.7s
+[replay] csi1000_A_S02 extra=5bp 250/2122 date=2019-01-11 elapsed=3.2s
+[replay] csi1000_A_S02 extra=5bp 500/2122 date=2020-01-21 elapsed=6.3s
+[replay] csi1000_A_S02 extra=5bp 750/2122 date=2021-02-01 elapsed=9.3s
+[replay] csi1000_A_S02 extra=5bp 1000/2122 date=2022-02-17 elapsed=12.5s
+[replay] csi1000_A_S02 extra=5bp 1250/2122 date=2023-02-28 elapsed=15.5s
+[replay] csi1000_A_S02 extra=5bp 1500/2122 date=2024-03-11 elapsed=18.6s
+[replay] csi1000_A_S02 extra=5bp 1750/2122 date=2025-03-24 elapsed=21.6s
+[replay] csi1000_A_S02 extra=5bp 2000/2122 date=2026-04-03 elapsed=24.8s
+[replay] csi1000_A_S02 extra=5bp 2122/2122 date=2026-09-30 elapsed=26.3s
+[replay] csi1000_A_S02 extra=10bp 250/2122 date=2019-01-11 elapsed=3.2s
+[replay] csi1000_A_S02 extra=10bp 500/2122 date=2020-01-21 elapsed=6.4s
+[replay] csi1000_A_S02 extra=10bp 750/2122 date=2021-02-01 elapsed=9.8s
+[replay] csi1000_A_S02 extra=10bp 1000/2122 date=2022-02-17 elapsed=12.8s
+[replay] csi1000_A_S02 extra=10bp 1250/2122 date=2023-02-28 elapsed=18.5s
+[replay] csi1000_A_S02 extra=10bp 1500/2122 date=2024-03-11 elapsed=24.6s
+[replay] csi1000_A_S02 extra=10bp 1750/2122 date=2025-03-24 elapsed=30.7s
+[replay] csi1000_A_S02 extra=10bp 2000/2122 date=2026-04-03 elapsed=37.3s
+[replay] csi1000_A_S02 extra=10bp 2122/2122 date=2026-09-30 elapsed=40.3s
+[local-batch] 2/2 csi1000_A_S02 seconds=96.5 RSS=3418MiB

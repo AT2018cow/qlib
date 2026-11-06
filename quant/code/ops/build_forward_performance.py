@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
 
@@ -13,6 +12,7 @@ sys.path.insert(0, str(CODE_ROOT))
 from quant_bootstrap import ensure_quant_import_paths  # noqa: E402
 
 ensure_quant_import_paths()
+import artifact_io as json
 
 from forward_performance import FORWARD_PERFORMANCE_START, build_forward_performance  # noqa: E402
 
@@ -33,7 +33,7 @@ def main() -> None:
     for path in sorted(args.signals.glob(pattern)):
         try:
             raw = json.loads(path.read_text())
-        except (OSError, json.JSONDecodeError) as exc:
+        except (OSError, ValueError) as exc:
             if path.name[:10] >= FORWARD_PERFORMANCE_START:
                 raise ValueError(f"invalid post-start paper artifact: {path}") from exc
             continue

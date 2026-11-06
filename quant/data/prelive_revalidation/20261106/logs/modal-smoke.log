@@ -1,0 +1,318 @@
+✓ Initialized. View run at 
+https://modal.com/apps/<authorized-workspace>/main/ap-4ZKC4u3dSzPJbtshvqKukG
+Building image im-FRsrkJGSZeAdInDxyNFd37
+
+=> Step 0: FROM base
+
+=> Step 1: COPY . /
+Saving image...
+Image saved, took 1.10s
+
+Built image im-FRsrkJGSZeAdInDxyNFd37 in 8.56s
+
+
+Building image im-Lri4OkNto4Yzf7ONNtTLNW
+
+=> Step 0: FROM base
+
+=> Step 1: RUN cd /root/qlib && pip install . --no-build-isolation --no-deps
+Looking in indexes: http://pypi-mirror.modal.local:5555/simple
+Processing /root/qlib
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: pyqlib
+  Building wheel for pyqlib (pyproject.toml): started
+  Building wheel for pyqlib (pyproject.toml): finished with status 'done'
+  Created wheel for pyqlib: filename=pyqlib-0.9.8.dev32-cp311-cp311-linux_x86_64.whl size=1211336 sha256=ddfc9a253ffe40e6ef1a6a0b6d400046ec2aea418d150c3079df799754080833
+  Stored in directory: /tmp/pip-ephem-wheel-cache-k2x_9wo5/wheels/8a/ac/64/f88c7ac84944a20272007d6cddfbefc44854b8bdf0b03cbb33
+Successfully built pyqlib
+Installing collected packages: pyqlib
+Successfully installed pyqlib-0.9.8.dev32
+
+[notice] A new release of pip is available: 25.2 -> 26.3
+[notice] To update, run: pip install --upgrade pip
+Saving image...
+Image saved, took 4.12s
+
+Built image im-Lri4OkNto4Yzf7ONNtTLNW in 16.11s
+
+
+Building image im-PHmcizXi2M6QI3kZoBwNa0
+
+=> Step 0: FROM base
+
+=> Step 1: RUN cp /root/qlib/quant/code/execution/qlib_audit_fixes.py /root/qlib/quant/code/execution/qlib_live_retrain.py /root/qlib/quant/code/execution/board_rules.py /root/qlib/quant/code/execution/board_execution.py /root/qlib/quant/code/production/paper_portfolio.py /root/qlib/quant/code/execution/portfolio_performance.py /root/qlib/quant/code/production/github_commit.py /root/qlib/quant/code/research/stage_ab/csi1000_tuner_core.py /root/qlib/quant/code/production/csi1000_production_config.py /root/qlib/quant/code/production/csi1000_mvp_contract.py /root/qlib/quant/code/production/chart_series.py /root/qlib/quant/code/production/signal_publication_gate.py /root/qlib/quant/code/production/paper_accounting.py /root/qlib/quant/code/execution/execution_limits.py /root/qlib/quant/code/production/provider_archive.py /root/qlib/quant/code/production/publication_journal.py /root/qlib/quant/code/production/artifact_io.py /root/qlib/quant/code/production/coordinate_contract.py /root/qlib/quant/code/production/paper_execution_context.py /root/qlib/quant/code/execution/order_quantity.py /root/qlib/quant/code/production/portfolio_diagnostics.py /root/qlib/quant/code/execution/st_history.py /root/qlib/quant/code/execution/liquidity_contract.py /root/qlib/quant/code/production/name_map_sync.py /root/
+Saving image...
+Image saved, took 1.89s
+
+Built image im-PHmcizXi2M6QI3kZoBwNa0 in 4.00s
+
+
+✓ Created objects.
+├── ✓ Uploaded 
+│   <checkout>/quant/code/research/regime_reselection/prelive_modal
+│   .py
+├── ✓ Uploaded <checkout>
+├── ✓ Created Function inspect_environment.
+└── ✓ Created Function replay_cell.
+Traceback (most recent call last):
+Function fu-Sgas3QTR7ZMms6LWMKCjTo failed during startup.
+Runner failed with exception: IndexError(1)
+  File "/pkg/modal/_runtime/task_lifecycle_manager.py", line 84, in handle_task_lifecycle_exception
+    yield
+  File "/pkg/modal/_container_entrypoint.py", line 362, in hydrate_function
+    service = get_function_service(function_def, _client)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pkg/modal/_container_entrypoint.py", line 340, in get_function_service
+    service = import_single_function_service(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pkg/modal/_runtime/user_code_imports.py", line 509, in import_single_function_service
+    module = importlib.import_module(function_def.module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/root/prelive_modal.py", line 13, in <module>
+    sys.path.insert(0, str(HERE.parents[1]))
+                           ~~~~~~~~~~~~^^^
+  File "/usr/local/lib/python3.11/pathlib.py", line 445, in __getitem__
+    raise IndexError(idx)
+IndexError: 1
+Traceback (most recent call last):
+  File "/pkg/modal/_runtime/task_lifecycle_manager.py", line 84, in handle_task_lifecycle_exception
+    yield
+  File "/pkg/modal/_container_entrypoint.py", line 362, in hydrate_function
+    service = get_function_service(function_def, _client)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pkg/modal/_container_entrypoint.py", line 340, in get_function_service
+    service = import_single_function_service(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pkg/modal/_runtime/user_code_imports.py", line 509, in import_single_function_service
+    module = importlib.import_module(function_def.module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/root/prelive_modal.py", line 13, in <module>
+    sys.path.insert(0, str(HERE.parents[1]))
+                           ~~~~~~~~~~~~^^^
+  File "/usr/local/lib/python3.11/pathlib.py", line 445, in __getitem__
+    raise IndexError(idx)
+IndexError: 1
+Function fu-Sgas3QTR7ZMms6LWMKCjTo failed during startup.
+Runner failed with exception: IndexError(1)
+Traceback (most recent call last):
+  File "/pkg/modal/_runtime/task_lifecycle_manager.py", line 84, in handle_task_lifecycle_exception
+    yield
+  File "/pkg/modal/_container_entrypoint.py", line 362, in hydrate_function
+    service = get_function_service(function_def, _client)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pkg/modal/_container_entrypoint.py", line 340, in get_function_service
+    service = import_single_function_service(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pkg/modal/_runtime/user_code_imports.py", line 509, in import_single_function_service
+    module = importlib.import_module(function_def.module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/root/prelive_modal.py", line 13, in <module>
+    sys.path.insert(0, str(HERE.parents[1]))
+                           ~~~~~~~~~~~~^^^
+  File "/usr/local/lib/python3.11/pathlib.py", line 445, in __getitem__
+    raise IndexError(idx)
+IndexError: 1
+Function fu-Sgas3QTR7ZMms6LWMKCjTo failed during startup.
+Runner failed with exception: IndexError(1)
+Traceback (most recent call last):
+  File "/pkg/modal/_runtime/task_lifecycle_manager.py", line 84, in handle_task_lifecycle_exception
+    yield
+  File "/pkg/modal/_container_entrypoint.py", line 362, in hydrate_function
+    service = get_function_service(function_def, _client)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pkg/modal/_container_entrypoint.py", line 340, in get_function_service
+    service = import_single_function_service(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pkg/modal/_runtime/user_code_imports.py", line 509, in import_single_function_service
+    module = importlib.import_module(function_def.module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/root/prelive_modal.py", line 13, in <module>
+    sys.path.insert(0, str(HERE.parents[1]))
+                           ~~~~~~~~~~~~^^^
+  File "/usr/local/lib/python3.11/pathlib.py", line 445, in __getitem__
+    raise IndexError(idx)
+IndexError: 1
+Function fu-Sgas3QTR7ZMms6LWMKCjTo failed during startup.
+Runner failed with exception: IndexError(1)
+Traceback (most recent call last):
+  File "/pkg/modal/_runtime/task_lifecycle_manager.py", line 84, in handle_task_lifecycle_exception
+    yield
+  File "/pkg/modal/_container_entrypoint.py", line 362, in hydrate_function
+    service = get_function_service(function_def, _client)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pkg/modal/_container_entrypoint.py", line 340, in get_function_service
+    service = import_single_function_service(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pkg/modal/_runtime/user_code_imports.py", line 509, in import_single_function_service
+    module = importlib.import_module(function_def.module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/root/prelive_modal.py", line 13, in <module>
+    sys.path.insert(0, str(HERE.parents[1]))
+                           ~~~~~~~~~~~~^^^
+  File "/usr/local/lib/python3.11/pathlib.py", line 445, in __getitem__
+    raise IndexError(idx)
+IndexError: 1
+Function fu-Sgas3QTR7ZMms6LWMKCjTo failed during startup.
+Runner failed with exception: IndexError(1)
+Traceback (most recent call last):
+Function fu-Sgas3QTR7ZMms6LWMKCjTo failed during startup.
+Runner failed with exception: IndexError(1)
+  File "/pkg/modal/_runtime/task_lifecycle_manager.py", line 84, in handle_task_lifecycle_exception
+    yield
+  File "/pkg/modal/_container_entrypoint.py", line 362, in hydrate_function
+    service = get_function_service(function_def, _client)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pkg/modal/_container_entrypoint.py", line 340, in get_function_service
+    service = import_single_function_service(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pkg/modal/_runtime/user_code_imports.py", line 509, in import_single_function_service
+    module = importlib.import_module(function_def.module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/root/prelive_modal.py", line 13, in <module>
+    sys.path.insert(0, str(HERE.parents[1]))
+                           ~~~~~~~~~~~~^^^
+  File "/usr/local/lib/python3.11/pathlib.py", line 445, in __getitem__
+    raise IndexError(idx)
+IndexError: 1
+Traceback (most recent call last):
+  File "/pkg/modal/_runtime/task_lifecycle_manager.py", line 84, in handle_task_lifecycle_exception
+    yield
+  File "/pkg/modal/_container_entrypoint.py", line 362, in hydrate_function
+    service = get_function_service(function_def, _client)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pkg/modal/_container_entrypoint.py", line 340, in get_function_service
+    service = import_single_function_service(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pkg/modal/_runtime/user_code_imports.py", line 509, in import_single_function_service
+    module = importlib.import_module(function_def.module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/root/prelive_modal.py", line 13, in <module>
+    sys.path.insert(0, str(HERE.parents[1]))
+                           ~~~~~~~~~~~~^^^
+  File "/usr/local/lib/python3.11/pathlib.py", line 445, in __getitem__
+    raise IndexError(idx)
+IndexError: 1
+Function fu-Sgas3QTR7ZMms6LWMKCjTo failed during startup.
+Runner failed with exception: IndexError(1)
+Traceback (most recent call last):
+Function fu-Sgas3QTR7ZMms6LWMKCjTo failed during startup.
+Runner failed with exception: IndexError(1)
+  File "/pkg/modal/_runtime/task_lifecycle_manager.py", line 84, in handle_task_lifecycle_exception
+    yield
+  File "/pkg/modal/_container_entrypoint.py", line 362, in hydrate_function
+    service = get_function_service(function_def, _client)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pkg/modal/_container_entrypoint.py", line 340, in get_function_service
+    service = import_single_function_service(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pkg/modal/_runtime/user_code_imports.py", line 509, in import_single_function_service
+    module = importlib.import_module(function_def.module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/root/prelive_modal.py", line 13, in <module>
+    sys.path.insert(0, str(HERE.parents[1]))
+                           ~~~~~~~~~~~~^^^
+  File "/usr/local/lib/python3.11/pathlib.py", line 445, in __getitem__
+    raise IndexError(idx)
+IndexError: 1
+Traceback (most recent call last):
+  File "/pkg/modal/_runtime/task_lifecycle_manager.py", line 84, in handle_task_lifecycle_exception
+    yield
+  File "/pkg/modal/_container_entrypoint.py", line 362, in hydrate_function
+    service = get_function_service(function_def, _client)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pkg/modal/_container_entrypoint.py", line 340, in get_function_service
+    service = import_single_function_service(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pkg/modal/_runtime/user_code_imports.py", line 509, in import_single_function_service
+    module = importlib.import_module(function_def.module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/root/prelive_modal.py", line 13, in <module>
+    sys.path.insert(0, str(HERE.parents[1]))
+                           ~~~~~~~~~~~~^^^
+  File "/usr/local/lib/python3.11/pathlib.py", line 445, in __getitem__
+    raise IndexError(idx)
+IndexError: 1
+Function fu-Sgas3QTR7ZMms6LWMKCjTo failed during startup.
+Runner failed with exception: IndexError(1)

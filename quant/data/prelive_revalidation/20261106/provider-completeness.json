@@ -1,0 +1,89 @@
+[
+  {
+    "input_id": "complete_reference",
+    "market": "csi300",
+    "names": 543,
+    "missing_fields": 0,
+    "missing_sample": [],
+    "status": "FILES_PRESENT"
+  },
+  {
+    "input_id": "complete_reference",
+    "market": "csi500",
+    "names": 1073,
+    "missing_fields": 0,
+    "missing_sample": [],
+    "status": "FILES_PRESENT"
+  },
+  {
+    "input_id": "complete_reference",
+    "market": "csi1000",
+    "names": 2242,
+    "missing_fields": 0,
+    "missing_sample": [],
+    "status": "FILES_PRESENT"
+  },
+  {
+    "input_id": "partial_recent_download",
+    "market": "csi300",
+    "names": 543,
+    "missing_fields": 2140,
+    "missing_sample": [
+      "SH600000/open",
+      "SH600000/close",
+      "SH600000/factor",
+      "SH600000/volume",
+      "SH600004/open",
+      "SH600004/close",
+      "SH600004/factor",
+      "SH600004/volume",
+      "SH600008/open",
+      "SH600008/close",
+      "SH600008/factor",
+      "SH600008/volume"
+    ],
+    "status": "INCOMPLETE_DO_NOT_RANK"
+  },
+  {
+    "input_id": "partial_recent_download",
+    "market": "csi500",
+    "names": 1073,
+    "missing_fields": 4232,
+    "missing_sample": [
+      "SH600004/open",
+      "SH600004/close",
+      "SH600004/factor",
+      "SH600004/volume",
+      "SH600006/open",
+      "SH600006/close",
+      "SH600006/factor",
+      "SH600006/volume",
+      "SH600007/open",
+      "SH600007/close",
+      "SH600007/factor",
+      "SH600007/volume"
+    ],
+    "status": "INCOMPLETE_DO_NOT_RANK"
+  },
+  {
+    "input_id": "partial_recent_download",
+    "market": "csi1000",
+    "names": 2242,
+    "missing_fields": 8900,
+    "missing_sample": [
+      "SH600006/open",
+      "SH600006/close",
+      "SH600006/factor",
+      "SH600006/volume",
+      "SH600007/open",
+      "SH600007/close",
+      "SH600007/factor",
+      "SH600007/volume",
+      "SH600012/open",
+      "SH600012/close",
+      "SH600012/factor",
+      "SH600012/volume"
+    ],
+    "status": "INCOMPLETE_DO_NOT_RANK"
+  }
+]

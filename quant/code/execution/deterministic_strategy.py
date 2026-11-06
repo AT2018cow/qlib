@@ -162,6 +162,9 @@ class DeterministicTopkDropoutStrategy(TopkDropoutStrategy):
             buy_amount = self.trade_exchange.round_amount_by_trade_unit(
                 buy_amount,
                 factor,
+                stock_id=code,
+                start_time=trade_start_time,
+                end_time=trade_end_time,
             )
             buy_order_list.append(
                 Order(

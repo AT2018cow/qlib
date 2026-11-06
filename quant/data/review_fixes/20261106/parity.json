@@ -1,0 +1,62 @@
+{
+  "status": "PASS",
+  "fresh_smoke_scenarios": 9,
+  "checks": [
+    {
+      "candidate": "csi1000_A_S01",
+      "cost_case": "extra_0bp",
+      "sessions": 21,
+      "nav_cash_fees_orders_and_parsed_ledgers_exact": true
+    },
+    {
+      "candidate": "csi1000_A_S01",
+      "cost_case": "extra_10bp",
+      "sessions": 21,
+      "nav_cash_fees_orders_and_parsed_ledgers_exact": true
+    },
+    {
+      "candidate": "csi1000_A_S01",
+      "cost_case": "extra_5bp",
+      "sessions": 21,
+      "nav_cash_fees_orders_and_parsed_ledgers_exact": true
+    },
+    {
+      "candidate": "csi300_B_S01",
+      "cost_case": "extra_0bp",
+      "sessions": 21,
+      "nav_cash_fees_orders_and_parsed_ledgers_exact": true
+    },
+    {
+      "candidate": "csi300_B_S01",
+      "cost_case": "extra_10bp",
+      "sessions": 21,
+      "nav_cash_fees_orders_and_parsed_ledgers_exact": true
+    },
+    {
+      "candidate": "csi300_B_S01",
+      "cost_case": "extra_5bp",
+      "sessions": 21,
+      "nav_cash_fees_orders_and_parsed_ledgers_exact": true
+    },
+    {
+      "candidate": "csi500_B_S02",
+      "cost_case": "extra_0bp",
+      "sessions": 21,
+      "nav_cash_fees_orders_and_parsed_ledgers_exact": true
+    },
+    {
+      "candidate": "csi500_B_S02",
+      "cost_case": "extra_10bp",
+      "sessions": 21,
+      "nav_cash_fees_orders_and_parsed_ledgers_exact": true
+    },
+    {
+      "candidate": "csi500_B_S02",
+      "cost_case": "extra_5bp",
+      "sessions": 21,
+      "nav_cash_fees_orders_and_parsed_ledgers_exact": true
+    }
+  ],
+  "archived_72_scenario_rankings_and_comparison_checks_unchanged": true,
+  "old_receipts_not_relabelled_as_version_2": true
+}

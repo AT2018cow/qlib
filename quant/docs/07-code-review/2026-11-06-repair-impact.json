@@ -1,0 +1,3108 @@
+{
+  "paper_reports": 6,
+  "paper_errors": [],
+  "quantity_errors": [],
+  "historical_reports": 380,
+  "historical_metric_errors": [],
+  "stress_checked": 380,
+  "stress_errors": [],
+  "stress_sharpe_changed": 380,
+  "max_absolute_stress_sharpe_delta": 0.07660283903821882,
+  "merged_live": {
+    "csi300": {
+      "latest_date": "2026-11-04",
+      "cumulative_return": -0.22206863,
+      "st_fallback_dates": [
+        "2026-11-03",
+        "2026-11-04"
+      ]
+    },
+    "csi500": {
+      "latest_date": "2026-11-04",
+      "cumulative_return": -0.13227409,
+      "st_fallback_dates": [
+        "2026-11-03",
+        "2026-11-04"
+      ]
+    },
+    "csi1000": {
+      "latest_date": "2026-11-04",
+      "cumulative_return": -0.20288220999999995,
+      "st_fallback_dates": [
+        "2026-11-03",
+        "2026-11-04"
+      ]
+    }
+  },
+  "corrected_stress_metrics": {
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/17dbfe28fea8d7a7_p00/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.373133,
+      "strategy_cagr": 0.199736,
+      "strategy_max_drawdown": -0.228833,
+      "sharpe": 0.888663,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/17dbfe28fea8d7a7_p04/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.279674,
+      "strategy_cagr": 0.15214,
+      "strategy_max_drawdown": -0.211684,
+      "sharpe": 0.737524,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/17dbfe28fea8d7a7_p06/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.303449,
+      "strategy_cagr": 0.164384,
+      "strategy_max_drawdown": -0.215114,
+      "sharpe": 0.761347,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/17dbfe28fea8d7a7_p10/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.448658,
+      "strategy_cagr": 0.237199,
+      "strategy_max_drawdown": -0.184187,
+      "sharpe": 1.053576,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/17dbfe28fea8d7a7_p15/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.218588,
+      "strategy_cagr": 0.120227,
+      "strategy_max_drawdown": -0.259197,
+      "sharpe": 0.590903,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/1db146eec9deda00_p00/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.323256,
+      "strategy_cagr": 0.174513,
+      "strategy_max_drawdown": -0.25301,
+      "sharpe": 0.780084,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/1db146eec9deda00_p04/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.432286,
+      "strategy_cagr": 0.22915,
+      "strategy_max_drawdown": -0.212592,
+      "sharpe": 0.976476,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/1db146eec9deda00_p06/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.60558,
+      "strategy_cagr": 0.312473,
+      "strategy_max_drawdown": -0.205746,
+      "sharpe": 1.228759,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/1db146eec9deda00_p10/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.399072,
+      "strategy_cagr": 0.2127,
+      "strategy_max_drawdown": -0.227703,
+      "sharpe": 0.914565,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/1db146eec9deda00_p15/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.537865,
+      "strategy_cagr": 0.280394,
+      "strategy_max_drawdown": -0.232053,
+      "sharpe": 1.131025,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/23b92de05cf36c82_p00/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.421133,
+      "strategy_cagr": 0.223644,
+      "strategy_max_drawdown": -0.267613,
+      "sharpe": 0.959234,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/23b92de05cf36c82_p04/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.511984,
+      "strategy_cagr": 0.267974,
+      "strategy_max_drawdown": -0.18236,
+      "sharpe": 1.158606,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/23b92de05cf36c82_p06/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.709892,
+      "strategy_cagr": 0.360785,
+      "strategy_max_drawdown": -0.199977,
+      "sharpe": 1.432878,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/23b92de05cf36c82_p10/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.556058,
+      "strategy_cagr": 0.289071,
+      "strategy_max_drawdown": -0.210284,
+      "sharpe": 1.147072,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/23b92de05cf36c82_p15/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.548115,
+      "strategy_cagr": 0.285287,
+      "strategy_max_drawdown": -0.231515,
+      "sharpe": 1.154124,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/40b872dfe452b649_p00/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.312813,
+      "strategy_cagr": 0.169181,
+      "strategy_max_drawdown": -0.299551,
+      "sharpe": 0.746951,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/40b872dfe452b649_p04/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.322139,
+      "strategy_cagr": 0.173943,
+      "strategy_max_drawdown": -0.207019,
+      "sharpe": 0.810852,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/40b872dfe452b649_p06/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.273595,
+      "strategy_cagr": 0.148993,
+      "strategy_max_drawdown": -0.235833,
+      "sharpe": 0.720624,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/40b872dfe452b649_p10/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.308226,
+      "strategy_cagr": 0.166833,
+      "strategy_max_drawdown": -0.273427,
+      "sharpe": 0.742875,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/40b872dfe452b649_p15/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.401854,
+      "strategy_cagr": 0.214083,
+      "strategy_max_drawdown": -0.26108,
+      "sharpe": 0.895467,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/4e908173705c76fe_p00/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.331347,
+      "strategy_cagr": 0.178632,
+      "strategy_max_drawdown": -0.304308,
+      "sharpe": 0.776152,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/4e908173705c76fe_p04/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.184856,
+      "strategy_cagr": 0.102312,
+      "strategy_max_drawdown": -0.244926,
+      "sharpe": 0.553642,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/4e908173705c76fe_p06/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.314908,
+      "strategy_cagr": 0.170252,
+      "strategy_max_drawdown": -0.200541,
+      "sharpe": 0.833691,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/4e908173705c76fe_p10/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.458616,
+      "strategy_cagr": 0.242076,
+      "strategy_max_drawdown": -0.211972,
+      "sharpe": 1.004997,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/4e908173705c76fe_p15/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.306568,
+      "strategy_cagr": 0.165983,
+      "strategy_max_drawdown": -0.294783,
+      "sharpe": 0.721509,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/59b93929bff1e736_p00/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.278829,
+      "strategy_cagr": 0.151703,
+      "strategy_max_drawdown": -0.320457,
+      "sharpe": 0.684319,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/59b93929bff1e736_p04/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.451083,
+      "strategy_cagr": 0.238388,
+      "strategy_max_drawdown": -0.222281,
+      "sharpe": 1.072545,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/59b93929bff1e736_p06/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.276262,
+      "strategy_cagr": 0.150374,
+      "strategy_max_drawdown": -0.246923,
+      "sharpe": 0.756951,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/59b93929bff1e736_p10/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.382283,
+      "strategy_cagr": 0.204321,
+      "strategy_max_drawdown": -0.266232,
+      "sharpe": 0.865032,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/59b93929bff1e736_p15/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.292652,
+      "strategy_cagr": 0.158835,
+      "strategy_max_drawdown": -0.311551,
+      "sharpe": 0.699606,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/a419047ab97ec027_p00/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.490694,
+      "strategy_cagr": 0.25769,
+      "strategy_max_drawdown": -0.257077,
+      "sharpe": 1.025919,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/a419047ab97ec027_p04/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.517304,
+      "strategy_cagr": 0.270534,
+      "strategy_max_drawdown": -0.168047,
+      "sharpe": 1.10142,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/a419047ab97ec027_p06/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.434231,
+      "strategy_cagr": 0.230108,
+      "strategy_max_drawdown": -0.241631,
+      "sharpe": 0.963108,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/a419047ab97ec027_p10/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.386876,
+      "strategy_cagr": 0.206617,
+      "strategy_max_drawdown": -0.260209,
+      "sharpe": 0.886197,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/a419047ab97ec027_p15/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.565895,
+      "strategy_cagr": 0.293744,
+      "strategy_max_drawdown": -0.228406,
+      "sharpe": 1.189656,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/b034ac4645fb45bb_p00/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.466521,
+      "strategy_cagr": 0.245937,
+      "strategy_max_drawdown": -0.191474,
+      "sharpe": 1.129895,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/b034ac4645fb45bb_p04/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.194537,
+      "strategy_cagr": 0.107476,
+      "strategy_max_drawdown": -0.195746,
+      "sharpe": 0.617762,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/b034ac4645fb45bb_p06/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.170599,
+      "strategy_cagr": 0.094676,
+      "strategy_max_drawdown": -0.257013,
+      "sharpe": 0.523895,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/b034ac4645fb45bb_p10/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.371553,
+      "strategy_cagr": 0.198943,
+      "strategy_max_drawdown": -0.256904,
+      "sharpe": 0.862123,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/b034ac4645fb45bb_p15/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.288627,
+      "strategy_cagr": 0.156762,
+      "strategy_max_drawdown": -0.285255,
+      "sharpe": 0.706054,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c04ca4163f77e6e2_p00/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.230359,
+      "strategy_cagr": 0.126428,
+      "strategy_max_drawdown": -0.286401,
+      "sharpe": 0.609748,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c04ca4163f77e6e2_p04/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.420551,
+      "strategy_cagr": 0.223356,
+      "strategy_max_drawdown": -0.20871,
+      "sharpe": 0.946406,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c04ca4163f77e6e2_p06/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.351856,
+      "strategy_cagr": 0.189025,
+      "strategy_max_drawdown": -0.242856,
+      "sharpe": 0.819878,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c04ca4163f77e6e2_p10/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.375096,
+      "strategy_cagr": 0.200721,
+      "strategy_max_drawdown": -0.230715,
+      "sharpe": 0.835771,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c04ca4163f77e6e2_p15/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.450056,
+      "strategy_cagr": 0.237884,
+      "strategy_max_drawdown": -0.206416,
+      "sharpe": 0.988844,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c98856b460aba687_p00/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.491921,
+      "strategy_cagr": 0.258284,
+      "strategy_max_drawdown": -0.261864,
+      "sharpe": 1.072529,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c98856b460aba687_p04/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.416281,
+      "strategy_cagr": 0.221243,
+      "strategy_max_drawdown": -0.258417,
+      "sharpe": 0.955315,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c98856b460aba687_p06/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.404204,
+      "strategy_cagr": 0.215252,
+      "strategy_max_drawdown": -0.228357,
+      "sharpe": 0.954075,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c98856b460aba687_p10/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.608636,
+      "strategy_cagr": 0.313907,
+      "strategy_max_drawdown": -0.21219,
+      "sharpe": 1.294226,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c98856b460aba687_p15/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.49242,
+      "strategy_cagr": 0.258526,
+      "strategy_max_drawdown": -0.262599,
+      "sharpe": 1.062982,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/e74b3bbe2278aa89_p00/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.342661,
+      "strategy_cagr": 0.184373,
+      "strategy_max_drawdown": -0.237912,
+      "sharpe": 0.82754,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/e74b3bbe2278aa89_p04/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.619701,
+      "strategy_cagr": 0.31909,
+      "strategy_max_drawdown": -0.167416,
+      "sharpe": 1.277899,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/e74b3bbe2278aa89_p06/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.472172,
+      "strategy_cagr": 0.248692,
+      "strategy_max_drawdown": -0.202894,
+      "sharpe": 1.035131,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/e74b3bbe2278aa89_p10/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.508505,
+      "strategy_cagr": 0.266298,
+      "strategy_max_drawdown": -0.25692,
+      "sharpe": 1.076083,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/e74b3bbe2278aa89_p15/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.484998,
+      "strategy_cagr": 0.254928,
+      "strategy_max_drawdown": -0.249533,
+      "sharpe": 1.048285,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_audit_evidence/winner_phase0_fixed/fixed_diagnostic_report.parquet": {
+      "strategy_total_return": 0.331347,
+      "strategy_cagr": 0.178632,
+      "strategy_max_drawdown": -0.304308,
+      "sharpe": 0.776152,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_stage_ab/csi1000_strategy_selection_evidence/pr64/981741b8c68e6542464cf0cb65311d991e4c3a15/controls/cells/23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785/fold1/fixed_report.parquet": {
+      "strategy_total_return": -0.089843,
+      "strategy_cagr": -0.720136,
+      "strategy_max_drawdown": -0.093711,
+      "sharpe": -3.348341,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_stage_ab/csi1000_strategy_selection_evidence/pr64/981741b8c68e6542464cf0cb65311d991e4c3a15/controls/cells/23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785/fold2/fixed_report.parquet": {
+      "strategy_total_return": 0.278423,
+      "strategy_cagr": 18.894665,
+      "strategy_max_drawdown": -0.048403,
+      "sharpe": 7.318921,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_stage_ab/csi1000_strategy_selection_evidence/pr64/981741b8c68e6542464cf0cb65311d991e4c3a15/controls/cells/23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785/fold3/fixed_report.parquet": {
+      "strategy_total_return": -0.016639,
+      "strategy_cagr": -0.217401,
+      "strategy_max_drawdown": -0.042415,
+      "sharpe": -1.242252,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_stage_ab/csi1000_strategy_selection_evidence/pr64/981741b8c68e6542464cf0cb65311d991e4c3a15/controls/cells/23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785/fold4/fixed_report.parquet": {
+      "strategy_total_return": 0.018445,
+      "strategy_cagr": 0.280492,
+      "strategy_max_drawdown": -0.03239,
+      "sharpe": 1.59339,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_stage_ab/csi1000_strategy_selection_evidence/pr64/981741b8c68e6542464cf0cb65311d991e4c3a15/controls/cells/4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2/fold1/fixed_report.parquet": {
+      "strategy_total_return": -0.061625,
+      "strategy_cagr": -0.577015,
+      "strategy_max_drawdown": -0.086754,
+      "sharpe": -2.27656,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_stage_ab/csi1000_strategy_selection_evidence/pr64/981741b8c68e6542464cf0cb65311d991e4c3a15/controls/cells/4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2/fold2/fixed_report.parquet": {
+      "strategy_total_return": 0.216675,
+      "strategy_cagr": 9.888753,
+      "strategy_max_drawdown": -0.051528,
+      "sharpe": 6.262696,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_stage_ab/csi1000_strategy_selection_evidence/pr64/981741b8c68e6542464cf0cb65311d991e4c3a15/controls/cells/4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2/fold3/fixed_report.parquet": {
+      "strategy_total_return": -0.010062,
+      "strategy_cagr": -0.137355,
+      "strategy_max_drawdown": -0.043023,
+      "sharpe": -0.827554,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round1_stage_ab/csi1000_strategy_selection_evidence/pr64/981741b8c68e6542464cf0cb65311d991e4c3a15/controls/cells/4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2/fold4/fixed_report.parquet": {
+      "strategy_total_return": -0.010065,
+      "strategy_cagr": -0.127888,
+      "strategy_max_drawdown": -0.042506,
+      "sharpe": -0.77897,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k10_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.515419,
+      "strategy_cagr": 0.269628,
+      "strategy_max_drawdown": -0.24677,
+      "sharpe": 1.020989,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k10_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.057994,
+      "strategy_cagr": 0.032905,
+      "strategy_max_drawdown": -0.337626,
+      "sharpe": 0.253499,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k10_d3/fixed_report.parquet": {
+      "strategy_total_return": -0.022573,
+      "strategy_cagr": -0.013026,
+      "strategy_max_drawdown": -0.383016,
+      "sharpe": 0.104315,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k20_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.363381,
+      "strategy_cagr": 0.194835,
+      "strategy_max_drawdown": -0.217536,
+      "sharpe": 0.91389,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.373133,
+      "strategy_cagr": 0.199736,
+      "strategy_max_drawdown": -0.228833,
+      "sharpe": 0.888663,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k20_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.076733,
+      "strategy_cagr": 0.043372,
+      "strategy_max_drawdown": -0.308877,
+      "sharpe": 0.293401,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k20_d5/fixed_report.parquet": {
+      "strategy_total_return": -0.031239,
+      "strategy_cagr": -0.018061,
+      "strategy_max_drawdown": -0.355676,
+      "sharpe": 0.058967,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k30_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.260625,
+      "strategy_cagr": 0.142259,
+      "strategy_max_drawdown": -0.182848,
+      "sharpe": 0.764571,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k30_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.265197,
+      "strategy_cagr": 0.144636,
+      "strategy_max_drawdown": -0.258908,
+      "sharpe": 0.714607,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k30_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.045409,
+      "strategy_cagr": 0.025831,
+      "strategy_max_drawdown": -0.290021,
+      "sharpe": 0.224133,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k50_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.466456,
+      "strategy_cagr": 0.245905,
+      "strategy_max_drawdown": -0.111716,
+      "sharpe": 1.273532,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k50_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.194538,
+      "strategy_cagr": 0.107476,
+      "strategy_max_drawdown": -0.249508,
+      "sharpe": 0.574631,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k10_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.823636,
+      "strategy_cagr": 0.412055,
+      "strategy_max_drawdown": -0.121691,
+      "sharpe": 1.427389,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k10_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.447081,
+      "strategy_cagr": 0.236426,
+      "strategy_max_drawdown": -0.223116,
+      "sharpe": 0.912333,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k10_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.112077,
+      "strategy_cagr": 0.062905,
+      "strategy_max_drawdown": -0.363908,
+      "sharpe": 0.351193,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k20_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.48785,
+      "strategy_cagr": 0.256312,
+      "strategy_max_drawdown": -0.105508,
+      "sharpe": 1.171982,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.448658,
+      "strategy_cagr": 0.237199,
+      "strategy_max_drawdown": -0.184187,
+      "sharpe": 1.053576,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k20_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.275274,
+      "strategy_cagr": 0.149863,
+      "strategy_max_drawdown": -0.207563,
+      "sharpe": 0.695908,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k20_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.143772,
+      "strategy_cagr": 0.080198,
+      "strategy_max_drawdown": -0.325032,
+      "sharpe": 0.416962,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k30_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.305753,
+      "strategy_cagr": 0.165566,
+      "strategy_max_drawdown": -0.108454,
+      "sharpe": 0.898621,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k30_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.390911,
+      "strategy_cagr": 0.208632,
+      "strategy_max_drawdown": -0.177562,
+      "sharpe": 0.955661,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k30_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.360285,
+      "strategy_cagr": 0.193276,
+      "strategy_max_drawdown": -0.214865,
+      "sharpe": 0.847133,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k50_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.138308,
+      "strategy_cagr": 0.077231,
+      "strategy_max_drawdown": -0.216277,
+      "sharpe": 0.526356,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k50_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.390466,
+      "strategy_cagr": 0.20841,
+      "strategy_max_drawdown": -0.180188,
+      "sharpe": 0.983609,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k10_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.553521,
+      "strategy_cagr": 0.287863,
+      "strategy_max_drawdown": -0.278736,
+      "sharpe": 1.107724,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k10_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.223745,
+      "strategy_cagr": 0.122947,
+      "strategy_max_drawdown": -0.314667,
+      "sharpe": 0.543718,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k10_d3/fixed_report.parquet": {
+      "strategy_total_return": -0.078135,
+      "strategy_cagr": -0.045647,
+      "strategy_max_drawdown": -0.451108,
+      "sharpe": 0.007551,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k20_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.395128,
+      "strategy_cagr": 0.210735,
+      "strategy_max_drawdown": -0.239441,
+      "sharpe": 0.973612,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.323256,
+      "strategy_cagr": 0.174513,
+      "strategy_max_drawdown": -0.25301,
+      "sharpe": 0.780084,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k20_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.22204,
+      "strategy_cagr": 0.122048,
+      "strategy_max_drawdown": -0.318553,
+      "sharpe": 0.570585,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k20_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.026045,
+      "strategy_cagr": 0.014875,
+      "strategy_max_drawdown": -0.362492,
+      "sharpe": 0.188942,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k30_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.414454,
+      "strategy_cagr": 0.220339,
+      "strategy_max_drawdown": -0.159914,
+      "sharpe": 1.095952,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k30_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.288405,
+      "strategy_cagr": 0.156647,
+      "strategy_max_drawdown": -0.273046,
+      "sharpe": 0.737605,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k30_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.146517,
+      "strategy_cagr": 0.081685,
+      "strategy_max_drawdown": -0.332139,
+      "sharpe": 0.434379,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k50_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.345969,
+      "strategy_cagr": 0.186048,
+      "strategy_max_drawdown": -0.205453,
+      "sharpe": 0.967553,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k50_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.294205,
+      "strategy_cagr": 0.159635,
+      "strategy_max_drawdown": -0.258458,
+      "sharpe": 0.767399,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k10_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.488992,
+      "strategy_cagr": 0.256865,
+      "strategy_max_drawdown": -0.282743,
+      "sharpe": 0.987399,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k10_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.090211,
+      "strategy_cagr": 0.050852,
+      "strategy_max_drawdown": -0.373062,
+      "sharpe": 0.31215,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k10_d3/fixed_report.parquet": {
+      "strategy_total_return": -0.049257,
+      "strategy_cagr": -0.028591,
+      "strategy_max_drawdown": -0.419426,
+      "sharpe": 0.069505,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k20_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.480932,
+      "strategy_cagr": 0.252954,
+      "strategy_max_drawdown": -0.208038,
+      "sharpe": 1.107511,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.399072,
+      "strategy_cagr": 0.2127,
+      "strategy_max_drawdown": -0.227703,
+      "sharpe": 0.914565,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k20_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.253282,
+      "strategy_cagr": 0.138433,
+      "strategy_max_drawdown": -0.297653,
+      "sharpe": 0.625314,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k20_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.049755,
+      "strategy_cagr": 0.028278,
+      "strategy_max_drawdown": -0.360715,
+      "sharpe": 0.236427,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k30_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.448411,
+      "strategy_cagr": 0.237078,
+      "strategy_max_drawdown": -0.207891,
+      "sharpe": 1.132608,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k30_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.327041,
+      "strategy_cagr": 0.176441,
+      "strategy_max_drawdown": -0.2447,
+      "sharpe": 0.807774,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k30_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.143065,
+      "strategy_cagr": 0.079814,
+      "strategy_max_drawdown": -0.312673,
+      "sharpe": 0.426907,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k50_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.332758,
+      "strategy_cagr": 0.179349,
+      "strategy_max_drawdown": -0.216853,
+      "sharpe": 0.920471,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k50_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.289081,
+      "strategy_cagr": 0.156996,
+      "strategy_max_drawdown": -0.245856,
+      "sharpe": 0.767414,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k10_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.964092,
+      "strategy_cagr": 0.473524,
+      "strategy_max_drawdown": -0.184437,
+      "sharpe": 1.609062,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k10_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.284593,
+      "strategy_cagr": 0.154681,
+      "strategy_max_drawdown": -0.330833,
+      "sharpe": 0.646386,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k10_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.070349,
+      "strategy_cagr": 0.039814,
+      "strategy_max_drawdown": -0.387567,
+      "sharpe": 0.277302,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k20_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.604264,
+      "strategy_cagr": 0.311855,
+      "strategy_max_drawdown": -0.196842,
+      "sharpe": 1.346173,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.421133,
+      "strategy_cagr": 0.223644,
+      "strategy_max_drawdown": -0.267613,
+      "sharpe": 0.959234,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k20_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.295893,
+      "strategy_cagr": 0.160503,
+      "strategy_max_drawdown": -0.324303,
+      "sharpe": 0.71475,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k20_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.014335,
+      "strategy_cagr": 0.008207,
+      "strategy_max_drawdown": -0.358107,
+      "sharpe": 0.163757,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k30_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.507551,
+      "strategy_cagr": 0.265838,
+      "strategy_max_drawdown": -0.162001,
+      "sharpe": 1.239719,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k30_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.373416,
+      "strategy_cagr": 0.199878,
+      "strategy_max_drawdown": -0.239283,
+      "sharpe": 0.919915,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k30_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.172883,
+      "strategy_cagr": 0.095902,
+      "strategy_max_drawdown": -0.311153,
+      "sharpe": 0.489932,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k50_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.335498,
+      "strategy_cagr": 0.18074,
+      "strategy_max_drawdown": -0.173123,
+      "sharpe": 1.032383,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k50_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.205402,
+      "strategy_cagr": 0.11325,
+      "strategy_max_drawdown": -0.243551,
+      "sharpe": 0.594706,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k10_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.809514,
+      "strategy_cagr": 0.405765,
+      "strategy_max_drawdown": -0.222008,
+      "sharpe": 1.419127,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k10_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.153548,
+      "strategy_cagr": 0.08549,
+      "strategy_max_drawdown": -0.415924,
+      "sharpe": 0.420658,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k10_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.001639,
+      "strategy_cagr": 0.000941,
+      "strategy_max_drawdown": -0.461083,
+      "sharpe": 0.160567,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k20_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.514525,
+      "strategy_cagr": 0.269198,
+      "strategy_max_drawdown": -0.19772,
+      "sharpe": 1.182277,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.556058,
+      "strategy_cagr": 0.289071,
+      "strategy_max_drawdown": -0.210284,
+      "sharpe": 1.147072,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k20_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.329124,
+      "strategy_cagr": 0.177501,
+      "strategy_max_drawdown": -0.294715,
+      "sharpe": 0.753175,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k20_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.024897,
+      "strategy_cagr": 0.014223,
+      "strategy_max_drawdown": -0.3911,
+      "sharpe": 0.187914,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k30_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.166202,
+      "strategy_cagr": 0.092312,
+      "strategy_max_drawdown": -0.185627,
+      "sharpe": 0.568798,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k30_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.40339,
+      "strategy_cagr": 0.214847,
+      "strategy_max_drawdown": -0.228066,
+      "sharpe": 0.951449,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k30_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.163492,
+      "strategy_cagr": 0.090854,
+      "strategy_max_drawdown": -0.348701,
+      "sharpe": 0.463063,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k50_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.37159,
+      "strategy_cagr": 0.198962,
+      "strategy_max_drawdown": -0.148397,
+      "sharpe": 1.096666,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k50_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.322807,
+      "strategy_cagr": 0.174284,
+      "strategy_max_drawdown": -0.242965,
+      "sharpe": 0.833416,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k10_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.394745,
+      "strategy_cagr": 0.210544,
+      "strategy_max_drawdown": -0.272443,
+      "sharpe": 0.864424,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k10_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.186407,
+      "strategy_cagr": 0.103141,
+      "strategy_max_drawdown": -0.392041,
+      "sharpe": 0.473527,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k10_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.155348,
+      "strategy_cagr": 0.086463,
+      "strategy_max_drawdown": -0.40121,
+      "sharpe": 0.414918,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k20_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.281541,
+      "strategy_cagr": 0.153104,
+      "strategy_max_drawdown": -0.225546,
+      "sharpe": 0.749437,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.312813,
+      "strategy_cagr": 0.169181,
+      "strategy_max_drawdown": -0.299551,
+      "sharpe": 0.746951,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k20_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.273842,
+      "strategy_cagr": 0.149121,
+      "strategy_max_drawdown": -0.32679,
+      "sharpe": 0.662909,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k20_d5/fixed_report.parquet": {
+      "strategy_total_return": -0.108569,
+      "strategy_cagr": -0.06387,
+      "strategy_max_drawdown": -0.450239,
+      "sharpe": -0.104378,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k30_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.2497,
+      "strategy_cagr": 0.136563,
+      "strategy_max_drawdown": -0.185252,
+      "sharpe": 0.75813,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k30_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.228045,
+      "strategy_cagr": 0.125211,
+      "strategy_max_drawdown": -0.29888,
+      "sharpe": 0.618368,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k30_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.02636,
+      "strategy_cagr": 0.015054,
+      "strategy_max_drawdown": -0.369874,
+      "sharpe": 0.181635,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k50_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.267147,
+      "strategy_cagr": 0.145649,
+      "strategy_max_drawdown": -0.206325,
+      "sharpe": 0.801622,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k50_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.171006,
+      "strategy_cagr": 0.094894,
+      "strategy_max_drawdown": -0.281318,
+      "sharpe": 0.521031,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k10_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.686739,
+      "strategy_cagr": 0.350173,
+      "strategy_max_drawdown": -0.150211,
+      "sharpe": 1.250195,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k10_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.113648,
+      "strategy_cagr": 0.063767,
+      "strategy_max_drawdown": -0.35744,
+      "sharpe": 0.355463,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k10_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.058711,
+      "strategy_cagr": 0.033306,
+      "strategy_max_drawdown": -0.398398,
+      "sharpe": 0.257736,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k20_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.441138,
+      "strategy_cagr": 0.233507,
+      "strategy_max_drawdown": -0.192676,
+      "sharpe": 1.033735,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.308226,
+      "strategy_cagr": 0.166833,
+      "strategy_max_drawdown": -0.273427,
+      "sharpe": 0.742875,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k20_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.173139,
+      "strategy_cagr": 0.096039,
+      "strategy_max_drawdown": -0.324427,
+      "sharpe": 0.478699,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k20_d5/fixed_report.parquet": {
+      "strategy_total_return": -0.026543,
+      "strategy_cagr": -0.01533,
+      "strategy_max_drawdown": -0.436116,
+      "sharpe": 0.087413,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k30_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.404833,
+      "strategy_cagr": 0.215564,
+      "strategy_max_drawdown": -0.147501,
+      "sharpe": 1.070055,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k30_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.28793,
+      "strategy_cagr": 0.156402,
+      "strategy_max_drawdown": -0.259934,
+      "sharpe": 0.734108,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k30_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.132317,
+      "strategy_cagr": 0.073972,
+      "strategy_max_drawdown": -0.335353,
+      "sharpe": 0.405821,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k50_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.283638,
+      "strategy_cagr": 0.154188,
+      "strategy_max_drawdown": -0.191787,
+      "sharpe": 0.846342,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k50_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.287856,
+      "strategy_cagr": 0.156364,
+      "strategy_max_drawdown": -0.252881,
+      "sharpe": 0.75258,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k10_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.38423,
+      "strategy_cagr": 0.205294,
+      "strategy_max_drawdown": -0.29423,
+      "sharpe": 0.833561,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k10_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.08721,
+      "strategy_cagr": 0.04919,
+      "strategy_max_drawdown": -0.398465,
+      "sharpe": 0.306375,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k10_d3/fixed_report.parquet": {
+      "strategy_total_return": -0.033154,
+      "strategy_cagr": -0.019176,
+      "strategy_max_drawdown": -0.419781,
+      "sharpe": 0.108483,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k20_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.392344,
+      "strategy_cagr": 0.209347,
+      "strategy_max_drawdown": -0.22558,
+      "sharpe": 0.993278,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.331347,
+      "strategy_cagr": 0.178632,
+      "strategy_max_drawdown": -0.304308,
+      "sharpe": 0.776152,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k20_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.159622,
+      "strategy_cagr": 0.088769,
+      "strategy_max_drawdown": -0.334669,
+      "sharpe": 0.448118,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k20_d5/fixed_report.parquet": {
+      "strategy_total_return": -0.100045,
+      "strategy_cagr": -0.05874,
+      "strategy_max_drawdown": -0.453024,
+      "sharpe": -0.057576,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k30_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.329352,
+      "strategy_cagr": 0.177617,
+      "strategy_max_drawdown": -0.211541,
+      "sharpe": 0.933848,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k30_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.184449,
+      "strategy_cagr": 0.102095,
+      "strategy_max_drawdown": -0.313351,
+      "sharpe": 0.518055,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k30_d5/fixed_report.parquet": {
+      "strategy_total_return": -0.015626,
+      "strategy_cagr": -0.009003,
+      "strategy_max_drawdown": -0.396758,
+      "sharpe": 0.092831,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k50_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.284823,
+      "strategy_cagr": 0.1548,
+      "strategy_max_drawdown": -0.216075,
+      "sharpe": 0.835126,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k50_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.173855,
+      "strategy_cagr": 0.096423,
+      "strategy_max_drawdown": -0.306544,
+      "sharpe": 0.515038,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k10_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.426359,
+      "strategy_cagr": 0.226226,
+      "strategy_max_drawdown": -0.277944,
+      "sharpe": 0.875266,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k10_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.109604,
+      "strategy_cagr": 0.061547,
+      "strategy_max_drawdown": -0.329043,
+      "sharpe": 0.347989,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k10_d3/fixed_report.parquet": {
+      "strategy_total_return": -0.000494,
+      "strategy_cagr": -0.000284,
+      "strategy_max_drawdown": -0.466897,
+      "sharpe": 0.165539,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k20_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.581489,
+      "strategy_cagr": 0.301127,
+      "strategy_max_drawdown": -0.154385,
+      "sharpe": 1.316696,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.458616,
+      "strategy_cagr": 0.242076,
+      "strategy_max_drawdown": -0.211972,
+      "sharpe": 1.004997,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k20_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.307558,
+      "strategy_cagr": 0.16649,
+      "strategy_max_drawdown": -0.340001,
+      "sharpe": 0.707991,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k20_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.116682,
+      "strategy_cagr": 0.06543,
+      "strategy_max_drawdown": -0.361125,
+      "sharpe": 0.370293,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k30_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.478913,
+      "strategy_cagr": 0.251972,
+      "strategy_max_drawdown": -0.149982,
+      "sharpe": 1.236412,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k30_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.380049,
+      "strategy_cagr": 0.203202,
+      "strategy_max_drawdown": -0.256373,
+      "sharpe": 0.881091,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k30_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.263095,
+      "strategy_cagr": 0.143543,
+      "strategy_max_drawdown": -0.310163,
+      "sharpe": 0.663341,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k50_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.405625,
+      "strategy_cagr": 0.215958,
+      "strategy_max_drawdown": -0.173385,
+      "sharpe": 1.101697,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k50_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.270653,
+      "strategy_cagr": 0.147468,
+      "strategy_max_drawdown": -0.257463,
+      "sharpe": 0.731588,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k10_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.42155,
+      "strategy_cagr": 0.223851,
+      "strategy_max_drawdown": -0.282609,
+      "sharpe": 0.87673,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k10_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.227343,
+      "strategy_cagr": 0.124842,
+      "strategy_max_drawdown": -0.346588,
+      "sharpe": 0.534457,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k10_d3/fixed_report.parquet": {
+      "strategy_total_return": -0.006904,
+      "strategy_cagr": -0.003971,
+      "strategy_max_drawdown": -0.434952,
+      "sharpe": 0.152179,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k20_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.365181,
+      "strategy_cagr": 0.195741,
+      "strategy_max_drawdown": -0.229561,
+      "sharpe": 0.902334,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.278829,
+      "strategy_cagr": 0.151703,
+      "strategy_max_drawdown": -0.320457,
+      "sharpe": 0.684319,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k20_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.175045,
+      "strategy_cagr": 0.097061,
+      "strategy_max_drawdown": -0.344035,
+      "sharpe": 0.474448,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k20_d5/fixed_report.parquet": {
+      "strategy_total_return": -0.045746,
+      "strategy_cagr": -0.026532,
+      "strategy_max_drawdown": -0.453038,
+      "sharpe": 0.051621,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k30_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.180736,
+      "strategy_cagr": 0.10011,
+      "strategy_max_drawdown": -0.184489,
+      "sharpe": 0.590747,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k30_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.209279,
+      "strategy_cagr": 0.115304,
+      "strategy_max_drawdown": -0.309742,
+      "sharpe": 0.563549,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k30_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.138584,
+      "strategy_cagr": 0.077381,
+      "strategy_max_drawdown": -0.36456,
+      "sharpe": 0.415954,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k50_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.263434,
+      "strategy_cagr": 0.14372,
+      "strategy_max_drawdown": -0.221588,
+      "sharpe": 0.765099,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k50_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.230623,
+      "strategy_cagr": 0.126567,
+      "strategy_max_drawdown": -0.286581,
+      "sharpe": 0.648831,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k10_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.399189,
+      "strategy_cagr": 0.212758,
+      "strategy_max_drawdown": -0.261178,
+      "sharpe": 0.833476,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k10_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.187899,
+      "strategy_cagr": 0.103937,
+      "strategy_max_drawdown": -0.332689,
+      "sharpe": 0.475747,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k10_d3/fixed_report.parquet": {
+      "strategy_total_return": -0.160423,
+      "strategy_cagr": -0.09554,
+      "strategy_max_drawdown": -0.484407,
+      "sharpe": -0.124274,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k20_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.375304,
+      "strategy_cagr": 0.200825,
+      "strategy_max_drawdown": -0.197763,
+      "sharpe": 0.948766,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.382283,
+      "strategy_cagr": 0.204321,
+      "strategy_max_drawdown": -0.266232,
+      "sharpe": 0.865032,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k20_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.323839,
+      "strategy_cagr": 0.17481,
+      "strategy_max_drawdown": -0.256766,
+      "sharpe": 0.785261,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k20_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.053899,
+      "strategy_cagr": 0.030607,
+      "strategy_max_drawdown": -0.357323,
+      "sharpe": 0.243437,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k30_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.354706,
+      "strategy_cagr": 0.190463,
+      "strategy_max_drawdown": -0.169604,
+      "sharpe": 0.989032,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k30_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.317542,
+      "strategy_cagr": 0.171597,
+      "strategy_max_drawdown": -0.226979,
+      "sharpe": 0.819032,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k30_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.20191,
+      "strategy_cagr": 0.111396,
+      "strategy_max_drawdown": -0.324144,
+      "sharpe": 0.548487,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k50_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.282917,
+      "strategy_cagr": 0.153815,
+      "strategy_max_drawdown": -0.19273,
+      "sharpe": 0.825612,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k50_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.249346,
+      "strategy_cagr": 0.136379,
+      "strategy_max_drawdown": -0.261362,
+      "sharpe": 0.685726,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k10_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.724425,
+      "strategy_cagr": 0.367415,
+      "strategy_max_drawdown": -0.242057,
+      "sharpe": 1.276422,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k10_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.282683,
+      "strategy_cagr": 0.153694,
+      "strategy_max_drawdown": -0.363885,
+      "sharpe": 0.617433,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k10_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.102793,
+      "strategy_cagr": 0.0578,
+      "strategy_max_drawdown": -0.399477,
+      "sharpe": 0.33189,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k20_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.486651,
+      "strategy_cagr": 0.25573,
+      "strategy_max_drawdown": -0.202509,
+      "sharpe": 1.11705,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.490694,
+      "strategy_cagr": 0.25769,
+      "strategy_max_drawdown": -0.257077,
+      "sharpe": 1.025919,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k20_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.443972,
+      "strategy_cagr": 0.234899,
+      "strategy_max_drawdown": -0.280567,
+      "sharpe": 0.919704,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k20_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.193737,
+      "strategy_cagr": 0.10705,
+      "strategy_max_drawdown": -0.370884,
+      "sharpe": 0.495234,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k30_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.364064,
+      "strategy_cagr": 0.195179,
+      "strategy_max_drawdown": -0.150256,
+      "sharpe": 0.99725,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k30_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.503766,
+      "strategy_cagr": 0.264012,
+      "strategy_max_drawdown": -0.249331,
+      "sharpe": 1.092859,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k30_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.281833,
+      "strategy_cagr": 0.153256,
+      "strategy_max_drawdown": -0.326287,
+      "sharpe": 0.675588,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k50_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.359517,
+      "strategy_cagr": 0.192889,
+      "strategy_max_drawdown": -0.189229,
+      "sharpe": 0.982028,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k50_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.319559,
+      "strategy_cagr": 0.172627,
+      "strategy_max_drawdown": -0.26599,
+      "sharpe": 0.810159,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k10_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.750857,
+      "strategy_cagr": 0.379413,
+      "strategy_max_drawdown": -0.259045,
+      "sharpe": 1.308224,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k10_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.160427,
+      "strategy_cagr": 0.089203,
+      "strategy_max_drawdown": -0.379809,
+      "sharpe": 0.431259,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k10_d3/fixed_report.parquet": {
+      "strategy_total_return": -0.085606,
+      "strategy_cagr": -0.050096,
+      "strategy_max_drawdown": -0.479315,
+      "sharpe": 0.01084,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k20_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.507406,
+      "strategy_cagr": 0.265768,
+      "strategy_max_drawdown": -0.156013,
+      "sharpe": 1.209754,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.386876,
+      "strategy_cagr": 0.206617,
+      "strategy_max_drawdown": -0.260209,
+      "sharpe": 0.886197,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k20_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.319947,
+      "strategy_cagr": 0.172825,
+      "strategy_max_drawdown": -0.307881,
+      "sharpe": 0.739146,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k20_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.021912,
+      "strategy_cagr": 0.012526,
+      "strategy_max_drawdown": -0.391617,
+      "sharpe": 0.181434,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k30_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.277175,
+      "strategy_cagr": 0.150847,
+      "strategy_max_drawdown": -0.170923,
+      "sharpe": 0.828964,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k30_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.323086,
+      "strategy_cagr": 0.174426,
+      "strategy_max_drawdown": -0.245149,
+      "sharpe": 0.801073,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k30_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.180132,
+      "strategy_cagr": 0.099786,
+      "strategy_max_drawdown": -0.329245,
+      "sharpe": 0.500737,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k50_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.327681,
+      "strategy_cagr": 0.176767,
+      "strategy_max_drawdown": -0.171606,
+      "sharpe": 0.942133,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k50_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.279294,
+      "strategy_cagr": 0.151943,
+      "strategy_max_drawdown": -0.221241,
+      "sharpe": 0.778502,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k10_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.916942,
+      "strategy_cagr": 0.453104,
+      "strategy_max_drawdown": -0.248084,
+      "sharpe": 1.526069,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k10_d2/fixed_report.parquet": {
+      "strategy_total_return": -0.077605,
+      "strategy_cagr": -0.045331,
+      "strategy_max_drawdown": -0.438519,
+      "sharpe": -0.005726,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k10_d3/fixed_report.parquet": {
+      "strategy_total_return": -0.116631,
+      "strategy_cagr": -0.068741,
+      "strategy_max_drawdown": -0.40117,
+      "sharpe": -0.12965,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k20_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.584255,
+      "strategy_cagr": 0.302434,
+      "strategy_max_drawdown": -0.184831,
+      "sharpe": 1.312612,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.466521,
+      "strategy_cagr": 0.245937,
+      "strategy_max_drawdown": -0.191474,
+      "sharpe": 1.129895,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k20_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.176484,
+      "strategy_cagr": 0.097833,
+      "strategy_max_drawdown": -0.295478,
+      "sharpe": 0.514536,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k20_d5/fixed_report.parquet": {
+      "strategy_total_return": -0.037973,
+      "strategy_cagr": -0.021987,
+      "strategy_max_drawdown": -0.374666,
+      "sharpe": 0.038916,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k30_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.3771,
+      "strategy_cagr": 0.201725,
+      "strategy_max_drawdown": -0.187632,
+      "sharpe": 1.030341,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k30_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.307575,
+      "strategy_cagr": 0.1665,
+      "strategy_max_drawdown": -0.243151,
+      "sharpe": 0.831219,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k30_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.092257,
+      "strategy_cagr": 0.051984,
+      "strategy_max_drawdown": -0.31061,
+      "sharpe": 0.332614,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k50_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.31846,
+      "strategy_cagr": 0.172066,
+      "strategy_max_drawdown": -0.136756,
+      "sharpe": 1.038416,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k50_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.159066,
+      "strategy_cagr": 0.088469,
+      "strategy_max_drawdown": -0.297444,
+      "sharpe": 0.505898,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k10_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.478208,
+      "strategy_cagr": 0.25163,
+      "strategy_max_drawdown": -0.215005,
+      "sharpe": 1.006239,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k10_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.09162,
+      "strategy_cagr": 0.051632,
+      "strategy_max_drawdown": -0.376174,
+      "sharpe": 0.314498,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k10_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.044949,
+      "strategy_cagr": 0.025571,
+      "strategy_max_drawdown": -0.43588,
+      "sharpe": 0.234729,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k20_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.370555,
+      "strategy_cagr": 0.198442,
+      "strategy_max_drawdown": -0.197512,
+      "sharpe": 0.937452,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.371553,
+      "strategy_cagr": 0.198943,
+      "strategy_max_drawdown": -0.256904,
+      "sharpe": 0.862123,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k20_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.197115,
+      "strategy_cagr": 0.108848,
+      "strategy_max_drawdown": -0.309478,
+      "sharpe": 0.529341,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k20_d5/fixed_report.parquet": {
+      "strategy_total_return": -0.018555,
+      "strategy_cagr": -0.010698,
+      "strategy_max_drawdown": -0.407549,
+      "sharpe": 0.098106,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k30_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.200712,
+      "strategy_cagr": 0.11076,
+      "strategy_max_drawdown": -0.205285,
+      "sharpe": 0.732215,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k30_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.241758,
+      "strategy_cagr": 0.13241,
+      "strategy_max_drawdown": -0.258102,
+      "sharpe": 0.645078,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k30_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.170942,
+      "strategy_cagr": 0.09486,
+      "strategy_max_drawdown": -0.306683,
+      "sharpe": 0.487272,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k50_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.391814,
+      "strategy_cagr": 0.209083,
+      "strategy_max_drawdown": -0.168971,
+      "sharpe": 1.095918,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k50_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.280119,
+      "strategy_cagr": 0.15237,
+      "strategy_max_drawdown": -0.246981,
+      "sharpe": 0.745991,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k10_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.28097,
+      "strategy_cagr": 0.152809,
+      "strategy_max_drawdown": -0.253157,
+      "sharpe": 0.665494,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k10_d2/fixed_report.parquet": {
+      "strategy_total_return": -2e-06,
+      "strategy_cagr": -1e-06,
+      "strategy_max_drawdown": -0.371645,
+      "sharpe": 0.143508,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k10_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.139202,
+      "strategy_cagr": 0.077717,
+      "strategy_max_drawdown": -0.34841,
+      "sharpe": 0.396702,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k20_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.3802,
+      "strategy_cagr": 0.203278,
+      "strategy_max_drawdown": -0.186523,
+      "sharpe": 0.899949,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.230359,
+      "strategy_cagr": 0.126428,
+      "strategy_max_drawdown": -0.286401,
+      "sharpe": 0.609748,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k20_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.247013,
+      "strategy_cagr": 0.135159,
+      "strategy_max_drawdown": -0.281678,
+      "sharpe": 0.638741,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k20_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.056296,
+      "strategy_cagr": 0.031952,
+      "strategy_max_drawdown": -0.367959,
+      "sharpe": 0.249078,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k30_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.356213,
+      "strategy_cagr": 0.191224,
+      "strategy_max_drawdown": -0.134845,
+      "sharpe": 0.946174,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k30_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.206053,
+      "strategy_cagr": 0.113595,
+      "strategy_max_drawdown": -0.280148,
+      "sharpe": 0.580237,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k30_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.194853,
+      "strategy_cagr": 0.107644,
+      "strategy_max_drawdown": -0.304345,
+      "sharpe": 0.544758,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k50_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.327653,
+      "strategy_cagr": 0.176752,
+      "strategy_max_drawdown": -0.18189,
+      "sharpe": 0.897823,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k50_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.235091,
+      "strategy_cagr": 0.128914,
+      "strategy_max_drawdown": -0.276019,
+      "sharpe": 0.655663,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k10_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.292834,
+      "strategy_cagr": 0.158929,
+      "strategy_max_drawdown": -0.243483,
+      "sharpe": 0.6663,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k10_d2/fixed_report.parquet": {
+      "strategy_total_return": -0.09095,
+      "strategy_cagr": -0.053288,
+      "strategy_max_drawdown": -0.4695,
+      "sharpe": -0.006612,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k10_d3/fixed_report.parquet": {
+      "strategy_total_return": -0.114717,
+      "strategy_cagr": -0.067583,
+      "strategy_max_drawdown": -0.470115,
+      "sharpe": -0.035266,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k20_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.251541,
+      "strategy_cagr": 0.137525,
+      "strategy_max_drawdown": -0.208926,
+      "sharpe": 0.660975,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.375096,
+      "strategy_cagr": 0.200721,
+      "strategy_max_drawdown": -0.230715,
+      "sharpe": 0.835771,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k20_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.159093,
+      "strategy_cagr": 0.088484,
+      "strategy_max_drawdown": -0.302913,
+      "sharpe": 0.447744,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k20_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.013696,
+      "strategy_cagr": 0.007842,
+      "strategy_max_drawdown": -0.334717,
+      "sharpe": 0.167978,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k30_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.305697,
+      "strategy_cagr": 0.165537,
+      "strategy_max_drawdown": -0.161679,
+      "sharpe": 0.845701,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k30_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.299114,
+      "strategy_cagr": 0.162159,
+      "strategy_max_drawdown": -0.240305,
+      "sharpe": 0.737661,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k30_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.202447,
+      "strategy_cagr": 0.111682,
+      "strategy_max_drawdown": -0.238043,
+      "sharpe": 0.548775,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k50_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.385535,
+      "strategy_cagr": 0.205947,
+      "strategy_max_drawdown": -0.175795,
+      "sharpe": 0.996514,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k50_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.325867,
+      "strategy_cagr": 0.175843,
+      "strategy_max_drawdown": -0.202306,
+      "sharpe": 0.824365,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k10_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.950506,
+      "strategy_cagr": 0.467662,
+      "strategy_max_drawdown": -0.226071,
+      "sharpe": 1.554235,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k10_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.245944,
+      "strategy_cagr": 0.134601,
+      "strategy_max_drawdown": -0.349521,
+      "sharpe": 0.580528,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k10_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.077502,
+      "strategy_cagr": 0.0438,
+      "strategy_max_drawdown": -0.421904,
+      "sharpe": 0.290045,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k20_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.512372,
+      "strategy_cagr": 0.268161,
+      "strategy_max_drawdown": -0.236739,
+      "sharpe": 1.14568,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.491921,
+      "strategy_cagr": 0.258284,
+      "strategy_max_drawdown": -0.261864,
+      "sharpe": 1.072529,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k20_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.22256,
+      "strategy_cagr": 0.122322,
+      "strategy_max_drawdown": -0.276436,
+      "sharpe": 0.593629,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k20_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.037075,
+      "strategy_cagr": 0.021126,
+      "strategy_max_drawdown": -0.342188,
+      "sharpe": 0.207518,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k30_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.377035,
+      "strategy_cagr": 0.201693,
+      "strategy_max_drawdown": -0.202452,
+      "sharpe": 0.969101,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k30_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.249251,
+      "strategy_cagr": 0.136329,
+      "strategy_max_drawdown": -0.275821,
+      "sharpe": 0.672302,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k30_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.169732,
+      "strategy_cagr": 0.09421,
+      "strategy_max_drawdown": -0.280121,
+      "sharpe": 0.497792,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k50_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.430601,
+      "strategy_cagr": 0.228319,
+      "strategy_max_drawdown": -0.213919,
+      "sharpe": 1.112646,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k50_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.25337,
+      "strategy_cagr": 0.138479,
+      "strategy_max_drawdown": -0.247403,
+      "sharpe": 0.708313,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k10_d1/fixed_report.parquet": {
+      "strategy_total_return": 1.165702,
+      "strategy_cagr": 0.558575,
+      "strategy_max_drawdown": -0.206543,
+      "sharpe": 1.773155,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k10_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.340538,
+      "strategy_cagr": 0.183298,
+      "strategy_max_drawdown": -0.303274,
+      "sharpe": 0.742145,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k10_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.070608,
+      "strategy_cagr": 0.039959,
+      "strategy_max_drawdown": -0.397179,
+      "sharpe": 0.277307,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k20_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.746795,
+      "strategy_cagr": 0.377574,
+      "strategy_max_drawdown": -0.14605,
+      "sharpe": 1.535179,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.608636,
+      "strategy_cagr": 0.313907,
+      "strategy_max_drawdown": -0.21219,
+      "sharpe": 1.294226,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k20_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.283399,
+      "strategy_cagr": 0.154065,
+      "strategy_max_drawdown": -0.249863,
+      "sharpe": 0.707855,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k20_d5/fixed_report.parquet": {
+      "strategy_total_return": -0.059107,
+      "strategy_cagr": -0.034383,
+      "strategy_max_drawdown": -0.384118,
+      "sharpe": -0.001232,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k30_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.479048,
+      "strategy_cagr": 0.252038,
+      "strategy_max_drawdown": -0.175283,
+      "sharpe": 1.16657,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k30_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.384253,
+      "strategy_cagr": 0.205306,
+      "strategy_max_drawdown": -0.210753,
+      "sharpe": 0.948867,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k30_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.143302,
+      "strategy_cagr": 0.079943,
+      "strategy_max_drawdown": -0.307053,
+      "sharpe": 0.441501,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k50_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.325124,
+      "strategy_cagr": 0.175465,
+      "strategy_max_drawdown": -0.221903,
+      "sharpe": 0.91809,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k50_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.285564,
+      "strategy_cagr": 0.155182,
+      "strategy_max_drawdown": -0.258448,
+      "sharpe": 0.770203,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k10_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.513201,
+      "strategy_cagr": 0.26856,
+      "strategy_max_drawdown": -0.261325,
+      "sharpe": 1.015487,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k10_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.046361,
+      "strategy_cagr": 0.026367,
+      "strategy_max_drawdown": -0.361005,
+      "sharpe": 0.232293,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k10_d3/fixed_report.parquet": {
+      "strategy_total_return": -0.024825,
+      "strategy_cagr": -0.014333,
+      "strategy_max_drawdown": -0.429974,
+      "sharpe": 0.108389,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k20_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.504796,
+      "strategy_cagr": 0.264509,
+      "strategy_max_drawdown": -0.168328,
+      "sharpe": 1.192048,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.342661,
+      "strategy_cagr": 0.184373,
+      "strategy_max_drawdown": -0.237912,
+      "sharpe": 0.82754,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k20_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.099317,
+      "strategy_cagr": 0.055884,
+      "strategy_max_drawdown": -0.327879,
+      "sharpe": 0.337545,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k20_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.00546,
+      "strategy_cagr": 0.003132,
+      "strategy_max_drawdown": -0.38926,
+      "sharpe": 0.148426,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k30_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.424158,
+      "strategy_cagr": 0.225139,
+      "strategy_max_drawdown": -0.136629,
+      "sharpe": 1.172206,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k30_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.236173,
+      "strategy_cagr": 0.129482,
+      "strategy_max_drawdown": -0.272663,
+      "sharpe": 0.632023,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k30_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.142213,
+      "strategy_cagr": 0.079352,
+      "strategy_max_drawdown": -0.329741,
+      "sharpe": 0.426331,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k50_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.352967,
+      "strategy_cagr": 0.189586,
+      "strategy_max_drawdown": -0.181789,
+      "sharpe": 1.013048,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k50_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.295188,
+      "strategy_cagr": 0.16014,
+      "strategy_max_drawdown": -0.260344,
+      "sharpe": 0.773667,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k10_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.971803,
+      "strategy_cagr": 0.476843,
+      "strategy_max_drawdown": -0.222511,
+      "sharpe": 1.623195,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k10_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.213124,
+      "strategy_cagr": 0.117339,
+      "strategy_max_drawdown": -0.362408,
+      "sharpe": 0.520443,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k10_d3/fixed_report.parquet": {
+      "strategy_total_return": -0.03249,
+      "strategy_cagr": -0.018789,
+      "strategy_max_drawdown": -0.453174,
+      "sharpe": 0.100918,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k20_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.619578,
+      "strategy_cagr": 0.319033,
+      "strategy_max_drawdown": -0.218564,
+      "sharpe": 1.367888,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.508505,
+      "strategy_cagr": 0.266298,
+      "strategy_max_drawdown": -0.25692,
+      "sharpe": 1.076083,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k20_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.342624,
+      "strategy_cagr": 0.184355,
+      "strategy_max_drawdown": -0.308516,
+      "sharpe": 0.772815,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k20_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.070451,
+      "strategy_cagr": 0.039872,
+      "strategy_max_drawdown": -0.382882,
+      "sharpe": 0.276406,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k30_d1/fixed_report.parquet": {
+      "strategy_total_return": 0.417096,
+      "strategy_cagr": 0.221647,
+      "strategy_max_drawdown": -0.179981,
+      "sharpe": 1.131585,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k30_d3/fixed_report.parquet": {
+      "strategy_total_return": 0.29113,
+      "strategy_cagr": 0.158052,
+      "strategy_max_drawdown": -0.261349,
+      "sharpe": 0.739681,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k30_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.2053,
+      "strategy_cagr": 0.113195,
+      "strategy_max_drawdown": -0.291991,
+      "sharpe": 0.56528,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k50_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.48252,
+      "strategy_cagr": 0.253725,
+      "strategy_max_drawdown": -0.170276,
+      "sharpe": 1.266765,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k50_d5/fixed_report.parquet": {
+      "strategy_total_return": 0.276898,
+      "strategy_cagr": 0.150703,
+      "strategy_max_drawdown": -0.226796,
+      "sharpe": 0.76835,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/phase/165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf/phase0/report.parquet": {
+      "strategy_total_return": 0.453056,
+      "strategy_cagr": 0.239355,
+      "strategy_max_drawdown": -0.209891,
+      "sharpe": 0.985539,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/phase/165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf/phase10/report.parquet": {
+      "strategy_total_return": 0.305845,
+      "strategy_cagr": 0.165613,
+      "strategy_max_drawdown": -0.240192,
+      "sharpe": 0.751197,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/phase/1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2/phase0/report.parquet": {
+      "strategy_total_return": 0.251643,
+      "strategy_cagr": 0.137578,
+      "strategy_max_drawdown": -0.303009,
+      "sharpe": 0.649755,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/phase/1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2/phase10/report.parquet": {
+      "strategy_total_return": 0.300744,
+      "strategy_cagr": 0.162996,
+      "strategy_max_drawdown": -0.265398,
+      "sharpe": 0.729619,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/phase/33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740/phase0/report.parquet": {
+      "strategy_total_return": 0.416846,
+      "strategy_cagr": 0.221523,
+      "strategy_max_drawdown": -0.28037,
+      "sharpe": 0.944032,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/phase/33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740/phase10/report.parquet": {
+      "strategy_total_return": 0.379172,
+      "strategy_cagr": 0.202763,
+      "strategy_max_drawdown": -0.222303,
+      "sharpe": 0.885496,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/phase/a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b/phase0/report.parquet": {
+      "strategy_total_return": 0.257486,
+      "strategy_cagr": 0.140625,
+      "strategy_max_drawdown": -0.172434,
+      "sharpe": 0.681338,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/phase/a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b/phase10/report.parquet": {
+      "strategy_total_return": 0.610764,
+      "strategy_cagr": 0.314905,
+      "strategy_max_drawdown": -0.167047,
+      "sharpe": 1.254957,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/231ee1ab4e38e0448b875ba84c7d54671b5853766d5e3c804b116552efd879ad/fold1/report.parquet": {
+      "strategy_total_return": -0.047965,
+      "strategy_cagr": -0.48569,
+      "strategy_max_drawdown": -0.078788,
+      "sharpe": -1.650975,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/231ee1ab4e38e0448b875ba84c7d54671b5853766d5e3c804b116552efd879ad/fold2/report.parquet": {
+      "strategy_total_return": 0.240678,
+      "strategy_cagr": 12.812587,
+      "strategy_max_drawdown": -0.057793,
+      "sharpe": 6.44732,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/231ee1ab4e38e0448b875ba84c7d54671b5853766d5e3c804b116552efd879ad/fold3/report.parquet": {
+      "strategy_total_return": 0.001843,
+      "strategy_cagr": 0.027272,
+      "strategy_max_drawdown": -0.035091,
+      "sharpe": 0.22702,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/231ee1ab4e38e0448b875ba84c7d54671b5853766d5e3c804b116552efd879ad/fold4/report.parquet": {
+      "strategy_total_return": -0.016896,
+      "strategy_cagr": -0.20587,
+      "strategy_max_drawdown": -0.051409,
+      "sharpe": -1.27066,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/9fcfd8327f51051ed3c8aaa659bc529dd1c82d505a99e5ecd26398feeb59c7f9/fold1/report.parquet": {
+      "strategy_total_return": -0.088114,
+      "strategy_cagr": -0.712857,
+      "strategy_max_drawdown": -0.094677,
+      "sharpe": -3.234962,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/9fcfd8327f51051ed3c8aaa659bc529dd1c82d505a99e5ecd26398feeb59c7f9/fold2/report.parquet": {
+      "strategy_total_return": 0.214418,
+      "strategy_cagr": 9.645428,
+      "strategy_max_drawdown": -0.047495,
+      "sharpe": 6.382552,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/9fcfd8327f51051ed3c8aaa659bc529dd1c82d505a99e5ecd26398feeb59c7f9/fold3/report.parquet": {
+      "strategy_total_return": -0.000622,
+      "strategy_cagr": -0.009047,
+      "strategy_max_drawdown": -0.038215,
+      "sharpe": 0.012908,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/9fcfd8327f51051ed3c8aaa659bc529dd1c82d505a99e5ecd26398feeb59c7f9/fold4/report.parquet": {
+      "strategy_total_return": -0.011057,
+      "strategy_cagr": -0.139645,
+      "strategy_max_drawdown": -0.051759,
+      "sharpe": -0.790024,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/ccb9b983e0dc6ae38f48c8f409a1bc7fbf17d711a862c1089b2cb6c3df09097b/fold1/report.parquet": {
+      "strategy_total_return": -0.051936,
+      "strategy_cagr": -0.513962,
+      "strategy_max_drawdown": -0.079363,
+      "sharpe": -1.703664,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/ccb9b983e0dc6ae38f48c8f409a1bc7fbf17d711a862c1089b2cb6c3df09097b/fold2/report.parquet": {
+      "strategy_total_return": 0.166921,
+      "strategy_cagr": 5.549553,
+      "strategy_max_drawdown": -0.052533,
+      "sharpe": 5.256603,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/ccb9b983e0dc6ae38f48c8f409a1bc7fbf17d711a862c1089b2cb6c3df09097b/fold3/report.parquet": {
+      "strategy_total_return": 0.006347,
+      "strategy_cagr": 0.096848,
+      "strategy_max_drawdown": -0.039436,
+      "sharpe": 0.59554,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/ccb9b983e0dc6ae38f48c8f409a1bc7fbf17d711a862c1089b2cb6c3df09097b/fold4/report.parquet": {
+      "strategy_total_return": 0.01307,
+      "strategy_cagr": 0.192034,
+      "strategy_max_drawdown": -0.047379,
+      "sharpe": 1.079707,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/e01070fd3e80580cc375287bb4cb847e1ffd375a8cb013491392adc8914cfe74/fold1/report.parquet": {
+      "strategy_total_return": -0.08263,
+      "strategy_cagr": -0.688597,
+      "strategy_max_drawdown": -0.094373,
+      "sharpe": -2.839428,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/e01070fd3e80580cc375287bb4cb847e1ffd375a8cb013491392adc8914cfe74/fold2/report.parquet": {
+      "strategy_total_return": 0.182261,
+      "strategy_cagr": 6.67831,
+      "strategy_max_drawdown": -0.054476,
+      "sharpe": 5.876445,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/e01070fd3e80580cc375287bb4cb847e1ffd375a8cb013491392adc8914cfe74/fold3/report.parquet": {
+      "strategy_total_return": 0.007461,
+      "strategy_cagr": 0.114715,
+      "strategy_max_drawdown": -0.034282,
+      "sharpe": 0.721817,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/e01070fd3e80580cc375287bb4cb847e1ffd375a8cb013491392adc8914cfe74/fold4/report.parquet": {
+      "strategy_total_return": 0.033567,
+      "strategy_cagr": 0.563019,
+      "strategy_max_drawdown": -0.031518,
+      "sharpe": 2.932152,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l3_retrain_horizon/cells/r20_f10_p00/report.parquet": {
+      "strategy_total_return": 0.519162,
+      "strategy_cagr": 0.271428,
+      "strategy_max_drawdown": -0.248675,
+      "sharpe": 1.130484,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l3_retrain_horizon/cells/r20_f10_p05/report.parquet": {
+      "strategy_total_return": 0.438952,
+      "strategy_cagr": 0.232432,
+      "strategy_max_drawdown": -0.191869,
+      "sharpe": 1.051649,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l3_retrain_horizon/cells/r20_f40_p00/report.parquet": {
+      "strategy_total_return": 0.3519,
+      "strategy_cagr": 0.189047,
+      "strategy_max_drawdown": -0.307506,
+      "sharpe": 0.801914,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l3_retrain_horizon/cells/r20_f40_p20/report.parquet": {
+      "strategy_total_return": 0.618938,
+      "strategy_cagr": 0.318733,
+      "strategy_max_drawdown": -0.167326,
+      "sharpe": 1.272762,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/1ca6fae56e8c/phase00/fixed_report.parquet": {
+      "strategy_total_return": 0.950506,
+      "strategy_cagr": 0.467662,
+      "strategy_max_drawdown": -0.226071,
+      "sharpe": 1.554235,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/1ca6fae56e8c/phase04/fixed_report.parquet": {
+      "strategy_total_return": 0.573622,
+      "strategy_cagr": 0.297407,
+      "strategy_max_drawdown": -0.226455,
+      "sharpe": 1.12126,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/1ca6fae56e8c/phase06/fixed_report.parquet": {
+      "strategy_total_return": 0.561422,
+      "strategy_cagr": 0.291621,
+      "strategy_max_drawdown": -0.238647,
+      "sharpe": 1.119225,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/1ca6fae56e8c/phase10/fixed_report.parquet": {
+      "strategy_total_return": 1.165702,
+      "strategy_cagr": 0.558575,
+      "strategy_max_drawdown": -0.206543,
+      "sharpe": 1.773155,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/1ca6fae56e8c/phase15/fixed_report.parquet": {
+      "strategy_total_return": 1.17374,
+      "strategy_cagr": 0.561895,
+      "strategy_max_drawdown": -0.111177,
+      "sharpe": 1.879608,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/3ddff2cd6138/phase00/fixed_report.parquet": {
+      "strategy_total_return": 0.724425,
+      "strategy_cagr": 0.367415,
+      "strategy_max_drawdown": -0.242057,
+      "sharpe": 1.276422,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/3ddff2cd6138/phase04/fixed_report.parquet": {
+      "strategy_total_return": 0.555939,
+      "strategy_cagr": 0.289014,
+      "strategy_max_drawdown": -0.27716,
+      "sharpe": 1.108182,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/3ddff2cd6138/phase06/fixed_report.parquet": {
+      "strategy_total_return": 0.630448,
+      "strategy_cagr": 0.324109,
+      "strategy_max_drawdown": -0.184702,
+      "sharpe": 1.161781,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/3ddff2cd6138/phase10/fixed_report.parquet": {
+      "strategy_total_return": 0.750857,
+      "strategy_cagr": 0.379413,
+      "strategy_max_drawdown": -0.259045,
+      "sharpe": 1.308224,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/3ddff2cd6138/phase15/fixed_report.parquet": {
+      "strategy_total_return": 0.953432,
+      "strategy_cagr": 0.468926,
+      "strategy_max_drawdown": -0.174521,
+      "sharpe": 1.522237,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/95ae81ba885d/phase00/fixed_report.parquet": {
+      "strategy_total_return": 0.964092,
+      "strategy_cagr": 0.473524,
+      "strategy_max_drawdown": -0.184437,
+      "sharpe": 1.609062,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/95ae81ba885d/phase04/fixed_report.parquet": {
+      "strategy_total_return": 0.443322,
+      "strategy_cagr": 0.23458,
+      "strategy_max_drawdown": -0.210341,
+      "sharpe": 0.94754,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/95ae81ba885d/phase06/fixed_report.parquet": {
+      "strategy_total_return": 0.74277,
+      "strategy_cagr": 0.37575,
+      "strategy_max_drawdown": -0.234199,
+      "sharpe": 1.355901,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/95ae81ba885d/phase10/fixed_report.parquet": {
+      "strategy_total_return": 0.809514,
+      "strategy_cagr": 0.405765,
+      "strategy_max_drawdown": -0.222008,
+      "sharpe": 1.419127,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/95ae81ba885d/phase15/fixed_report.parquet": {
+      "strategy_total_return": 0.906305,
+      "strategy_cagr": 0.448468,
+      "strategy_max_drawdown": -0.229437,
+      "sharpe": 1.506245,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/e7d1fab6c5e8/phase00/fixed_report.parquet": {
+      "strategy_total_return": 0.421133,
+      "strategy_cagr": 0.223644,
+      "strategy_max_drawdown": -0.267613,
+      "sharpe": 0.959234,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/e7d1fab6c5e8/phase04/fixed_report.parquet": {
+      "strategy_total_return": 0.511984,
+      "strategy_cagr": 0.267974,
+      "strategy_max_drawdown": -0.18236,
+      "sharpe": 1.158606,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/e7d1fab6c5e8/phase06/fixed_report.parquet": {
+      "strategy_total_return": 0.709892,
+      "strategy_cagr": 0.360785,
+      "strategy_max_drawdown": -0.199977,
+      "sharpe": 1.432878,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/e7d1fab6c5e8/phase10/fixed_report.parquet": {
+      "strategy_total_return": 0.556058,
+      "strategy_cagr": 0.289071,
+      "strategy_max_drawdown": -0.210284,
+      "sharpe": 1.147072,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/e7d1fab6c5e8/phase15/fixed_report.parquet": {
+      "strategy_total_return": 0.548115,
+      "strategy_cagr": 0.285287,
+      "strategy_max_drawdown": -0.231515,
+      "sharpe": 1.154124,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/p0_gate/cells/23b92de0_p00_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.421133,
+      "strategy_cagr": 0.223644,
+      "strategy_max_drawdown": -0.267613,
+      "sharpe": 0.959234,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/p0_gate/cells/23b92de0_p10_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.556058,
+      "strategy_cagr": 0.289071,
+      "strategy_max_drawdown": -0.210284,
+      "sharpe": 1.147072,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/p0_gate/cells/4e908173_p00_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.331347,
+      "strategy_cagr": 0.178632,
+      "strategy_max_drawdown": -0.304308,
+      "sharpe": 0.776152,
+      "account_return_max_error": 0.0
+    },
+    "quant/data/round2_layered_search/p0_gate/cells/4e908173_p10_k20_d2/fixed_report.parquet": {
+      "strategy_total_return": 0.458616,
+      "strategy_cagr": 0.242076,
+      "strategy_max_drawdown": -0.211972,
+      "sharpe": 1.004997,
+      "account_return_max_error": 0.0
+    }
+  },
+  "pending_external_evidence": [
+    "historical_ST",
+    "official_limit_prices",
+    "opening_auction_liquidity",
+    "full_historical_order_replay",
+    "new_forward_observations"
+  ],
+  "input_sha256": {
+    "quant/data/signals/2026-11-02_paper_portfolio.json": "a5b6a88ec1ea53e20060e297adc9e67f8cbc56e37c08c0079d7205bd7122f7f5",
+    "quant/data/signals/2026-11-02_paper_portfolio_csi300.json": "e5962bf24c69bbd509867226bb995a70f0e15e2975f52be29c8fe050ccffcb48",
+    "quant/data/signals/2026-11-02_paper_portfolio_csi500.json": "59c0acf0e76024e85864401cf57eb989120872335d81914b1e866e4bc0c810b8",
+    "quant/data/signals/2026-11-03_paper_portfolio.json": "4a991ce4d234a7ddac664337b65d023f25d798d756d588b9ad60ba7f78c4d984",
+    "quant/data/signals/2026-11-03_paper_portfolio_csi300.json": "2f4f60ef8264d91e9e5dcb579212ccaca9c733e46d36cc6d990f9e82a6f68c95",
+    "quant/data/signals/2026-11-03_paper_portfolio_csi500.json": "34c8a826830e364e5bf5eaf9d0b19b7e083f58510424d4c120b90d23a6922fb5",
+    "quant/data/signals/2026-11-04_paper_portfolio.json": "16b889cae0afde169759d34e713b0a0554ff1e6f74edfbbe1d6c23bd89d6a292",
+    "quant/data/signals/2026-11-04_paper_portfolio_csi300.json": "cec7a83ff0b1ae4e23fe40185b79c65ac13bb686de5e99625bba1e8f724d43d3",
+    "quant/data/signals/2026-11-04_paper_portfolio_csi500.json": "08231a40f515c6044c9880ca0515b4e8e01201bd0c160572026ca7ee92fa56c6",
+    "quant/data/signals/2026-11-05_paper_portfolio.json": "29b6609e22b39026335a72ab41010c5c935180e5d477851d8b956ae11fb88557",
+    "quant/data/signals/2026-11-05_paper_portfolio_csi300.json": "58f8d87f5dc75f0a48da56c7d156446ae70efe95db97aaa49e06dbe5e2775684",
+    "quant/data/signals/2026-11-05_paper_portfolio_csi500.json": "b529ab53cd6df035392bd73778eb40cd8dc7ca435f1ba2f8f41ae01047527bfa",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/17dbfe28fea8d7a7_p00/fixed_diagnostic_report.parquet": "0f7bc1bf6c103c377009120b12b6f4f05746f7c2f570fb0109be509060f8066c",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/17dbfe28fea8d7a7_p04/fixed_diagnostic_report.parquet": "ddaf1b3a0614cc22b31f848a81b88910568ee0a5a7dff4cf2f324e34fd57f136",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/17dbfe28fea8d7a7_p06/fixed_diagnostic_report.parquet": "7b5e6a2c4c3f5db4c7c197f293aaa9e2499647cfaa3f502497fd933c917b2b3c",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/17dbfe28fea8d7a7_p10/fixed_diagnostic_report.parquet": "590baf5418ef0c5a59c258c547d57e0d97ae12b096b93ba2473857459cf70b56",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/17dbfe28fea8d7a7_p15/fixed_diagnostic_report.parquet": "4bdc4208da4cc23e94bce392dff6a7498ab4ff76b47766d987b89a96f4129bc9",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/1db146eec9deda00_p00/fixed_diagnostic_report.parquet": "274ad887784d3299c5db38d16e3aaadb36d7a9442d3e426b09ec1a74dc0f3c21",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/1db146eec9deda00_p04/fixed_diagnostic_report.parquet": "c96c2e1d369c2fce093cb3e58aca2d28ab08a0d16825d4658fd1e9f70c0d7be4",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/1db146eec9deda00_p06/fixed_diagnostic_report.parquet": "89e7e2c193c8e3b4f64e3eecbf474f85769daa705b5ddaae92ef75ed4f368194",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/1db146eec9deda00_p10/fixed_diagnostic_report.parquet": "b630ab31f0a4f0f8c666aa43b1622cdb52ab72e87c00b897cf2ef887bdbc2e37",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/1db146eec9deda00_p15/fixed_diagnostic_report.parquet": "6f3258291e48edad0d9cb498405a88f4074798ed22a49c2b411184537081c4af",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/23b92de05cf36c82_p00/fixed_diagnostic_report.parquet": "7d8fbf8f03c608fc6e4e839ef116a9e34d439d772cacf04569fa85785d52f436",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/23b92de05cf36c82_p04/fixed_diagnostic_report.parquet": "4995fb1b9a47f20ccdfe9faf4a06be548e657131ff554c613882cc5d486a94b0",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/23b92de05cf36c82_p06/fixed_diagnostic_report.parquet": "466e08b8064367f5ad3455e5d683f40f797f9eb63ab649bf2901b34ac3668122",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/23b92de05cf36c82_p10/fixed_diagnostic_report.parquet": "8fe6b85f13f310a54a2746f2bccbc696d8b75e529b46986174fe14a0ee60507a",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/23b92de05cf36c82_p15/fixed_diagnostic_report.parquet": "bafd06f67194aa3dbbd59116e5066d14e887658b8e080ff170f3724550900070",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/40b872dfe452b649_p00/fixed_diagnostic_report.parquet": "775f5d08560efe41085ac4728970ecbc56740e7b53d9f7ef2f205b94631296de",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/40b872dfe452b649_p04/fixed_diagnostic_report.parquet": "7060fbf447214015fd844740ec51147f2852e483bac04c2eec50927b080b8efc",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/40b872dfe452b649_p06/fixed_diagnostic_report.parquet": "e46050b6fd10b785bc77c0d0debd8eacf726411aa91958aeb7aac429106124b4",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/40b872dfe452b649_p10/fixed_diagnostic_report.parquet": "9b5e81aef29035955ffb865a5ea4593552e4d8a280404fdbbfcd9e2d6b52dc08",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/40b872dfe452b649_p15/fixed_diagnostic_report.parquet": "f52ebfbb7779ae7e03c3fa9ecc54e5e81a954bba5dc38094bc5b8972e7e54f70",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/4e908173705c76fe_p00/fixed_diagnostic_report.parquet": "68614f86434f2ba023d7a4158a527c3accb672c6a0f1fee7de311b07d9aecc06",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/4e908173705c76fe_p04/fixed_diagnostic_report.parquet": "7905f1ab129975fcbdb41166f0995b3c6d5053b0478fa66e9cc9feae3d3e8ff8",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/4e908173705c76fe_p06/fixed_diagnostic_report.parquet": "8ef4f42e5fe0ae0e935c0c741116bb7d4798b281300d2eb56dc643d6fca6f1b8",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/4e908173705c76fe_p10/fixed_diagnostic_report.parquet": "ca83b2bb95edfef8101926cadcfe15c1b62cc10fa73950388a9b63915ff87ea7",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/4e908173705c76fe_p15/fixed_diagnostic_report.parquet": "31ae2b05c076a17fd510f0f3cb89573ce9157007fe73fa3e7bce16e95f827190",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/59b93929bff1e736_p00/fixed_diagnostic_report.parquet": "4742320647f998cc99023ff0dd4f31b784c80928aec0b3c98389ceeec84e54f6",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/59b93929bff1e736_p04/fixed_diagnostic_report.parquet": "799e1162ed04b7dd2c0c4e121d097a3580ec0f6c8d4665b169c552987e1a123c",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/59b93929bff1e736_p06/fixed_diagnostic_report.parquet": "7e9d031f9601c1a8167e6391714fdba1ba29dddf228533c0a0cadb859c5c22d8",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/59b93929bff1e736_p10/fixed_diagnostic_report.parquet": "364860ef06121c49d147c7a61404cbbde79869220b858d39f7afce868128d96d",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/59b93929bff1e736_p15/fixed_diagnostic_report.parquet": "4fd0d27fc1df745dafbe7c196893ba38d0ea543fa24a4380c5c5643c739e2a2f",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/a419047ab97ec027_p00/fixed_diagnostic_report.parquet": "20c10780c94401353ef7b2d4ffa73d56694a567e80525e96772657ed5e0ca1cc",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/a419047ab97ec027_p04/fixed_diagnostic_report.parquet": "3605c8d789357546cdfddcc9d364347b563da473f4cbebe043ecb4be34a9a743",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/a419047ab97ec027_p06/fixed_diagnostic_report.parquet": "4f5be4de680fd7b09e377af410c40561872a7ee0de79f6818babc7fabf4496b1",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/a419047ab97ec027_p10/fixed_diagnostic_report.parquet": "19e55a850a98f0157b05690bfd98a99170cacdb0898dcad71afd750b79f6546d",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/a419047ab97ec027_p15/fixed_diagnostic_report.parquet": "dae20306d1efd141ad1281b7a3af21a351388e820e3df15eb57559ce7c15fae6",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/b034ac4645fb45bb_p00/fixed_diagnostic_report.parquet": "6f980eb258fe47257510a92a9410352f4de4be2c8b6b7827df86c662d922f7c8",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/b034ac4645fb45bb_p04/fixed_diagnostic_report.parquet": "7bf4dccd76e674d7cae2ce82a107387bc0419d282735716d86201c04ea75d747",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/b034ac4645fb45bb_p06/fixed_diagnostic_report.parquet": "8ac79e2bddf7f698db9500181052dd868372e0c7aff576d1bd3c445846cef52b",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/b034ac4645fb45bb_p10/fixed_diagnostic_report.parquet": "d38e15ac911fd3282329a83ca556d34c6d26c644741a0e20801e62bc271155ed",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/b034ac4645fb45bb_p15/fixed_diagnostic_report.parquet": "b236c2ea1930fa4d7aaa7e12e42edbb15c5d9903c5bac04559a646b9134d4dc5",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c04ca4163f77e6e2_p00/fixed_diagnostic_report.parquet": "1506676e3c8c7dd67c27d0d33d2d89bcc6bbd2744d86cca46acc37b4cb9c9626",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c04ca4163f77e6e2_p04/fixed_diagnostic_report.parquet": "798d39a551e8eb4e291ac55207ef0e797cdc14ca9c94b7179448217de47cca3f",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c04ca4163f77e6e2_p06/fixed_diagnostic_report.parquet": "dcff704bfcf58aef10f3cd6022e7f120c23c910ddcfc686f70847b19b4c56b00",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c04ca4163f77e6e2_p10/fixed_diagnostic_report.parquet": "64396a9228c5b0e2c634078c8ca1072902e3fd691fa726aca9720782d30e393a",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c04ca4163f77e6e2_p15/fixed_diagnostic_report.parquet": "83e764e8e15dd9cfd28503c6af17ddae9cab6848f62fae9cb9d3dc37ccc0a9c0",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c98856b460aba687_p00/fixed_diagnostic_report.parquet": "359f1a9672215e8e967893da636c4af21a2a6fa32c1ed4638082edec42c3ed0c",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c98856b460aba687_p04/fixed_diagnostic_report.parquet": "70ce6472b5b1f60ba1a90ae475b44bd7d23542d36c1f45746fb8816f5e1d62f5",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c98856b460aba687_p06/fixed_diagnostic_report.parquet": "ddba5a7c5c38d5c17d4a5659adec6ddb21afb22f0cddecfda27d50a1a365fdf4",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c98856b460aba687_p10/fixed_diagnostic_report.parquet": "b2a5e8d6982f9290a47a8de1c1297ee9cf07010b1e0aed621770d2d5bd5894c6",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/c98856b460aba687_p15/fixed_diagnostic_report.parquet": "8c604582d5783581f63483b88a4da49d39fbdd9d6f1f34c3e582019a3e220df9",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/e74b3bbe2278aa89_p00/fixed_diagnostic_report.parquet": "33789b519b638bfd03c3148d5546ccd337f240fe05caecbbcaa59109956216e0",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/e74b3bbe2278aa89_p04/fixed_diagnostic_report.parquet": "fafdc3bee2cd6efabf4ff1c2e8414e109fa1186154e89368df84d6bef880c2bc",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/e74b3bbe2278aa89_p06/fixed_diagnostic_report.parquet": "0b4dd1f3a6601d2d99657caebdfb0a3ed79d1d69f487ed8f196df3e2108fc113",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/e74b3bbe2278aa89_p10/fixed_diagnostic_report.parquet": "65a7de20af5ff7b73ca478b5bef9a277173ab4e5be5964864c3530e2b83ca9ef",
+    "quant/data/round1_audit_evidence/stage_b_corrected_rerank/e74b3bbe2278aa89_p15/fixed_diagnostic_report.parquet": "46c472f96fb8ea7f000773baf44353c60ffac06670a1d4d8ff98ea54f1947578",
+    "quant/data/round1_audit_evidence/winner_phase0_fixed/fixed_diagnostic_report.parquet": "0e9ba034b94d363117dbb924639178f26af4a116763e9868d9960f321b601048",
+    "quant/data/round1_stage_ab/csi1000_strategy_selection_evidence/pr64/981741b8c68e6542464cf0cb65311d991e4c3a15/controls/cells/23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785/fold1/fixed_report.parquet": "d93aa62dba74dae997b36598d54455bcd2b894b48cad44c0ba646a0e405efa30",
+    "quant/data/round1_stage_ab/csi1000_strategy_selection_evidence/pr64/981741b8c68e6542464cf0cb65311d991e4c3a15/controls/cells/23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785/fold2/fixed_report.parquet": "10d12f21d631161677599abbdff798c90d75f22e7f231fdd139c94014a12b901",
+    "quant/data/round1_stage_ab/csi1000_strategy_selection_evidence/pr64/981741b8c68e6542464cf0cb65311d991e4c3a15/controls/cells/23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785/fold3/fixed_report.parquet": "2e3db79c4c7331604e4b25c15feb24c3a98a939064cdc9aa67c4aa9523a1c1b8",
+    "quant/data/round1_stage_ab/csi1000_strategy_selection_evidence/pr64/981741b8c68e6542464cf0cb65311d991e4c3a15/controls/cells/23b92de05cf36c82998de684d0fbf64d81ee54490d755bd3cf96311c00286785/fold4/fixed_report.parquet": "08f51b35f7d7404704c00dfb797f57f1e70040b8d6c06451feb7bcf79825b164",
+    "quant/data/round1_stage_ab/csi1000_strategy_selection_evidence/pr64/981741b8c68e6542464cf0cb65311d991e4c3a15/controls/cells/4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2/fold1/fixed_report.parquet": "ceaed72ebea9935c2bdcc44dc3b095f63dcee553ccc58d55d52a10007903265c",
+    "quant/data/round1_stage_ab/csi1000_strategy_selection_evidence/pr64/981741b8c68e6542464cf0cb65311d991e4c3a15/controls/cells/4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2/fold2/fixed_report.parquet": "102c43258cec36d9ddc2d69488b1184a98c180a379d684a8793b427a4b157f59",
+    "quant/data/round1_stage_ab/csi1000_strategy_selection_evidence/pr64/981741b8c68e6542464cf0cb65311d991e4c3a15/controls/cells/4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2/fold3/fixed_report.parquet": "a07e7c5e015e6cc2b02e6008d746b14071dfdd623b8b7986ae5b11327c12c6bf",
+    "quant/data/round1_stage_ab/csi1000_strategy_selection_evidence/pr64/981741b8c68e6542464cf0cb65311d991e4c3a15/controls/cells/4e908173705c76fee3782be37068672a3a845bd61894202f3152afe3b9d81ef2/fold4/fixed_report.parquet": "489a0e0cf0594ac9bfdf5c1f41aa9718924f0fc1d80f5b13bbb37a47b7e91cc1",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k10_d1/fixed_report.parquet": "83812fad29058a844dc7997339cfd0c533dc9069f1f23adf037cbeb024e7e650",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k10_d2/fixed_report.parquet": "7968ee1ec20aa42af50b49a93b01d624dbc9a8967d397c94178c0df29b8a3eea",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k10_d3/fixed_report.parquet": "59f6d259ff7f30d7532bead74b1d5ad497e04d846f7f95c419af564ab6473578",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k20_d1/fixed_report.parquet": "3cf71bf9d01896a7033464f1c00ad88f7fe085c29800aba10b70566dbc89a879",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k20_d2/fixed_report.parquet": "b77924eb378ef9ab4f6d869f741365eafa4147282424417ef418003cd1e9d4f6",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k20_d3/fixed_report.parquet": "c4a68f452fdbcf553e00aa9e8ed63652df593dd20ee8a642e0502235662c3ef9",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k20_d5/fixed_report.parquet": "bb4ef5e059ba860b551011c5aff4eac43bc90d51a3166429552132794355d0f9",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k30_d1/fixed_report.parquet": "d3f45037e40719766b86b052c91987e7186014844885df17925fe5da9c2aa834",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k30_d3/fixed_report.parquet": "8a905700373d5556eafdd9c5a5529ce0827824533e3b6012ec258e66fee023ae",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k30_d5/fixed_report.parquet": "0467946fe68f3cd9584e8632b2956b5c25f0768a4e2d4b45dfdf04dc2f63d05c",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k50_d2/fixed_report.parquet": "191ccacf00512d4c4e57b4edf074b02f6eefb7dd2efa30c6a38ad7ddccecf9a5",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p00_k50_d5/fixed_report.parquet": "f72489ea2fc73bcfdba326ff117308448ef0978dd1a6d0579869d373c4ecb900",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k10_d1/fixed_report.parquet": "4201f714705938e6f1163509ad1ffbcf6879b5666db8004dca90fbe8a8be9d43",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k10_d2/fixed_report.parquet": "55e4f80e4a94ac2f76d299fc27bbaa62e8f969ff279ec2e416d54d519743faa0",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k10_d3/fixed_report.parquet": "aac9c19f1e4a70a578920fd8d070a5b228f5470e4b8b519f82bdb4525fbd6ba6",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k20_d1/fixed_report.parquet": "177fce888592d7a193f215520f8bcb183f48bc545e1bd8399655d0b8b54c1ced",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k20_d2/fixed_report.parquet": "dd8a0e0fd1b77cf44920ca22b5b851c077966c3b39835a5f859129e80b5cdd90",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k20_d3/fixed_report.parquet": "99a0a99d151a28869e5f10efa1359459d0eaa516ea2cb27d27d2751a7612864c",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k20_d5/fixed_report.parquet": "6a28169632f7f7bf3891d8480cb1c6e70be95116d9ca13a70e74d9288375a516",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k30_d1/fixed_report.parquet": "10526084dabdd8f932e74b03991571bc6e447d1e5d1a7481269dcf918a925976",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k30_d3/fixed_report.parquet": "40c1c203cdeba22ef6410a7d651faac5f5fa54baa0ed600edb2f9d7b00bff581",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k30_d5/fixed_report.parquet": "189432e6f1eea4ee7af0af5db7b851b4c033c8a0e9d47a85a75e361867976485",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k50_d2/fixed_report.parquet": "a490168eb7841d3cb1c45d4e1da90dea87a271b549cbdce312ef9c76ff540e5d",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/17dbfe28_p10_k50_d5/fixed_report.parquet": "db97268ac3ebaf5f668bc1cf97aad3f4c624d4613e3a73aee7d1c25f8197827c",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k10_d1/fixed_report.parquet": "7b8d4fcd0379ef0c42d09919d12e92d309562aebfaae9eb4e01f0f9cdb3d0678",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k10_d2/fixed_report.parquet": "20697c763560f584739e3222f65a0091636c2bed2f2209aa3e9e9d81ecf9fd5d",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k10_d3/fixed_report.parquet": "eac0ae29a63c41027cbaeb15718d66e517c88f7201a397416e9373997b0be0ae",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k20_d1/fixed_report.parquet": "42c0099de0ffc333b5cbd2b0bb7cf3d58597b8bf3149fc75e8906d14769347b9",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k20_d2/fixed_report.parquet": "a12586805606f33690545541b9f4a51ba0267b7a14b7cda79c152efad09a7de2",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k20_d3/fixed_report.parquet": "62cb4645f4b0e399b7bcc593bbbc28d0f3378ede6de248adb8866ba55695033f",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k20_d5/fixed_report.parquet": "eecbafe00fd8cf03aa4198f2ea4203876e578c43cd2fc3375af35468f5ad21f2",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k30_d1/fixed_report.parquet": "eb615c23b8daeab62853d718628972701686771d08dde025c41f4da5d3b320e7",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k30_d3/fixed_report.parquet": "6a90af56b203dd3cf55d11b7eb751e874835f26249dd6ed1d4244076fd7ddfae",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k30_d5/fixed_report.parquet": "df8362d084b968256b276afc91c1354531efc96401105d090961eaf193cd47b4",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k50_d2/fixed_report.parquet": "3f21cabdb666ce6a98d93e37e9964e05905e42f539f0d3501f675ffd38544811",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p00_k50_d5/fixed_report.parquet": "42d25831bbde08f9b518c1d3c9d39c896e08527e1cf5336d55038c0fe55ccb15",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k10_d1/fixed_report.parquet": "dc79885cdffcb4bd4ed62859d694b9b4d1eb09d9161d7c2800c9519c2914c0f4",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k10_d2/fixed_report.parquet": "249f4d458c49ca7bc2068532c16f4cd63fd3c7e7e858f33ccec41aa514c1b9d1",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k10_d3/fixed_report.parquet": "8f83fbeda591710067aae3d0a14a841b388b7da8e794f8c999954d6e70d7aec5",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k20_d1/fixed_report.parquet": "03e0d9b3d54b25ad6425442147be84a76ff3fffc945bceeb5abf308f7821f528",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k20_d2/fixed_report.parquet": "ba316206e5669c9429ddf24c218fa1d1207f617af9a63ecb966a17a8394b04d1",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k20_d3/fixed_report.parquet": "78465454c200c1025363a3140f4885f85e6f6abcfd74fb7abd5f2d9d80e38e9a",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k20_d5/fixed_report.parquet": "b3d61e23a05d8d36e233abbcee6298ac70c0cf989ece9e1eca8e44c79eaf3864",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k30_d1/fixed_report.parquet": "183b56c67bc30f8f0f77d27cdb2342f4ffe1f777f216a6459f34f136070dcca5",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k30_d3/fixed_report.parquet": "1d5c61ba7c93331dcec9c376da03ac5a5c7023188659a850222f38fcc85334a3",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k30_d5/fixed_report.parquet": "e58efa9e6f3ad79e5e31149ff51083811f7b412f94e9a0cb5ba7add8807c40b4",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k50_d2/fixed_report.parquet": "fa13e46c096464c22abc3616c36145e9f09cfcefd73571b1c130eea9713caea8",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/1db146ee_p10_k50_d5/fixed_report.parquet": "273ad0d74013242a9810a95c4646e152c6f7b95aa8059622b136225ea7235f01",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k10_d1/fixed_report.parquet": "e90261cc0344051764aaf87bc00b4bd96edb7a559b4703d7b95dc553dd700447",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k10_d2/fixed_report.parquet": "096a4c032ea70badc951fafe4122d9570b0c2518dd9bce2ad4a8f4e5b12cc5c6",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k10_d3/fixed_report.parquet": "a7c9348b41ff720eeb895a5ae37e6f72159f1e2ab8b273b7f19689639503fe2c",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k20_d1/fixed_report.parquet": "3c1bd883103a379a7e344d75d746a46cbb275dd3ca11e2b13d64bf2e728352b3",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k20_d2/fixed_report.parquet": "fc996bf37e1b9efc3180f8f48dc773083abf8f05203098fec5241900bf350b78",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k20_d3/fixed_report.parquet": "c0ed743135e51c40175bf47f08b14de5039906b1fd0bc3a841cd89c4312aaaa6",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k20_d5/fixed_report.parquet": "7df1d1ca6ca0ff66c8e8fbfc0899b4785499e4c3c7051a7fa61d87872c6d53d4",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k30_d1/fixed_report.parquet": "e4897b663e5dbe5c4a589842875bcf1b1c699a94f8d09d7b01c08e88a5e08a44",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k30_d3/fixed_report.parquet": "993a72bf8e7ecac8efc6627c27aa961bd4e9b78e9c0bec9706279f2fa44c1714",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k30_d5/fixed_report.parquet": "ab04e0ffed993e4dd0a93d6ec7444df5f4e1d197ceba999c1c805bf314e782ed",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k50_d2/fixed_report.parquet": "29b356ba244ec6ad37e44cb5c5839e3262648265bc4bd6364411e5b25dbee967",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p00_k50_d5/fixed_report.parquet": "13090413aef841c72e21c044b58b6acf2fb3ad98a24db8f3cadd358e242ce3ba",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k10_d1/fixed_report.parquet": "3bca4cc482c38b16600c11260cc31da36c05941477a150479e8c085dc5e0b630",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k10_d2/fixed_report.parquet": "d8b6dabc085ae1489521832c31c6e22a3babd9c4a8f0c782ce5058e649e2deb8",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k10_d3/fixed_report.parquet": "ad78cb5e6a1eb093fb3120c85ad0d9ad3ef421d501e0e1178a8cd39a27225e62",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k20_d1/fixed_report.parquet": "c5a6a351e0d9b8d605d2966a4e0029b1b3ca5daaee643bebbc532903112fb394",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k20_d2/fixed_report.parquet": "9927f91d4afe3644ea05338118c39229418b1852b8bb4334e789e5725cd82b67",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k20_d3/fixed_report.parquet": "98be4b863c741d350018d96d41fca587d4d6fb50ab1112302687b97db8e5cc4d",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k20_d5/fixed_report.parquet": "515a83e097551d8dd8331d2d7ba1a3ec58f60b7df85710c3b21c4a367d3eaa2b",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k30_d1/fixed_report.parquet": "05df1d7341a6f81ce3223fc2e0097a7623c1d37a685f01b7ba968d8db45ddea0",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k30_d3/fixed_report.parquet": "121f6605cb5fb9026cbd49237819fb4fd7250af082f4321edb29469a844b1068",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k30_d5/fixed_report.parquet": "ce7e41aaf16d939c45fae743bdc1344ec0563ac03665c948578e2a0ad02b7adf",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k50_d2/fixed_report.parquet": "d87a2d52f0ff77ab4628f142fd5ae0bd7bdd9d345107abf00ba3c1a194b7902d",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/23b92de0_p10_k50_d5/fixed_report.parquet": "ef08ce1584b05ec6974e8083e3ba9cdf7f567ef3d1c7913c1835b8be03fd5fe7",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k10_d1/fixed_report.parquet": "8c1cbf340e3e112fd4d0ee7a6e1aa6ad86a9357836bb85ee4f888805efd2587e",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k10_d2/fixed_report.parquet": "9f1291541f01553ac21e97f9e284ce111ed97f1da3925a7f2e01bb2af542cea7",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k10_d3/fixed_report.parquet": "63ce5e939d8ccca327adf099a76bdb0fa0f4e29a128a238c8157369fc7d7f194",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k20_d1/fixed_report.parquet": "a7fe2322f1c5690439fddd9234b5506ee371d09a815ff5c43ba06420c1cf2ade",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k20_d2/fixed_report.parquet": "582963cbf926b1a55caa450b115d8e0507f9bda7b21d3505d09d5f3fb9cf1c78",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k20_d3/fixed_report.parquet": "a713a604b8d8da2b57b53b6cb31b9a18d5f72ee289b01319ba805fe620b84a42",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k20_d5/fixed_report.parquet": "fcac617174ca226f6cfbae164ba1be4786dca83334f7976b74f29ff1b75c78bd",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k30_d1/fixed_report.parquet": "7cd0532eb66da5a2f57e5426cb86d37ebf8923cfa8906596bb19c9b9a2139f34",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k30_d3/fixed_report.parquet": "f86fd530279f2320c7c9a0c6e316b3ff0c6fcda70fd241e030fc4650a62d8797",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k30_d5/fixed_report.parquet": "951c61009687551458fa19db19f8bce78f8847a66305c6a762893bc68f77e136",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k50_d2/fixed_report.parquet": "9c0bf39e435b7f7f01a71e3e42102a59d5e4888eeb458adcef971feb8d613170",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p00_k50_d5/fixed_report.parquet": "ce9599211dca057cc82fe0fa5868965080f380f7fe7727e31752135a47678927",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k10_d1/fixed_report.parquet": "d309098eb305f6d74323e77ede769754752cba1a7104c25cf6dfc946b25dcd72",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k10_d2/fixed_report.parquet": "47b3d629e3e2cd60081ce34755be09ec6f2f2bb5e6a2bf53cd165b6c7f8ffd55",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k10_d3/fixed_report.parquet": "d3a9446ea1549bad2c642c91a2e49fed135e09c0c88168dd352648e09920d828",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k20_d1/fixed_report.parquet": "092f70fd2aff2d91a468ef682c6ef9e7c0056b43cff5113a2906a61d39f7d40d",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k20_d2/fixed_report.parquet": "4217b55206b727c116e9619ab99361603bcaeba61a989fb0448474d49aa5a74b",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k20_d3/fixed_report.parquet": "67ee98b0726310b07b79a8b13c1c9d294d013cf0d3d8239b9ffb311b8ccf97af",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k20_d5/fixed_report.parquet": "ee895c954ba876b8f8d6bf841bbbe95014d0375db2399f529f3cac968d60998c",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k30_d1/fixed_report.parquet": "1e61d501a79873599d197e75b977e217ca9bb1995a0be5c72e5ab2e108e96cfd",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k30_d3/fixed_report.parquet": "14babb18934081e3e76fc0af1467624855846d2692e7a39ee5de439073e1c12a",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k30_d5/fixed_report.parquet": "4947e0735d6e5784d8e9d65f16a415415a992902126e758aa44962955df1d831",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k50_d2/fixed_report.parquet": "896837ebefe7936590066343945d6c078b278d8cbd5da1fc2b53384060f14d1e",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/40b872df_p10_k50_d5/fixed_report.parquet": "84b2df4c95b682eedaffe3bee8f398aa379d7694095d9b5774f47935a6c5c9d7",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k10_d1/fixed_report.parquet": "1b59b4566f6f855eacf09e440859da51ed070deda0a4a2a5c45ae951a47f8832",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k10_d2/fixed_report.parquet": "fc198eff926a9804c44029d755f4972aa14e7e847fcd27cdd74129f493ac640b",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k10_d3/fixed_report.parquet": "7e9d6a3ac0be7c10ae0012a248498af51bee401a8a38b734d245eec83b1f5e44",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k20_d1/fixed_report.parquet": "99c90b4df15958fbfc1750f705781ac38de2b68e7d047b3cca1852f06a5d540d",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k20_d2/fixed_report.parquet": "588a6d60dc0a891dabe4e5fd1222f154a213f548d632d99ece34f5a52deca52d",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k20_d3/fixed_report.parquet": "6d356fcf9f04a331b771530640bb1dad733ff5b9662c69a4a3ba5aa233ee6fe6",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k20_d5/fixed_report.parquet": "4679fec7be6537d5f4a7c98b03b3190fb4d717ac8350dda79ccc03f354d81188",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k30_d1/fixed_report.parquet": "01345dd6a2cfda100f92885aec40a1597cf03a99e8a1c49a6f2bc10672ac61d8",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k30_d3/fixed_report.parquet": "58a72cca26ffbe4e5e0957e54ebf338c05ed675d1fc6239cfd1c090924d1f976",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k30_d5/fixed_report.parquet": "09354098e17a76f432e0922b8ceee99314198019bc83cad5ddcd4887e75dfe90",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k50_d2/fixed_report.parquet": "65e8b6aec684cdb0676f98b1c4a720187f5716d070b5328e2fb4147cc3d5a23b",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p00_k50_d5/fixed_report.parquet": "24d89dd4486c2be1e4834df96bb169b4240c1d8332b1e8b1f2ae7c8f18b9bf0c",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k10_d1/fixed_report.parquet": "7f8e3255fb65bd8bf1d26d1e75f18c1939c610762224c29e87edf13029d87e5a",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k10_d2/fixed_report.parquet": "988f7260d4db6f18e4ebc5c13116bafa8afac53d6b8ef554a0f9dc157ef79347",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k10_d3/fixed_report.parquet": "fadc2cba7779c52df5f9434d8ee37841ce37f9eaeda55765c9b4db55035f42df",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k20_d1/fixed_report.parquet": "b757068ab8e50fd633428f6df894d32f4a3b599f1a2d89c4fae5cf8f97e49463",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k20_d2/fixed_report.parquet": "58fcac3c58ed94f5084bf8460bc523ca07cf234bb0e1c7fa6d386d28266a68ac",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k20_d3/fixed_report.parquet": "ad41322b7feb08f75bfb685af0601316b04083e7eac6d8782003d55b25a79369",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k20_d5/fixed_report.parquet": "6385ad409c53fdf44a5f548a36099fe7f0ae2d425384cf74fffa64a068b04c14",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k30_d1/fixed_report.parquet": "c0d8f34bdb79848cb96d9eb0e7a9d29c7f8312a2b6f7bb60d9be12dd721be955",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k30_d3/fixed_report.parquet": "a3c55670468286f3bac816732c78485d4279ac80180df5ce27c4a555b294f48d",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k30_d5/fixed_report.parquet": "e0743021023e2a65fafd630cca8dbe0030e9e45bf638bf99e623f055b9d67409",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k50_d2/fixed_report.parquet": "31f1510134e704de1a7b82241b0689bcfe8c89b406346c7403c2d36775d970d1",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/4e908173_p10_k50_d5/fixed_report.parquet": "e114ff1e8015b276c2a6c2c13c14ec38a070ed8934c66d558bbba2c08e428245",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k10_d1/fixed_report.parquet": "d4974d2243197d400bc72549fdf1d0cd2266b6b4a088db71f6417929f38b6485",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k10_d2/fixed_report.parquet": "59564e41f64c1622282964009f669468a6825b1be3c876e8b79e9ad4d747b5f4",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k10_d3/fixed_report.parquet": "7145cee2dd9714e352f672436a7223b3b4c579fe1abbeecc16b97d9240d5eb0f",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k20_d1/fixed_report.parquet": "f0073a10ae39f5084faade89f5b0dda17c9464c4742d89186b60364c20dcd82a",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k20_d2/fixed_report.parquet": "077b8257025c14e7f29e86ba027414dcb55f5c03dfa566d06863d06b6d495d62",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k20_d3/fixed_report.parquet": "382ac880bc1e55a5f36ba8c8774a2da3e090542574a34d15e0ed7d855c3ae10c",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k20_d5/fixed_report.parquet": "caad2f786525a31944c1b2185264a8e22988e129cc98d99d35d9f6a643e8cd37",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k30_d1/fixed_report.parquet": "3105afc6fa7cd69cb7e9cf1b8a57570f3494e4760f89fa2c6e8584da4329bd9b",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k30_d3/fixed_report.parquet": "365aed517c3c1868a73b288855e5de85d6e4b4d463b45e202245c39215b4a12c",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k30_d5/fixed_report.parquet": "d81494a68671bcc8774b3d2fa7e210e6d1378acf1b9d1bac646ed4e832c4b85d",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k50_d2/fixed_report.parquet": "9240e060846d2fc9f6bb39e4ee426079f0e9395584006d31191a42eb5be5bc54",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p00_k50_d5/fixed_report.parquet": "a04d93cb5ed242900308b36ec4a535cd06c57f0cddcedd478c6235254c82fbc5",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k10_d1/fixed_report.parquet": "fd7e26555b14550ac6e6ec4a69308900afcaa41831ab435e204df552f61092eb",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k10_d2/fixed_report.parquet": "76b18337de2f84311d0a4ea8a089915a6216589da00140dd93e7d14f0250c0c0",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k10_d3/fixed_report.parquet": "fcdac632c40522a464834120a4b651d8ebe2865d3f77c888f7b784b1f507660a",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k20_d1/fixed_report.parquet": "971ec8e635150cb449cf3bf88cc49917ce5d84db237621e9a74cfa99983db0e2",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k20_d2/fixed_report.parquet": "1323f8fd5ce6eb0cc22de9e11752aa12ae97aac542b352eab2b0c43f82867322",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k20_d3/fixed_report.parquet": "20abdc32ec6638ab8ea1dbf74e91af4bb64fa72188742ae5e63c47eedfdcb429",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k20_d5/fixed_report.parquet": "6beabb78a9ac7463340cb39de66a92f677eeb93b08b79a59e07c9456fd09582d",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k30_d1/fixed_report.parquet": "860e3ddcaf4c02297bc3ffe3178ce2be72aea32dd70ec7d40f7309394bbcd6e1",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k30_d3/fixed_report.parquet": "c3028b2c4edc5dca3850967b8ec8ac54a90924763aa428dfb26794ba57e2dbb5",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k30_d5/fixed_report.parquet": "697086431b9218cec1d95969bcb62b55c3e5bf82e89cffaa87899b0bc01ec45a",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k50_d2/fixed_report.parquet": "88c181ad52830d0aa013d1633c2c693c8c8be2ac026336b5382eed7794fcd31d",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/59b93929_p10_k50_d5/fixed_report.parquet": "98989688726ac5e9ebd99afeb3473e2ade929defa13e73d101d5c8fa1c729d53",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k10_d1/fixed_report.parquet": "3932e21ca13a2ffb1bcc67abb35050de6e05b06e3a003863e5306e05fb21afb4",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k10_d2/fixed_report.parquet": "820880bcd03b152b5ac540d775254b6b81b28f1b68a08f34c584316e9891e979",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k10_d3/fixed_report.parquet": "34bb699c276f70494dec7d9b3a503317a07e11ef3b96ec7f76fd386e262e8b50",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k20_d1/fixed_report.parquet": "53428bd61bb0e8f9e804f7336413a9cf9bbc0ee1558450d5c0ce918100e963b3",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k20_d2/fixed_report.parquet": "4b712ef2baa46306b4d3ec964aad1bbc890fd0f8c1f3d95d03ca48636d98447f",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k20_d3/fixed_report.parquet": "4414dd37e3bd97a997db398b23b3a6d6470da46edb26cdd17b6d3ec5a41daec9",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k20_d5/fixed_report.parquet": "8f090e173385e1342db3fb4f54098ec1b9f8b15a4110d6eb623dcfc7de9b31b2",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k30_d1/fixed_report.parquet": "15db596407bf45b6684d27fce94d044a661ff0daa78b6b4765a4467fe667a6d3",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k30_d3/fixed_report.parquet": "3d8c117e1ade0202242437556e2b69dc3d1c9d7f1cc068cc0e4e9ed9b3e6b5b8",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k30_d5/fixed_report.parquet": "28c09ea6a208c42502f11eef3f283054f323a409afe6a2c0c32f7e57e08d0db0",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k50_d2/fixed_report.parquet": "9dbd547af5d2221cd594c394b730f73a8fed27bd8e35ddb43522afe80267f201",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p00_k50_d5/fixed_report.parquet": "0de7796c642b7e0cc6f354575c69709856e6f4761b2c027b340bd303526d0ba2",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k10_d1/fixed_report.parquet": "68c3ea541bb611384971e98abf9b498e2755135454b7a808e8bc1122560d9287",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k10_d2/fixed_report.parquet": "33e13bc4e6f8fe0ec7917a1ac96a6fc9534ad559e7d1c6eb716914b2aba45d2a",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k10_d3/fixed_report.parquet": "7d3e62a3fd3b2f8ac7e8abc9f4f6a3c5db6a908a4fb28585ba7047faf8f4f560",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k20_d1/fixed_report.parquet": "1c0dcfd0ed484ccd7cd0044eddb332f71fe321ab3e773df9bb5150b6123858dd",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k20_d2/fixed_report.parquet": "6b077111aaeb42bab209f7a6340d9fe88f991f2ddd5abc57a93ea9d83d0ed0d4",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k20_d3/fixed_report.parquet": "b292959a6449472a0f34172f053bd07ec4e5f7400e00c91dc3840e1b836c1e55",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k20_d5/fixed_report.parquet": "87cae85031efadfe3a6428d9fc72ad2bf72723b5d7fc9cf55944d08756aadcbe",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k30_d1/fixed_report.parquet": "60af148c3f96d18a17f2739821bab96c65388a60ca5f6c37c1ccfe1cdc853038",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k30_d3/fixed_report.parquet": "d0100fc6252bb4630f2d4a5264f7982c9750e8ffe050d4be9f9f7d37bf05f9d5",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k30_d5/fixed_report.parquet": "d41ab401e7863bb98ef9a33695a938db7205075cb53acf62a58538bf353daaaf",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k50_d2/fixed_report.parquet": "1a592b696ce42fb82b67d480b475649c267e8434f950b096f1746e1a895fb31c",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/a419047a_p10_k50_d5/fixed_report.parquet": "a80e50caec4962132d708dcf728abf282486a07e214f3f03d7ebb544e7a608fd",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k10_d1/fixed_report.parquet": "1c1c4ad246d698fd23c9c92be9445b120b42fb292f140f7cae793b5e82b2eeba",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k10_d2/fixed_report.parquet": "e5e02941b5fb3475ddd024a2f7cca7d4fc1da95d4ccd8583c186df51c69fe861",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k10_d3/fixed_report.parquet": "03bbd48331e066f9423fa25840c86eb22012ed1893679d8c85cd6bf488d60335",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k20_d1/fixed_report.parquet": "089532234a4c3037e6f9013f6a150ed0b8cc0ba4b0550c733ca4a1ae870b619a",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k20_d2/fixed_report.parquet": "266ebef25a94c7cdb638243ed80f43a9a87faabe2a3704db89d52a9d3457eea2",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k20_d3/fixed_report.parquet": "2dc5f3fb27ec03a71959521719cad2aa7968f8c72369d7544d4fd6831766510e",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k20_d5/fixed_report.parquet": "abcda515d133fce58c52cf715e719ff4a0f857d7e6124a88f6e1dd81cce1980f",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k30_d1/fixed_report.parquet": "816611dddc94dcac18083d3354dd95c871cd10426c15e021b88b741fdf5e4423",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k30_d3/fixed_report.parquet": "f268753c3fa466531d6ec382da48294d016bdfbb68f36c0599fea8fd2301f324",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k30_d5/fixed_report.parquet": "3a0350815ca86d94238acc027f5320fc04420f643f54deae5a7f4b71b90b07aa",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k50_d2/fixed_report.parquet": "5e22b6903b7adaaabe8b91fcd67ad9789b5112a87d512b0c921c2ab125745efa",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p00_k50_d5/fixed_report.parquet": "5b4a68ca569f65cfdd8258f9d758784a6f356429ba044f325cb826214f34ba9c",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k10_d1/fixed_report.parquet": "ceb9552599cad029279c42ca4fdab721376cb30a02e9a541731af1817fb266c4",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k10_d2/fixed_report.parquet": "d046657bd9624472de97d7689fdc0fbd3878cde22aa7886198e188513ad61644",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k10_d3/fixed_report.parquet": "aaab2c0f4734216373b4e7a78a05b6670b0a7d058b84f87712765a7c03af61f8",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k20_d1/fixed_report.parquet": "de76fcd80159e478c127fd7ceb960a0808badbe6c90ce36e5845794239e47007",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k20_d2/fixed_report.parquet": "c84842af0948357559d6ba7555cf3bac843b545794c903a6b6448b29398860cc",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k20_d3/fixed_report.parquet": "c4c1872ccaf9b54abd7eca6415b652898f39450793729822e0d1a6dcb6640167",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k20_d5/fixed_report.parquet": "f8da940a3f873a82309403f85c82b25c80ec60910702ba2e4d1dbd26e36196ae",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k30_d1/fixed_report.parquet": "357a528f8997e8158e0f755b12c0267b25e13caccdddb0c07480cc713228ac2b",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k30_d3/fixed_report.parquet": "e39350a28309e7f31a55d6a85bc727703b26a4781731d4fb63b699c54a58a75a",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k30_d5/fixed_report.parquet": "00305ba66c2f3768ee474f84887e71a5c5aec50bb1286760168991eb0146590b",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k50_d2/fixed_report.parquet": "6a78c66dcbcf1ffadbb1d2b3dc59a7fe625a9d9f8df13c091ad7f3ceda6b1fe1",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/b034ac46_p10_k50_d5/fixed_report.parquet": "04916da8f719389a807ebf071d4ecc6ecea78eaa5ada8ffe6edff556bfe85bb8",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k10_d1/fixed_report.parquet": "fd68d405611743466d4d7baecb5047200feecddee67577fec1ed1999ad4daa3c",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k10_d2/fixed_report.parquet": "01d45ddacbd28fe3b8475c3674b3e603f2dcc4e2fceb9768fd9d19d9a22a4839",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k10_d3/fixed_report.parquet": "921dedf97500f62740c83fa9089cc80817de39a2689bdb2bd5b204133acdb9ff",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k20_d1/fixed_report.parquet": "a3bbee765ec9c7b3659ea96a0458e97a1f5fb1bc34ffd2f734d2ed124699b03b",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k20_d2/fixed_report.parquet": "a7af12f11dae15d2733f6f10c56ec3b0a24f401df14646428de39a0a62c79c93",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k20_d3/fixed_report.parquet": "698a2e6c295f2cade0024b9fc8f528944c7f24e1b4a32a53c12d25403c048773",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k20_d5/fixed_report.parquet": "84450d720d965584c867fc18aa98e79138990635889920be4f985beccb37042f",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k30_d1/fixed_report.parquet": "07f2dc39e958c6834cbe9372c7bc23321cfb0cfe4047a98223f4179c5f7cc8f9",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k30_d3/fixed_report.parquet": "27375a01273a2174753bce0263a324c9de8dd7afba320794c9274c9f1d75ec68",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k30_d5/fixed_report.parquet": "5af5089f5d9652c63991de307aa40e6365bbe504abeece83c22e31a171aeb565",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k50_d2/fixed_report.parquet": "5dad32ae916ebbc09ec3b034b7482162fb99578f5327433ce27ad92beef9595c",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p00_k50_d5/fixed_report.parquet": "f282ec5da63a79da86231bce4b50d2c49f900bbeeb1150af6d3cc0ed5f258ea3",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k10_d1/fixed_report.parquet": "0faa4e56ab8d51e36528ffd5c4d4cd49cdd730991775a22a4281703d75520bd4",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k10_d2/fixed_report.parquet": "429d6c28abd541271ef6598e4ecbcf53417c9c94698d1959d239f4cafc7556d7",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k10_d3/fixed_report.parquet": "35be96b3ddd272b9bca7945b16fd395d56476cb6111d0d366cf1aa8de4811ffc",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k20_d1/fixed_report.parquet": "b2c2665261fbd067361e688c370257b0c2cdd7b53fada2afdcdf25d7b72253d5",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k20_d2/fixed_report.parquet": "4d72480eda23407c09fe28f72266a451aa30aae3dad03e7ed489892a58c728bf",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k20_d3/fixed_report.parquet": "91de12e96c9a77ae3fc0f0f5243994e6681084400de37e3eef3f1b7a43108499",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k20_d5/fixed_report.parquet": "d34279a4465a18bc8e4d669aa28a0d05ebd07371d863022540deee720ec79255",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k30_d1/fixed_report.parquet": "b5b50b337479300ac6083de0b425b8398955da812c577f91bd6cee26279483c6",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k30_d3/fixed_report.parquet": "63fbf6b6e2792bb714bddf14e553908e03fce6080e811001a413b110ca12e0f9",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k30_d5/fixed_report.parquet": "49203d95ab8f7a136d3f819b051d131c79bec2e785b854a678340f6fd9969260",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k50_d2/fixed_report.parquet": "f4358e4d9b1342f96398030f39c6b7e5d181fa9a0285b1e32db24dddb20784f0",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c04ca416_p10_k50_d5/fixed_report.parquet": "f090977b8ba18cbd4c8248c238171367b633a9dc535a55fc02a2776553d5d3bf",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k10_d1/fixed_report.parquet": "1196856729d95989694fcef3d954b192c226cddc89bf22eb9207e301df9e315e",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k10_d2/fixed_report.parquet": "691b6e034648c6d0540076abb6ba2bc0759872becdb2dac529d8600981d1cac5",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k10_d3/fixed_report.parquet": "292ca68089fb29704806e17c26b909e51b52ed5efeda87a51af60e39dee79ac8",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k20_d1/fixed_report.parquet": "e5f0605ff98fbad418e1e614db208925af1867d92dca49a08a42f1d2848a3aa3",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k20_d2/fixed_report.parquet": "3f8a2e8979d5a9779d8043fdcd85e93e66f5e58ff720a7d393f70e55cf7bb512",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k20_d3/fixed_report.parquet": "9b4d5692a48d7b9b3794c8b6d271a9c51a1efbd5becdcd477b2bd073648ada2e",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k20_d5/fixed_report.parquet": "07caf4e3848dfce6b5421a70e85130cfd24cb32d280420037395660edc4661ef",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k30_d1/fixed_report.parquet": "37eeac1bb2a7e14edb903ee5eaa9876cb6d0dfa578060f36ca1a2680c1ff6ac3",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k30_d3/fixed_report.parquet": "7c56a3d138052a7016881266493a433243de63757f61c4640d09421c95fcae14",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k30_d5/fixed_report.parquet": "98360ea24701b6d6aaf7744d85f7ab1d1d47245576ff825545c9abe01c7544dd",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k50_d2/fixed_report.parquet": "c662b71c0f6101ffcff3fc3645591c842a138be5c516d266acb7b6e01607c510",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p00_k50_d5/fixed_report.parquet": "1938f0eaf21d81653a69b5b9869b37f99b4baa90c74f5fcc592c256745a2a02e",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k10_d1/fixed_report.parquet": "05b5036015451dafb46acc175945914283a6de82ec0093afd0bec8a07ba82de7",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k10_d2/fixed_report.parquet": "d419fda9ff29e6357bf667145d8732658757c5b097cea1728beb5da4ca1222e9",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k10_d3/fixed_report.parquet": "bca9eeb1db47829c75f8f4d6eae37c09ae1d9e7dcce8636a59096c40ebfbc07d",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k20_d1/fixed_report.parquet": "542d513e02e03ad348601131d1f6286dc5f2351e77c980954865614436300c7d",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k20_d2/fixed_report.parquet": "2503b48c1ee5e9b2816f19ff69d1332520b26f4b7249fc330205053da31f1eb0",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k20_d3/fixed_report.parquet": "4d792df40686e6719d1fbde58da7f62224b3bd6ff487f81bcbeafd2c0681f5a9",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k20_d5/fixed_report.parquet": "f91307eab4d88a032581c7f84738a837dd2d1182d530cf89bf228e628c387c55",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k30_d1/fixed_report.parquet": "7e1d0e92ff7acf2e7e701b9ca684b72567f70900a94c1b3068569844e979e5b1",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k30_d3/fixed_report.parquet": "6bbf9ec729e200a8d1dd2849b275a5f1018abbafde7fc1bcf4b3d1337bb77398",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k30_d5/fixed_report.parquet": "9c3bc04ec6cc4b142329eba2507024537eb218f9ffdc2ab13ac5ccbe4cbb8f5a",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k50_d2/fixed_report.parquet": "e2146fafa50746380707ec207f2abc06fde2673bfdc0016befb44cf77012e02a",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/c98856b4_p10_k50_d5/fixed_report.parquet": "64b38894f3224043c531839c76ad408a69e0de69dd1e025fcb3b52b89feeb6b7",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k10_d1/fixed_report.parquet": "4f68eac9a63079c0287b62db80bac81e2b27959da6d19195f9e2d9acca54ea05",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k10_d2/fixed_report.parquet": "1e4931504608cdad1cfa4dc3afb175638fff96e31c7c37c52938b39390e54837",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k10_d3/fixed_report.parquet": "18f75512b4f1bb4584883ed8d47a90601fa2e54efcbdbc3ffc7d0dd18700323f",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k20_d1/fixed_report.parquet": "ec203dfbd979a0b05c5d081c2a6dcbc311a24e6a02d74877b5fb667c5f2bd595",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k20_d2/fixed_report.parquet": "6de8746a70b1d9afd8c265bc18b6c9fd9fc99de7ee3a83d50b798dc456d0e5e2",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k20_d3/fixed_report.parquet": "a747899a816225cd80dbe5eec7b892cbc06b9df06205a626243a9726a9c1ca19",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k20_d5/fixed_report.parquet": "68f17c72df8b5d4508a04cbf45aa355b67b264f1cdb02a64336801c99abb223e",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k30_d1/fixed_report.parquet": "559a6e4d8c2a07cd502cd7f05c3a4e4371219e904b2af6a2d78958dcbb266c96",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k30_d3/fixed_report.parquet": "96db7258d324d4fbc30091ec0d18d3665b96c22f2dcd2f2527b5303c2bb26f11",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k30_d5/fixed_report.parquet": "b7079046116732e2dd9190d0a62e7d2897d05e5f91980274057580768fac2869",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k50_d2/fixed_report.parquet": "350666995d31b23feba2599d53c4970d0fce20a70b86d83e0129487c6527b9f3",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p00_k50_d5/fixed_report.parquet": "e267794762e6d703d8001a54c117b275f513d62360e45d0f9041042773c822ed",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k10_d1/fixed_report.parquet": "bbba0abf134e5dd8be02727c84556de55d4379b090207284f21c2b77be4a8825",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k10_d2/fixed_report.parquet": "d638b4fd34f084b6e78d1d94dc27736d258990f83c09c36e472976e298d90c0c",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k10_d3/fixed_report.parquet": "c3ebac3dcb53bc952ec758fa108a94f24fadd6817eb22dd46530e7a86541d32f",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k20_d1/fixed_report.parquet": "ceda5c3f2b7344872096ef865a4f3c647935f6f174327c676320452b24ec8b1e",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k20_d2/fixed_report.parquet": "e0364adb80f90c4144d6c36fe7f93462a4ea82e0f1f1b113234204f0d3ff2c53",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k20_d3/fixed_report.parquet": "49b27ab0521f104f1c582fa741075a1739c643e33209c2a70fbe8adb12fb203a",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k20_d5/fixed_report.parquet": "f2a54e2b5e1c950f4b0a2e3c1d2b63dbdb97f86d808859842d16017c8e0c7460",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k30_d1/fixed_report.parquet": "45f0cc6c3cd1239611f0d5de5366250886aea3f16e683dd06537189582ea50d5",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k30_d3/fixed_report.parquet": "1470f44db0aa3a086f972d33ffb0806f7cf3a912cb0048e748070109c45b2b05",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k30_d5/fixed_report.parquet": "ae3ca69bf4ee3d0157429b3e673bb57a957db7702de7e601abacd8a79a295d7e",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k50_d2/fixed_report.parquet": "ecbf05243f366c16c2ebf269681b3595b4cc42c19503a4ed7b3e78346acdf7bc",
+    "quant/data/round2_layered_search/l1_132strategies_2phases/cells/e74b3bbe_p10_k50_d5/fixed_report.parquet": "9a7506df4291007ad0926866902e213e6978a2982e090c102afe75d531033800",
+    "quant/data/round2_layered_search/l2_model_screen/jobs/phase/165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf/phase0/report.parquet": "f5afe24d78471551c6ddbc5b8929fd87f956c65892a23554dd6ffe5015b5e70b",
+    "quant/data/round2_layered_search/l2_model_screen/jobs/phase/165bf4fd68baa764ab74e5b4fce678f8bf007e57a46517a2a733df0e7ff30cdf/phase10/report.parquet": "7070a7e14be64526667a84ae318dc311970a92879bcb548fdd288e248884b56f",
+    "quant/data/round2_layered_search/l2_model_screen/jobs/phase/1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2/phase0/report.parquet": "186c95ecd004f036f14debd61fbe533638fa3b2dd673870aee8e4826ac290dfe",
+    "quant/data/round2_layered_search/l2_model_screen/jobs/phase/1cf2e0a40001098787830c4f71cb89cdf05b006a35e9f10b85165121c72a2df2/phase10/report.parquet": "af97f80d1067783a7bd462fcdffd84496b53788af0e75e5519e4dd899c0a3951",
+    "quant/data/round2_layered_search/l2_model_screen/jobs/phase/33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740/phase0/report.parquet": "8d48a4157ff62dddc8064393c0f1ffa0c923b58e25a4538c9c1ad6637fa211e9",
+    "quant/data/round2_layered_search/l2_model_screen/jobs/phase/33db4e9be7b0d80b9b40339464dc47cd82b83e1ad31c43090a1ca44cf3756740/phase10/report.parquet": "ed6626e6a1c5b35c5a848c690a4c07b763c9130ea76634df665ee1be5f766c2c",
+    "quant/data/round2_layered_search/l2_model_screen/jobs/phase/a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b/phase0/report.parquet": "383d9e760a225fbb46e82bc06ba67eb0e5a730859347230d59ee2cdd88db9994",
+    "quant/data/round2_layered_search/l2_model_screen/jobs/phase/a5cb64296dce9f1aa2185e0aaf0584417dab81e3fe19978c8b58751f89f6278b/phase10/report.parquet": "e53e4be9928956e2ac73c6ca6b7c83c69953a76c38827a00a737800adf2923a9",
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/231ee1ab4e38e0448b875ba84c7d54671b5853766d5e3c804b116552efd879ad/fold1/report.parquet": "6007b2facf1322d92443f4a8c1a30960e86bc7fd585d670c2171f34a66bdfb6d",
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/231ee1ab4e38e0448b875ba84c7d54671b5853766d5e3c804b116552efd879ad/fold2/report.parquet": "494f1ce6bf489e14d9357c8850f7182dbdfa5498083c84fc743d015025c41bd0",
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/231ee1ab4e38e0448b875ba84c7d54671b5853766d5e3c804b116552efd879ad/fold3/report.parquet": "c3dd0fe5dd03e33bf1323bd5800c72bf8701382bd1c37a161671f6617a15ed79",
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/231ee1ab4e38e0448b875ba84c7d54671b5853766d5e3c804b116552efd879ad/fold4/report.parquet": "304c1bce9d86e71fd96efd17f4fc8846d46f039cf5140e6b2bfc76890adfd805",
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/9fcfd8327f51051ed3c8aaa659bc529dd1c82d505a99e5ecd26398feeb59c7f9/fold1/report.parquet": "f6f8ea388012db058a1f86befbc35323bd2d6f12b7435ada869408798158763a",
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/9fcfd8327f51051ed3c8aaa659bc529dd1c82d505a99e5ecd26398feeb59c7f9/fold2/report.parquet": "8552e14ad1a601b63e49c0e6d1a34f11fe0f835bfd9b64b9ecd6864147728bcc",
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/9fcfd8327f51051ed3c8aaa659bc529dd1c82d505a99e5ecd26398feeb59c7f9/fold3/report.parquet": "fe5de70811dcdfddc4d4b6ebe29e13771a028ee62f5b30678389fc655b7aa600",
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/9fcfd8327f51051ed3c8aaa659bc529dd1c82d505a99e5ecd26398feeb59c7f9/fold4/report.parquet": "38209929877058847ab023225a220fc65e1dff185b8d9777faf030855341cea6",
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/ccb9b983e0dc6ae38f48c8f409a1bc7fbf17d711a862c1089b2cb6c3df09097b/fold1/report.parquet": "09ab416de484520f3268daaccf39ac1f5f5306bb1b0e0383db49f0c6dba16cd4",
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/ccb9b983e0dc6ae38f48c8f409a1bc7fbf17d711a862c1089b2cb6c3df09097b/fold2/report.parquet": "02f95b3d6b2883bde06e3341a8312fbc0ba861f6b2ce103157bf0f78731e529e",
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/ccb9b983e0dc6ae38f48c8f409a1bc7fbf17d711a862c1089b2cb6c3df09097b/fold3/report.parquet": "495e276c0c209e0e144d60a29f3b6473fcd5fd485aff7a87fc1dd665ed16db20",
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/ccb9b983e0dc6ae38f48c8f409a1bc7fbf17d711a862c1089b2cb6c3df09097b/fold4/report.parquet": "147953f87bf15a6406654ea70d83375a4cfa2f69f6c6cc01e4e0bc6634d7d7fa",
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/e01070fd3e80580cc375287bb4cb847e1ffd375a8cb013491392adc8914cfe74/fold1/report.parquet": "f7a3461124f4fed37e3908f525a8f2363ba4fb9e4e62b26c7f88c62549a44ad6",
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/e01070fd3e80580cc375287bb4cb847e1ffd375a8cb013491392adc8914cfe74/fold2/report.parquet": "037cdd25a86c2621ae51919790edd0de3def190c6f83cd5c2143de7455dde2db",
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/e01070fd3e80580cc375287bb4cb847e1ffd375a8cb013491392adc8914cfe74/fold3/report.parquet": "02e0169f3d904708952af38da6449e5f61d4fba0e8da71adf450299aaa8fbd04",
+    "quant/data/round2_layered_search/l2_model_screen/jobs/short/e01070fd3e80580cc375287bb4cb847e1ffd375a8cb013491392adc8914cfe74/fold4/report.parquet": "dc617f10364e319786d260bea5f24132b264cb9819c6104e2f735cad48787fbd",
+    "quant/data/round2_layered_search/l3_retrain_horizon/cells/r20_f10_p00/report.parquet": "a5f11fed39b003bc5cd278cd22de98042db95cdcd95d9c9fa28537475c2e2001",
+    "quant/data/round2_layered_search/l3_retrain_horizon/cells/r20_f10_p05/report.parquet": "ef6cdbdd839823f02bf813222abce3fff33d169d5a3f83950587cb6efea345ed",
+    "quant/data/round2_layered_search/l3_retrain_horizon/cells/r20_f40_p00/report.parquet": "b9e58cb3c103c7935bc05d1006487fa6a89aa987770bc1202f4b7765f5c55aef",
+    "quant/data/round2_layered_search/l3_retrain_horizon/cells/r20_f40_p20/report.parquet": "c7e339ebeb3ecb4913205a228922f26acb21efe0f3d0bafd75d414b3d4872d8b",
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/1ca6fae56e8c/phase00/fixed_report.parquet": "b5cf6d73d536e22b3857b97badeb2a3cb3be2b9aa93b0a497b2852468f05f161",
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/1ca6fae56e8c/phase04/fixed_report.parquet": "2e521e443f8254c9de1673a7400c13f47459cd4926ec6f1467134976378fe0f0",
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/1ca6fae56e8c/phase06/fixed_report.parquet": "dd9b67f6e7789509eaa98546296fe965681a9806e535f14f1abb64f9e19ef5fd",
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/1ca6fae56e8c/phase10/fixed_report.parquet": "61430cdacb05baa92487753837d5e7270876349d9ff478813a638df0a3452812",
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/1ca6fae56e8c/phase15/fixed_report.parquet": "04fefb5c8628817acd1bb14238aa888a6e75008c9581ed3904c955eef255055e",
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/3ddff2cd6138/phase00/fixed_report.parquet": "754d5f501b090298baa716a65ea47851d83df76e2ae3569fd045e79db2478db8",
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/3ddff2cd6138/phase04/fixed_report.parquet": "24fa65a8d03e9f36c5cf4c5fa4e8f78a8e19f2c20567b20d3a1808a93d783938",
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/3ddff2cd6138/phase06/fixed_report.parquet": "6b84d882a0e1776bdfe928945c8e80b94041c08141e1900d71934d91db3892cb",
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/3ddff2cd6138/phase10/fixed_report.parquet": "00c306f131433e85cc0f0c7dc3653c3e0973680be5e576974c01db14a3980f67",
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/3ddff2cd6138/phase15/fixed_report.parquet": "e965f010fabe4ae020b791cf3a7fb5a352291c69de1881814dbe055a46307d7e",
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/95ae81ba885d/phase00/fixed_report.parquet": "452850dfd0b21bc5742d6afed63be789cf6b3ac2dbb801ff63c754ebf94bba87",
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/95ae81ba885d/phase04/fixed_report.parquet": "9e5a32bb70b997e02c0309d6146a7d0f3e500291e2a8d6241818b809ff984690",
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/95ae81ba885d/phase06/fixed_report.parquet": "1415cdfb2f6fb5067079bd48928fbc597017270aa7622d0ba2f3438e917f7c3e",
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/95ae81ba885d/phase10/fixed_report.parquet": "e281440088e7786bed7b617553647e59459c5c30dc84114e4170237b51aff155",
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/95ae81ba885d/phase15/fixed_report.parquet": "10ab2bd2ee57a36efb094a57931f2d64a3b0c50524d86006879e1406ff6722dc",
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/e7d1fab6c5e8/phase00/fixed_report.parquet": "382f2661c06691d4fb2e8cf757c8f3163954c41cadff96105b1d4e3b133ea20c",
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/e7d1fab6c5e8/phase04/fixed_report.parquet": "2ed8f29d2c79c7ba17e345328e931039c9daa73ef2e81ac72febfb50a926d713",
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/e7d1fab6c5e8/phase06/fixed_report.parquet": "cb94099d25c6e48bb05dd742837f3c3398fe77592733a9efe30e09ca23435b63",
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/e7d1fab6c5e8/phase10/fixed_report.parquet": "37eda43d34a34d151ae01812915c6c717267b054abd29fa40ed3c026b8618f95",
+    "quant/data/round2_layered_search/l4_five_phase_final/cells/e7d1fab6c5e8/phase15/fixed_report.parquet": "74218bc27cd2a9009e3708de2c65974bb680fa7fa33a68ae482c118bdd2b05c2",
+    "quant/data/round2_layered_search/p0_gate/cells/23b92de0_p00_k20_d2/fixed_report.parquet": "66528735f6b9b56b190d09958a499592c27f8c3c0c845e295aca34f0538c1478",
+    "quant/data/round2_layered_search/p0_gate/cells/23b92de0_p10_k20_d2/fixed_report.parquet": "0b7a012e640a4cfdf0d3324206990c90974b34f88e8e45df55c9475effa08679",
+    "quant/data/round2_layered_search/p0_gate/cells/4e908173_p00_k20_d2/fixed_report.parquet": "17b2426b59c27707fc0ff4683dd4a5e57deac25c9b9824ac084edcc52fe531c6",
+    "quant/data/round2_layered_search/p0_gate/cells/4e908173_p10_k20_d2/fixed_report.parquet": "d01158d66a7bda9e9865b0cefa2a5f8565ab80236984fef08c2130d616a6760c"
+  },
+  "repair_source_sha256": {
+    "quant/code/execution/portfolio_performance.py": "735144da9f50195346118d5c142ea8aa040c5741fdf8ee79813cc4620f6fe316",
+    "quant/code/execution/execution_limits.py": "e29f6e17672854a578d6a1a6f1a2ad0728df878b19a68006f3ca2df36c085964",
+    "quant/code/execution/order_quantity.py": "103f65da299eda5cfeb0f26f69bca0ad87d8225803d2b7210a732b9fd2b51898",
+    "quant/code/production/paper_portfolio.py": "55b7e28ce0e428fcfeedd2f67ed4714120ec3c6bbc8e52734b6ce71970480823",
+    "quant/code/ops/merge_forward_performance.py": "0582f70d821c971edd6312eb30ef9fb1b1379d71d1826a58af82298493af8fc2",
+    "quant/code/research/csi300_csi500/stage0_p0_core.py": "17b7a451d8c0f67f08663279081689162582ef51cfe219d51315426586ba6f6d"
+  }
+}

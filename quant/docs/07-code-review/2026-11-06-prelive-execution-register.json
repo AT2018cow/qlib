@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "kind": "PRELIVE_CORRECTION_REVALIDATION",
+  "status": "REGISTERED_BEFORE_NEW_REPLAY",
+  "date": "2026-11-06",
+  "base_commit": "a31673670c8a32e4d7bea4e65cf8ece812583deb",
+  "account": 1000000,
+  "risk_degree": 0.95,
+  "fees": {
+    "buy": 0.0005,
+    "sell": 0.0015,
+    "min_cny": 5
+  },
+  "slippage_bps": [
+    0,
+    5,
+    10
+  ],
+  "primary_window": {
+    "first_signal": "2018-01-02",
+    "last_execution": "2024-12-31",
+    "evidence": "CONSUMED_HISTORY"
+  },
+  "incumbent_extension": {
+    "last_execution": "2026-09-30",
+    "evidence": "CONSUMED_HISTORY_NOT_NEW_OOS",
+    "require_exact_overlap": true,
+    "include_existing_same_spine_holding_variants": true
+  },
+  "engine": "PRODUCTION_PAPER_PORTFOLIO",
+  "candidates": [
+    {
+      "id": "csi300_B_S01",
+      "market": "csi300",
+      "spine": "B",
+      "topk": 10,
+      "dropn": 1,
+      "horizon": 10,
+      "incumbent": true
+    },
+    {
+      "id": "csi300_A_S01",
+      "market": "csi300",
+      "spine": "A",
+      "topk": 10,
+      "dropn": 1,
+      "horizon": 20,
+      "incumbent": false
+    },
+    {
+      "id": "csi300_B_S02",
+      "market": "csi300",
+      "spine": "B",
+      "topk": 20,
+      "dropn": 2,
+      "horizon": 10,
+      "incumbent": false
+    },
+    {
+      "id": "csi300_A_S02",
+      "market": "csi300",
+      "spine": "A",
+      "topk": 20,
+      "dropn": 2,
+      "horizon": 20,
+      "incumbent": false
+    },
+    {
+      "id": "csi500_B_S02",
+      "market": "csi500",
+      "spine": "B",
+      "topk": 20,
+      "dropn": 2,
+      "horizon": 20,
+      "incumbent": true
+    },
+    {
+      "id": "csi500_A_S01",
+      "market": "csi500",
+      "spine": "A",
+      "topk": 10,
+      "dropn": 1,
+      "horizon": 10,
+      "incumbent": false
+    },
+    {
+      "id": "csi500_B_S01",
+      "market": "csi500",
+      "spine": "B",
+      "topk": 10,
+      "dropn": 1,
+      "horizon": 20,
+      "incumbent": false
+    },
+    {
+      "id": "csi500_A_S02",
+      "market": "csi500",
+      "spine": "A",
+      "topk": 20,
+      "dropn": 2,
+      "horizon": 10,
+      "incumbent": false
+    },
+    {
+      "id": "csi1000_A_S01",
+      "market": "csi1000",
+      "spine": "A",
+      "topk": 10,
+      "dropn": 1,
+      "horizon": 20,
+      "incumbent": true
+    },
+    {
+      "id": "csi1000_A_S02",
+      "market": "csi1000",
+      "spine": "A",
+      "topk": 20,
+      "dropn": 2,
+      "horizon": 20,
+      "incumbent": false
+    }
+  ],
+  "phase_replications": {
+    "market": "csi1000",
+    "phases": [
+      0,
+      4,
+      6,
+      15
+    ],
+    "cells": [
+      "S01",
+      "S02"
+    ],
+    "reason": "EXISTING_FROZEN_SIGNALS_COMMON_START_FRESH_ACCOUNTS",
+    "common_first_signal": "2018-01-23"
+  },
+  "comparison_rule": {
+    "rank_order": [
+      "net_sharpe_desc",
+      "less_negative_max_drawdown",
+      "cagr_desc",
+      "candidate_id_asc"
+    ],
+    "challenger_min_sharpe_improvement": 0.1,
+    "challenger_max_mdd_deterioration": 0.02,
+    "challenger_min_net_cagr_improvement": 0,
+    "annual_relative_win_fraction_min": 0.5,
+    "additional_10bp_sharpe_must_improve": true,
+    "available_phase_net_outperformance_fraction_min": 0.75,
+    "missing_phase_or_extension_evidence_blocks_switch_recommendation": true,
+    "note": "Operational comparison criteria, not statistical significance or user risk tolerance. Existing historical evidence cannot grant live approval.",
+    "extension_sharpe_must_not_reverse": true
+  },
+  "missing_evidence_policy": "REFERENCE_ONLY_NO_FABRICATED_ST_HALT_OR_LIQUIDITY",
+  "cloud": {
+    "smoke_required": true,
+    "cpu_per_replay": 2,
+    "memory_mb": 8192,
+    "max_parallel_replays": 4,
+    "replay_timeout_seconds": 1200,
+    "gpu": false,
+    "automatic_retries": 0,
+    "foreground_attached": true
+  },
+  "production_mutation_authorized": false,
+  "new_training_planned": false,
+  "amendments_before_full_replay": [
+    "Input inspection found phase 15 first signal on 2018-01-23; all four phases use this common fresh-account start, including phase 0 control.",
+    "Existing extension predictions also support the alternate holding rule for each incumbent spine; evaluate six registered configurations without new training."
+  ],
+  "user_execution_contract": {
+    "markets": [
+      "csi300",
+      "csi500",
+      "csi1000"
+    ],
+    "independent_accounts": true,
+    "account_cny": 1000000,
+    "live_execution": "MANUAL_CONFIRMATION",
+    "paper_automation_allowed": true,
+    "broker_automation_authorized": false
+  },
+  "frozen_signal_sha256": {
+    "primary/csi300/A": "50d7dbc6f36314b96b841dacc6394e58a76ca7378372042083d2fc740fcfbd8e",
+    "primary/csi300/B": "2b255840d35492c493c8c7b5ba28870f367468c32cdf645961995530fd3b40b5",
+    "extension/csi300/B": "3b496f467ae8b6faf7e4dfdb561fc30f9cd203f79bf9bfed0aa7bd6bc725fb2d",
+    "primary/csi500/A": "85812a7826d033de1eafdd39d8987e99a0d3c007bcac0066cae78f8fb6377955",
+    "primary/csi500/B": "9cba0c0cc0caf0716c8fafa102f91f49ca4145bf587080c89908843df7609304",
+    "extension/csi500/B": "c785d95bdacefa77be03ed6c2c541ae2284183ddebeb5d2cbc352f783db66087",
+    "primary/csi1000/A": "3ba5ce732f4d817512ba62648c7f30c3befabb7fceb0fbcc0cf779123c72cf25",
+    "extension/csi1000/A": "b0136c394f40c138f5ce63ec38d23150e8b63ec32f907ac106d8bae7e2696d03",
+    "phase04/csi1000/A": "35207b3a77a497e5f4f4d3ee0afdd5c3ac7a155def60e6848c76ab7dcb97bbac",
+    "phase06/csi1000/A": "cfca5c15352a6dd002017c827b8b8e418798da296fe228f92796d98a6a11f26b",
+    "phase15/csi1000/A": "94ee129fb3ac99c6b7ba453c8d6a8b9200ebe37cdb06b89e513470ee948409e1"
+  },
+  "provider_identity": {
+    "files_manifest_sha256": "23ed1bc699b5a625e2d2bf735ad23e2a5e6cf3f82638625098541d25f7cced0e",
+    "file_count": 12556,
+    "calendar_end": "2026-09-30",
+    "incomplete_provider_allowed": false
+  },
+  "execution_fallback": {
+    "local_workers": 2,
+    "reason": "Cloud worker heartbeat/timeouts during source-volume I/O; same registered frozen signals and verified complete local provider"
+  }
+}

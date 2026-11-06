@@ -73,176 +73,11 @@ def _benchmark_close(provider: str, benchmark: str, start: str, end: str):
     return series.sort_index()
 
 
-def _base_report(report, gross_return, cost, turnover, bench=None):
-    import pandas as pd
-
-    out = pd.DataFrame(index=report.index)
-    out["return"] = gross_return
-    out["cost"] = cost
-    out["bench"] = report["bench"] if bench is None else bench
-    out["turnover"] = turnover
-    net = out["return"] - out["cost"]
-    out["account"] = 100_000_000 * (1.0 + net).cumprod()
-    # These fields are required by the established arithmetic cost-stress path;
-    # the overlay return stream does not model a separate cash ledger.
-    out["cash"] = 0.0
-    out["total_cost"] = out["cost"].cumsum() * 100_000_000
-    return out
-
-
-def apply_trend_gate(report, close, ma_fast=120, ma_slow=250, vol_window=20, vol_cap=0.25):
-    """S16: benchmark MA120/MA250 + 20d vol gate, applied next session."""
-    import numpy as np
-    import pandas as pd
-
-    c = close.reindex(report.index).ffill()
-    fast = c.rolling(ma_fast, min_periods=ma_fast).mean()
-    slow = c.rolling(ma_slow, min_periods=ma_slow).mean()
-    vol = c.pct_change().rolling(vol_window).std() * np.sqrt(238)
-    target = pd.Series(1.0, index=c.index)
-    target[c < fast] = 0.6
-    target[(c < fast) & ((c < slow) | (vol > vol_cap))] = 0.3
-    target[fast.isna() | slow.isna()] = 1.0
-    weight = target.shift(1).fillna(1.0)
-    delta = weight.diff().fillna(0.0)
-    overlay_cost = pd.Series(0.0, index=weight.index)
-    overlay_cost[delta < 0] = (-delta[delta < 0]) * 0.0015
-    overlay_cost[delta > 0] = delta[delta > 0] * 0.0005
-    out = _base_report(
-        report,
-        gross_return=weight * report["return"],
-        cost=weight * report["cost"] + overlay_cost,
-        turnover=weight * report["turnover"] + delta.abs(),
-    )
-    return out, weight
-
-
-def apply_drawdown_breaker(report, soft=0.12, hard=0.18, recovery_days=5, ma_window=20):
-    """S18: account drawdown breaker with a 5-session MA20 recovery gate.
-
-    Soft breach -> 50% exposure; hard breach -> cash.  Recovery from cash/half
-    requires ``recovery_days`` consecutive closes of the overlay NAV above its
-    own MA20.  The rule is fixed ex ante and is not tuned on R3.
-    """
-    import numpy as np
-    import pandas as pd
-
-    base_ret = report["return"].to_numpy(dtype=float)
-    base_cost = report["cost"].to_numpy(dtype=float)
-    n = len(report)
-    gross = np.zeros(n)
-    total_cost = np.zeros(n)
-    turnover = np.zeros(n)
-    nav = 1.0
-    peak = 1.0
-    weight = 1.0
-    pending_cost = 0.0
-    pending_turnover = 0.0
-    above = 0
-    nav_hist = []
-    weights = np.zeros(n)
-
-    for i in range(n):
-        weights[i] = weight
-        gross[i] = weight * base_ret[i]
-        total_cost[i] = weight * base_cost[i] + pending_cost
-        turnover[i] = weight * float(report["turnover"].iloc[i]) + pending_turnover
-        nav *= 1.0 + gross[i] - total_cost[i]
-        nav_hist.append(nav)
-        peak = max(peak, nav)
-        drawdown = nav / peak - 1.0
-        if len(nav_hist) >= ma_window:
-            ma = float(np.mean(nav_hist[-ma_window:]))
-            above = above + 1 if nav > ma else 0
-        else:
-            above = 0
-
-        if drawdown <= -hard:
-            target = 0.0
-        elif drawdown <= -soft:
-            target = 0.5 if (weight > 0.0 or above >= recovery_days) else 0.0
-        elif weight < 1.0 and above >= recovery_days:
-            target = 1.0
-        else:
-            target = weight
-        delta = abs(target - weight)
-        if delta > 0:
-            pending_turnover = delta
-            pending_cost = delta * (0.0015 if target < weight else 0.0005)
-        else:
-            pending_turnover = 0.0
-            pending_cost = 0.0
-        weight = target
-
-    out = _base_report(
-        report,
-        gross_return=pd.Series(gross, index=report.index),
-        cost=pd.Series(total_cost, index=report.index),
-        turnover=pd.Series(turnover, index=report.index),
-    )
-    return out, pd.Series(weights, index=report.index)
-
-
-def _target_weights(net_returns, kind: str, window: int = 60):
-    import numpy as np
-    import pandas as pd
-
-    if kind == "equal":
-        return pd.DataFrame(1.0 / net_returns.shape[1], index=net_returns.index, columns=net_returns.columns)
-    vol = net_returns.rolling(window, min_periods=window).std().shift(1)
-    inv = 1.0 / vol.replace(0.0, np.nan)
-    weights = inv.div(inv.sum(axis=1), axis=0)
-    weights = weights.fillna(1.0 / net_returns.shape[1])
-    return weights
-
-
-def combine_sleeves(reports, kind: str, rebalance_every: int, cost_bps: float):
-    """S17: monthly equal-weight / inverse-vol combination of market sleeves."""
-    import numpy as np
-    import pandas as pd
-
-    rets = pd.DataFrame({m: r["return"] for m, r in reports.items()}).sort_index()
-    costs = pd.DataFrame({m: r["cost"] for m, r in reports.items()}).sort_index()
-    benches = pd.DataFrame({m: r["bench"] for m, r in reports.items()}).sort_index()
-    if not rets.index.equals(costs.index) or not rets.index.equals(benches.index):
-        raise ValueError("sleeve report indexes do not align")
-    net = rets - costs
-    target = _target_weights(net, kind)
-    n = len(rets)
-    w = target.iloc[0].to_numpy(dtype=float)
-    gross = np.zeros(n)
-    total_cost = np.zeros(n)
-    bench = np.zeros(n)
-    turnover = np.zeros(n)
-    for i in range(n):
-        if i > 0 and i % rebalance_every == 0:
-            new_w = target.iloc[i - 1].to_numpy(dtype=float)
-            delta = float(np.abs(new_w - w).sum())
-            total_cost[i] += delta * cost_bps / 10000.0
-            turnover[i] += delta
-            w = new_w
-        r = rets.iloc[i].to_numpy(dtype=float)
-        c = costs.iloc[i].to_numpy(dtype=float)
-        b = benches.iloc[i].to_numpy(dtype=float)
-        gross[i] = float(np.dot(w, r))
-        total_cost[i] += float(np.dot(w, c))
-        bench[i] = float(np.dot(w, b))
-        turnover[i] += float(sum(w[j] * float(reports[market]["turnover"].iloc[i]) for j, market in enumerate(reports)))
-        denom = 1.0 + gross[i]
-        if denom > 0:
-            w = w * (1.0 + r) / denom
-    out = pd.DataFrame(index=rets.index)
-    out["return"] = gross
-    out["cost"] = total_cost
-    out["bench"] = bench
-    out["turnover"] = turnover
-    net = out["return"] - out["cost"]
-    out["account"] = 100_000_000 * (1.0 + net).cumprod()
-    # These fields are required by the established arithmetic cost-stress path;
-    # the overlay return stream does not model a separate cash ledger.
-    out["cash"] = 0.0
-    out["total_cost"] = out["cost"].cumsum() * 100_000_000
-    return out
+from portfolio_overlays import (
+    apply_trend_gate,
+    apply_drawdown_breaker,
+    combine_sleeves,
+)
 
 
 def main() -> None:
@@ -261,6 +96,13 @@ def main() -> None:
     rows = []
 
     def save(name: str, report, metrics: dict):
+        metrics.update(
+            {
+                "evaluation_mode": "ARITHMETIC_DIAGNOSTIC",
+                "promotion_eligible": False,
+                "required_gate": "ORDER_LEVEL_REPLAY_AND_LIQUIDITY_EVIDENCE",
+            }
+        )
         d = out_root / name
         d.mkdir(parents=True, exist_ok=True)
         report.to_parquet(d / "report.parquet")

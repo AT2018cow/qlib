@@ -72,20 +72,24 @@ def portfolio_performance(
     missing = required - set(report.columns)
     if missing:
         raise ValueError(f"report missing columns: {sorted(missing)}")
-    if initial_cash <= 0:
+    if not math.isfinite(initial_cash) or initial_cash <= 0:
         raise ValueError("initial_cash must be positive")
-    if annual_sessions <= 0:
+    if not math.isfinite(annual_sessions) or annual_sessions <= 0:
         raise ValueError("annual_sessions must be positive")
-    if rf_annual <= -1:
+    if not math.isfinite(rf_annual) or rf_annual <= -1:
         raise ValueError("rf_annual must be greater than -100%")
 
     rep = report.sort_index().copy()
     if rep.index.has_duplicates:
         raise ValueError("report index contains duplicates")
 
-    aligned = rep[["return", "cost", "bench"]].astype(float).dropna()
+    aligned = rep[["return", "cost", "bench"]].astype(float)
     if aligned.empty:
         raise ValueError("report contains no complete return/cost/bench rows")
+    if not np.isfinite(aligned.to_numpy()).all():
+        raise ValueError("report contains missing/non-finite return/cost/bench; refusing to drop sessions")
+    if (aligned["cost"] < 0).any():
+        raise ValueError("negative transaction cost")
 
     net_ret = aligned["return"] - aligned["cost"]
     bench_ret = aligned["bench"]
@@ -96,12 +100,16 @@ def portfolio_performance(
 
     if 'account' in rep.columns:
         account = rep["account"].astype(float).reindex(aligned.index)
-        if account.isna().any() or (account <= 0).any():
+        if not np.isfinite(account.to_numpy()).all() or (account <= 0).any():
             raise ValueError("invalid Qlib account path")
         strategy_nav = account / float(initial_cash)
         implied = account.pct_change()
         implied.iloc[0] = account.iloc[0] / float(initial_cash) - 1.0
         account_error = _finite_float((implied - net_ret).abs().max())
+        if account_error is None or account_error > 1e-6:
+            raise ValueError(f"account/return-cost mismatch: {account_error}")
+        # Every risk statistic now describes the same verified after-cost path.
+        net_ret = implied
     else:
         strategy_nav = (1.0 + net_ret).cumprod()
         account_error = None
@@ -141,6 +149,9 @@ def portfolio_performance(
 
     return {
         "metric_version": "portfolio_compound_v1",
+        "validation_version": "complete_finite_nav_v2_20261106",
+        "evaluation_mode": report.attrs.get("evaluation_mode", "SOURCE_EVIDENCE_REQUIRED"),
+        "promotion_eligible": False,
         "start": str(pd.Timestamp(aligned.index[0]).date()),
         "end": str(pd.Timestamp(aligned.index[-1]).date()),
         "years": round(float(years), 6),
@@ -159,7 +170,5 @@ def portfolio_performance(
         "annual_volatility": None if annual_volatility is None else round(annual_volatility, 6),
         "mean_daily_net_return": round(float(net_ret.mean()), 8),
         "mean_daily_active_return": round(float(active_ret.mean()), 8),
-        "account_return_max_error": (
-            None if account_error is None else round(float(account_error), 12)
-        ),
+        "account_return_max_error": (None if account_error is None else round(float(account_error), 12)),
     }

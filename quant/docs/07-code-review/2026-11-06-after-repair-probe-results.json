@@ -1,0 +1,68 @@
+{
+  "Q01": {
+    "rejected_missing_session": true,
+    "reason": "report contains missing/non-finite return/cost/bench; refusing to drop sessions"
+  },
+  "Q02": {
+    "NaN_fields_accepted": [],
+    "expected": []
+  },
+  "Q03": {
+    "buy_blocked": true,
+    "sell_blocked": true,
+    "expected": "reject unknown reference or block both"
+  },
+  "Q04": {
+    "decimal_reference": "1.15 * 0.90 = 1.035 -> 1.04",
+    "sell_blocked": true,
+    "expected_sell_blocked": true
+  },
+  "Q05": {
+    "physical_buy_shares": [],
+    "expected": "no fill: insufficient budget for minimum 200 shares"
+  },
+  "Q06": {
+    "unproven_reset_accepted": false,
+    "reason": "missing/mismatched account identity at segment boundary"
+  },
+  "Q07": {
+    "aggregate_policy": "BACKFILL_PLUS_DISCLOSED_LIVE_PAPER",
+    "fallback_dates": [
+      "2026-11-03"
+    ],
+    "point_policy": "ST_IGNORED_REFERENCE_ONLY"
+  },
+  "Q08": {
+    "actual_min_weight": 0.3,
+    "actual_max_weight": 0.3,
+    "expected": "0.3 exposure with complete falling prehistory"
+  },
+  "Q09": {
+    "first_weights": [
+      1.0,
+      0.0,
+      0.0
+    ],
+    "last_weights": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "expected": "recovery must be reachable under an explicitly defined recovery signal"
+  },
+  "Q10": {
+    "actual_final": 99499999.99999999,
+    "expected_final": 99500000.0,
+    "derivation": "50M * 0.9 * 1.1 + 50M"
+  },
+  "Q11": {
+    "stressed_nav": [
+      99.0,
+      109.0
+    ],
+    "reported_second_net_return": 0.101010101010101,
+    "actual_second_net_return": 0.101010101010101
+  }
+}

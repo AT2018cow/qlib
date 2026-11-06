@@ -54,11 +54,22 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--open-cost", type=float, default=0.0005)
     parser.add_argument("--close-cost", type=float, default=0.0015)
     parser.add_argument("--account", type=float, default=100_000_000.0)
+    parser.add_argument("--st-history", type=Path)
+    parser.add_argument(
+        "--allow-st-reference",
+        action="store_true",
+        help="explicit reference-only run without dated historical ST evidence",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = _parse_args()
+    if args.st_history is None and not args.allow_st_reference:
+        raise ValueError("provide --st-history or explicitly select --allow-st-reference")
+    from artifact_io import loads
+
+    st_history = loads(args.st_history.read_text()) if args.st_history else None
     import pandas as pd
     import qlib
     from qlib.backtest import collect_data
@@ -68,6 +79,8 @@ def main() -> None:
     from execution_quote_universe import execution_quote_codes
     from portfolio_performance import portfolio_performance
     from stage0_p0_core import apply_cost_stress
+    from research_governance import trial_record, digest
+    import hashlib
 
     qlib.init(provider_uri=args.provider, region="cn", kernels=1, skip_if_reg=True)
     calendar = [str(x)[:10] for x in D.calendar(start_time=args.signal_start, end_time=args.exec_end, freq="day")]
@@ -115,103 +128,141 @@ def main() -> None:
                 key = f"{market}/{spine}/{cell}"
                 if only and key not in only:
                     continue
-                spec = COMBOS[cell]
-                strategy_kwargs = {
-                    "signal": signal,
-                    "topk": spec["topk"],
-                    "n_drop": spec["dropn"],
-                    "forbid_all_trade_at_limit": False,
+                trial_identity = {
+                    "market": market,
+                    "spine": spine,
+                    "cell": cell,
+                    "signal_sha256": hashlib.sha256(signal_path.read_bytes()).hexdigest(),
+                    "exec_start": exec_start,
+                    "exec_end": args.exec_end,
+                    "account": float(args.account),
+                    "open_cost": args.open_cost,
+                    "close_cost": args.close_cost,
+                    "rebalance_every": args.rebalance_every,
+                    "st_history_sha256": digest(st_history) if st_history is not None else None,
+                    "execution_source_sha256": digest(
+                        {
+                            name: hashlib.sha256(
+                                (REPO_ROOT / "quant" / "code" / "execution" / name).read_bytes()
+                            ).hexdigest()
+                            for name in (
+                                "board_execution.py",
+                                "execution_limits.py",
+                                "order_quantity.py",
+                                "portfolio_performance.py",
+                            )
+                        }
+                    ),
                 }
-                if args.rebalance_every > 1:
-                    strategy_class = "PeriodicTopkDropoutStrategy"
-                    strategy_module = "periodic_strategy"
-                    strategy_kwargs["rebalance_every"] = args.rebalance_every
-                else:
-                    strategy_class = "DeterministicTopkDropoutStrategy"
-                    strategy_module = "deterministic_strategy"
-                exchange_kwargs = research_exchange(exec_start, args.exec_end, codes=codes)
-                exchange_kwargs["exchange"]["kwargs"]["open_cost"] = float(args.open_cost)
-                exchange_kwargs["exchange"]["kwargs"]["close_cost"] = float(args.close_cost)
-                result = {}
-                decisions = list(
-                    collect_data(
-                        strategy={
-                            "class": strategy_class,
-                            "module_path": strategy_module,
-                            "kwargs": strategy_kwargs,
-                        },
-                        executor={
-                            "class": "SimulatorExecutor",
-                            "module_path": "qlib.backtest.executor",
-                            "kwargs": {
-                                "time_per_step": "day",
-                                "generate_portfolio_metrics": True,
-                                "track_data": True,
-                            },
-                        },
-                        start_time=exec_start,
-                        end_time=args.exec_end,
-                        account=float(args.account),
-                        benchmark=benchmark,
-                        exchange_kwargs=exchange_kwargs,
-                        return_value=result,
-                    )
-                )
-                report = result["portfolio_dict"]["1day"][0]
-                if len(report) != len(expected_days) - 1 or not report.index.is_unique:
-                    raise ValueError(f"report coverage mismatch for {key}: {len(report)}")
-                metrics = portfolio_performance(report, initial_cash=float(args.account), backtest_start=exec_start)
-                metrics.update(
-                    {
-                        "market": market,
-                        "spine": spine,
-                        "cell": cell,
+                with trial_record(out_root / "trials", trial_identity) as trial:
+                    spec = COMBOS[cell]
+                    strategy_kwargs = {
+                        "signal": signal,
                         "topk": spec["topk"],
-                        "dropn": spec["dropn"],
-                        "benchmark": benchmark,
-                        "signal_start": args.signal_start,
-                        "exec_start": exec_start,
-                        "exec_end": args.exec_end,
-                        "codes": len(codes),
-                        "decisions": len(decisions),
-                        "rebalance_every": args.rebalance_every,
-                        "open_cost": args.open_cost,
-                        "close_cost": args.close_cost,
-                        "mean_turnover": round(float(report["turnover"].mean()), 6),
-                        "total_turnover": round(float(report["turnover"].sum()), 6),
-                        "total_cost": round(float(report["cost"].sum()), 6),
+                        "n_drop": spec["dropn"],
+                        "forbid_all_trade_at_limit": False,
                     }
-                )
-                for bps in (10.0, 20.0):
-                    try:
-                        stressed = portfolio_performance(
-                            apply_cost_stress(report, bps, initial_cash=float(args.account)),
-                            initial_cash=float(args.account),
-                            backtest_start=exec_start,
+                    if args.rebalance_every > 1:
+                        strategy_class = "PeriodicTopkDropoutStrategy"
+                        strategy_module = "periodic_strategy"
+                        strategy_kwargs["rebalance_every"] = args.rebalance_every
+                    else:
+                        strategy_class = "DeterministicTopkDropoutStrategy"
+                        strategy_module = "deterministic_strategy"
+                    exchange_kwargs = research_exchange(
+                        exec_start,
+                        args.exec_end,
+                        codes=codes,
+                        st_history=st_history,
+                        require_verified_st=not args.allow_st_reference,
+                    )
+                    exchange_kwargs["exchange"]["kwargs"]["open_cost"] = float(args.open_cost)
+                    exchange_kwargs["exchange"]["kwargs"]["close_cost"] = float(args.close_cost)
+                    result = {}
+                    decisions = list(
+                        collect_data(
+                            strategy={
+                                "class": strategy_class,
+                                "module_path": strategy_module,
+                                "kwargs": strategy_kwargs,
+                            },
+                            executor={
+                                "class": "SimulatorExecutor",
+                                "module_path": "qlib.backtest.executor",
+                                "kwargs": {
+                                    "time_per_step": "day",
+                                    "generate_portfolio_metrics": True,
+                                    "track_data": True,
+                                },
+                            },
+                            start_time=exec_start,
+                            end_time=args.exec_end,
+                            account=float(args.account),
+                            benchmark=benchmark,
+                            exchange_kwargs=exchange_kwargs,
+                            return_value=result,
                         )
-                    except ValueError as exc:
-                        # At a 1M account, a large cost stress can exhaust the
-                        # NAV.  Record the failure instead of aborting the base
-                        # metrics; the gate analysis treats it as failed.
-                        metrics[f"cagr_cost_plus_{int(bps)}bp"] = None
-                        metrics[f"maxdd_cost_plus_{int(bps)}bp"] = None
-                        metrics[f"sharpe_cost_plus_{int(bps)}bp"] = None
-                        metrics[f"cost_stress_{int(bps)}bp_error"] = str(exc)
-                        continue
-                    metrics[f"cagr_cost_plus_{int(bps)}bp"] = stressed["strategy_cagr"]
-                    metrics[f"maxdd_cost_plus_{int(bps)}bp"] = stressed["strategy_max_drawdown"]
-                    metrics[f"sharpe_cost_plus_{int(bps)}bp"] = stressed["sharpe"]
-                cell_dir = out_root / market / spine / cell
-                cell_dir.mkdir(parents=True, exist_ok=True)
-                report.to_parquet(cell_dir / "report.parquet")
-                (cell_dir / "metrics.json").write_text(json.dumps(metrics, indent=2, ensure_ascii=False) + "\n")
-                rows.append(metrics)
-                print(
-                    f"[baseline] {key} CAGR={metrics['strategy_cagr']:.2%} "
-                    f"MDD={metrics['strategy_max_drawdown']:.2%} "
-                    f"Sharpe={metrics['sharpe']} turnover={metrics['mean_turnover']:.4f}",
-                    flush=True,
-                )
+                    )
+                    report = result["portfolio_dict"]["1day"][0]
+                    if len(report) != len(expected_days) - 1 or not report.index.is_unique:
+                        raise ValueError(f"report coverage mismatch for {key}: {len(report)}")
+                    metrics = portfolio_performance(report, initial_cash=float(args.account), backtest_start=exec_start)
+                    metrics.update(
+                        {
+                            "market": market,
+                            "st_evidence": "DATED_HISTORY" if st_history is not None else "REFERENCE_ONLY",
+                            "evaluation_mode": "DAILY_OPEN_SIMULATION",
+                            "promotion_eligible": False,
+                            "required_gate": "FORWARD_AND_LIQUIDITY_EVIDENCE",
+                            "spine": spine,
+                            "cell": cell,
+                            "topk": spec["topk"],
+                            "dropn": spec["dropn"],
+                            "benchmark": benchmark,
+                            "signal_start": args.signal_start,
+                            "exec_start": exec_start,
+                            "exec_end": args.exec_end,
+                            "codes": len(codes),
+                            "decisions": len(decisions),
+                            "rebalance_every": args.rebalance_every,
+                            "open_cost": args.open_cost,
+                            "close_cost": args.close_cost,
+                            "mean_turnover": round(float(report["turnover"].mean()), 6),
+                            "total_turnover": round(float(report["turnover"].sum()), 6),
+                            "total_cost": round(float(report["cost"].sum()), 6),
+                        }
+                    )
+                    for bps in (10.0, 20.0):
+                        try:
+                            stressed = portfolio_performance(
+                                apply_cost_stress(report, bps, initial_cash=float(args.account)),
+                                initial_cash=float(args.account),
+                                backtest_start=exec_start,
+                            )
+                        except ValueError as exc:
+                            # At a 1M account, a large cost stress can exhaust the
+                            # NAV.  Record the failure instead of aborting the base
+                            # metrics; the gate analysis treats it as failed.
+                            metrics[f"cagr_cost_plus_{int(bps)}bp"] = None
+                            metrics[f"maxdd_cost_plus_{int(bps)}bp"] = None
+                            metrics[f"sharpe_cost_plus_{int(bps)}bp"] = None
+                            metrics[f"cost_stress_{int(bps)}bp_error"] = str(exc)
+                            continue
+                        metrics[f"cagr_cost_plus_{int(bps)}bp"] = stressed["strategy_cagr"]
+                        metrics[f"maxdd_cost_plus_{int(bps)}bp"] = stressed["strategy_max_drawdown"]
+                        metrics[f"sharpe_cost_plus_{int(bps)}bp"] = stressed["sharpe"]
+                    cell_dir = out_root / market / spine / cell
+                    cell_dir.mkdir(parents=True, exist_ok=True)
+                    report.to_parquet(cell_dir / "report.parquet")
+                    (cell_dir / "metrics.json").write_text(json.dumps(metrics, indent=2, ensure_ascii=False) + "\n")
+                    rows.append(metrics)
+                    print(
+                        f"[baseline] {key} CAGR={metrics['strategy_cagr']:.2%} "
+                        f"MDD={metrics['strategy_max_drawdown']:.2%} "
+                        f"Sharpe={metrics['sharpe']} turnover={metrics['mean_turnover']:.4f}",
+                        flush=True,
+                    )
+                    trial["metrics_sha256"] = digest(metrics)
 
     (out_root / "summary.json").write_text(json.dumps(rows, indent=2, ensure_ascii=False) + "\n")
     print(f"[baseline] wrote {len(rows)} cells to {out_root}", flush=True)

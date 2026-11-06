@@ -1,0 +1,161 @@
+✓ Initialized. View run at 
+https://modal.com/apps/<authorized-workspace>/main/ap-6sKK3irEgNHKTKYKgVGKpw
+Building image im-0XwduW2fChdqz4FIUgORc0
+
+=> Step 0: FROM base
+
+=> Step 1: COPY . /
+Saving image...
+Image saved, took 1.82s
+
+Built image im-0XwduW2fChdqz4FIUgORc0 in 21.16s
+
+
+Building image im-sPwBkzgHUIzCO2DNN1eRdY
+
+=> Step 0: FROM base
+
+=> Step 1: RUN cd /root/qlib && pip install . --no-build-isolation --no-deps
+Looking in indexes: http://pypi-mirror.modal.local:5555/simple
+Processing /root/qlib
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: pyqlib
+  Building wheel for pyqlib (pyproject.toml): started
+  Building wheel for pyqlib (pyproject.toml): finished with status 'done'
+  Created wheel for pyqlib: filename=pyqlib-0.9.8.dev32-cp311-cp311-linux_x86_64.whl size=1211336 sha256=ddfc9a253ffe40e6ef1a6a0b6d400046ec2aea418d150c3079df799754080833
+  Stored in directory: /tmp/pip-ephem-wheel-cache-xn9zvnjm/wheels/8a/ac/64/f88c7ac84944a20272007d6cddfbefc44854b8bdf0b03cbb33
+Successfully built pyqlib
+Installing collected packages: pyqlib
+Successfully installed pyqlib-0.9.8.dev32
+
+[notice] A new release of pip is available: 25.2 -> 26.3
+[notice] To update, run: pip install --upgrade pip
+Saving image...
+Image saved, took 1.26s
+
+Built image im-sPwBkzgHUIzCO2DNN1eRdY in 11.72s
+
+
+Building image im-A6HmLBLVEbmH8kWdpFexTJ
+
+=> Step 0: FROM base
+
+=> Step 1: RUN cp /root/qlib/quant/code/execution/qlib_audit_fixes.py /root/qlib/quant/code/execution/qlib_live_retrain.py /root/qlib/quant/code/execution/board_rules.py /root/qlib/quant/code/execution/board_execution.py /root/qlib/quant/code/production/paper_portfolio.py /root/qlib/quant/code/execution/portfolio_performance.py /root/qlib/quant/code/production/github_commit.py /root/qlib/quant/code/research/stage_ab/csi1000_tuner_core.py /root/qlib/quant/code/production/csi1000_production_config.py /root/qlib/quant/code/production/csi1000_mvp_contract.py /root/qlib/quant/code/production/chart_series.py /root/qlib/quant/code/production/signal_publication_gate.py /root/qlib/quant/code/production/paper_accounting.py /root/qlib/quant/code/execution/execution_limits.py /root/qlib/quant/code/production/provider_archive.py /root/qlib/quant/code/production/publication_journal.py /root/qlib/quant/code/production/artifact_io.py /root/qlib/quant/code/production/coordinate_contract.py /root/qlib/quant/code/production/paper_execution_context.py /root/qlib/quant/code/execution/order_quantity.py /root/qlib/quant/code/production/portfolio_diagnostics.py /root/qlib/quant/code/execution/st_history.py /root/qlib/quant/code/execution/liquidity_contract.py /root/qlib/quant/code/production/name_map_sync.py /root/
+Saving image...
+Image saved, took 1.21s
+
+Built image im-A6HmLBLVEbmH8kWdpFexTJ in 2.75s
+
+
+✓ Created objects.
+├── ✓ Uploaded 
+│   <checkout>/quant/code/research/regime_reselection/prelive_modal
+│   .py
+├── ✓ Uploaded <checkout>
+├── ✓ Created Function inspect_environment.
+└── ✓ Created Function replay_cell.
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/importlib/metadata/__init__.py", line 563, in from_name
+    return next(cls.discover(name=name))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+StopIteration
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/pkg/modal/_runtime/container_io_manager.py", line 987, in handle_input_exception
+    yield
+  File "/pkg/modal/_container_entrypoint.py", line 189, in run_input_sync
+    values = io_context.call_function_sync()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pkg/modal/_runtime/container_io_manager.py", line 266, in call_function_sync
+    expected_value_or_values = self.finalized_function.callable(*args, **kwargs)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/prelive_modal.py", line 66, in inspect_environment
+    "packages": {
+                ^
+  File "/root/prelive_modal.py", line 67, in <dictcomp>
+    name: importlib.metadata.version(name) for name in ("pyqlib", "numpy", "pandas", "lightgbm", "modal")
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/importlib/metadata/__init__.py", line 1009, in version
+    return distribution(distribution_name).version
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/importlib/metadata/__init__.py", line 982, in distribution
+    return Distribution.from_name(distribution_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/importlib/metadata/__init__.py", line 565, in from_name
+    raise PackageNotFoundError(name)
+importlib.metadata.PackageNotFoundError: No package metadata was found for modal
+Stopping app - uncaught exception raised locally: PackageNotFoundError('modal').
+╭───────────────────── Traceback (most recent call last) ──────────────────────╮
+│ <checkout>/quant/code/research/regime_reselection/prelive_modal │
+│ .py:151 in main                                                              │
+│                                                                              │
+│   150 │   before = time.time()                                               │
+│ ❱ 151 │   env = inspect_environment.remote()                                 │
+│   152 │   (out / f"{run_id}_environment.json").write_text(json.dumps(env, in │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_object.py: │
+│ 49 in wrapped                                                                │
+│                                                                              │
+│    48 │   │   await self.hydrate()                                           │
+│ ❱  49 │   │   return await method(self, *args, **kwargs)                     │
+│    50                                                                        │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_functions. │
+│ py:2067 in remote                                                            │
+│                                                                              │
+│   2066 │   │                                                                 │
+│ ❱ 2067 │   │   return await self._call_function(args, kwargs)                │
+│   2068                                                                       │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_functions. │
+│ py:2004 in _call_function                                                    │
+│                                                                              │
+│   2003 │   │                                                                 │
+│ ❱ 2004 │   │   return await invocation.run_function()                        │
+│   2005                                                                       │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_functions. │
+│ py:515 in run_function                                                       │
+│                                                                              │
+│    514 │   │   │   # No more retries left.                                   │
+│ ❱  515 │   │   │   return await _process_result(                             │
+│    516 │   │   │   │   await_response.output.result, await_response.output.d │
+│                                                                              │
+│ <checkout>/.venv/lib/python3.12/site-packages/modal/_utils/func │
+│ tion_utils.py:572 in _process_result                                         │
+│                                                                              │
+│   571 │   │   │                                                              │
+│ ❱ 572 │   │   │   raise exc_with_hints(exc)                                  │
+│   573                                                                        │
+│                                                                              │
+│     ...Remote call to Modal Function (ta-01M6PP2FD2WMJ0P84CTPZJTK6R)...      │
+│                                                                              │
+│ /root/prelive_modal.py:66 in inspect_environment                             │
+│                                                                              │
+│ ❱ 66 "packages": {                                                           │
+│                                                                              │
+│                                                                              │
+│ /root/prelive_modal.py:67 in <dictcomp>                                      │
+│                                                                              │
+│ ❱ 67 name: importlib.metadata.version(name) for name in ("pyqlib", "numpy",  │
+│                                                                              │
+│                                                                              │
+│ /usr/local/lib/python3.11/importlib/metadata/__init__.py:1009 in version     │
+│                                                                              │
+│ ❱ 1009 return distribution(distribution_name).version                        │
+│                                                                              │
+│                                                                              │
+│ /usr/local/lib/python3.11/importlib/metadata/__init__.py:982 in distribution │
+│                                                                              │
+│ ❱ 982 return Distribution.from_name(distribution_name)                       │
+│                                                                              │
+│                                                                              │
+│ /usr/local/lib/python3.11/importlib/metadata/__init__.py:565 in from_name    │
+│                                                                              │
+│ ❱ 565 raise PackageNotFoundError(name)                                       │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+PackageNotFoundError: No package metadata was found for modal

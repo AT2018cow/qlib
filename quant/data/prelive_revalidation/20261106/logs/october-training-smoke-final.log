@@ -1,0 +1,155 @@
+✓ Initialized. View run at 
+https://modal.com/apps/<authorized-workspace>/main/ap-hqBOUKC0DEkyXfKxdVtgoN
+Building image im-wf2jO62jWTNxl9MgiGMTip
+
+=> Step 0: FROM base
+
+=> Step 1: COPY . /
+Saving image...
+Image saved, took 2.58s
+
+Built image im-wf2jO62jWTNxl9MgiGMTip in 8.03s
+
+
+Building image im-k20duN4D6yFF6ox1CWzvK5
+
+=> Step 0: FROM base
+
+=> Step 1: RUN cd /root/qlib && pip install . --no-build-isolation --no-deps
+Looking in indexes: http://pypi-mirror.modal.local:5555/simple
+Processing /root/qlib
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: pyqlib
+  Building wheel for pyqlib (pyproject.toml): started
+  Building wheel for pyqlib (pyproject.toml): finished with status 'done'
+  Created wheel for pyqlib: filename=pyqlib-0.9.8.dev32-cp311-cp311-linux_x86_64.whl size=1211336 sha256=ddfc9a253ffe40e6ef1a6a0b6d400046ec2aea418d150c3079df799754080833
+  Stored in directory: /tmp/pip-ephem-wheel-cache-8wb7og2b/wheels/8a/ac/64/f88c7ac84944a20272007d6cddfbefc44854b8bdf0b03cbb33
+Successfully built pyqlib
+Installing collected packages: pyqlib
+Successfully installed pyqlib-0.9.8.dev32
+
+[notice] A new release of pip is available: 25.2 -> 26.3
+[notice] To update, run: pip install --upgrade pip
+Saving image...
+Image saved, took 1.09s
+
+Built image im-k20duN4D6yFF6ox1CWzvK5 in 10.74s
+
+
+Building image im-CkqciiB3ZYBykxYWAITQfk
+
+=> Step 0: FROM base
+
+=> Step 1: RUN cp /root/qlib/quant/code/execution/qlib_audit_fixes.py /root/qlib/quant/code/execution/qlib_live_retrain.py /root/qlib/quant/code/execution/board_rules.py /root/qlib/quant/code/execution/board_execution.py /root/qlib/quant/code/production/paper_portfolio.py /root/qlib/quant/code/execution/portfolio_performance.py /root/qlib/quant/code/production/github_commit.py /root/qlib/quant/code/research/stage_ab/csi1000_tuner_core.py /root/qlib/quant/code/production/csi1000_production_config.py /root/qlib/quant/code/production/csi1000_mvp_contract.py /root/qlib/quant/code/production/chart_series.py /root/qlib/quant/code/production/signal_publication_gate.py /root/qlib/quant/code/production/paper_accounting.py /root/qlib/quant/code/execution/execution_limits.py /root/qlib/quant/code/production/provider_archive.py /root/qlib/quant/code/production/publication_journal.py /root/qlib/quant/code/production/artifact_io.py /root/qlib/quant/code/production/coordinate_contract.py /root/qlib/quant/code/production/paper_execution_context.py /root/qlib/quant/code/execution/order_quantity.py /root/qlib/quant/code/production/portfolio_diagnostics.py /root/qlib/quant/code/execution/st_history.py /root/qlib/quant/code/execution/liquidity_contract.py /root/qlib/quant/code/production/name_map_sync.py /root/
+Saving image...
+Image saved, took 2.42s
+
+Built image im-CkqciiB3ZYBykxYWAITQfk in 3.81s
+
+
+✓ Created objects.
+├── ✓ Uploaded 
+│   <checkout>/quant/code/research/regime_reselection/october_backf
+│   ill_modal.py
+├── ✓ Uploaded <checkout>
+└── ✓ Created Function build_market.
+[provider] downloaded 64MiB
+[provider] downloaded 128MiB
+[provider] downloaded 192MiB
+[provider] downloaded 256MiB
+[provider] downloaded 320MiB
+[provider] downloaded 384MiB
+[provider] downloaded 448MiB
+[provider] downloaded 512MiB
+[provider] digest passed; extracting to container scratch
+[backfill] csi300 provider_end=2026-11-04 blocks=[('2026-09-30', '2026-10-23')]
+[2:MainThread](2026-11-06 01:32:28,768) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+[2:MainThread](2026-11-06 01:32:30,568) INFO - qlib.Initialization - [__init__.py:82] - qlib successfully initialized based on client settings.
+[2:MainThread](2026-11-06 01:32:30,569) INFO - qlib.Initialization - [__init__.py:84] - data_path={'__DEFAULT_FREQ': PosixPath('/tmp/october-provider-dc91729392563518/qlib_bin')}
+[fit] csi300 asof=2026-09-30 train_end=2025-08-15 valid_end=2026-09-14 threads=20
+[2:MainThread](2026-11-06 01:33:04,406) INFO - qlib.timer - [log.py:127] - Time cost: 33.804s | Loading data Done
+[2:MainThread](2026-11-06 01:33:04,927) INFO - qlib.timer - [log.py:127] - Time cost: 0.197s | DropnaLabel Done
+[2:MainThread](2026-11-06 01:33:08,021) INFO - qlib.timer - [log.py:127] - Time cost: 3.094s | CSZScoreNorm Done
+[2:MainThread](2026-11-06 01:33:08,023) INFO - qlib.timer - [log.py:127] - Time cost: 3.616s | fit & process data Done
+[2:MainThread](2026-11-06 01:33:08,023) INFO - qlib.timer - [log.py:127] - Time cost: 37.425s | Init data Done
+ModuleNotFoundError. CatBoostModel are skipped. (optional: maybe installing CatBoostModel can fix it.)
+ModuleNotFoundError. XGBModel is skipped(optional: maybe installing xgboost can fix it).
+Training until validation scores don't improve for 50 rounds
+[20]    train's l2: 0.982746    valid's l2: 0.991577
+[40]    train's l2: 0.976488    valid's l2: 0.991721
+[60]    train's l2: 0.971037    valid's l2: 0.992525
+Early stopping, best iteration is:
+[27]    train's l2: 0.98027     valid's l2: 0.991004
+[2:MainThread](2026-11-06 01:33:18,632) WARNING - qlib.workflow - [expm.py:230] - No valid experiment found. Create a new experiment with name october-corrected-backfill.
+[2:MainThread](2026-11-06 01:33:18,643) INFO - qlib.workflow - [exp.py:258] - Experiment 308492208927117401 starts running ...
+2026/11/06 01:33:18 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git SHA is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+2026/11/06 01:33:18 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git branch is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+2026/11/06 01:33:18 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git repository URL is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+[2:MainThread](2026-11-06 01:33:18,968) INFO - qlib.workflow - [recorder.py:345] - Recorder 0128196ae83945bc98c7f9d05ca9a8c5 starts running under Experiment 308492208927117401 ...
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 01:33:18,975) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git diff.
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 01:33:18,980) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git status.
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 01:33:18,984) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git diff --cached.
+[2:MainThread](2026-11-06 01:33:54,021) INFO - qlib.timer - [log.py:127] - Time cost: 34.925s | Loading data Done
+[2:MainThread](2026-11-06 01:33:54,541) INFO - qlib.timer - [log.py:127] - Time cost: 0.162s | DropnaLabel Done
+[2:MainThread](2026-11-06 01:33:57,059) INFO - qlib.timer - [log.py:127] - Time cost: 2.517s | CSZScoreNorm Done
+[2:MainThread](2026-11-06 01:33:57,060) INFO - qlib.timer - [log.py:127] - Time cost: 3.038s | fit & process data Done
+[2:MainThread](2026-11-06 01:33:57,060) INFO - qlib.timer - [log.py:127] - Time cost: 37.969s | Init data Done
+[fit] PASS csi300 2026-09-30 3887 scores seconds=87.9
+[batch] csi300 SMOKE_PASS seconds=125.5 RSS=8290MiB
+Stopping app - local entrypoint completed.
+[modal-client] 2026-11-06T01:34:00+0000 Detected 1 background thread(s) [Thread-8 (run)] still running after container exit. This will prevent runner shutdown for up to 30 seconds.
+[2:MainThread](2026-11-06 01:34:00,728) INFO - qlib.timer - [log.py:127] - Time cost: 0.000s | waiting `async_log` Done
+✓ App completed. View run at 
+https://modal.com/apps/<authorized-workspace>/main/ap-hqBOUKC0DEkyXfKxdVtgoN

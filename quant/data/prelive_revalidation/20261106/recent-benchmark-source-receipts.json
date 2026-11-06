@@ -1,0 +1,26 @@
+[
+  {
+    "index": "000300",
+    "url": "https://www.csindex.com.cn/csindex-home/perf/index-perf?indexCode=000300&startDate=20260930&endDate=20261104",
+    "retrieved_at": "2026-11-06T01:48:17.282340+00:00",
+    "sha256": "782de8f6b1b5ec084964179b34eab57faffa0dee295eed14315a05af81e2bbd4",
+    "http_status": 200,
+    "raw_file": "recent-csindex-000300.raw.json"
+  },
+  {
+    "index": "000905",
+    "url": "https://www.csindex.com.cn/csindex-home/perf/index-perf?indexCode=000905&startDate=20260930&endDate=20261104",
+    "retrieved_at": "2026-11-06T01:48:17.294349+00:00",
+    "sha256": "bc94b48732260cfb169c1db7d0e3fe6300a2398fbe1a5fe7ad968d7d785080cc",
+    "http_status": 200,
+    "raw_file": "recent-csindex-000905.raw.json"
+  },
+  {
+    "index": "000852",
+    "url": "https://www.csindex.com.cn/csindex-home/perf/index-perf?indexCode=000852&startDate=20260930&endDate=20261104",
+    "retrieved_at": "2026-11-06T01:48:17.269135+00:00",
+    "sha256": "ae60c035fcf4663c0d94b0bbd19390c259a4d1e89e43616eb572c18a3dcdd5e3",
+    "http_status": 200,
+    "raw_file": "recent-csindex-000852.raw.json"
+  }
+]

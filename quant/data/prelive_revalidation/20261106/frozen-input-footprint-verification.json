@@ -1,0 +1,154 @@
+{
+  "status": "PASS",
+  "jobs": [
+    {
+      "path": "primary/csi500_B_S01/inputs.json",
+      "metadata_files": 3,
+      "quote_files": 4296,
+      "permitted_deltas": []
+    },
+    {
+      "path": "primary/csi300_B_S02/inputs.json",
+      "metadata_files": 3,
+      "quote_files": 2176,
+      "permitted_deltas": []
+    },
+    {
+      "path": "primary/csi1000_A_S02/inputs.json",
+      "metadata_files": 3,
+      "quote_files": 8972,
+      "permitted_deltas": []
+    },
+    {
+      "path": "primary/csi1000_A_S01/inputs.json",
+      "metadata_files": 3,
+      "quote_files": 8972,
+      "permitted_deltas": []
+    },
+    {
+      "path": "primary/csi500_A_S02/inputs.json",
+      "metadata_files": 3,
+      "quote_files": 4296,
+      "permitted_deltas": []
+    },
+    {
+      "path": "primary/csi300_B_S01/inputs.json",
+      "metadata_files": 3,
+      "quote_files": 2176,
+      "permitted_deltas": []
+    },
+    {
+      "path": "primary/csi300_A_S01/inputs.json",
+      "metadata_files": 3,
+      "quote_files": 2176,
+      "permitted_deltas": []
+    },
+    {
+      "path": "primary/csi300_A_S02/inputs.json",
+      "metadata_files": 3,
+      "quote_files": 2176,
+      "permitted_deltas": []
+    },
+    {
+      "path": "primary/csi500_A_S01/inputs.json",
+      "metadata_files": 3,
+      "quote_files": 4296,
+      "permitted_deltas": []
+    },
+    {
+      "path": "primary/csi500_B_S02/inputs.json",
+      "metadata_files": 3,
+      "quote_files": 4296,
+      "permitted_deltas": []
+    },
+    {
+      "path": "extension/csi500_B_S01/inputs.json",
+      "metadata_files": 3,
+      "quote_files": 4716,
+      "permitted_deltas": []
+    },
+    {
+      "path": "extension/csi300_B_S02/inputs.json",
+      "metadata_files": 3,
+      "quote_files": 2260,
+      "permitted_deltas": []
+    },
+    {
+      "path": "extension/csi1000_A_S02/inputs.json",
+      "metadata_files": 3,
+      "quote_files": 9748,
+      "permitted_deltas": [
+        "features/sh000852/close.day.bin"
+      ]
+    },
+    {
+      "path": "extension/csi1000_A_S01/inputs.json",
+      "metadata_files": 3,
+      "quote_files": 9748,
+      "permitted_deltas": [
+        "features/sh000852/close.day.bin"
+      ]
+    },
+    {
+      "path": "extension/csi300_B_S01/inputs.json",
+      "metadata_files": 3,
+      "quote_files": 2260,
+      "permitted_deltas": []
+    },
+    {
+      "path": "extension/csi500_B_S02/inputs.json",
+      "metadata_files": 3,
+      "quote_files": 4716,
+      "permitted_deltas": []
+    },
+    {
+      "path": "phases/csi1000_A_S02_phase06/inputs.json",
+      "metadata_files": 3,
+      "quote_files": 8972,
+      "permitted_deltas": []
+    },
+    {
+      "path": "phases/csi1000_A_S02_phase04/inputs.json",
+      "metadata_files": 3,
+      "quote_files": 8972,
+      "permitted_deltas": []
+    },
+    {
+      "path": "phases/csi1000_A_S02_phase00/inputs.json",
+      "metadata_files": 3,
+      "quote_files": 8972,
+      "permitted_deltas": []
+    },
+    {
+      "path": "phases/csi1000_A_S01_phase04/inputs.json",
+      "metadata_files": 3,
+      "quote_files": 8972,
+      "permitted_deltas": []
+    },
+    {
+      "path": "phases/csi1000_A_S01_phase15/inputs.json",
+      "metadata_files": 3,
+      "quote_files": 8972,
+      "permitted_deltas": []
+    },
+    {
+      "path": "phases/csi1000_A_S02_phase15/inputs.json",
+      "metadata_files": 3,
+      "quote_files": 8972,
+      "permitted_deltas": []
+    },
+    {
+      "path": "phases/csi1000_A_S01_phase00/inputs.json",
+      "metadata_files": 3,
+      "quote_files": 8972,
+      "permitted_deltas": []
+    },
+    {
+      "path": "phases/csi1000_A_S01_phase06/inputs.json",
+      "metadata_files": 3,
+      "quote_files": 8972,
+      "permitted_deltas": []
+    }
+  ],
+  "policy": "Only registered frozen forecasts and original complete provider, plus documented CSI1000 benchmark close overlay in extension"
+}

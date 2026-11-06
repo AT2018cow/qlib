@@ -1,0 +1,57 @@
+{
+  "status": "PASS",
+  "verified_at_utc": "2026-11-06T03:51:27.087945+00:00",
+  "base_commit": "a31673670c8a32e4d7bea4e65cf8ece812583deb",
+  "review_issues_fixed": [
+    "PR01",
+    "PR02",
+    "PR03",
+    "PR04"
+  ],
+  "source_identity_version": 2,
+  "replay_source_sha256": "1129cea60d3a0da1f22355df7c4678c4cbac732d68a6f5b6fbcf7661032126db",
+  "training_source_sha256": "8553e194418b810a35182d577ff8310719a1a521a2954278ad9c412b7316787a",
+  "source_manifests_match_current_checkout": true,
+  "python_tests": {
+    "passed": 836,
+    "skipped": 1,
+    "subtests_passed": 50,
+    "warnings": 1,
+    "exit_code": 0
+  },
+  "frontend_tests": {
+    "passed": 25,
+    "exit_code": 0
+  },
+  "replay_smoke": {
+    "markets": 3,
+    "cost_scenarios": 9,
+    "sessions_per_scenario": 21,
+    "source_manifest_verified": true,
+    "provider_contract_verified": true,
+    "original_prefix_exact": true,
+    "exit_code": 0
+  },
+  "audit": {
+    "reports": 511,
+    "accounts_1m": 85,
+    "accounts_100m": 426,
+    "capital_contract_errors": 0,
+    "metric_errors": 0,
+    "stress_checked": 426,
+    "stress_errors": 0,
+    "exit_code": 0
+  },
+  "historical_reanalysis": {
+    "original_72_scenarios_unchanged": true,
+    "legacy_receipts_remain_version_1": true,
+    "exit_code": 0
+  },
+  "new_cloud_tasks": 0,
+  "original_frozen_artifact_files_unchanged": 543,
+  "production_profiles_changed": false,
+  "production_config_sha256": "75a62b943812e5269f8d26123d508d9661054956fcab8a1be13ee31a568f9a01",
+  "production_deployed": false,
+  "broker_orders_sent": false,
+  "scope": "quant extension files, tests, docs and related immutable research evidence only"
+}

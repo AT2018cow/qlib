@@ -1,0 +1,167 @@
+[
+  {
+    "run_id": "prelive_20261106_smoke_a1",
+    "app_id": "ap-4ZKC4u3dSzPJbtshvqKukG",
+    "status": "STOPPED_NO_REPLAY",
+    "error": "Entrypoint imported from /root rather than checkout; parent indexing failed before replay",
+    "timestamp": "2026-11-05T20:19:36.167474+00:00",
+    "cli_exit_code": 130
+  },
+  {
+    "run_id": "prelive_20261106_smoke_a2",
+    "status": "LOCAL_ENTRY_FAILED",
+    "cli_exit_code": 1,
+    "error": "Local /root access guarded incorrectly; no cloud job"
+  },
+  {
+    "run_id": "prelive_20261106_smoke_a3",
+    "app_id": "ap-OTKPOYy74pX3FpxwGmpjQX",
+    "status": "STOPPED_NO_REPLAY",
+    "error": "Shared bootstrap shadowed installed compiled Qlib with source checkout",
+    "cli_exit_code": 1
+  },
+  {
+    "run_id": "prelive_20261106_smoke_a4",
+    "app_id": "ap-6sKK3irEgNHKTKYKgVGKpw",
+    "status": "ENVIRONMENT_METADATA_FAILED_NO_REPLAY",
+    "cli_exit_code": 1,
+    "error": "Modal runtime has no installed distribution metadata; actual Qlib/extension imports passed"
+  },
+  {
+    "run_id": "prelive_20261106_freeze_a1",
+    "app_id": "ap-dYvdwmgboPC2JZ0RrCvvgM",
+    "status": "STOPPED_INPUT_IO_HEARTBEAT_TIMEOUT",
+    "cli_exit_code": 1
+  },
+  {
+    "run_id": "prelive_20261106_io_a1",
+    "app_id": "ap-rYk2oC33IbMUWtzbYxTZ68",
+    "status": "PASS",
+    "cli_exit_code": 0,
+    "scope": "raw feature + signal byte read and in-memory parquet parsing only"
+  },
+  {
+    "run_id": "prelive_20261106_freeze_a2",
+    "app_id": "ap-8lBoe4zuiKCbXMQXUPSJeD",
+    "status": "STOPPED_AFTER_REPEATED_HEARTBEAT_TIMEOUT",
+    "cli_exit_code": 1,
+    "observed_final_state": {
+      "app_id": "ap-8lBoe4zuiKCbXMQXUPSJeD",
+      "state": "stopped",
+      "tasks": "0",
+      "created_at": "2026-11-06 08:35:20+08:00",
+      "stopped_at": "2026-11-06 08:41:04+08:00"
+    }
+  },
+  {
+    "run_id": "prelive_20261106_io_a2",
+    "app_id": "ap-KlKH4vAFgJI5cNo85YgbeY",
+    "status": "PASS",
+    "cli_exit_code": 0,
+    "scope": "source reads + isolated evidence write/read/commit",
+    "observed_final_state": {
+      "app_id": "ap-KlKH4vAFgJI5cNo85YgbeY",
+      "state": "stopped",
+      "tasks": "0",
+      "created_at": "2026-11-06 08:43:19+08:00",
+      "stopped_at": "2026-11-06 08:44:43+08:00"
+    }
+  },
+  {
+    "run_id": "prelive_20261106_freeze_a3",
+    "app_id": "ap-Mx4Zx3fKkY2xUxD8VQihfl",
+    "status": "STOPPED_AFTER_SIGSEGV",
+    "error": "Worker SIGSEGV during bulk file IO/compression, root cause not established; platform restarted worker despite retries=0",
+    "research_replay_completed": false,
+    "cli_exit_code": 1,
+    "observed_final_state": {
+      "app_id": "ap-Mx4Zx3fKkY2xUxD8VQihfl",
+      "state": "stopped",
+      "tasks": "0",
+      "created_at": "2026-11-06 08:45:38+08:00",
+      "stopped_at": "2026-11-06 08:48:57+08:00"
+    }
+  },
+  {
+    "run_id": "prelive_20261106_final_io",
+    "app_id": "ap-1UbRA9M1hJnhDOCHpPzZxU",
+    "status": "PASS",
+    "cli_exit_code": 0,
+    "image_id": "im-WXCoavjwT4tQsKW5xLcQb5",
+    "scope": "final supported smoke: production-image import and source read / research volume write",
+    "observed_final_state": {
+      "app_id": "ap-1UbRA9M1hJnhDOCHpPzZxU",
+      "state": "stopped",
+      "tasks": "0",
+      "created_at": "2026-11-06 08:52:47+08:00",
+      "stopped_at": "2026-11-06 08:53:58+08:00"
+    }
+  },
+  {
+    "run_id": "prelive_20261106_smoke_a5",
+    "mode": "smoke",
+    "app_id": "ap-7VODX7yt0Q4MVPoaKfCrBt",
+    "status": "STOPPED_FAILED_BATCH",
+    "cli_exit_code": null,
+    "raw_log_sha256": "e0f17d743cb5286227aa312cc84e90060d0d36e794c5856c336459efc01cd600",
+    "raw_log_retained_locally": true,
+    "log_finished_at_utc": "2026-11-05T20:30:55.329369+00:00",
+    "scope": "research only; no production state writes",
+    "cli_exit_status_verified": false,
+    "error": "Source-volume replay stalled; app stopped; CLI log ends with bounded batch incomplete RuntimeError. Original numeric process exit was not retained in the current control record."
+  },
+  {
+    "run_id": "october_corrected_20261106_a1",
+    "mode": "smoke",
+    "app_id": "ap-B66KYpTM35jGSGq0ascS2l",
+    "status": "PASS",
+    "cli_exit_code": 0,
+    "raw_log_sha256": "816da05f62ff779bd153b9c1ef8d7000f6940fabf00ca35e7419e3a3f9d36309",
+    "raw_log_retained_locally": true,
+    "log_finished_at_utc": "2026-11-06T01:29:56.173471+00:00",
+    "scope": "research only; no production state writes",
+    "observed_final_state": {
+      "app_id": "ap-B66KYpTM35jGSGq0ascS2l",
+      "state": "stopped",
+      "tasks": "0",
+      "created_at": "2026-11-06 09:27:07+08:00",
+      "stopped_at": "2026-11-06 09:29:56+08:00"
+    }
+  },
+  {
+    "run_id": "october_corrected_20261106_a2",
+    "mode": "smoke",
+    "app_id": "ap-hqBOUKC0DEkyXfKxdVtgoN",
+    "status": "PASS",
+    "cli_exit_code": 0,
+    "raw_log_sha256": "075babfe601ba6cc3e8f329310ebdc500ac9d2b0b322638c0070a4d6c36645be",
+    "raw_log_retained_locally": true,
+    "log_finished_at_utc": "2026-11-06T01:34:04.138520+00:00",
+    "scope": "research only; no production state writes",
+    "observed_final_state": {
+      "app_id": "ap-hqBOUKC0DEkyXfKxdVtgoN",
+      "state": "stopped",
+      "tasks": "0",
+      "created_at": "2026-11-06 09:30:54+08:00",
+      "stopped_at": "2026-11-06 09:34:04+08:00"
+    }
+  },
+  {
+    "run_id": "october_corrected_20261106_a2",
+    "mode": "full",
+    "app_id": "ap-jIDOICZ7fDxkYI0Z8EZEGw",
+    "status": "COMPLETED_THREE_MARKETS",
+    "cli_exit_code": 0,
+    "raw_log_sha256": "7f87aaf6adb81210ae65e7c49720f536d3014efced71fb29e885fbebcd3948fe",
+    "raw_log_retained_locally": true,
+    "log_finished_at_utc": "2026-11-06T01:40:40.973346+00:00",
+    "scope": "research only; no production state writes",
+    "observed_final_state": {
+      "app_id": "ap-jIDOICZ7fDxkYI0Z8EZEGw",
+      "state": "stopped",
+      "tasks": "0",
+      "created_at": "2026-11-06 09:35:52+08:00",
+      "stopped_at": "2026-11-06 09:40:40+08:00"
+    }
+  }
+]

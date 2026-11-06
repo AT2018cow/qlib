@@ -1,0 +1,22 @@
+╭───────────────────── Traceback (most recent call last) ──────────────────────╮
+│ <checkout>/quant/code/research/regime_reselection/prelive_modal │
+│ .py:14 in <module>                                                           │
+│                                                                              │
+│    13 # Modal imports the entrypoint from /root, independently of the image  │
+│ ❱  14 if (Path("/root/qlib/quant/code/quant_bootstrap.py")).is_file():       │
+│    15 │   HERE = Path("/root/qlib/quant/code/research/regime_reselection")   │
+│                                                                              │
+│ /usr/lib/python3.12/pathlib.py:894 in is_file                                │
+│                                                                              │
+│    893 │   │   try:                                                          │
+│ ❱  894 │   │   │   return S_ISREG(self.stat().st_mode)                       │
+│    895 │   │   except OSError as e:                                          │
+│                                                                              │
+│ /usr/lib/python3.12/pathlib.py:842 in stat                                   │
+│                                                                              │
+│    841 │   │   """                                                           │
+│ ❱  842 │   │   return os.stat(self, follow_symlinks=follow_symlinks)         │
+│    843                                                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+PermissionError: [Errno 13] Permission denied: 
+'/root/qlib/quant/code/quant_bootstrap.py'

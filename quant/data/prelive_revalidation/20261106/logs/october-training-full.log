@@ -1,0 +1,316 @@
+✓ Initialized. View run at 
+https://modal.com/apps/<authorized-workspace>/main/ap-jIDOICZ7fDxkYI0Z8EZEGw
+✓ Created objects.
+├── ✓ Uploaded 
+│   <checkout>/quant/code/research/regime_reselection/october_backf
+│   ill_modal.py
+├── ✓ Uploaded <checkout>
+└── ✓ Created Function build_market.
+[provider] downloaded 64MiB
+[provider] downloaded 128MiB
+[provider] downloaded 192MiB
+[provider] downloaded 256MiB
+[provider] downloaded 320MiB
+[provider] downloaded 384MiB
+[provider] downloaded 64MiB
+[provider] downloaded 64MiB
+[provider] downloaded 448MiB
+[provider] downloaded 128MiB
+[provider] downloaded 128MiB
+[provider] downloaded 512MiB
+[provider] digest passed; extracting to container scratch
+[provider] downloaded 192MiB
+[provider] downloaded 192MiB
+[provider] downloaded 256MiB
+[provider] downloaded 320MiB
+[provider] downloaded 256MiB
+[provider] downloaded 384MiB
+[provider] downloaded 320MiB
+[provider] downloaded 448MiB
+[provider] downloaded 512MiB
+[provider] digest passed; extracting to container scratch
+[provider] downloaded 384MiB
+[provider] downloaded 448MiB
+[provider] downloaded 512MiB
+[provider] digest passed; extracting to container scratch
+[backfill] csi300 provider_end=2026-11-04 blocks=[('2026-09-30', '2026-10-23'), ('2026-10-26', '2026-11-04')]
+[2:MainThread](2026-11-06 01:36:53,106) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+[2:MainThread](2026-11-06 01:36:54,088) INFO - qlib.Initialization - [__init__.py:82] - qlib successfully initialized based on client settings.
+[2:MainThread](2026-11-06 01:36:54,088) INFO - qlib.Initialization - [__init__.py:84] - data_path={'__DEFAULT_FREQ': PosixPath('/tmp/october-provider-dc91729392563518/qlib_bin')}
+[backfill] csi300 reusing smoke fit 2026-09-30
+[fit] csi300 asof=2026-10-26 train_end=2025-09-03 valid_end=2026-10-09 threads=20
+[backfill] csi1000 provider_end=2026-11-04 blocks=[('2026-09-30', '2026-10-23'), ('2026-10-26', '2026-11-04')]
+[2:MainThread](2026-11-06 01:37:00,477) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+[2:MainThread](2026-11-06 01:37:02,089) INFO - qlib.Initialization - [__init__.py:82] - qlib successfully initialized based on client settings.
+[2:MainThread](2026-11-06 01:37:02,089) INFO - qlib.Initialization - [__init__.py:84] - data_path={'__DEFAULT_FREQ': PosixPath('/tmp/october-provider-dc91729392563518/qlib_bin')}
+[fit] csi1000 asof=2026-09-30 train_end=2025-07-18 valid_end=2026-08-31 threads=20
+[backfill] csi500 provider_end=2026-11-04 blocks=[('2026-09-30', '2026-10-23'), ('2026-10-26', '2026-11-04')]
+[2:MainThread](2026-11-06 01:37:02,414) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+[2:MainThread](2026-11-06 01:37:03,810) INFO - qlib.Initialization - [__init__.py:82] - qlib successfully initialized based on client settings.
+[2:MainThread](2026-11-06 01:37:03,811) INFO - qlib.Initialization - [__init__.py:84] - data_path={'__DEFAULT_FREQ': PosixPath('/tmp/october-provider-dc91729392563518/qlib_bin')}
+[fit] csi500 asof=2026-09-30 train_end=2025-07-18 valid_end=2026-08-31 threads=20
+[2:MainThread](2026-11-06 01:37:16,638) INFO - qlib.timer - [log.py:127] - Time cost: 22.209s | Loading data Done
+[2:MainThread](2026-11-06 01:37:17,051) INFO - qlib.timer - [log.py:127] - Time cost: 0.155s | DropnaLabel Done
+[2:MainThread](2026-11-06 01:37:18,902) INFO - qlib.timer - [log.py:127] - Time cost: 1.851s | CSZScoreNorm Done
+[2:MainThread](2026-11-06 01:37:18,904) INFO - qlib.timer - [log.py:127] - Time cost: 2.265s | fit & process data Done
+[2:MainThread](2026-11-06 01:37:18,904) INFO - qlib.timer - [log.py:127] - Time cost: 24.476s | Init data Done
+ModuleNotFoundError. CatBoostModel are skipped. (optional: maybe installing CatBoostModel can fix it.)
+ModuleNotFoundError. XGBModel is skipped(optional: maybe installing xgboost can fix it).
+Training until validation scores don't improve for 50 rounds
+[20]    train's l2: 0.982802    valid's l2: 0.991408
+[40]    train's l2: 0.97623     valid's l2: 0.990712
+[60]    train's l2: 0.970859    valid's l2: 0.991397
+[80]    train's l2: 0.965897    valid's l2: 0.992661
+Early stopping, best iteration is:
+[45]    train's l2: 0.974902    valid's l2: 0.990516
+[2:MainThread](2026-11-06 01:37:26,172) WARNING - qlib.workflow - [expm.py:230] - No valid experiment found. Create a new experiment with name october-corrected-backfill.
+[2:MainThread](2026-11-06 01:37:26,199) INFO - qlib.workflow - [exp.py:258] - Experiment 773397790971782404 starts running ...
+2026/11/06 01:37:26 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git SHA is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+2026/11/06 01:37:26 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git branch is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+2026/11/06 01:37:26 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git repository URL is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+[2:MainThread](2026-11-06 01:37:26,395) INFO - qlib.workflow - [recorder.py:345] - Recorder 1c300641a8be4ffe985e04f3ab7e9953 starts running under Experiment 773397790971782404 ...
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 01:37:26,400) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git diff.
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 01:37:26,402) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git status.
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 01:37:26,405) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git diff --cached.
+[fit] PASS csi300 2026-10-26 2392 scores seconds=33.0
+[batch] csi300 COMPLETED seconds=58.0 RSS=6447MiB
+[2:MainThread](2026-11-06 01:37:51,185) INFO - qlib.timer - [log.py:127] - Time cost: 47.345s | Loading data Done
+[2:MainThread](2026-11-06 01:37:51,820) INFO - qlib.timer - [log.py:127] - Time cost: 0.250s | DropnaLabel Done
+[2:MainThread](2026-11-06 01:37:54,231) INFO - qlib.timer - [log.py:127] - Time cost: 2.411s | CSZScoreNorm Done
+[2:MainThread](2026-11-06 01:37:54,233) INFO - qlib.timer - [log.py:127] - Time cost: 3.047s | fit & process data Done
+[2:MainThread](2026-11-06 01:37:54,233) INFO - qlib.timer - [log.py:127] - Time cost: 50.394s | Init data Done
+ModuleNotFoundError. CatBoostModel are skipped. (optional: maybe installing CatBoostModel can fix it.)
+ModuleNotFoundError. XGBModel is skipped(optional: maybe installing xgboost can fix it).
+Training until validation scores don't improve for 50 rounds
+[20]    train's l2: 0.984125    valid's l2: 0.995122
+[40]    train's l2: 0.976441    valid's l2: 0.994353
+[60]    train's l2: 0.970923    valid's l2: 0.994551
+[80]    train's l2: 0.966599    valid's l2: 0.99502
+Early stopping, best iteration is:
+[41]    train's l2: 0.976185    valid's l2: 0.994335
+[2:MainThread](2026-11-06 01:38:06,211) WARNING - qlib.workflow - [expm.py:230] - No valid experiment found. Create a new experiment with name october-corrected-backfill.
+[2:MainThread](2026-11-06 01:38:06,218) INFO - qlib.workflow - [exp.py:258] - Experiment 757122812055903530 starts running ...
+2026/11/06 01:38:06 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git SHA is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+2026/11/06 01:38:06 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git branch is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+2026/11/06 01:38:06 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git repository URL is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+[2:MainThread](2026-11-06 01:38:06,456) INFO - qlib.workflow - [recorder.py:345] - Recorder d6d269bee4184fa5b9a9a93bf3eb519d starts running under Experiment 757122812055903530 ...
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 01:38:06,461) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git diff.
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 01:38:06,465) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git status.
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 01:38:06,468) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git diff --cached.
+[fit] PASS csi500 2026-09-30 6487 scores seconds=64.5
+[fit] csi500 asof=2026-10-26 train_end=2025-08-06 valid_end=2026-09-17 threads=20
+[modal-client] 2026-11-06T01:38:16+0000 Detected 1 background thread(s) [Thread-8 (run)] still running after container exit. This will prevent runner shutdown for up to 30 seconds.
+[2:MainThread](2026-11-06 01:38:17,644) INFO - qlib.timer - [log.py:127] - Time cost: 0.000s | waiting `async_log` Done
+[2:MainThread](2026-11-06 01:38:24,043) INFO - qlib.timer - [log.py:127] - Time cost: 81.922s | Loading data Done
+[2:MainThread](2026-11-06 01:38:25,220) INFO - qlib.timer - [log.py:127] - Time cost: 0.459s | DropnaLabel Done
+[2:MainThread](2026-11-06 01:38:28,039) INFO - qlib.timer - [log.py:127] - Time cost: 2.818s | CSZScoreNorm Done
+[2:MainThread](2026-11-06 01:38:28,041) INFO - qlib.timer - [log.py:127] - Time cost: 3.997s | fit & process data Done
+[2:MainThread](2026-11-06 01:38:28,041) INFO - qlib.timer - [log.py:127] - Time cost: 85.921s | Init data Done
+ModuleNotFoundError. CatBoostModel are skipped. (optional: maybe installing CatBoostModel can fix it.)
+ModuleNotFoundError. XGBModel is skipped(optional: maybe installing xgboost can fix it).
+Training until validation scores don't improve for 50 rounds
+[20]    train's l2: 0.984028    valid's l2: 0.995202
+[40]    train's l2: 0.977156    valid's l2: 0.995577
+[60]    train's l2: 0.9731      valid's l2: 0.99641
+Early stopping, best iteration is:
+[26]    train's l2: 0.981536    valid's l2: 0.995186
+[2:MainThread](2026-11-06 01:38:47,539) WARNING - qlib.workflow - [expm.py:230] - No valid experiment found. Create a new experiment with name october-corrected-backfill.
+[2:MainThread](2026-11-06 01:38:47,548) INFO - qlib.workflow - [exp.py:258] - Experiment 174546077428744227 starts running ...
+2026/11/06 01:38:47 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git SHA is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+2026/11/06 01:38:47 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git branch is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+2026/11/06 01:38:47 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git repository URL is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+[2:MainThread](2026-11-06 01:38:47,759) INFO - qlib.workflow - [recorder.py:345] - Recorder 732746755314481a857a059adc59eb29 starts running under Experiment 174546077428744227 ...
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 01:38:47,764) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git diff.
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 01:38:47,767) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git status.
+/bin/sh: 1: git: not found
+[2:MainThread](2026-11-06 01:38:47,770) INFO - qlib.workflow - [recorder.py:378] - Fail to log the uncommitted code of $CWD(/root) when run git diff --cached.
+[fit] PASS csi1000 2026-09-30 13000 scores seconds=106.8
+[fit] csi1000 asof=2026-10-26 train_end=2025-08-06 valid_end=2026-09-17 threads=20
+[2:MainThread](2026-11-06 01:38:55,550) INFO - qlib.timer - [log.py:127] - Time cost: 47.179s | Loading data Done
+[2:MainThread](2026-11-06 01:38:56,203) INFO - qlib.timer - [log.py:127] - Time cost: 0.243s | DropnaLabel Done
+[2:MainThread](2026-11-06 01:38:58,644) INFO - qlib.timer - [log.py:127] - Time cost: 2.440s | CSZScoreNorm Done
+[2:MainThread](2026-11-06 01:38:58,646) INFO - qlib.timer - [log.py:127] - Time cost: 3.095s | fit & process data Done
+[2:MainThread](2026-11-06 01:38:58,646) INFO - qlib.timer - [log.py:127] - Time cost: 50.278s | Init data Done
+Training until validation scores don't improve for 50 rounds
+[20]    train's l2: 0.984467    valid's l2: 0.993302
+[40]    train's l2: 0.976739    valid's l2: 0.991817
+[60]    train's l2: 0.970868    valid's l2: 0.991265
+[80]    train's l2: 0.966366    valid's l2: 0.991475
+[100]   train's l2: 0.962241    valid's l2: 0.991859
+Early stopping, best iteration is:
+[63]    train's l2: 0.970179    valid's l2: 0.99119
+[fit] PASS csi500 2026-10-26 3989 scores seconds=73.3
+[batch] csi500 COMPLETED seconds=170.2 RSS=10736MiB
+[modal-client] 2026-11-06T01:39:23+0000 Detected 1 background thread(s) [Thread-8 (run)] still running after container exit. This will prevent runner shutdown for up to 30 seconds.
+[2:MainThread](2026-11-06 01:39:24,574) INFO - qlib.timer - [log.py:127] - Time cost: 0.000s | waiting `async_log` Done
+[2:MainThread](2026-11-06 01:40:09,654) INFO - qlib.timer - [log.py:127] - Time cost: 80.695s | Loading data Done
+[2:MainThread](2026-11-06 01:40:10,992) INFO - qlib.timer - [log.py:127] - Time cost: 0.522s | DropnaLabel Done
+[2:MainThread](2026-11-06 01:40:14,308) INFO - qlib.timer - [log.py:127] - Time cost: 3.315s | CSZScoreNorm Done
+[2:MainThread](2026-11-06 01:40:14,311) INFO - qlib.timer - [log.py:127] - Time cost: 4.656s | fit & process data Done
+[2:MainThread](2026-11-06 01:40:14,311) INFO - qlib.timer - [log.py:127] - Time cost: 85.354s | Init data Done
+Training until validation scores don't improve for 50 rounds
+[20]    train's l2: 0.984291    valid's l2: 0.993363
+[40]    train's l2: 0.977416    valid's l2: 0.992921
+[60]    train's l2: 0.973277    valid's l2: 0.99337
+[80]    train's l2: 0.970045    valid's l2: 0.993686
+Early stopping, best iteration is:
+[38]    train's l2: 0.977907    valid's l2: 0.992866
+[fit] PASS csi1000 2026-10-26 8000 scores seconds=107.2
+[batch] csi1000 COMPLETED seconds=243.5 RSS=17908MiB
+[modal-client] 2026-11-06T01:40:37+0000 Detected 1 background thread(s) [Thread-8 (run)] still running after container exit. This will prevent runner shutdown for up to 30 seconds.
+[2:MainThread](2026-11-06 01:40:37,362) INFO - qlib.timer - [log.py:127] - Time cost: 0.000s | waiting `async_log` Done
+Stopping app - local entrypoint completed.
+✓ App completed. View run at 
+https://modal.com/apps/<authorized-workspace>/main/ap-jIDOICZ7fDxkYI0Z8EZEGw

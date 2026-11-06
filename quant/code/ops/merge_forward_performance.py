@@ -13,10 +13,54 @@ The live builder emits absolute close values, so the splice is just
 from __future__ import annotations
 
 import argparse
-import json
+import sys
 import math
 from pathlib import Path
 from typing import Any, Mapping
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from quant_bootstrap import ensure_quant_import_paths
+
+ensure_quant_import_paths()
+import artifact_io as json
+from account_boundary import account_identity, reconcile_states
+from datetime import date
+
+
+def attach_backfill_boundary(prefix, artifact):
+    """Bind an immutable prefix to its same-date paper closing state."""
+    market = prefix.get("market")
+    identity = account_identity(market)
+    end = prefix["points"][-1]["date"]
+    if (
+        artifact.get("market") != market
+        or artifact.get("usage_date") != end
+        or artifact.get("paper_lineage") != identity["paper_lineage"]
+        or prefix.get("profile") != identity["profile"]
+        or prefix.get("initial_cash") != identity["initial_cash"]
+        or any(prefix.get(key) != identity[key] for key in ("horizon", "topk", "nd"))
+    ):
+        raise ValueError("backfill closing artifact identity mismatch")
+    manifest = artifact.get("production_lineage") or {}
+    if (
+        manifest.get("profile") != identity["profile"]
+        or manifest.get("label_horizon") != identity["horizon"]
+        or any(manifest.get(key) != identity[key] for key in ("topk", "nd"))
+    ):
+        raise ValueError("backfill closing model/profile mismatch")
+    positions = artifact["positions"]
+    cash = _number(artifact["cash"], "boundary cash")
+    close = cash + sum(
+        _number(p["shares"], "boundary shares") * _number(p["last_price"], "boundary mark") for p in positions.values()
+    )
+    expected = _number(prefix["points"][-1]["nav"], "prefix NAV") * identity["initial_cash"]
+    if abs(close - expected) > 0.025:
+        raise ValueError("backfill close NAV disagrees with closing cash/inventory marks")
+    return {
+        **prefix,
+        "account_identity": identity,
+        "closing_state": {"cash": cash, "shares": {s: p["shares"] for s, p in positions.items()}},
+    }
 
 
 def _number(value: Any, label: str) -> float:
@@ -44,15 +88,22 @@ def _prefix_series(prefix: Mapping[str, Any]) -> tuple[list[dict], float]:
         day = point.get("date")
         if not isinstance(day, str) or len(day) != 10 or day <= previous_date:
             raise ValueError(f"backfill dates must increase: {day!r}")
+        date.fromisoformat(day)
         nav = _number(point.get("nav"), f"backfill nav {day}")
         if nav <= 0:
             raise ValueError(f"backfill nav must be positive: {day}")
+        daily = _number(point.get("daily_return"), f"backfill daily return {day}")
+        cumulative = _number(point.get("cumulative_return"), f"backfill cumulative return {day}")
+        prior = cleaned[-1]["nav"] if cleaned else 1.0
+        if abs(cumulative - (nav - 1)) > 1e-6 or abs(daily - (nav / prior - 1)) > 1e-6:
+            raise ValueError("inconsistent backfill NAV/return")
         cleaned.append(
             {
                 "date": day,
                 "nav": nav,
-                "daily_return": _number(point.get("daily_return"), f"backfill daily return {day}"),
-                "cumulative_return": _number(point.get("cumulative_return"), f"backfill cumulative return {day}"),
+                "daily_return": daily,
+                "cumulative_return": cumulative,
+                "data_mode": "BACKFILL_RESEARCH",
             }
         )
         previous_date = day
@@ -77,7 +128,6 @@ def merge_forward_performance(
 
     prefix_points, initial_cash = _prefix_series(prefix)
     prefix_last_date = prefix_points[-1]["date"]
-    prefix_last_value = prefix_points[-1]["nav"] * initial_cash
     result = {
         "start_date": str(prefix.get("start") or prefix_points[0]["date"]),
         "inception_date": prefix_points[0]["date"],
@@ -86,11 +136,26 @@ def merge_forward_performance(
         "backfill_end_date": prefix_last_date,
         "latest_date": prefix_last_date,
         "cumulative_return": prefix_points[-1]["cumulative_return"],
-        "return_interpretation": "CONTINUOUS_SIMULATED_ACCOUNT",
+        "return_interpretation": "BACKFILL_RESEARCH_ONLY",
         "points": [dict(point) for point in prefix_points],
     }
     if live.get("status") != "active" or not live_points:
         return result
+
+    identity = prefix.get("account_identity")
+    if not identity or identity != live.get("account_identity") or identity["initial_cash"] != initial_cash:
+        raise ValueError("missing/mismatched account identity at segment boundary")
+    if identity != account_identity(identity.get("market")):
+        raise ValueError("unexpected canonical account identity")
+    reconcile_states(prefix.get("closing_state"), live_points[0].get("opening_state"))
+    dates = live.get("trading_dates")
+    if not isinstance(dates, list) or dates != sorted(set(dates)) or prefix_last_date not in dates:
+        raise ValueError("missing verified trading calendar at segment boundary")
+    for day in dates:
+        date.fromisoformat(day)
+    required = [d for d in dates if prefix_last_date < d <= live_points[-1]["date"]]
+    if required != [p["date"] for p in live_points]:
+        raise ValueError("missing trading session at segment boundary")
 
     previous_nav = prefix_points[-1]["nav"]
     previous_date = prefix_last_date
@@ -104,13 +169,12 @@ def merge_forward_performance(
         close = _number(point.get("portfolio_value_close"), f"live close value {day}")
         if close <= 0:
             raise ValueError(f"live close value must be positive: {day}")
-        if index == 0:
-            # The 1M account is continuous: the first live close must be in the
-            # same value range as the 10/30 backfill close.  Allow a generous
-            # overnight gap, but fail closed on a reset or a unit mix-up.
-            gap = abs(close - prefix_last_value) / prefix_last_value
-            if gap >= 0.25:
-                raise ValueError(f"live/backfill account value discontinuity at {day}: gap={gap:.1%}")
+        date.fromisoformat(day)
+        if index:
+            reconcile_states(live_points[index - 1].get("closing_state"), point.get("opening_state"))
+        policy = point.get("execution_st_policy")
+        if policy not in ("ST_VERIFIED_PREOPEN", "ST_IGNORED_REFERENCE_ONLY"):
+            raise ValueError("live point requires explicit ST execution evidence")
         nav = close / initial_cash
         if not 0.05 < nav < 20:
             raise ValueError(f"live/backfill account value discontinuity at {day}: nav={nav}")
@@ -121,6 +185,11 @@ def merge_forward_performance(
                 "daily_return": nav / previous_nav - 1,
                 "cumulative_return": nav - 1,
                 "portfolio_value_close": close,
+                "data_mode": "LIVE_PAPER",
+                "execution_st_policy": policy,
+                "execution_rule_version": point.get("execution_rule_version", "LEGACY_UNVERSIONED"),
+                "opening_state": point["opening_state"],
+                "closing_state": point["closing_state"],
             }
         )
         previous_date = day
@@ -132,6 +201,12 @@ def merge_forward_performance(
             "live_start_date": merged[len(prefix_points)]["date"],
             "latest_date": merged[-1]["date"],
             "cumulative_return": merged[-1]["cumulative_return"],
+            "schema_version": 2,
+            "account_identity": identity,
+            "return_interpretation": "BACKFILL_PLUS_DISCLOSED_LIVE_PAPER",
+            "st_fallback_dates": [
+                p["date"] for p in merged if p.get("execution_st_policy") == "ST_IGNORED_REFERENCE_ONLY"
+            ],
         }
     )
     return result
@@ -145,6 +220,11 @@ def main() -> None:
     args = parser.parse_args()
 
     prefix = json.loads(args.prefix.read_text()) if args.prefix and args.prefix.is_file() else None
+    if prefix is not None and prefix.get("market"):
+        market = prefix["market"]
+        suffix = "" if market == "csi1000" else f"_{market}"
+        boundary = args.prefix.parent / f"{prefix['points'][-1]['date']}_paper_portfolio{suffix}.json"
+        prefix = attach_backfill_boundary(prefix, json.loads(boundary.read_text()))
     live = json.loads(args.live.read_text())
     merged = merge_forward_performance(prefix, live)
     args.output.parent.mkdir(parents=True, exist_ok=True)

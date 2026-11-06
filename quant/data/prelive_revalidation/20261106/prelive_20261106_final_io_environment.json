@@ -1,0 +1,27 @@
+{
+  "status": "PASS_IMPORTS",
+  "calendar_start": "2000-01-04",
+  "calendar_end": "2026-09-30",
+  "imports": {
+    "paper_portfolio": "55b7e28ce0e428fcfeedd2f67ed4714120ec3c6bbc8e52734b6ce71970480823",
+    "paper_execution_context": "9b0783c27a1019927e86c80e7ee84ffde558ea7f01fdc0835bfa65a502b90846",
+    "paper_accounting": "47a6ada0d3a8f2f15e3cb3da4ee04cc055e47f60826636db6b8cc4922b0b7a2f",
+    "coordinate_contract": "641569f942f0bbe04b7c603d171ce6e654610190bd79a0e806c0b8749fb0e4d3",
+    "order_quantity": "103f65da299eda5cfeb0f26f69bca0ad87d8225803d2b7210a732b9fd2b51898",
+    "portfolio_diagnostics": "33ac3f3c918f683601560e78007105f7bf1ef3e6a9d50abc622d53c1ef9add49",
+    "publication_journal": "f8853256ea0118c6cce5b5f59c20cc7106e1927d6622f9b1b93f6b4b3a4137b6",
+    "signal_publication_gate": "fd0fd6d590fa76b15f74a85c6ce198382b7b32bb797439cd5706745042f6a89a"
+  },
+  "python": "3.11.12",
+  "packages": {
+    "pyqlib": "0.9.8.dev32",
+    "numpy": "1.26.4",
+    "pandas": "2.2.3",
+    "lightgbm": "4.7.0"
+  },
+  "paper_state_directory_present": false,
+  "source_mounted_read_only": true,
+  "production_mutation": false,
+  "dated_st_candidates": [],
+  "halt_candidates": []
+}

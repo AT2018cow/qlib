@@ -1,0 +1,1242 @@
+[
+  {
+    "date": "2018-01-18",
+    "instrument": "SH600366",
+    "field": "open"
+  },
+  {
+    "date": "2018-01-18",
+    "instrument": "SH600366",
+    "field": "close"
+  },
+  {
+    "date": "2018-03-28",
+    "instrument": "SH600064",
+    "field": "open"
+  },
+  {
+    "date": "2018-03-28",
+    "instrument": "SH600064",
+    "field": "close"
+  },
+  {
+    "date": "2018-06-06",
+    "instrument": "SZ300026",
+    "field": "open"
+  },
+  {
+    "date": "2018-06-06",
+    "instrument": "SZ300026",
+    "field": "close"
+  },
+  {
+    "date": "2018-06-07",
+    "instrument": "SZ300026",
+    "field": "open"
+  },
+  {
+    "date": "2018-06-07",
+    "instrument": "SZ300026",
+    "field": "close"
+  },
+  {
+    "date": "2018-06-08",
+    "instrument": "SZ300026",
+    "field": "open"
+  },
+  {
+    "date": "2018-06-08",
+    "instrument": "SZ300026",
+    "field": "close"
+  },
+  {
+    "date": "2018-09-10",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-09-10",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-09-11",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-09-11",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-09-12",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-09-12",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-09-13",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-09-13",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-09-14",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-09-14",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-09-17",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-09-17",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-09-18",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-09-18",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-09-19",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-09-19",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-09-20",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-09-20",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-09-21",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-09-21",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-09-25",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-09-25",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-09-26",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-09-26",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-09-27",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-09-27",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-09-28",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-09-28",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-10-08",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-10-08",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-10-09",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-10-09",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-10-10",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-10-10",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-10-11",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-10-11",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-10-12",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-10-12",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-10-15",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-10-15",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-10-16",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-10-16",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-10-17",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-10-17",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-10-18",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-10-18",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-10-19",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-10-19",
+    "instrument": "SZ002049",
+    "field": "open"
+  },
+  {
+    "date": "2018-10-19",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-10-19",
+    "instrument": "SZ002049",
+    "field": "close"
+  },
+  {
+    "date": "2018-10-22",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-10-22",
+    "instrument": "SZ002049",
+    "field": "open"
+  },
+  {
+    "date": "2018-10-22",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-10-22",
+    "instrument": "SZ002049",
+    "field": "close"
+  },
+  {
+    "date": "2018-10-23",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-10-23",
+    "instrument": "SZ002049",
+    "field": "open"
+  },
+  {
+    "date": "2018-10-23",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-10-23",
+    "instrument": "SZ002049",
+    "field": "close"
+  },
+  {
+    "date": "2018-10-24",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-10-24",
+    "instrument": "SZ002049",
+    "field": "open"
+  },
+  {
+    "date": "2018-10-24",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-10-24",
+    "instrument": "SZ002049",
+    "field": "close"
+  },
+  {
+    "date": "2018-10-25",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-10-25",
+    "instrument": "SZ002049",
+    "field": "open"
+  },
+  {
+    "date": "2018-10-25",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2018-10-25",
+    "instrument": "SZ002049",
+    "field": "close"
+  },
+  {
+    "date": "2018-10-26",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2018-10-26",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2019-02-01",
+    "instrument": "SH600086",
+    "field": "open"
+  },
+  {
+    "date": "2019-02-01",
+    "instrument": "SH600086",
+    "field": "close"
+  },
+  {
+    "date": "2019-02-20",
+    "instrument": "SZ000418",
+    "field": "open"
+  },
+  {
+    "date": "2019-02-20",
+    "instrument": "SZ000418",
+    "field": "close"
+  },
+  {
+    "date": "2019-03-06",
+    "instrument": "SZ000600",
+    "field": "open"
+  },
+  {
+    "date": "2019-03-06",
+    "instrument": "SZ000600",
+    "field": "close"
+  },
+  {
+    "date": "2019-03-25",
+    "instrument": "SZ000543",
+    "field": "open"
+  },
+  {
+    "date": "2019-03-25",
+    "instrument": "SZ000543",
+    "field": "close"
+  },
+  {
+    "date": "2019-05-07",
+    "instrument": "SH600277",
+    "field": "open"
+  },
+  {
+    "date": "2019-05-07",
+    "instrument": "SH600277",
+    "field": "close"
+  },
+  {
+    "date": "2019-05-08",
+    "instrument": "SH600277",
+    "field": "open"
+  },
+  {
+    "date": "2019-05-08",
+    "instrument": "SH600277",
+    "field": "close"
+  },
+  {
+    "date": "2019-05-09",
+    "instrument": "SH600277",
+    "field": "open"
+  },
+  {
+    "date": "2019-05-09",
+    "instrument": "SH600277",
+    "field": "close"
+  },
+  {
+    "date": "2019-05-10",
+    "instrument": "SH600277",
+    "field": "open"
+  },
+  {
+    "date": "2019-05-10",
+    "instrument": "SH600277",
+    "field": "close"
+  },
+  {
+    "date": "2019-05-13",
+    "instrument": "SH600277",
+    "field": "open"
+  },
+  {
+    "date": "2019-05-13",
+    "instrument": "SH600277",
+    "field": "close"
+  },
+  {
+    "date": "2019-05-14",
+    "instrument": "SH600277",
+    "field": "open"
+  },
+  {
+    "date": "2019-05-14",
+    "instrument": "SH600277",
+    "field": "close"
+  },
+  {
+    "date": "2019-05-15",
+    "instrument": "SH600277",
+    "field": "open"
+  },
+  {
+    "date": "2019-05-15",
+    "instrument": "SH600277",
+    "field": "close"
+  },
+  {
+    "date": "2019-05-16",
+    "instrument": "SH600277",
+    "field": "open"
+  },
+  {
+    "date": "2019-05-16",
+    "instrument": "SH600277",
+    "field": "close"
+  },
+  {
+    "date": "2019-05-17",
+    "instrument": "SH600277",
+    "field": "open"
+  },
+  {
+    "date": "2019-05-17",
+    "instrument": "SH600277",
+    "field": "close"
+  },
+  {
+    "date": "2019-05-20",
+    "instrument": "SH600277",
+    "field": "open"
+  },
+  {
+    "date": "2019-05-20",
+    "instrument": "SH600277",
+    "field": "close"
+  },
+  {
+    "date": "2019-06-17",
+    "instrument": "SZ300168",
+    "field": "open"
+  },
+  {
+    "date": "2019-06-17",
+    "instrument": "SZ300168",
+    "field": "close"
+  },
+  {
+    "date": "2019-06-18",
+    "instrument": "SZ300168",
+    "field": "open"
+  },
+  {
+    "date": "2019-06-18",
+    "instrument": "SZ300168",
+    "field": "close"
+  },
+  {
+    "date": "2019-06-19",
+    "instrument": "SZ300168",
+    "field": "open"
+  },
+  {
+    "date": "2019-06-19",
+    "instrument": "SZ300168",
+    "field": "close"
+  },
+  {
+    "date": "2019-06-20",
+    "instrument": "SZ300168",
+    "field": "open"
+  },
+  {
+    "date": "2019-06-20",
+    "instrument": "SZ300168",
+    "field": "close"
+  },
+  {
+    "date": "2019-06-21",
+    "instrument": "SZ300168",
+    "field": "open"
+  },
+  {
+    "date": "2019-06-21",
+    "instrument": "SZ300168",
+    "field": "close"
+  },
+  {
+    "date": "2019-10-08",
+    "instrument": "SH600575",
+    "field": "open"
+  },
+  {
+    "date": "2019-10-08",
+    "instrument": "SH600575",
+    "field": "close"
+  },
+  {
+    "date": "2019-10-09",
+    "instrument": "SH600575",
+    "field": "open"
+  },
+  {
+    "date": "2019-10-09",
+    "instrument": "SH600575",
+    "field": "close"
+  },
+  {
+    "date": "2019-10-10",
+    "instrument": "SH600575",
+    "field": "open"
+  },
+  {
+    "date": "2019-10-10",
+    "instrument": "SH600575",
+    "field": "close"
+  },
+  {
+    "date": "2019-10-11",
+    "instrument": "SH600575",
+    "field": "open"
+  },
+  {
+    "date": "2019-10-11",
+    "instrument": "SH600575",
+    "field": "close"
+  },
+  {
+    "date": "2019-10-14",
+    "instrument": "SH600575",
+    "field": "open"
+  },
+  {
+    "date": "2019-10-14",
+    "instrument": "SH600575",
+    "field": "close"
+  },
+  {
+    "date": "2019-10-15",
+    "instrument": "SH600575",
+    "field": "open"
+  },
+  {
+    "date": "2019-10-15",
+    "instrument": "SH600575",
+    "field": "close"
+  },
+  {
+    "date": "2019-10-16",
+    "instrument": "SH600575",
+    "field": "open"
+  },
+  {
+    "date": "2019-10-16",
+    "instrument": "SH600575",
+    "field": "close"
+  },
+  {
+    "date": "2019-10-17",
+    "instrument": "SH600575",
+    "field": "open"
+  },
+  {
+    "date": "2019-10-17",
+    "instrument": "SH600575",
+    "field": "close"
+  },
+  {
+    "date": "2019-10-18",
+    "instrument": "SH600575",
+    "field": "open"
+  },
+  {
+    "date": "2019-10-18",
+    "instrument": "SH600575",
+    "field": "close"
+  },
+  {
+    "date": "2019-10-21",
+    "instrument": "SH600575",
+    "field": "open"
+  },
+  {
+    "date": "2019-10-21",
+    "instrument": "SH600575",
+    "field": "close"
+  },
+  {
+    "date": "2020-03-26",
+    "instrument": "SH601231",
+    "field": "open"
+  },
+  {
+    "date": "2020-03-26",
+    "instrument": "SH601231",
+    "field": "close"
+  },
+  {
+    "date": "2020-04-29",
+    "instrument": "SZ002176",
+    "field": "open"
+  },
+  {
+    "date": "2020-04-29",
+    "instrument": "SZ002176",
+    "field": "close"
+  },
+  {
+    "date": "2020-06-24",
+    "instrument": "SZ002280",
+    "field": "open"
+  },
+  {
+    "date": "2020-06-24",
+    "instrument": "SZ002280",
+    "field": "close"
+  },
+  {
+    "date": "2020-07-27",
+    "instrument": "SZ000877",
+    "field": "open"
+  },
+  {
+    "date": "2020-07-27",
+    "instrument": "SZ000877",
+    "field": "close"
+  },
+  {
+    "date": "2020-07-28",
+    "instrument": "SZ000877",
+    "field": "open"
+  },
+  {
+    "date": "2020-07-28",
+    "instrument": "SZ000877",
+    "field": "close"
+  },
+  {
+    "date": "2020-07-29",
+    "instrument": "SZ000877",
+    "field": "open"
+  },
+  {
+    "date": "2020-07-29",
+    "instrument": "SZ000877",
+    "field": "close"
+  },
+  {
+    "date": "2020-07-30",
+    "instrument": "SZ000877",
+    "field": "open"
+  },
+  {
+    "date": "2020-07-30",
+    "instrument": "SZ000877",
+    "field": "close"
+  },
+  {
+    "date": "2020-07-31",
+    "instrument": "SZ000877",
+    "field": "open"
+  },
+  {
+    "date": "2020-07-31",
+    "instrument": "SZ000877",
+    "field": "close"
+  },
+  {
+    "date": "2020-08-03",
+    "instrument": "SZ000877",
+    "field": "open"
+  },
+  {
+    "date": "2020-08-03",
+    "instrument": "SZ000877",
+    "field": "close"
+  },
+  {
+    "date": "2020-08-04",
+    "instrument": "SZ000877",
+    "field": "open"
+  },
+  {
+    "date": "2020-08-04",
+    "instrument": "SZ000877",
+    "field": "close"
+  },
+  {
+    "date": "2020-08-05",
+    "instrument": "SZ000877",
+    "field": "open"
+  },
+  {
+    "date": "2020-08-05",
+    "instrument": "SZ000877",
+    "field": "close"
+  },
+  {
+    "date": "2020-08-06",
+    "instrument": "SZ000877",
+    "field": "open"
+  },
+  {
+    "date": "2020-08-06",
+    "instrument": "SZ000877",
+    "field": "close"
+  },
+  {
+    "date": "2020-08-07",
+    "instrument": "SZ000877",
+    "field": "open"
+  },
+  {
+    "date": "2020-08-07",
+    "instrument": "SZ000877",
+    "field": "close"
+  },
+  {
+    "date": "2020-09-10",
+    "instrument": "SH600079",
+    "field": "open"
+  },
+  {
+    "date": "2020-09-10",
+    "instrument": "SH600079",
+    "field": "close"
+  },
+  {
+    "date": "2020-12-30",
+    "instrument": "SZ300182",
+    "field": "open"
+  },
+  {
+    "date": "2020-12-30",
+    "instrument": "SZ300182",
+    "field": "close"
+  },
+  {
+    "date": "2020-12-31",
+    "instrument": "SZ300182",
+    "field": "open"
+  },
+  {
+    "date": "2020-12-31",
+    "instrument": "SZ300182",
+    "field": "close"
+  },
+  {
+    "date": "2021-01-04",
+    "instrument": "SZ300182",
+    "field": "open"
+  },
+  {
+    "date": "2021-01-04",
+    "instrument": "SZ300182",
+    "field": "close"
+  },
+  {
+    "date": "2021-01-05",
+    "instrument": "SZ300182",
+    "field": "open"
+  },
+  {
+    "date": "2021-01-05",
+    "instrument": "SZ300182",
+    "field": "close"
+  },
+  {
+    "date": "2021-01-06",
+    "instrument": "SZ300182",
+    "field": "open"
+  },
+  {
+    "date": "2021-01-06",
+    "instrument": "SZ300182",
+    "field": "close"
+  },
+  {
+    "date": "2021-02-18",
+    "instrument": "SZ000564",
+    "field": "open"
+  },
+  {
+    "date": "2021-02-18",
+    "instrument": "SZ000564",
+    "field": "close"
+  },
+  {
+    "date": "2021-03-01",
+    "instrument": "SZ002387",
+    "field": "open"
+  },
+  {
+    "date": "2021-03-01",
+    "instrument": "SZ002387",
+    "field": "close"
+  },
+  {
+    "date": "2021-03-02",
+    "instrument": "SZ002387",
+    "field": "open"
+  },
+  {
+    "date": "2021-03-02",
+    "instrument": "SZ002387",
+    "field": "close"
+  },
+  {
+    "date": "2021-03-03",
+    "instrument": "SZ002387",
+    "field": "open"
+  },
+  {
+    "date": "2021-03-03",
+    "instrument": "SZ002387",
+    "field": "close"
+  },
+  {
+    "date": "2021-03-04",
+    "instrument": "SZ002387",
+    "field": "open"
+  },
+  {
+    "date": "2021-03-04",
+    "instrument": "SZ002387",
+    "field": "close"
+  },
+  {
+    "date": "2021-03-05",
+    "instrument": "SZ002387",
+    "field": "open"
+  },
+  {
+    "date": "2021-03-05",
+    "instrument": "SZ002387",
+    "field": "close"
+  },
+  {
+    "date": "2021-04-30",
+    "instrument": "SH600291",
+    "field": "open"
+  },
+  {
+    "date": "2021-04-30",
+    "instrument": "SH600291",
+    "field": "close"
+  },
+  {
+    "date": "2022-05-27",
+    "instrument": "SH600372",
+    "field": "open"
+  },
+  {
+    "date": "2022-05-27",
+    "instrument": "SH600372",
+    "field": "close"
+  },
+  {
+    "date": "2022-05-30",
+    "instrument": "SH600372",
+    "field": "open"
+  },
+  {
+    "date": "2022-05-30",
+    "instrument": "SH600372",
+    "field": "close"
+  },
+  {
+    "date": "2022-05-31",
+    "instrument": "SH600372",
+    "field": "open"
+  },
+  {
+    "date": "2022-05-31",
+    "instrument": "SH600372",
+    "field": "close"
+  },
+  {
+    "date": "2022-06-01",
+    "instrument": "SH600372",
+    "field": "open"
+  },
+  {
+    "date": "2022-06-01",
+    "instrument": "SH600372",
+    "field": "close"
+  },
+  {
+    "date": "2022-06-02",
+    "instrument": "SH600372",
+    "field": "open"
+  },
+  {
+    "date": "2022-06-02",
+    "instrument": "SH600372",
+    "field": "close"
+  },
+  {
+    "date": "2022-06-06",
+    "instrument": "SH600372",
+    "field": "open"
+  },
+  {
+    "date": "2022-06-06",
+    "instrument": "SH600372",
+    "field": "close"
+  },
+  {
+    "date": "2022-06-07",
+    "instrument": "SH600372",
+    "field": "open"
+  },
+  {
+    "date": "2022-06-07",
+    "instrument": "SH600372",
+    "field": "close"
+  },
+  {
+    "date": "2022-06-08",
+    "instrument": "SH600372",
+    "field": "open"
+  },
+  {
+    "date": "2022-06-08",
+    "instrument": "SH600372",
+    "field": "close"
+  },
+  {
+    "date": "2022-06-09",
+    "instrument": "SH600372",
+    "field": "open"
+  },
+  {
+    "date": "2022-06-09",
+    "instrument": "SH600372",
+    "field": "close"
+  },
+  {
+    "date": "2022-06-10",
+    "instrument": "SH600372",
+    "field": "open"
+  },
+  {
+    "date": "2022-06-10",
+    "instrument": "SH600372",
+    "field": "close"
+  },
+  {
+    "date": "2022-12-26",
+    "instrument": "SH600038",
+    "field": "open"
+  },
+  {
+    "date": "2022-12-26",
+    "instrument": "SH600038",
+    "field": "close"
+  },
+  {
+    "date": "2022-12-27",
+    "instrument": "SH600038",
+    "field": "open"
+  },
+  {
+    "date": "2022-12-27",
+    "instrument": "SH600038",
+    "field": "close"
+  },
+  {
+    "date": "2022-12-28",
+    "instrument": "SH600038",
+    "field": "open"
+  },
+  {
+    "date": "2022-12-28",
+    "instrument": "SH600038",
+    "field": "close"
+  },
+  {
+    "date": "2022-12-29",
+    "instrument": "SH600038",
+    "field": "open"
+  },
+  {
+    "date": "2022-12-29",
+    "instrument": "SH600038",
+    "field": "close"
+  },
+  {
+    "date": "2022-12-30",
+    "instrument": "SH600038",
+    "field": "open"
+  },
+  {
+    "date": "2022-12-30",
+    "instrument": "SH600038",
+    "field": "close"
+  },
+  {
+    "date": "2023-01-03",
+    "instrument": "SH600038",
+    "field": "open"
+  },
+  {
+    "date": "2023-01-03",
+    "instrument": "SH600038",
+    "field": "close"
+  },
+  {
+    "date": "2023-01-04",
+    "instrument": "SH600038",
+    "field": "open"
+  },
+  {
+    "date": "2023-01-04",
+    "instrument": "SH600038",
+    "field": "close"
+  },
+  {
+    "date": "2023-01-05",
+    "instrument": "SH600038",
+    "field": "open"
+  },
+  {
+    "date": "2023-01-05",
+    "instrument": "SH600038",
+    "field": "close"
+  },
+  {
+    "date": "2023-01-06",
+    "instrument": "SH600038",
+    "field": "open"
+  },
+  {
+    "date": "2023-01-06",
+    "instrument": "SH600038",
+    "field": "close"
+  },
+  {
+    "date": "2023-01-09",
+    "instrument": "SH600038",
+    "field": "open"
+  },
+  {
+    "date": "2023-01-09",
+    "instrument": "SH600038",
+    "field": "close"
+  },
+  {
+    "date": "2023-02-01",
+    "instrument": "SH600378",
+    "field": "open"
+  },
+  {
+    "date": "2023-02-01",
+    "instrument": "SH600378",
+    "field": "close"
+  },
+  {
+    "date": "2023-02-02",
+    "instrument": "SH600378",
+    "field": "open"
+  },
+  {
+    "date": "2023-02-02",
+    "instrument": "SH600378",
+    "field": "close"
+  },
+  {
+    "date": "2023-02-03",
+    "instrument": "SH600378",
+    "field": "open"
+  },
+  {
+    "date": "2023-02-03",
+    "instrument": "SH600378",
+    "field": "close"
+  },
+  {
+    "date": "2023-02-06",
+    "instrument": "SH600378",
+    "field": "open"
+  },
+  {
+    "date": "2023-02-06",
+    "instrument": "SH600378",
+    "field": "close"
+  },
+  {
+    "date": "2023-02-07",
+    "instrument": "SH600378",
+    "field": "open"
+  },
+  {
+    "date": "2023-02-07",
+    "instrument": "SH600378",
+    "field": "close"
+  },
+  {
+    "date": "2023-02-08",
+    "instrument": "SH600378",
+    "field": "open"
+  },
+  {
+    "date": "2023-02-08",
+    "instrument": "SH600378",
+    "field": "close"
+  },
+  {
+    "date": "2023-02-09",
+    "instrument": "SH600378",
+    "field": "open"
+  },
+  {
+    "date": "2023-02-09",
+    "instrument": "SH600378",
+    "field": "close"
+  },
+  {
+    "date": "2023-02-10",
+    "instrument": "SH600378",
+    "field": "open"
+  },
+  {
+    "date": "2023-02-10",
+    "instrument": "SH600378",
+    "field": "close"
+  },
+  {
+    "date": "2023-02-13",
+    "instrument": "SH600378",
+    "field": "open"
+  },
+  {
+    "date": "2023-02-13",
+    "instrument": "SH600378",
+    "field": "close"
+  },
+  {
+    "date": "2023-02-14",
+    "instrument": "SH600378",
+    "field": "open"
+  },
+  {
+    "date": "2023-02-14",
+    "instrument": "SH600378",
+    "field": "close"
+  }
+]

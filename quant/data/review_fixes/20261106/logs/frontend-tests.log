@@ -1,0 +1,57 @@
+✔ pool metadata matches the frozen per-market production profiles (1.883804ms)
+✔ csi300: every published date has a passing dashboard contract (330.106917ms)
+✔ csi500: every published date has a passing dashboard contract (40.581667ms)
+✔ csi1000: every published date has a passing dashboard contract (43.970674ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 459.18418
+✔ legacy short data retains missing calendar prefix (5.829005ms)
+✔ null is not interpreted as zero or squeezed out (4.849488ms)
+✔ chart trend color follows first and last valid values (0.396835ms)
+✔ desktop table-cell layout remains intact; mobile uses flex only (0.5966ms)
+✔ forward panel rejects pre-inception, malformed and contradictory data (5.421289ms)
+✔ forward awaiting state is not confused with a zero return (4.910571ms)
+✔ validated forward curve labels dates and flags possibly stale valuations (0.609463ms)
+✔ forward return follows the selected historical ranking date (5.343043ms)
+✔ date selection is latest-request-wins and the daily ranking leads the archive (10.472295ms)
+✔ sparkline placeholders explain missing, discontinuous and loading data visibly (13.240137ms)
+✔ Pages index replaces weekday probing and first-render barrier (0.60774ms)
+✔ ranking change labels reflect position, not paper account holdings (11.048376ms)
+✔ rebalance separates Drop1 sells from ranked-out holdings (12.364585ms)
+✔ ST-free forward NAV is explicitly shown as research reference (9.097005ms)
+✔ mixed ST modes disclose exactly which forward dates skipped ST (0.377819ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 137.685182
+✔ segmented NAV preserves ST fallback and backfill identity (8.179493ms)
+✔ old CSV cannot repaint while the next market index is pending or empty (23.373035ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 46.145745
+✔ escapeHtml neutralizes markup and attribute breakers (7.646855ms)
+✔ sanitizeNameMap drops markup/control/oversized names (1.367275ms)
+✔ parseCSV rejects hostile or malformed rows and keeps valid files (4.130779ms)
+✔ renderers escape name/instrument/url instead of emitting live markup (0.534953ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 57.487353

@@ -1,0 +1,198 @@
+{
+  "status": "ALL_ORIGINAL_FILES_HASH_VERIFIED",
+  "scenarios": 72,
+  "jobs": [
+    {
+      "group": "primary",
+      "candidate_key": "csi1000_A_S01",
+      "batch": "primary_fast",
+      "receipt": "primary/csi1000_A_S01/receipt.json",
+      "receipt_sha256": "9ef45aa5ef8c449280f58f67f7627494bbb69944be6f49868d888db9b837448d",
+      "scenarios": 3
+    },
+    {
+      "group": "primary",
+      "candidate_key": "csi1000_A_S02",
+      "batch": "primary_fast",
+      "receipt": "primary/csi1000_A_S02/receipt.json",
+      "receipt_sha256": "ce66d60802c9a50ae75098af812b1242d90df448f3295331bc36749ffc1be7b5",
+      "scenarios": 3
+    },
+    {
+      "group": "primary",
+      "candidate_key": "csi300_A_S01",
+      "batch": "primary_fast",
+      "receipt": "primary/csi300_A_S01/receipt.json",
+      "receipt_sha256": "32d58033dfe3f8bf5db435fa87ce8bc395968638e0c6458ae49042c31d78c157",
+      "scenarios": 3
+    },
+    {
+      "group": "primary",
+      "candidate_key": "csi300_A_S02",
+      "batch": "primary_fast",
+      "receipt": "primary/csi300_A_S02/receipt.json",
+      "receipt_sha256": "d0ad9a2914db6174069247d95a7cf4f08d33aeb91a4459ea87c58d37d421bee1",
+      "scenarios": 3
+    },
+    {
+      "group": "primary",
+      "candidate_key": "csi300_B_S01",
+      "batch": "primary_fast",
+      "receipt": "primary/csi300_B_S01/receipt.json",
+      "receipt_sha256": "1b937e0c799b808087647268b013bfa417005282800ee4d04d0d67a8d4ae0baf",
+      "scenarios": 3
+    },
+    {
+      "group": "primary",
+      "candidate_key": "csi300_B_S02",
+      "batch": "primary_fast",
+      "receipt": "primary/csi300_B_S02/receipt.json",
+      "receipt_sha256": "a484db02bb304c19d71c087c122e27d5210b3d7170db862461c49d4dc63535fc",
+      "scenarios": 3
+    },
+    {
+      "group": "primary",
+      "candidate_key": "csi500_A_S01",
+      "batch": "primary_fast",
+      "receipt": "primary/csi500_A_S01/receipt.json",
+      "receipt_sha256": "ae0cccba9f49beb808a9a70b3f5626f656b504ba45e6cac109745ba5125eb238",
+      "scenarios": 3
+    },
+    {
+      "group": "primary",
+      "candidate_key": "csi500_A_S02",
+      "batch": "primary_fast",
+      "receipt": "primary/csi500_A_S02/receipt.json",
+      "receipt_sha256": "8af532d951fba47e8858aa661c75e978f4142c72061afa0297c821f5f3a3dd19",
+      "scenarios": 3
+    },
+    {
+      "group": "primary",
+      "candidate_key": "csi500_B_S01",
+      "batch": "primary_fast",
+      "receipt": "primary/csi500_B_S01/receipt.json",
+      "receipt_sha256": "7156a084ec3281910e14ee942d7242f0d7aaff568b1f3a0188ac096d0d9fbe31",
+      "scenarios": 3
+    },
+    {
+      "group": "primary",
+      "candidate_key": "csi500_B_S02",
+      "batch": "primary_fast",
+      "receipt": "primary/csi500_B_S02/receipt.json",
+      "receipt_sha256": "22fa9c6b3751e3b813d50ead0bd35190036fc9bbabef3baeb2f9c8306c6ce72c",
+      "scenarios": 3
+    },
+    {
+      "group": "extension",
+      "candidate_key": "csi300_B_S01",
+      "batch": "extension",
+      "receipt": "extension/csi300_B_S01/receipt.json",
+      "receipt_sha256": "b8a2f78cdda3bab048282d0381ba3c8846a0debe5a19017d47d3519dc84c72b1",
+      "scenarios": 3
+    },
+    {
+      "group": "extension",
+      "candidate_key": "csi300_B_S02",
+      "batch": "extension",
+      "receipt": "extension/csi300_B_S02/receipt.json",
+      "receipt_sha256": "7776d00dd0e878e18a69ac918ac3ad71fccfa2820c602e3742e2729726b604fa",
+      "scenarios": 3
+    },
+    {
+      "group": "extension",
+      "candidate_key": "csi500_B_S01",
+      "batch": "extension",
+      "receipt": "extension/csi500_B_S01/receipt.json",
+      "receipt_sha256": "547e2e066f08f72da34d7ee789eb300fa570aea10352f3f297db433a3c603120",
+      "scenarios": 3
+    },
+    {
+      "group": "extension",
+      "candidate_key": "csi500_B_S02",
+      "batch": "extension",
+      "receipt": "extension/csi500_B_S02/receipt.json",
+      "receipt_sha256": "55c6be6b9f646f2a8db6d82e0e5dc9233764beeef9f0ed0e286175b9d8413b58",
+      "scenarios": 3
+    },
+    {
+      "group": "extension",
+      "candidate_key": "csi1000_A_S01",
+      "batch": "extension_recovered",
+      "receipt": "extension/csi1000_A_S01/receipt.json",
+      "receipt_sha256": "4cd7c27f4b62b51faf8565d1fd05fe7b9a994e88dca5f78b712e723aaf9823b3",
+      "scenarios": 3
+    },
+    {
+      "group": "extension",
+      "candidate_key": "csi1000_A_S02",
+      "batch": "extension_recovered",
+      "receipt": "extension/csi1000_A_S02/receipt.json",
+      "receipt_sha256": "4670ebec7432710734150fa6a8cd31eeed73f64d01583633c3460e10785c67d9",
+      "scenarios": 3
+    },
+    {
+      "group": "phases",
+      "candidate_key": "csi1000_A_S01_phase00",
+      "batch": "phases",
+      "receipt": "phases/csi1000_A_S01_phase00/receipt.json",
+      "receipt_sha256": "4cf6cc3d9c580e08fdcee3fb944e0952c4791ab902268c6b0be2d3548f236d95",
+      "scenarios": 3
+    },
+    {
+      "group": "phases",
+      "candidate_key": "csi1000_A_S01_phase04",
+      "batch": "phases",
+      "receipt": "phases/csi1000_A_S01_phase04/receipt.json",
+      "receipt_sha256": "c02256c7c6613b4c754e876abbabff129d34851d8ee8de1a052537f1d428e11b",
+      "scenarios": 3
+    },
+    {
+      "group": "phases",
+      "candidate_key": "csi1000_A_S01_phase06",
+      "batch": "phases",
+      "receipt": "phases/csi1000_A_S01_phase06/receipt.json",
+      "receipt_sha256": "0755b6e12ce4ea14837235d3b0083a949129d4cdfa4e0dbff388f44b9e5113ff",
+      "scenarios": 3
+    },
+    {
+      "group": "phases",
+      "candidate_key": "csi1000_A_S01_phase15",
+      "batch": "phases",
+      "receipt": "phases/csi1000_A_S01_phase15/receipt.json",
+      "receipt_sha256": "175447145bdb779bbc6fa6d886e79772ea413b05b2f8578521bafeb1b700faef",
+      "scenarios": 3
+    },
+    {
+      "group": "phases",
+      "candidate_key": "csi1000_A_S02_phase00",
+      "batch": "phases",
+      "receipt": "phases/csi1000_A_S02_phase00/receipt.json",
+      "receipt_sha256": "6bf51ad6b6950342e233560575403ec00979ce94721a3fec6d9d6dc94597a449",
+      "scenarios": 3
+    },
+    {
+      "group": "phases",
+      "candidate_key": "csi1000_A_S02_phase04",
+      "batch": "phases",
+      "receipt": "phases/csi1000_A_S02_phase04/receipt.json",
+      "receipt_sha256": "e24b22917f41bfed862eb863a4756c351e5d9676da8b098acf39d424532da241",
+      "scenarios": 3
+    },
+    {
+      "group": "phases",
+      "candidate_key": "csi1000_A_S02_phase06",
+      "batch": "phases",
+      "receipt": "phases/csi1000_A_S02_phase06/receipt.json",
+      "receipt_sha256": "b4f605a9904b94e18c18abc019e7e19dfd5e8fa8cc8a4d6d4811976404757ffa",
+      "scenarios": 3
+    },
+    {
+      "group": "phases",
+      "candidate_key": "csi1000_A_S02_phase15",
+      "batch": "phases",
+      "receipt": "phases/csi1000_A_S02_phase15/receipt.json",
+      "receipt_sha256": "56a1298fa1c8c42860ad13ab912e0b7dbe35f2e4d5e30642bd777911b8bab0f6",
+      "scenarios": 3
+    }
+  ]
+}

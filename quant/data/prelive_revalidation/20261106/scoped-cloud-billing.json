@@ -1,0 +1,214 @@
+{
+  "status": "SCOPE_FILTERED_HOURLY_USAGE_SNAPSHOT",
+  "retrieved_at_utc": "2026-11-06T02:03:22.934587+00:00",
+  "partial_final_hours_excluded": true,
+  "training_hour_present": true,
+  "recorded_usd": "0.34746458",
+  "rows": [
+    {
+      "object_id": "ap-4ZKC4u3dSzPJbtshvqKukG",
+      "description": "qlib-prelive-revalidation",
+      "interval_start": "2026-11-05T20:00:00",
+      "resource": "CPU",
+      "cost": "0.00038090"
+    },
+    {
+      "object_id": "ap-4ZKC4u3dSzPJbtshvqKukG",
+      "description": "qlib-prelive-revalidation",
+      "interval_start": "2026-11-05T20:00:00",
+      "resource": "Memory",
+      "cost": "0.00002493"
+    },
+    {
+      "object_id": "ap-6sKK3irEgNHKTKYKgVGKpw",
+      "description": "qlib-prelive-revalidation",
+      "interval_start": "2026-11-05T20:00:00",
+      "resource": "CPU",
+      "cost": "0.00037119"
+    },
+    {
+      "object_id": "ap-6sKK3irEgNHKTKYKgVGKpw",
+      "description": "qlib-prelive-revalidation",
+      "interval_start": "2026-11-05T20:00:00",
+      "resource": "Memory",
+      "cost": "0.00004828"
+    },
+    {
+      "object_id": "ap-7VODX7yt0Q4MVPoaKfCrBt",
+      "description": "qlib-prelive-revalidation",
+      "interval_start": "2026-11-05T20:00:00",
+      "resource": "CPU",
+      "cost": "0.02889031"
+    },
+    {
+      "object_id": "ap-7VODX7yt0Q4MVPoaKfCrBt",
+      "description": "qlib-prelive-revalidation",
+      "interval_start": "2026-11-05T20:00:00",
+      "resource": "Memory",
+      "cost": "0.01921335"
+    },
+    {
+      "object_id": "ap-OTKPOYy74pX3FpxwGmpjQX",
+      "description": "qlib-prelive-revalidation",
+      "interval_start": "2026-11-05T20:00:00",
+      "resource": "CPU",
+      "cost": "0.00060169"
+    },
+    {
+      "object_id": "ap-OTKPOYy74pX3FpxwGmpjQX",
+      "description": "qlib-prelive-revalidation",
+      "interval_start": "2026-11-05T20:00:00",
+      "resource": "Memory",
+      "cost": "0.00011919"
+    },
+    {
+      "object_id": "ap-dYvdwmgboPC2JZ0RrCvvgM",
+      "description": "qlib-prelive-revalidation",
+      "interval_start": "2026-11-05T20:00:00",
+      "resource": "CPU",
+      "cost": "0.01115165"
+    },
+    {
+      "object_id": "ap-dYvdwmgboPC2JZ0RrCvvgM",
+      "description": "qlib-prelive-revalidation",
+      "interval_start": "2026-11-05T20:00:00",
+      "resource": "Memory",
+      "cost": "0.00369479"
+    },
+    {
+      "object_id": "ap-rYk2oC33IbMUWtzbYxTZ68",
+      "description": "qlib-prelive-revalidation",
+      "interval_start": "2026-11-05T20:00:00",
+      "resource": "CPU",
+      "cost": "0.00058690"
+    },
+    {
+      "object_id": "ap-rYk2oC33IbMUWtzbYxTZ68",
+      "description": "qlib-prelive-revalidation",
+      "interval_start": "2026-11-05T20:00:00",
+      "resource": "Memory",
+      "cost": "0.00011629"
+    },
+    {
+      "object_id": "ap-1UbRA9M1hJnhDOCHpPzZxU",
+      "description": "qlib-prelive-revalidation",
+      "interval_start": "2026-11-06T00:00:00",
+      "resource": "CPU",
+      "cost": "0.00054926"
+    },
+    {
+      "object_id": "ap-1UbRA9M1hJnhDOCHpPzZxU",
+      "description": "qlib-prelive-revalidation",
+      "interval_start": "2026-11-06T00:00:00",
+      "resource": "Memory",
+      "cost": "0.00008933"
+    },
+    {
+      "object_id": "ap-8lBoe4zuiKCbXMQXUPSJeD",
+      "description": "qlib-prelive-revalidation",
+      "interval_start": "2026-11-06T00:00:00",
+      "resource": "CPU",
+      "cost": "0.00721290"
+    },
+    {
+      "object_id": "ap-8lBoe4zuiKCbXMQXUPSJeD",
+      "description": "qlib-prelive-revalidation",
+      "interval_start": "2026-11-06T00:00:00",
+      "resource": "Memory",
+      "cost": "0.00237263"
+    },
+    {
+      "object_id": "ap-KlKH4vAFgJI5cNo85YgbeY",
+      "description": "qlib-prelive-revalidation",
+      "interval_start": "2026-11-06T00:00:00",
+      "resource": "CPU",
+      "cost": "0.00044838"
+    },
+    {
+      "object_id": "ap-KlKH4vAFgJI5cNo85YgbeY",
+      "description": "qlib-prelive-revalidation",
+      "interval_start": "2026-11-06T00:00:00",
+      "resource": "Memory",
+      "cost": "0.00008182"
+    },
+    {
+      "object_id": "ap-Mx4Zx3fKkY2xUxD8VQihfl",
+      "description": "qlib-prelive-revalidation",
+      "interval_start": "2026-11-06T00:00:00",
+      "resource": "CPU",
+      "cost": "0.00428520"
+    },
+    {
+      "object_id": "ap-Mx4Zx3fKkY2xUxD8VQihfl",
+      "description": "qlib-prelive-revalidation",
+      "interval_start": "2026-11-06T00:00:00",
+      "resource": "Memory",
+      "cost": "0.00144954"
+    },
+    {
+      "object_id": "ap-B66KYpTM35jGSGq0ascS2l",
+      "description": "qlib-october-corrected-backfill",
+      "interval_start": "2026-11-06T01:00:00",
+      "resource": "CPU",
+      "cost": "0.03072295"
+    },
+    {
+      "object_id": "ap-B66KYpTM35jGSGq0ascS2l",
+      "description": "qlib-october-corrected-backfill",
+      "interval_start": "2026-11-06T01:00:00",
+      "resource": "Memory",
+      "cost": "0.00826611"
+    },
+    {
+      "object_id": "ap-B66KYpTM35jGSGq0ascS2l",
+      "description": "qlib-october-corrected-backfill",
+      "interval_start": "2026-11-06T01:00:00",
+      "resource": "Network Egress",
+      "cost": "0.00002335"
+    },
+    {
+      "object_id": "ap-hqBOUKC0DEkyXfKxdVtgoN",
+      "description": "qlib-october-corrected-backfill",
+      "interval_start": "2026-11-06T01:00:00",
+      "resource": "CPU",
+      "cost": "0.03548826"
+    },
+    {
+      "object_id": "ap-hqBOUKC0DEkyXfKxdVtgoN",
+      "description": "qlib-october-corrected-backfill",
+      "interval_start": "2026-11-06T01:00:00",
+      "resource": "Memory",
+      "cost": "0.00954944"
+    },
+    {
+      "object_id": "ap-hqBOUKC0DEkyXfKxdVtgoN",
+      "description": "qlib-october-corrected-backfill",
+      "interval_start": "2026-11-06T01:00:00",
+      "resource": "Network Egress",
+      "cost": "0.00003494"
+    },
+    {
+      "object_id": "ap-jIDOICZ7fDxkYI0Z8EZEGw",
+      "description": "qlib-october-corrected-backfill",
+      "interval_start": "2026-11-06T01:00:00",
+      "resource": "CPU",
+      "cost": "0.14293932"
+    },
+    {
+      "object_id": "ap-jIDOICZ7fDxkYI0Z8EZEGw",
+      "description": "qlib-october-corrected-backfill",
+      "interval_start": "2026-11-06T01:00:00",
+      "resource": "Memory",
+      "cost": "0.03867535"
+    },
+    {
+      "object_id": "ap-jIDOICZ7fDxkYI0Z8EZEGw",
+      "description": "qlib-october-corrected-backfill",
+      "interval_start": "2026-11-06T01:00:00",
+      "resource": "Network Egress",
+      "cost": "0.00007633"
+    }
+  ],
+  "scope": "Only explicitly recorded research app IDs. Excludes unrelated apps, incomplete hours and unallocated workspace charges; not final invoice or total task cost.",
+  "raw_report_sha256": "608db7d833946c4bce1fe15202fd06a9e9fc0e9f6baf396869e24ec99cd6033b"
+}

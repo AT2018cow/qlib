@@ -1,0 +1,55 @@
+{
+  "status": "SMOKE_PASS",
+  "market": "csi300",
+  "source_sha256": "ef36418fbabdb0949483dbe9e4b86ea44e54dd3c5cf7a238d893b7a3a29bf7b2",
+  "asset_digest": "sha256:dc917293925635189e982f47d35b960c3db8a9c3f11312c937673c8afdec21aa",
+  "first_execution": "2026-10-08",
+  "last_signal": "2026-10-23",
+  "provider_calendar_end": "2026-11-04",
+  "signal_sha256": "46f876d9c87a8f8bde0940ec0ec77ed4c5830389ae80773323f999f77f9b8ea1",
+  "fits": [
+    {
+      "status": "PASS",
+      "market": "csi300",
+      "profile": "59b93929_top10_drop1_10d",
+      "label_horizon": 10,
+      "fit_asof": "2026-09-30",
+      "signal_end": "2026-10-23",
+      "signal_days": [
+        "2026-09-30",
+        "2026-10-08",
+        "2026-10-09",
+        "2026-10-12",
+        "2026-10-13",
+        "2026-10-14",
+        "2026-10-15",
+        "2026-10-16",
+        "2026-10-19",
+        "2026-10-20",
+        "2026-10-21",
+        "2026-10-22",
+        "2026-10-23"
+      ],
+      "rows": 3887,
+      "training_contract": {
+        "asof": "2026-09-30",
+        "train_end": "2025-08-15",
+        "valid_start": "2025-09-01",
+        "valid_end": "2026-09-14",
+        "horizon": 10
+      },
+      "model_config_sha256": "b97bc44d1c02acb4d85c344d2d570e00ef9ff365228c8a9550fa45393859ae67",
+      "asset_digest": "sha256:dc917293925635189e982f47d35b960c3db8a9c3f11312c937673c8afdec21aa",
+      "engine_source_sha256": "ef36418fbabdb0949483dbe9e4b86ea44e54dd3c5cf7a238d893b7a3a29bf7b2",
+      "prediction_sha256": "46f876d9c87a8f8bde0940ec0ec77ed4c5830389ae80773323f999f77f9b8ea1",
+      "prefix_prediction_exact": true,
+      "fit_wall_seconds": 86.60547471046448,
+      "max_rss_mb": 8289.67578125,
+      "evaluation_mode": "BACKFILL_RESEARCH",
+      "promotion_eligible": false
+    }
+  ],
+  "wall_seconds": 125.48630619049072,
+  "max_rss_mb": 8289.67578125,
+  "production_mutation": false
+}

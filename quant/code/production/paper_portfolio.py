@@ -16,13 +16,14 @@ ranked stock.  Cash sizing follows Qlib's risk_degree convention.
 from __future__ import annotations
 
 import copy
-import json
+import artifact_io as json
 import math
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
 from csi1000_tuner_core import deterministic_score_order
 from paper_accounting import close_valuation, opening_valuation, verify_ledger
+from order_quantity import round_quantity, sell_quantity, affordable_quantity, EXECUTION_RULE_VERSION
 
 STATE_VERSION = 2
 
@@ -43,7 +44,21 @@ class PaperPortfolio:
         trade_unit: int = 100,
         high_open_block: Optional[float] = None,
     ):
-        if topk < 1 or nd < 0 or initial_cash <= 0 or not (0 < risk_degree <= 1):
+        if (
+            not all(
+                math.isfinite(float(x))
+                for x in (topk, nd, initial_cash, risk_degree, open_cost, close_cost, min_cost, hold_thresh, trade_unit)
+            )
+            or topk < 1
+            or nd < 0
+            or initial_cash <= 0
+            or not (0 < risk_degree <= 1)
+            or min(open_cost, close_cost, min_cost, hold_thresh) < 0
+            or trade_unit < 1
+            or int(topk) != topk
+            or int(nd) != nd
+            or int(trade_unit) != trade_unit
+        ):
             raise ValueError("invalid paper portfolio configuration")
         self.topk = int(topk)
         self.nd = int(nd)
@@ -113,6 +128,8 @@ class PaperPortfolio:
     @staticmethod
     def _score_map(ranking: Iterable[Tuple[str, float]]) -> tuple[list[str], dict[str, float]]:
         rows = [(str(s), float(v)) for s, v in ranking]
+        if len({s for s, _ in rows}) != len(rows) or any(not math.isfinite(v) for _, v in rows):
+            raise ValueError("ranking contains duplicate instruments or non-finite scores")
         scores = dict(rows)
         ordered = deterministic_score_order(rows)
         return [str(s) for s in ordered], scores
@@ -195,6 +212,9 @@ class PaperPortfolio:
         strict_valuation: bool = False,
         confirmed_halts: Optional[set[str]] = None,
         halt_evidence: Optional[dict] = None,
+        liquidity_evidence: Optional[dict] = None,
+        max_participation: Optional[float] = None,
+        slippage_bps: float = 0.0,
     ) -> dict:
         """Settle adjusted Qlib share units; factor is mandatory for lot-aligned buys.
 
@@ -218,6 +238,9 @@ class PaperPortfolio:
                 strict_valuation=strict_valuation,
                 confirmed_halts=confirmed_halts,
                 halt_evidence=halt_evidence,
+                liquidity_evidence=liquidity_evidence,
+                max_participation=max_participation,
+                slippage_bps=slippage_bps,
             )
         except Exception:
             self.__dict__.clear()
@@ -236,6 +259,9 @@ class PaperPortfolio:
         strict_valuation: bool,
         confirmed_halts: Optional[set[str]],
         halt_evidence: Optional[dict],
+        liquidity_evidence: Optional[dict],
+        max_participation: Optional[float],
+        slippage_bps: float,
     ) -> dict:
         if self.pending_signal is None:
             return {"date": execution_date, "status": "no_pending"}
@@ -252,6 +278,20 @@ class PaperPortfolio:
         close_prices = close_prices or {}
         confirmed_halts = set(confirmed_halts or ())
         halt_evidence = halt_evidence or {}
+        if not math.isfinite(slippage_bps) or not 0 <= slippage_bps < 10000:
+            raise ValueError("invalid execution slippage")
+        if (liquidity_evidence is None) != (max_participation is None):
+            raise ValueError("liquidity evidence and participation must be provided together")
+        from liquidity_contract import available_notional
+
+        def capped_shares(symbol, desired, price, factor):
+            if liquidity_evidence is None:
+                return desired
+            cap = available_notional(liquidity_evidence, symbol, execution_date, max_participation)
+            if desired * price <= cap:
+                return desired
+            return round_quantity(cap / price, factor, symbol, execution_date, fallback_unit=self.trade_unit)
+
         if not isinstance(factors, dict):
             raise ValueError("execution-day Qlib $factor mapping is required")
         # Reject malformed account/quotes before any mutation (R10): only
@@ -344,12 +384,27 @@ class PaperPortfolio:
             if px is None or px <= 0:
                 blocked_sell.append({"instrument": sym, "reason": "missing_open"})
                 continue
-            trade_value = float(pos["shares"]) * float(px)
-            cost = max(trade_value * self.close_cost, self.min_cost)
+            px = float(px)
+            # A full odd-lot exit is legal; very large holdings require
+            # multiple sessions/orders rather than exceeding the order cap.
+            amount = float(pos["shares"])
+            if sym in factors:
+                amount = sell_quantity(amount, factors[sym], sym, execution_date, fallback_unit=self.trade_unit)
+            amount = capped_shares(sym, amount, px, factors.get(sym))
+            if amount <= 0:
+                blocked_sell.append({"instrument": sym, "reason": "liquidity"})
+                continue
+            trade_value = amount * px
+            cost = max(trade_value * self.close_cost, self.min_cost) + trade_value * slippage_bps / 10000
             self.cash += trade_value - cost
             sell_cost_total += cost
-            self.positions.pop(sym)
-            executed_sell.append({"instrument": sym, "shares": pos["shares"], "price": float(px), "cost": cost})
+            remaining = float(pos["shares"]) - amount
+            if remaining < 1e-7:
+                self.positions.pop(sym)
+            else:
+                pos["cost_basis"] *= remaining / float(pos["shares"])
+                pos["shares"] = remaining
+            executed_sell.append({"instrument": sym, "shares": amount, "price": float(px), "cost": cost})
 
         # Qlib sizes by the planned buy count, not by the number that later pass
         # tradability.  A blocked order therefore leaves cash idle and is not
@@ -366,30 +421,34 @@ class PaperPortfolio:
                 blocked_buy.append({"instrument": sym, "reason": "missing_open"})
                 continue
             factor = float(factors[sym])  # validated before any state mutation
-            # Parity with Qlib Exchange.round_amount_by_trade_unit():
-            # (target_adjusted * factor + 0.1) // trade_unit * trade_unit / factor
-            # Keep the lot count integral and the adjusted shares fractional.
-            target_adjusted = value_per_buy / float(px)
-            lots = int((target_adjusted * factor + 0.1) // self.trade_unit)
-            if lots <= 0:
+            px = float(px)
+            shares = round_quantity(
+                value_per_buy / float(px), factor, sym, execution_date, fallback_unit=self.trade_unit
+            )
+            shares = capped_shares(sym, shares, px, factor)
+            if shares <= 0:
                 blocked_buy.append({"instrument": sym, "reason": "rounding"})
                 continue
-            shares = lots * self.trade_unit / factor
             trade_value = shares * float(px)
-            cost = max(trade_value * self.open_cost, self.min_cost)
+            cost = max(trade_value * self.open_cost, self.min_cost) + trade_value * slippage_bps / 10000
             if trade_value + cost > self.cash:
-                # Retain the existing fail-safe: Qlib's sizing does not reserve
-                # open_cost, but the paper account may never overdraw.
-                affordable = max(0.0, (self.cash - self.min_cost) / float(px))
-                lots = min(lots, int((affordable * factor + 0.1) // self.trade_unit))
-                while lots > 0:
-                    shares = lots * self.trade_unit / factor
-                    trade_value = shares * float(px)
-                    cost = max(trade_value * self.open_cost, self.min_cost)
-                    if trade_value + cost <= self.cash:
-                        break
-                    lots -= 1
-            if lots <= 0 or trade_value + cost > self.cash:
+                shares = min(
+                    shares,
+                    affordable_quantity(
+                        self.cash,
+                        float(px),
+                        factor,
+                        sym,
+                        execution_date,
+                        rate=self.open_cost,
+                        minimum_fee=self.min_cost,
+                        extra_rate=slippage_bps / 10000,
+                        fallback_unit=self.trade_unit,
+                    ),
+                )
+                trade_value = shares * float(px)
+                cost = max(trade_value * self.open_cost, self.min_cost) + trade_value * slippage_bps / 10000
+            if shares <= 0 or trade_value + cost > self.cash:
                 blocked_buy.append({"instrument": sym, "reason": "cash"})
                 continue
             self.cash -= trade_value + cost
@@ -402,10 +461,16 @@ class PaperPortfolio:
                 "cost_basis": trade_value + cost,
                 "holding_days": 0,
             }
-            executed_buy.append({
-                "instrument": sym, "shares": shares, "price": float(px), "cost": cost,
-                "factor": factor, "physical_shares": lots * self.trade_unit,
-            })
+            executed_buy.append(
+                {
+                    "instrument": sym,
+                    "shares": shares,
+                    "price": float(px),
+                    "cost": cost,
+                    "factor": factor,
+                    "physical_shares": int(round(shares * factor)),
+                }
+            )
 
         for sym, pos in self.positions.items():
             px = open_prices.get(sym)
@@ -426,6 +491,14 @@ class PaperPortfolio:
             )
             for sym, mark in position_marks.items():
                 self.positions[sym]["last_price"] = mark["price"]
+                if mark["reason"] == "EXCHANGE_CLOSE":
+                    self.positions[sym]["coordinate_anchor"] = {
+                        "date": str(execution_date),
+                        "close": mark["price"],
+                        "factor": factors.get(sym),
+                    }
+                    if factors.get(sym) is not None:
+                        self.positions[sym]["physical_shares"] = self.positions[sym]["shares"] * factors[sym]
         else:
             for sym, pos in self.positions.items():
                 px = close_prices.get(sym)
@@ -456,6 +529,15 @@ class PaperPortfolio:
             "halt_evidence": {s: halt_evidence[s] for s in sorted(confirmed_halts)},
             "position_marks": position_marks,
             "valuation_verified": bool(strict_valuation),
+            "execution_rule_version": EXECUTION_RULE_VERSION,
+            "execution_evidence": {
+                "mode": "OPEN_AUCTION_CONSTRAINED" if liquidity_evidence is not None else "DAILY_OPEN_REFERENCE",
+                "liquidity_source": (liquidity_evidence or {}).get("source"),
+                "max_participation": max_participation,
+                "slippage_bps": slippage_bps,
+                "slippage_model": "EXTRA_NOTIONAL_COST",
+                "broker_fills_certified": False,
+            },
             "portfolio_value_pre_trade_open": round(portfolio_value_pre_trade_open, 2),
             "portfolio_value": round(portfolio_value, 2),
             "portfolio_value_close": round(portfolio_value_close, 2),

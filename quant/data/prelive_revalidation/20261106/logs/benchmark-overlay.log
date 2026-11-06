@@ -1,0 +1,23 @@
+{
+  "status": "PATCHED_FROM_OFFICIAL_EVIDENCE",
+  "patch": {
+    "date": "2025-04-16",
+    "raw_close": 5835.35,
+    "observed_factor": 0.0010101216612383723,
+    "normalized_close": 5.894413471221924,
+    "field": "close",
+    "index": "000852"
+  },
+  "before_sha256": "d81d487da30f466ae907c79e7395009294ed094828131c9ea9aec6df54764b83",
+  "after_sha256": "bb911cce91504262b9319ca28cdf5de01151ed5661f8495138a236931e441cd2",
+  "evidence": {
+    "url": "https://www.csindex.com.cn/csindex-home/perf/index-perf?indexCode=000852&startDate=20250414&endDate=20250418",
+    "sha256": "63bcd2ff2e8d2cf8ab926fd636bc4c645060b765ee12530b902009b7e55fa63a",
+    "status": 200
+  },
+  "stock_files_unchanged": true,
+  "original_provider_unchanged": true,
+  "changed_files": [
+    "features/sh000852/close.day.bin"
+  ]
+}

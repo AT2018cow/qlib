@@ -1,0 +1,95 @@
+{
+  "scope": "published paper artifacts, not broker fills",
+  "rows": [
+    {
+      "artifact": "quant/data/signals/2026-11-03_paper_portfolio.json",
+      "market": "csi1000",
+      "published_usage_date": "2026-11-03",
+      "execution_date": null,
+      "paper_lineage": "c98856b4_top10_drop1_canonical_1m",
+      "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
+      "errors": [],
+      "ledger": "PASS"
+    },
+    {
+      "artifact": "quant/data/signals/2026-11-03_paper_portfolio_csi300.json",
+      "market": "csi300",
+      "published_usage_date": "2026-11-03",
+      "execution_date": null,
+      "paper_lineage": "59b93929_top10_drop1_10d_canonical_1m",
+      "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
+      "errors": [],
+      "ledger": "PASS"
+    },
+    {
+      "artifact": "quant/data/signals/2026-11-03_paper_portfolio_csi500.json",
+      "market": "csi500",
+      "published_usage_date": "2026-11-03",
+      "execution_date": null,
+      "paper_lineage": "raw10d_c98856b4_top20_drop2_20d_canonical_1m",
+      "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
+      "errors": [],
+      "ledger": "PASS"
+    },
+    {
+      "artifact": "quant/data/signals/2026-11-04_paper_portfolio.json",
+      "market": "csi1000",
+      "published_usage_date": "2026-11-04",
+      "execution_date": "2026-11-03",
+      "paper_lineage": "c98856b4_top10_drop1_canonical_1m",
+      "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
+      "errors": [],
+      "ledger": "PASS"
+    },
+    {
+      "artifact": "quant/data/signals/2026-11-04_paper_portfolio_csi300.json",
+      "market": "csi300",
+      "published_usage_date": "2026-11-04",
+      "execution_date": "2026-11-03",
+      "paper_lineage": "59b93929_top10_drop1_10d_canonical_1m",
+      "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
+      "errors": [],
+      "ledger": "PASS"
+    },
+    {
+      "artifact": "quant/data/signals/2026-11-04_paper_portfolio_csi500.json",
+      "market": "csi500",
+      "published_usage_date": "2026-11-04",
+      "execution_date": "2026-11-03",
+      "paper_lineage": "raw10d_c98856b4_top20_drop2_20d_canonical_1m",
+      "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
+      "errors": [],
+      "ledger": "PASS"
+    },
+    {
+      "artifact": "quant/data/signals/2026-11-05_paper_portfolio.json",
+      "market": "csi1000",
+      "published_usage_date": "2026-11-05",
+      "execution_date": "2026-11-04",
+      "paper_lineage": "c98856b4_top10_drop1_canonical_1m",
+      "execution_st_policy": "ST_VERIFIED_PREOPEN",
+      "errors": [],
+      "ledger": "PASS"
+    },
+    {
+      "artifact": "quant/data/signals/2026-11-05_paper_portfolio_csi300.json",
+      "market": "csi300",
+      "published_usage_date": "2026-11-05",
+      "execution_date": "2026-11-04",
+      "paper_lineage": "59b93929_top10_drop1_10d_canonical_1m",
+      "execution_st_policy": "ST_VERIFIED_PREOPEN",
+      "errors": [],
+      "ledger": "PASS"
+    },
+    {
+      "artifact": "quant/data/signals/2026-11-05_paper_portfolio_csi500.json",
+      "market": "csi500",
+      "published_usage_date": "2026-11-05",
+      "execution_date": "2026-11-04",
+      "paper_lineage": "raw10d_c98856b4_top20_drop2_20d_canonical_1m",
+      "execution_st_policy": "ST_VERIFIED_PREOPEN",
+      "errors": [],
+      "ledger": "PASS"
+    }
+  ]
+}

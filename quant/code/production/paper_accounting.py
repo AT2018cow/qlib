@@ -9,6 +9,13 @@ from __future__ import annotations
 import math
 
 
+def _finite(value, label):
+    number = float(value)
+    if not math.isfinite(number):
+        raise ValueError(f"non-finite {label}")
+    return number
+
+
 def _positive(value, label):
     number = float(value)
     if not math.isfinite(number) or number <= 0:
@@ -77,8 +84,14 @@ def verify_ledger(report, *, tolerance=0.011):
 
     This validator deliberately does not call PaperPortfolio accounting.
     """
-    opening_cash = float(report["opening_cash"])
-    end_cash = float(report["cash"])
+    tolerance = _positive(tolerance, "tolerance")
+    opening_cash = _finite(report["opening_cash"], "opening cash")
+    end_cash = _finite(report["cash"], "closing cash")
+    reported_cost = _finite(report["cost"], "cost")
+    reported_open = _positive(report["portfolio_value_pre_trade_open"], "opening NAV")
+    reported_close = _positive(report["portfolio_value_close"], "closing NAV")
+    if min(opening_cash, end_cash) < -0.01 or reported_cost < 0:
+        raise ValueError("negative cash or cost")
     opening = report["opening_positions"]
     closing = report["position_marks"]
     opening_marks = report["opening_marks"]
@@ -96,7 +109,7 @@ def verify_ledger(report, *, tolerance=0.011):
             raise ValueError(f"opening share mark mismatch: {symbol}")
         _validate_mark_evidence(symbol, mark, day, halt_evidence, "open")
         expected_open_nav += shares * _positive(mark["price"], f"{symbol} opening price")
-    if abs(expected_open_nav - float(report["portfolio_value_pre_trade_open"])) > tolerance:
+    if not math.isfinite(expected_open_nav) or abs(expected_open_nav - reported_open) > tolerance:
         raise ValueError("opening NAV does not match cash plus marked pre-trade holdings")
     expected_cash = opening_cash
     quantities = {symbol: float(p["shares"]) for symbol, p in opening.items()}
@@ -111,10 +124,12 @@ def verify_ledger(report, *, tolerance=0.011):
                 raise ValueError("invalid fill cost")
             expected_cash += (-sign) * shares * price - cost
             quantities[symbol] = quantities.get(symbol, 0.0) + sign * shares
+            if quantities[symbol] < -1e-7 or expected_cash < -tolerance:
+                raise ValueError("short inventory or negative intraday cash")
             cost_sum += cost
-    if abs(expected_cash - end_cash) > tolerance:
+    if not math.isfinite(expected_cash) or abs(expected_cash - end_cash) > tolerance:
         raise ValueError(f"cash not conserved: expected {expected_cash:.6f}, got {end_cash:.6f}")
-    if abs(cost_sum - float(report["cost"])) > tolerance:
+    if not math.isfinite(cost_sum) or abs(cost_sum - reported_cost) > tolerance:
         raise ValueError("fee ledger mismatch")
     for symbol, shares in quantities.items():
         actual = float(closing.get(symbol, {}).get("shares", 0.0))
@@ -126,6 +141,6 @@ def verify_ledger(report, *, tolerance=0.011):
     for symbol, mark in closing.items():
         _validate_mark_evidence(symbol, mark, day, halt_evidence, "close")
         expected_nav += _positive(mark["shares"], f"{symbol} shares") * _positive(mark["price"], f"{symbol} price")
-    if abs(expected_nav - float(report["portfolio_value_close"])) > tolerance:
+    if not math.isfinite(expected_nav) or abs(expected_nav - reported_close) > tolerance:
         raise ValueError("close NAV does not match cash plus marked holdings")
     return True

@@ -268,6 +268,9 @@ function normalizeForwardPerformance(raw) {
   const allowedStart = raw && raw.start_date === FORWARD_START;
   if (!allowedStart || !Array.isArray(raw.points)) return invalid;
   const stModes = ['ST_IGNORED_REFERENCE_ONLY', 'ST_VERIFIED_PREOPEN'];
+  const segmented = raw.schema_version === 2;
+  if (raw.schema_version != null && !segmented) return invalid;
+  if (segmented && (raw.data_mode !== 'BACKFILL_PLUS_LIVE' || !raw.account_identity)) return invalid;
   if (raw.execution_st_policy != null &&
       ![...stModes, 'MIXED_ST_MODES'].includes(raw.execution_st_policy)) return invalid;
   if (raw.status === 'awaiting_first_valuation') {
@@ -291,7 +294,14 @@ function normalizeForwardPerformance(raw) {
         Math.abs(point.daily_return - (point.nav / previousNav - 1)) > 1e-6) {
       return invalid;
     }
-    if (raw.execution_st_policy != null) {
+    if (segmented) {
+      if (point.data_mode === 'BACKFILL_RESEARCH') {
+        if (point.execution_st_policy != null || point.date > raw.backfill_end_date) return invalid;
+      } else if (point.data_mode === 'LIVE_PAPER') {
+        if (!stModes.includes(point.execution_st_policy) || point.date <= raw.backfill_end_date) return invalid;
+        if (point.execution_st_policy === 'ST_IGNORED_REFERENCE_ONLY') fallbackDates.push(point.date);
+      } else return invalid;
+    } else if (raw.execution_st_policy != null) {
       if (!stModes.includes(point.execution_st_policy)) return invalid;
       observedModes.add(point.execution_st_policy);
       if (point.execution_st_policy === 'ST_IGNORED_REFERENCE_ONLY') {
@@ -303,6 +313,8 @@ function normalizeForwardPerformance(raw) {
     previousDate = point.date;
     previousNav = point.nav;
   }
+  if (segmented && (!Array.isArray(raw.st_fallback_dates) ||
+      JSON.stringify(raw.st_fallback_dates) !== JSON.stringify(fallbackDates))) return invalid;
   if (raw.execution_st_policy != null) {
     const actualMode = observedModes.size === 2
       ? 'MIXED_ST_MODES' : Array.from(observedModes)[0];
@@ -439,6 +451,11 @@ function renderForwardPerformance(data, date = null) {
   if (stale) latest.textContent += ' · 可能滞后';
   if (stale) latest.classList.add('stale');
   status.textContent = '模拟账户 · ' + formatDate(data.inception_date) + ' 起';
+  if (chartPoints.some(p => p.data_mode === 'BACKFILL_RESEARCH') || data.data_mode === 'BACKFILL_RESEARCH') {
+    status.textContent += ' · 含历史回填';
+  }
+  const fallbackCount = chartPoints.filter(p => p.execution_st_policy === 'ST_IGNORED_REFERENCE_ONLY').length;
+  if (fallbackCount) status.textContent += ` · ${fallbackCount} 日未核实 ST，按参考规则模拟`;
   if (selected) status.textContent += ' · 截至 ' + formatDate(point.date);
   if (pendingKind === 'awaiting') status.textContent += ' · 待结算';
   if (pendingKind === 'missing') status.textContent += ' · 无估值';
@@ -1085,7 +1102,21 @@ async function main() {
   async function switchPool(poolKey) {
     const nextPool = POOLS[poolKey];
     if (!nextPool || nextPool.key === currentPool.key) return;
+    const poolRequest = ++latestDateRequest;
     currentPool = nextPool;
+    dates = [];
+    nameMap = {};
+    const oldHistory = document.getElementById('history-buttons');
+    if (oldHistory) oldHistory.innerHTML = '';
+    document.getElementById('signal-rows').innerHTML = '';
+    document.getElementById('mobile-cards').innerHTML = '';
+    document.getElementById('artifact-status').textContent = '加载中…';
+    for (const id of ['stat-date', 'stat-data-date', 'stat-fit-date', 'stat-lineage', 'stat-pit']) {
+      document.getElementById(id).textContent = '—';
+    }
+    document.getElementById('mvp-health').textContent = '核验中…';
+    renderForwardPerformance({ status: 'awaiting_first_valuation', points: [] }, null);
+    renderRebalance(buildRebalance([], {}, null, null, null), null);
     savePool(nextPool.key);
     document.querySelectorAll('.pool-btn').forEach(btn => {
       const active = btn.dataset.pool === nextPool.key;
@@ -1119,7 +1150,7 @@ async function main() {
       forwardCache.set(nextPool.key, loadForwardPerformance(nextPool));
     }
     const poolIndex = await indexCache.get(nextPool.key);
-    if (currentPool.key !== nextPool.key) return;
+    if (poolRequest !== latestDateRequest || currentPool.key !== nextPool.key) return;
     if (!poolIndex || !poolIndex.dates.length) {
       document.getElementById('signal-rows').innerHTML = '';
       document.getElementById('mobile-cards').innerHTML = '';

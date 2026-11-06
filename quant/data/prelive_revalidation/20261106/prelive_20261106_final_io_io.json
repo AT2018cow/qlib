@@ -1,0 +1,9 @@
+{
+  "status": "PASS",
+  "feature_bytes": 25932,
+  "signal_sha256": "2b255840d35492c493c8c7b5ba28870f367468c32cdf645961995530fd3b40b5",
+  "signal_rows": 509700,
+  "evidence_write_verified": true,
+  "production_mutation": false,
+  "wall_seconds_including_inspection": 17.543044567108154
+}

@@ -427,30 +427,49 @@ def apply_cost_stress(report: Any, extra_bps: float, *, initial_cash: float = 10
     stressed report frame so ``report_metrics`` can recompute every metric.
     """
     import pandas as pd  # noqa: PLC0415
+    import numpy as np
 
-    if not isinstance(extra_bps, (int, float)) or extra_bps < 0:
+    if not isinstance(extra_bps, (int, float)) or not np.isfinite(extra_bps) or extra_bps < 0:
         raise ValueError(f"STAGE0_P0_BLOCKED: invalid stress {extra_bps!r}")
-    if not isinstance(initial_cash, (int, float)) or initial_cash <= 0:
+    if not isinstance(initial_cash, (int, float)) or not np.isfinite(initial_cash) or initial_cash <= 0:
         raise ValueError(f"STAGE0_P0_BLOCKED: invalid initial cash {initial_cash!r}")
     stressed = report.copy()
     nav = report["account"].to_numpy(dtype=float)
     turnover_rate = report["turnover"].to_numpy(dtype=float)
+    if (
+        not len(nav)
+        or not np.isfinite(
+            report[["account", "return", "cost", "cash", "total_cost", "turnover"]].to_numpy(dtype=float)
+        ).all()
+    ):
+        raise ValueError("STAGE0_P0_BLOCKED: non-finite/empty stress input")
+    if (nav <= 0).any() or (turnover_rate < 0).any():
+        raise ValueError("STAGE0_P0_BLOCKED: invalid NAV or turnover")
     prior = [float(initial_cash)] + list(nav[:-1])
+    implied = nav / np.asarray(prior) - 1.0
+    if np.max(np.abs(implied - (report["return"] - report["cost"]).to_numpy(dtype=float))) > 1e-6:
+        raise ValueError("STAGE0_P0_BLOCKED: base account/return-cost mismatch")
     notionals = [float(t) * float(p) for t, p in zip(turnover_rate, prior)]
     adjustment = 0.0
-    stressed_nav, stressed_cash, stressed_cost, stressed_total = [], [], [], []
+    stressed_nav, stressed_cash, stressed_cost, stressed_total, stressed_return = [], [], [], [], []
     for i in range(len(nav)):
+        stressed_prior = float(initial_cash) if i == 0 else stressed_nav[-1]
+        if stressed_prior <= 0:
+            raise ValueError("STAGE0_P0_BLOCKED: negative stressed NAV")
         adjustment += notionals[i] * float(extra_bps) / 10000.0
         stressed_nav.append(float(nav[i]) - adjustment)
         stressed_cash.append(float(report["cash"].iloc[i]) - adjustment)
-        rate_add = notionals[i] * float(extra_bps) / 10000.0 / prior[i] if prior[i] else 0.0
-        stressed_cost.append(float(report["cost"].iloc[i]) + rate_add)
+        fee = float(report["cost"].iloc[i]) * prior[i] + notionals[i] * float(extra_bps) / 10000.0
+        stressed_cost.append(fee / stressed_prior)
+        net = stressed_nav[-1] / stressed_prior - 1.0
+        stressed_return.append(net + stressed_cost[-1])
         stressed_total.append(float(report["total_cost"].iloc[i]) + adjustment)
     if min(stressed_nav) <= 0:
         raise ValueError("STAGE0_P0_BLOCKED: negative stressed NAV")
     stressed["account"] = pd.Series(stressed_nav, index=report.index, dtype=float)
     stressed["cash"] = pd.Series(stressed_cash, index=report.index, dtype=float)
     stressed["cost"] = pd.Series(stressed_cost, index=report.index, dtype=float)
+    stressed["return"] = pd.Series(stressed_return, index=report.index, dtype=float)
     stressed["total_cost"] = pd.Series(stressed_total, index=report.index, dtype=float)
     return stressed
 

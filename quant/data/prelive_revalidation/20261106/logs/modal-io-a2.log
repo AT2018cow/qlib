@@ -1,0 +1,70 @@
+✓ Initialized. View run at 
+https://modal.com/apps/<authorized-workspace>/main/ap-KlKH4vAFgJI5cNo85YgbeY
+Building image im-tNBv69wKQgJk1BVJQ4mm8R
+
+=> Step 0: FROM base
+
+=> Step 1: COPY . /
+Saving image...
+Image saved, took 1.17s
+
+Built image im-tNBv69wKQgJk1BVJQ4mm8R in 3.34s
+
+
+Building image im-MjfDHonAAraUAs0oOz0mdT
+
+=> Step 0: FROM base
+
+=> Step 1: RUN cd /root/qlib && pip install . --no-build-isolation --no-deps
+Looking in indexes: http://pypi-mirror.modal.local:5555/simple
+Processing /root/qlib
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: pyqlib
+  Building wheel for pyqlib (pyproject.toml): started
+  Building wheel for pyqlib (pyproject.toml): finished with status 'done'
+  Created wheel for pyqlib: filename=pyqlib-0.9.8.dev32-cp311-cp311-linux_x86_64.whl size=1211336 sha256=ddfc9a253ffe40e6ef1a6a0b6d400046ec2aea418d150c3079df799754080833
+  Stored in directory: /tmp/pip-ephem-wheel-cache-4db2q6xc/wheels/8a/ac/64/f88c7ac84944a20272007d6cddfbefc44854b8bdf0b03cbb33
+Successfully built pyqlib
+Installing collected packages: pyqlib
+Successfully installed pyqlib-0.9.8.dev32
+
+[notice] A new release of pip is available: 25.2 -> 26.3
+[notice] To update, run: pip install --upgrade pip
+Saving image...
+Image saved, took 858.31ms
+
+Built image im-MjfDHonAAraUAs0oOz0mdT in 11.19s
+
+
+Building image im-mULQ9bhPmHLNEfgnsmhIzY
+
+=> Step 0: FROM base
+
+=> Step 1: RUN cp /root/qlib/quant/code/execution/qlib_audit_fixes.py /root/qlib/quant/code/execution/qlib_live_retrain.py /root/qlib/quant/code/execution/board_rules.py /root/qlib/quant/code/execution/board_execution.py /root/qlib/quant/code/production/paper_portfolio.py /root/qlib/quant/code/execution/portfolio_performance.py /root/qlib/quant/code/production/github_commit.py /root/qlib/quant/code/research/stage_ab/csi1000_tuner_core.py /root/qlib/quant/code/production/csi1000_production_config.py /root/qlib/quant/code/production/csi1000_mvp_contract.py /root/qlib/quant/code/production/chart_series.py /root/qlib/quant/code/production/signal_publication_gate.py /root/qlib/quant/code/production/paper_accounting.py /root/qlib/quant/code/execution/execution_limits.py /root/qlib/quant/code/production/provider_archive.py /root/qlib/quant/code/production/publication_journal.py /root/qlib/quant/code/production/artifact_io.py /root/qlib/quant/code/production/coordinate_contract.py /root/qlib/quant/code/production/paper_execution_context.py /root/qlib/quant/code/execution/order_quantity.py /root/qlib/quant/code/production/portfolio_diagnostics.py /root/qlib/quant/code/execution/st_history.py /root/qlib/quant/code/execution/liquidity_contract.py /root/qlib/quant/code/production/name_map_sync.py /root/
+Saving image...
+Image saved, took 3.57s
+
+Built image im-mULQ9bhPmHLNEfgnsmhIzY in 5.38s
+
+
+✓ Created objects.
+├── ✓ Uploaded 
+│   <checkout>/quant/code/research/regime_reselection/prelive_modal
+│   .py
+├── ✓ Uploaded <checkout>
+├── ✓ Created Function io_smoke.
+├── ✓ Created Function freeze_existing_provider.
+├── ✓ Created Function inspect_environment.
+└── ✓ Created Function replay_cell.
+{"status": "PASS_IMPORTS", "calendar_start": "2000-01-04", "calendar_end": "2026-09-30", "imports": {"paper_portfolio": "55b7e28ce0e428fcfeedd2f67ed4714120ec3c6bbc8e52734b6ce71970480823", "paper_execution_context": "9b0783c27a1019927e86c80e7ee84ffde558ea7f01fdc0835bfa65a502b90846", "paper_accounting": "47a6ada0d3a8f2f15e3cb3da4ee04cc055e47f60826636db6b8cc4922b0b7a2f", "coordinate_contract": "641569f942f0bbe04b7c603d171ce6e654610190bd79a0e806c0b8749fb0e4d3", "order_quantity": "103f65da299eda5cfeb0f26f69bca0ad87d8225803d2b7210a732b9fd2b51898", "portfolio_diagnostics": "33ac3f3c918f683601560e78007105f7bf1ef3e6a9d50abc622d53c1ef9add49", "publication_journal": "f8853256ea0118c6cce5b5f59c20cc7106e1927d6622f9b1b93f6b4b3a4137b6", "signal_publication_gate": "fd0fd6d590fa76b15f74a85c6ce198382b7b32bb797439cd5706745042f6a89a"}, "python": "3.11.12", "packages": {"pyqlib": "0.9.8.dev32", "numpy": "1.26.4", "pandas": "2.2.3", "lightgbm": "4.7.0"}, "root_directories": ["batch_a_chinext", "batch_a_star", "batch_a_star_chn", "batch_b_chinext", "batch_c", "cn_data", "csi1000_stage_b", "csi1000_tuner", "execution_attribution", "freq_experiment", "freq_phase_attribution", "freq_phase_regime_age", "freq_phase_sensitivity", "freq_repro", "live_models", "mlruns", "regime_reselection", "signals"], "paper_state_directory_present": false, "source_mounted_read_only": true, "production_mutation": false, "dated_st_candidates": [], "halt_candidates": []}
+[io-smoke] reading raw feature
+[io-smoke] feature bytes=25932
+[io-smoke] reading frozen signal bytes
+[io-smoke] signal bytes=3616929; parsing in memory
+[io-smoke] parsed rows=509700
+[io-smoke] checking isolated evidence-volume write
+[io-smoke] evidence write/read/commit passed
+Stopping app - local entrypoint completed.
+✓ App completed. View run at 
+https://modal.com/apps/<authorized-workspace>/main/ap-KlKH4vAFgJI5cNo85YgbeY

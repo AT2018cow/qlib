@@ -14,7 +14,7 @@ import csv
 from datetime import date
 import hashlib
 import io
-import json
+import artifact_io as json
 import math
 from pathlib import Path
 import re

@@ -6,6 +6,8 @@ BoardAwareExchange and historical PaperPortfolio replay.
 from __future__ import annotations
 
 from typing import Dict, Optional
+from decimal import Decimal, ROUND_HALF_UP
+import math
 
 import numpy as np
 
@@ -51,13 +53,20 @@ def _board_quick(symbol: str) -> str:
     return "main"
 
 
-def compute_limit_masks(insts, dates, open_px, prev_close, close_na,
-                        high_open_block: Optional[float] = None,
-                        listing_dates: Optional[Dict[str, str]] = None,
-                        calendar=None,
-                        st_symbols: Optional[set[str]] = None,
-                        uniform_limit_ratio: Optional[float] = None,
-                        factors=None) -> tuple:
+def compute_limit_masks(
+    insts,
+    dates,
+    open_px,
+    prev_close,
+    close_na,
+    high_open_block: Optional[float] = None,
+    listing_dates: Optional[Dict[str, str]] = None,
+    calendar=None,
+    st_symbols: Optional[set[str]] = None,
+    uniform_limit_ratio: Optional[float] = None,
+    factors=None,
+    st_flags=None,
+) -> tuple:
     """Pure limit-mask computation (unit-testable, no qlib dependency).
 
     Returns (limit_buy, limit_sell) boolean arrays aligned with the inputs.
@@ -77,6 +86,8 @@ def compute_limit_masks(insts, dates, open_px, prev_close, close_na,
     """
     inst_arr = np.asarray([str(s) for s in insts])
     date_strs = np.asarray([str(d)[:10] for d in dates])
+    if high_open_block is not None and (not math.isfinite(high_open_block) or high_open_block < 0):
+        raise ValueError("invalid high-open threshold")
     if len(inst_arr) != len(date_strs):
         raise ValueError("insts and dates must have the same length")
     if uniform_limit_ratio is not None:
@@ -88,9 +99,15 @@ def compute_limit_masks(insts, dates, open_px, prev_close, close_na,
         thr = np.full(len(inst_arr), float(uniform_limit_ratio), dtype=float)
     else:
         thr = board_thresholds(inst_arr, date_strs)
-    if st_symbols and uniform_limit_ratio is None:
-        st = {str(x).upper() for x in st_symbols}
-        st_mask = np.array([x.upper() in st for x in inst_arr])
+    if st_flags is not None and st_symbols:
+        raise ValueError("choose dated ST flags or a single-session ST snapshot")
+    if (st_symbols or st_flags is not None) and uniform_limit_ratio is None:
+        st = {str(x).upper() for x in (st_symbols or ())}
+        st_mask = (
+            np.array([x.upper() in st for x in inst_arr]) if st_flags is None else np.asarray(st_flags, dtype=bool)
+        )
+        if st_mask.shape != (len(inst_arr),):
+            raise ValueError("ST flags must align with insts/dates")
         board_kind = np.array([_board_quick(x) for x in inst_arr])
         # Current/historical risk-warning limits:
         # main: 5% before 2026-07-06, 10% afterwards;
@@ -101,11 +118,14 @@ def compute_limit_masks(insts, dates, open_px, prev_close, close_na,
         thr = np.where(main_old | chn_old, 0.05, thr)
     open_arr = np.asarray(open_px, dtype=float)
     prev_arr = np.asarray(prev_close, dtype=float)
+    for label, arr in (("open", open_arr), ("previous close", prev_arr), ("close_na", np.asarray(close_na))):
+        if arr.shape != (len(inst_arr),):
+            raise ValueError(f"{label} must align with insts/dates")
     if factors is None:
         factor_arr = np.ones(len(inst_arr), dtype=float)
     else:
         factor_arr = np.asarray(factors, dtype=float)
-        if len(factor_arr) != len(inst_arr):
+        if factor_arr.shape != (len(inst_arr),):
             raise ValueError("factors must align with insts/dates")
     with np.errstate(invalid="ignore", divide="ignore"):
         # Adjusted-price ratio is the economically meaningful open gap across
@@ -132,14 +152,19 @@ def compute_limit_masks(insts, dates, open_px, prev_close, close_na,
         with np.errstate(invalid="ignore", divide="ignore"):
             raw_open = open_arr / factor_arr
             raw_reference = prev_arr / factor_arr
-        # Positive-price decimal half-up rounding to the exchange's 0.01 CNY tick.
-        upper_px = np.floor(
-            raw_reference * (1.0 + np.nan_to_num(thr, nan=0.0)) * 100.0 + 0.5
-        ) / 100.0
-        lower_px = np.floor(
-            raw_reference * (1.0 - np.nan_to_num(thr, nan=0.0)) * 100.0 + 0.5
-        ) / 100.0
-        eps = 1e-8
+        # Reconstruct the reference CNY tick first (also removes float32 bin
+        # noise); multiply in decimal so e.g. 1.15 * .9 rounds to 1.04.
+        # Official ex-right reference prices, when available, should be passed
+        # in previous_close on the current factor basis instead of inferred.
+        upper_px, lower_px = np.full(len(inst_arr), np.nan), np.full(len(inst_arr), np.nan)
+        for i in np.flatnonzero(limited):
+            reference = Decimal(str(raw_reference[i])).quantize(Decimal(".01"), rounding=ROUND_HALF_UP)
+            ratio = Decimal(str(thr[i]))
+            upper_px[i] = float((reference * (1 + ratio)).quantize(Decimal(".01"), rounding=ROUND_HALF_UP))
+            lower_px[i] = float((reference * (1 - ratio)).quantize(Decimal(".01"), rounding=ROUND_HALF_UP))
+        # Adjusted prices and factors originate from float32 bins. This only
+        # absorbs reconstruction noise at an already correctly computed tick.
+        eps = np.maximum(1e-8, np.abs(raw_open) * 3e-7)
         limit_up = np.where(limited, raw_open >= upper_px - eps, False)
         limit_down = np.where(limited, raw_open <= lower_px + eps, False)
     high_open = np.where(valid_prev, gap > float(high_open_block), False) if high_open_block is not None else np.zeros_like(valid_prev, dtype=bool)
@@ -152,7 +177,7 @@ def compute_limit_masks(insts, dates, open_px, prev_close, close_na,
             if li is None:
                 continue
             board = _board_quick(inst)
-            if board in ("star", "chinext"):
+            if board == "star" or (board == "chinext" and listing >= CHINEXT_REFORM):
                 n_exempt = 5
             elif board == "main" and listing >= MAIN_REGISTRATION_FIRST_LISTING:
                 n_exempt = 5
@@ -167,8 +192,11 @@ def compute_limit_masks(insts, dates, open_px, prev_close, close_na,
             thr = np.where(exempt, np.nan, thr)
             limit_up = np.where(exempt, False, limit_up)
             limit_down = np.where(exempt, False, limit_down)
-    limit_buy = np.asarray(close_na, bool) | limit_up | high_open
-    limit_sell = np.asarray(close_na, bool) | limit_down
+    unknown_reference = ~valid_prev & ~np.isnan(thr)
+    invalid_open = ~np.isfinite(open_arr) | (open_arr <= 0)
+    unavailable = np.asarray(close_na, bool) | invalid_open | unknown_reference
+    if high_open_block is not None:
+        unavailable |= ~valid_prev
+    limit_buy = unavailable | limit_up | high_open
+    limit_sell = unavailable | limit_down
     return limit_buy, limit_sell
-
-

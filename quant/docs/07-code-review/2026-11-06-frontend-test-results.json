@@ -1,0 +1,22 @@
+[
+  {
+    "file": "test_publication_e2e.cjs",
+    "tests": 4,
+    "exit_code": 0
+  },
+  {
+    "file": "test_sparkline_frontend.cjs",
+    "tests": 15,
+    "exit_code": 0
+  },
+  {
+    "file": "test_website_async_and_evidence.cjs",
+    "tests": 2,
+    "exit_code": 0
+  },
+  {
+    "file": "test_website_security.cjs",
+    "tests": 4,
+    "exit_code": 0
+  }
+]

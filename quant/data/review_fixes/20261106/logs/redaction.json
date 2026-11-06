@@ -1,0 +1,25 @@
+{
+  "replaced": "checkout and personal home paths",
+  "logs": [
+    {
+      "file": "pytest-final.log",
+      "raw_sha256": "0f8b596287a01c7be39a057ea12bf24a4210d58ab056cffffa86077c731b6d0c",
+      "redacted_sha256": "114c02ca7b18b2082986a7f6f78909a721f5db34a2fe5db3ad4b4781505513e2"
+    },
+    {
+      "file": "frontend-tests.log",
+      "raw_sha256": "f1728099ca126e94b7269b183489daac6148ac105b44cb3e1dc0c8284bfd247f",
+      "redacted_sha256": "f1728099ca126e94b7269b183489daac6148ac105b44cb3e1dc0c8284bfd247f"
+    },
+    {
+      "file": "replay-smoke-final.log",
+      "raw_sha256": "d88c3fad70bc6e770984368495609e2fd604e2e44e32a896d3f530b6987961ab",
+      "redacted_sha256": "f06c04fa79800bcab6d57f439d264d2ca467f5691a6a0098a99d1e814ae8f3d5"
+    },
+    {
+      "file": "historical-reanalysis.log",
+      "raw_sha256": "6bc53231a3484c7e6c38bf3aba7840dae8958444a7bd83dfa43c78cf18b10544",
+      "redacted_sha256": "6bc53231a3484c7e6c38bf3aba7840dae8958444a7bd83dfa43c78cf18b10544"
+    }
+  ]
+}

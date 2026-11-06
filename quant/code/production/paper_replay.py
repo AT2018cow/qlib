@@ -7,9 +7,15 @@ and optional listing metadata. This does NOT alter frozen Stage-B artifacts.
 from __future__ import annotations
 
 import argparse
-import json
 import math
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from quant_bootstrap import ensure_quant_import_paths
+
+ensure_quant_import_paths()
+import artifact_io as json
 
 from paper_portfolio import PaperPortfolio
 
@@ -64,21 +70,80 @@ def replay_paper_sessions(rows, *, config=None, calendar=None, listing_dates=Non
             strict_valuation=True,
             confirmed_halts=suspended,
             halt_evidence=row.get("halt_evidence", {}),
+            liquidity_evidence=row.get("liquidity_evidence"),
+            max_participation=row.get("max_participation"),
+            slippage_bps=row.get("slippage_bps", 0.0),
         )
         reports.append(report)
     return reports
+
+
+def replay_capacity_scenarios(
+    rows, *, account_sizes, participation_rates, slippage_grid, config=None, calendar=None, listing_dates=None
+):
+    """Evaluate frozen signals across explicit capital/liquidity assumptions."""
+    rows = list(rows)
+    if not rows or any(not r.get("liquidity_evidence") for r in rows):
+        raise ValueError("capacity evaluation requires dated auction evidence for every session")
+    results = []
+    for capital in account_sizes:
+        for rate in participation_rates:
+            for slippage in slippage_grid:
+                sessions = [{**r, "max_participation": rate, "slippage_bps": slippage} for r in rows]
+                reports = replay_paper_sessions(
+                    sessions,
+                    config={**(config or {}), "initial_cash": capital},
+                    calendar=calendar,
+                    listing_dates=listing_dates,
+                )
+                peak, maxdd = float(capital), 0.0
+                for report in reports:
+                    value = report["portfolio_value_close"]
+                    peak = max(peak, value)
+                    maxdd = min(maxdd, value / peak - 1)
+                results.append(
+                    {
+                        "initial_cash": capital,
+                        "participation": rate,
+                        "slippage_bps": slippage,
+                        "total_return": reports[-1]["portfolio_value_close"] / capital - 1,
+                        "max_drawdown": maxdd,
+                        "cost": sum(r["cost"] for r in reports),
+                        "filled_orders": sum(len(r["executed_buy"]) + len(r["executed_sell"]) for r in reports),
+                        "execution_mode": "OPEN_AUCTION_CONSTRAINED",
+                        "broker_fills_certified": False,
+                    }
+                )
+    return results
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument(
+        "--capacity-grid", type=Path, help="JSON account_sizes / participation_rates / slippage_bps arrays"
+    )
     args = parser.parse_args()
     raw = json.loads(args.input.read_text(encoding="utf-8"))
-    reports = replay_paper_sessions(
-        raw["sessions"], config=raw.get("config"),
-        calendar=raw.get("calendar"), listing_dates=raw.get("listing_dates"),
-    )
+    if args.capacity_grid:
+        grid = json.loads(args.capacity_grid.read_text())
+        reports = replay_capacity_scenarios(
+            raw["sessions"],
+            account_sizes=grid["account_sizes"],
+            participation_rates=grid["participation_rates"],
+            slippage_grid=grid["slippage_bps"],
+            config=raw.get("config"),
+            calendar=raw.get("calendar"),
+            listing_dates=raw.get("listing_dates"),
+        )
+    else:
+        reports = replay_paper_sessions(
+            raw["sessions"],
+            config=raw.get("config"),
+            calendar=raw.get("calendar"),
+            listing_dates=raw.get("listing_dates"),
+        )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps({"reports": reports}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 

@@ -1,0 +1,7 @@
+{
+  "status": "WITHDRAWN_INTERMEDIATE_ANALYSIS",
+  "file": "full-period-extension-before-tail-fix.json",
+  "sha256": "7d11d0f92a13d5a5153c5815bb73ae83e3f4266abaf8724db14f7ceea4b865a1",
+  "reason": "Full 2018-2026 Sharpe was incorrectly used for the registered extension non-reversal check; it can hide a weaker 2025-2026 tail. Corrected final-analysis.json uses only dates after the primary window with the same account closing NAV.",
+  "raw_replay_results_changed": false
+}

@@ -234,9 +234,11 @@ def main() -> None:
     rows.sort(key=lambda r: (order[r["market"]], r["tier"], -(r["cagr10"] or -9), -(r["calmar"] or -9)))
     out = {
         "kind": "g1_per_market_selection",
+        "promotion_eligible": False,
+        "required_gate": "PREREGISTERED_FORWARD_ORDER_REPLAY_ST_LIQUIDITY_AND_MULTIPLE_TESTING",
         "account": "100_000_000 CNY per market, independent accounts",
         "window": "2021-02-19..2024-02-05",
-        "holdout": "2025-01-02..2026-09-30 sealed",
+        "holdout": "2025-01-02..2026-09-30 consumed historical observation; not fresh OOS",
         "markets": {},
         "note": "R3 screen only; D2/D3 seven-year and holdout are not evaluated.",
     }

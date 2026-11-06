@@ -1,0 +1,77 @@
+{
+  "Q01": {
+    "expected_drawdown": -0.5,
+    "actual_drawdown": 0.0,
+    "actual_sharpe": 10.908712,
+    "account_error": 1.0
+  },
+  "Q02": {
+    "NaN_fields_accepted": [
+      "cash",
+      "opening_cash",
+      "cost",
+      "portfolio_value_pre_trade_open",
+      "portfolio_value_close"
+    ],
+    "expected": []
+  },
+  "Q03": {
+    "buy_blocked": false,
+    "sell_blocked": false,
+    "expected": "reject unknown reference or block both"
+  },
+  "Q04": {
+    "decimal_reference": "1.15 * 0.90 = 1.035 -> 1.04",
+    "sell_blocked": false,
+    "expected_sell_blocked": true
+  },
+  "Q05": {
+    "physical_buy_shares": [
+      100
+    ],
+    "expected": "no fill: insufficient budget for minimum 200 shares"
+  },
+  "Q06": {
+    "unproven_reset_accepted": true,
+    "invented_return_if_reset": 0.11111111111111116,
+    "expected": "require boundary account identity and ledger reconciliation"
+  },
+  "Q07": {
+    "aggregate_policy": null,
+    "fallback_dates": null,
+    "point_policy": null
+  },
+  "Q08": {
+    "actual_min_weight": 1.0,
+    "actual_max_weight": 1.0,
+    "expected": "0.3 exposure with complete falling prehistory"
+  },
+  "Q09": {
+    "first_weights": [
+      1.0,
+      0.0,
+      0.0
+    ],
+    "last_weights": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "expected": "recovery must be reachable under an explicitly defined recovery signal"
+  },
+  "Q10": {
+    "actual_final": 99750000.0,
+    "expected_final": 99500000.0,
+    "derivation": "50M * 0.9 * 1.1 + 50M"
+  },
+  "Q11": {
+    "stressed_nav": [
+      99.0,
+      109.0
+    ],
+    "reported_second_net_return": 0.1,
+    "actual_second_net_return": 0.101010101010101
+  }
+}

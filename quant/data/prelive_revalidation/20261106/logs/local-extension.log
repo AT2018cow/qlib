@@ -1,0 +1,133 @@
+[local-batch] extension 6 jobs workers=1
+[6:MainThread](2026-11-06 08:53:16,646) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+2026/11/06 08:53:18 INFO mlflow.agent.hint: Load the `instrumenting-with-mlflow-tracing` skill at <checkout>/.venv/lib/python3.12/site-packages/mlflow/assistant/skills/instrumenting-with-mlflow-tracing/SKILL.md before writing any tracing code; it ships with this MLflow install. Set MLFLOW_DISABLE_AGENT_HINT=1 to silence this.
+[6:MainThread](2026-11-06 08:53:18,362) INFO - qlib.Initialization - [__init__.py:82] - qlib successfully initialized based on client settings.
+[6:MainThread](2026-11-06 08:53:18,363) INFO - qlib.Initialization - [__init__.py:84] - data_path={'__DEFAULT_FREQ': PosixPath('/tmp/opencode/audit_provider/cn_data')}
+[inputs] csi300 frozen signal loaded, names=564 dates=2018-01-02..2026-09-30
+[inputs] csi300 quotes loaded: 1125186 rows
+[inputs] csi300 quote hashes 500/565
+[replay] csi300_B_S01 extra=0bp 250/2122 date=2019-01-11 elapsed=1.5s
+[replay] csi300_B_S01 extra=0bp 500/2122 date=2020-01-21 elapsed=3.0s
+[replay] csi300_B_S01 extra=0bp 750/2122 date=2021-02-01 elapsed=4.6s
+[replay] csi300_B_S01 extra=0bp 1000/2122 date=2022-02-17 elapsed=6.2s
+[replay] csi300_B_S01 extra=0bp 1250/2122 date=2023-02-28 elapsed=8.0s
+[replay] csi300_B_S01 extra=0bp 1500/2122 date=2024-03-11 elapsed=9.6s
+[replay] csi300_B_S01 extra=0bp 1750/2122 date=2025-03-24 elapsed=11.3s
+[replay] csi300_B_S01 extra=0bp 2000/2122 date=2026-04-03 elapsed=13.1s
+[replay] csi300_B_S01 extra=0bp 2122/2122 date=2026-09-30 elapsed=13.9s
+[replay] csi300_B_S01 extra=5bp 250/2122 date=2019-01-11 elapsed=1.7s
+[replay] csi300_B_S01 extra=5bp 500/2122 date=2020-01-21 elapsed=3.6s
+[replay] csi300_B_S01 extra=5bp 750/2122 date=2021-02-01 elapsed=5.2s
+[replay] csi300_B_S01 extra=5bp 1000/2122 date=2022-02-17 elapsed=6.9s
+[replay] csi300_B_S01 extra=5bp 1250/2122 date=2023-02-28 elapsed=8.6s
+[replay] csi300_B_S01 extra=5bp 1500/2122 date=2024-03-11 elapsed=10.3s
+[replay] csi300_B_S01 extra=5bp 1750/2122 date=2025-03-24 elapsed=12.1s
+[replay] csi300_B_S01 extra=5bp 2000/2122 date=2026-04-03 elapsed=14.1s
+[replay] csi300_B_S01 extra=5bp 2122/2122 date=2026-09-30 elapsed=14.9s
+[replay] csi300_B_S01 extra=10bp 250/2122 date=2019-01-11 elapsed=1.8s
+[replay] csi300_B_S01 extra=10bp 500/2122 date=2020-01-21 elapsed=3.6s
+[replay] csi300_B_S01 extra=10bp 750/2122 date=2021-02-01 elapsed=5.3s
+[replay] csi300_B_S01 extra=10bp 1000/2122 date=2022-02-17 elapsed=7.2s
+[replay] csi300_B_S01 extra=10bp 1250/2122 date=2023-02-28 elapsed=9.0s
+[replay] csi300_B_S01 extra=10bp 1500/2122 date=2024-03-11 elapsed=10.8s
+[replay] csi300_B_S01 extra=10bp 1750/2122 date=2025-03-24 elapsed=12.9s
+[replay] csi300_B_S01 extra=10bp 2000/2122 date=2026-04-03 elapsed=15.0s
+[replay] csi300_B_S01 extra=10bp 2122/2122 date=2026-09-30 elapsed=15.8s
+[local-batch] 1/6 csi300_B_S01 seconds=73.6 RSS=1101MiB
+[replay] csi300_B_S02 extra=0bp 250/2122 date=2019-01-11 elapsed=2.8s
+[replay] csi300_B_S02 extra=0bp 500/2122 date=2020-01-21 elapsed=5.5s
+[replay] csi300_B_S02 extra=0bp 750/2122 date=2021-02-01 elapsed=8.1s
+[replay] csi300_B_S02 extra=0bp 1000/2122 date=2022-02-17 elapsed=10.3s
+[replay] csi300_B_S02 extra=0bp 1250/2122 date=2023-02-28 elapsed=12.1s
+[replay] csi300_B_S02 extra=0bp 1500/2122 date=2024-03-11 elapsed=14.5s
+[replay] csi300_B_S02 extra=0bp 1750/2122 date=2025-03-24 elapsed=16.8s
+[replay] csi300_B_S02 extra=0bp 2000/2122 date=2026-04-03 elapsed=19.3s
+[replay] csi300_B_S02 extra=0bp 2122/2122 date=2026-09-30 elapsed=20.6s
+[replay] csi300_B_S02 extra=5bp 250/2122 date=2019-01-11 elapsed=1.9s
+[replay] csi300_B_S02 extra=5bp 500/2122 date=2020-01-21 elapsed=3.7s
+[replay] csi300_B_S02 extra=5bp 750/2122 date=2021-02-01 elapsed=5.7s
+[replay] csi300_B_S02 extra=5bp 1000/2122 date=2022-02-17 elapsed=8.1s
+[replay] csi300_B_S02 extra=5bp 1250/2122 date=2023-02-28 elapsed=10.2s
+[replay] csi300_B_S02 extra=5bp 1500/2122 date=2024-03-11 elapsed=12.9s
+[replay] csi300_B_S02 extra=5bp 1750/2122 date=2025-03-24 elapsed=15.0s
+[replay] csi300_B_S02 extra=5bp 2000/2122 date=2026-04-03 elapsed=16.9s
+[replay] csi300_B_S02 extra=5bp 2122/2122 date=2026-09-30 elapsed=17.9s
+[replay] csi300_B_S02 extra=10bp 250/2122 date=2019-01-11 elapsed=2.0s
+[replay] csi300_B_S02 extra=10bp 500/2122 date=2020-01-21 elapsed=4.1s
+[replay] csi300_B_S02 extra=10bp 750/2122 date=2021-02-01 elapsed=5.9s
+[replay] csi300_B_S02 extra=10bp 1000/2122 date=2022-02-17 elapsed=7.8s
+[replay] csi300_B_S02 extra=10bp 1250/2122 date=2023-02-28 elapsed=9.6s
+[replay] csi300_B_S02 extra=10bp 1500/2122 date=2024-03-11 elapsed=11.5s
+[replay] csi300_B_S02 extra=10bp 1750/2122 date=2025-03-24 elapsed=13.4s
+[replay] csi300_B_S02 extra=10bp 2000/2122 date=2026-04-03 elapsed=15.2s
+[replay] csi300_B_S02 extra=10bp 2122/2122 date=2026-09-30 elapsed=16.1s
+[local-batch] 2/6 csi300_B_S02 seconds=60.3 RSS=1135MiB
+[6:MainThread](2026-11-06 08:55:30,101) WARNING - qlib.Initialization - [__init__.py:51] - Skip initialization because `skip_if_reg is True`
+[inputs] csi500 frozen signal loaded, names=1178 dates=2018-01-02..2026-09-30
+[inputs] csi500 quotes loaded: 2280753 rows
+[inputs] csi500 quote hashes 500/1179
+[inputs] csi500 quote hashes 1000/1179
+[replay] csi500_B_S02 extra=0bp 250/2122 date=2019-01-11 elapsed=3.1s
+[replay] csi500_B_S02 extra=0bp 500/2122 date=2020-01-21 elapsed=6.2s
+[replay] csi500_B_S02 extra=0bp 750/2122 date=2021-02-01 elapsed=9.2s
+[replay] csi500_B_S02 extra=0bp 1000/2122 date=2022-02-17 elapsed=12.0s
+[replay] csi500_B_S02 extra=0bp 1250/2122 date=2023-02-28 elapsed=14.9s
+[replay] csi500_B_S02 extra=0bp 1500/2122 date=2024-03-11 elapsed=17.9s
+[replay] csi500_B_S02 extra=0bp 1750/2122 date=2025-03-24 elapsed=20.8s
+[replay] csi500_B_S02 extra=0bp 2000/2122 date=2026-04-03 elapsed=23.6s
+[replay] csi500_B_S02 extra=0bp 2122/2122 date=2026-09-30 elapsed=25.0s
+[replay] csi500_B_S02 extra=5bp 250/2122 date=2019-01-11 elapsed=2.8s
+[replay] csi500_B_S02 extra=5bp 500/2122 date=2020-01-21 elapsed=5.7s
+[replay] csi500_B_S02 extra=5bp 750/2122 date=2021-02-01 elapsed=8.5s
+[replay] csi500_B_S02 extra=5bp 1000/2122 date=2022-02-17 elapsed=11.5s
+[replay] csi500_B_S02 extra=5bp 1250/2122 date=2023-02-28 elapsed=14.4s
+[replay] csi500_B_S02 extra=5bp 1500/2122 date=2024-03-11 elapsed=17.2s
+[replay] csi500_B_S02 extra=5bp 1750/2122 date=2025-03-24 elapsed=20.0s
+[replay] csi500_B_S02 extra=5bp 2000/2122 date=2026-04-03 elapsed=22.8s
+[replay] csi500_B_S02 extra=5bp 2122/2122 date=2026-09-30 elapsed=24.4s
+[replay] csi500_B_S02 extra=10bp 250/2122 date=2019-01-11 elapsed=2.9s
+[replay] csi500_B_S02 extra=10bp 500/2122 date=2020-01-21 elapsed=6.0s
+[replay] csi500_B_S02 extra=10bp 750/2122 date=2021-02-01 elapsed=8.8s
+[replay] csi500_B_S02 extra=10bp 1000/2122 date=2022-02-17 elapsed=11.7s
+[replay] csi500_B_S02 extra=10bp 1250/2122 date=2023-02-28 elapsed=14.8s
+[replay] csi500_B_S02 extra=10bp 1500/2122 date=2024-03-11 elapsed=17.6s
+[replay] csi500_B_S02 extra=10bp 1750/2122 date=2025-03-24 elapsed=20.6s
+[replay] csi500_B_S02 extra=10bp 2000/2122 date=2026-04-03 elapsed=23.5s
+[replay] csi500_B_S02 extra=10bp 2122/2122 date=2026-09-30 elapsed=24.9s
+[local-batch] 3/6 csi500_B_S02 seconds=129.8 RSS=1892MiB
+[replay] csi500_B_S01 extra=0bp 250/2122 date=2019-01-11 elapsed=2.7s
+[replay] csi500_B_S01 extra=0bp 500/2122 date=2020-01-21 elapsed=5.3s
+[replay] csi500_B_S01 extra=0bp 750/2122 date=2021-02-01 elapsed=8.0s
+[replay] csi500_B_S01 extra=0bp 1000/2122 date=2022-02-17 elapsed=10.8s
+[replay] csi500_B_S01 extra=0bp 1250/2122 date=2023-02-28 elapsed=13.5s
+[replay] csi500_B_S01 extra=0bp 1500/2122 date=2024-03-11 elapsed=16.4s
+[replay] csi500_B_S01 extra=0bp 1750/2122 date=2025-03-24 elapsed=19.1s
+[replay] csi500_B_S01 extra=0bp 2000/2122 date=2026-04-03 elapsed=21.8s
+[replay] csi500_B_S01 extra=0bp 2122/2122 date=2026-09-30 elapsed=23.0s
+[replay] csi500_B_S01 extra=5bp 250/2122 date=2019-01-11 elapsed=2.7s
+[replay] csi500_B_S01 extra=5bp 500/2122 date=2020-01-21 elapsed=5.5s
+[replay] csi500_B_S01 extra=5bp 750/2122 date=2021-02-01 elapsed=8.2s
+[replay] csi500_B_S01 extra=5bp 1000/2122 date=2022-02-17 elapsed=10.8s
+[replay] csi500_B_S01 extra=5bp 1250/2122 date=2023-02-28 elapsed=13.4s
+[replay] csi500_B_S01 extra=5bp 1500/2122 date=2024-03-11 elapsed=16.2s
+[replay] csi500_B_S01 extra=5bp 1750/2122 date=2025-03-24 elapsed=18.8s
+[replay] csi500_B_S01 extra=5bp 2000/2122 date=2026-04-03 elapsed=21.2s
+[replay] csi500_B_S01 extra=5bp 2122/2122 date=2026-09-30 elapsed=22.4s
+[replay] csi500_B_S01 extra=10bp 250/2122 date=2019-01-11 elapsed=2.6s
+[replay] csi500_B_S01 extra=10bp 500/2122 date=2020-01-21 elapsed=5.1s
+[replay] csi500_B_S01 extra=10bp 750/2122 date=2021-02-01 elapsed=7.7s
+[replay] csi500_B_S01 extra=10bp 1000/2122 date=2022-02-17 elapsed=10.1s
+[replay] csi500_B_S01 extra=10bp 1250/2122 date=2023-02-28 elapsed=12.6s
+[replay] csi500_B_S01 extra=10bp 1500/2122 date=2024-03-11 elapsed=15.3s
+[replay] csi500_B_S01 extra=10bp 1750/2122 date=2025-03-24 elapsed=18.1s
+[replay] csi500_B_S01 extra=10bp 2000/2122 date=2026-04-03 elapsed=21.2s
+[replay] csi500_B_S01 extra=10bp 2122/2122 date=2026-09-30 elapsed=22.6s
+[local-batch] 4/6 csi500_B_S01 seconds=71.5 RSS=1892MiB
+[6:MainThread](2026-11-06 08:58:51,674) WARNING - qlib.Initialization - [__init__.py:51] - Skip initialization because `skip_if_reg is True`
+[inputs] csi1000 frozen signal loaded, names=2436 dates=2018-01-02..2026-09-30
+[inputs] csi1000 quotes loaded: 4574774 rows
+[local-batch] FAILED csi1000_A_S01 ValueError('missing benchmark days')
+[6:MainThread](2026-11-06 08:59:18,599) WARNING - qlib.Initialization - [__init__.py:51] - Skip initialization because `skip_if_reg is True`
+[inputs] csi1000 frozen signal loaded, names=2436 dates=2018-01-02..2026-09-30
+[inputs] csi1000 quotes loaded: 4574774 rows
+[local-batch] FAILED csi1000_A_S02 ValueError('missing benchmark days')

@@ -52,7 +52,6 @@ class BoardThresholdTests(unittest.TestCase):
         self.assertTrue(lb[0])   # exact rounded limit price
         self.assertFalse(lb[1])  # +9.6% is legal and must not be treated as limit-up
 
-
     def test_statutory_tick_rounding_uses_original_cny_scale(self):
         # Qlib stores normalized adjusted prices.  Here factor=0.01 means
         # adjusted price / factor reconstructs the original RMB price.
@@ -106,9 +105,10 @@ class BoardThresholdTests(unittest.TestCase):
         self.assertTrue(lb[0])   # +30% 被高开>5% 阻止（策略级规则，所有板块适用）
         self.assertFalse(ls[0])
 
-    def test_nan_prev_close_no_block(self):
+    def test_nan_prev_close_blocks_unknown_trade(self):
         lb, ls = compute_limit_masks(["SH600519"], ["2026-09-15"], [np.nan], [np.nan], [False])
-        self.assertFalse(lb[0]); self.assertFalse(ls[0])
+        self.assertTrue(lb[0])
+        self.assertTrue(ls[0])
 
     def test_suspended_blocked_both(self):
         lb, ls = compute_limit_masks(["SH600519"], ["2026-09-15"], [10.0], [10.0], [True])

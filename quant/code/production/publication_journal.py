@@ -53,7 +53,7 @@ and crashes without Modal.
 from __future__ import annotations
 
 import hashlib
-import json
+import artifact_io as json
 import os
 import re
 from datetime import datetime, timezone

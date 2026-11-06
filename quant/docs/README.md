@@ -2,6 +2,12 @@
 
 本目录按研发演进阶段整理了全部实验报告、审计记录与生产合同：
 
+**最新扩展层审查与修复**：[`计算与逻辑审查`](07-code-review/2026-11-06-extension-calculation-and-logic-audit.md)记录修复前 Q01–Q16；[`2026-11-06 修复与验收`](07-code-review/2026-11-06-extension-repair-acceptance.md)记录实现、回归、380 份历史账本影响及外部证据待办。代码已修复，云端尚未部署。
+
+**使用前复验与择优**：[`已批准方案`](07-code-review/2026-11-06-prelive-revalidation-plan.md)、[`输入与候选登记`](07-code-review/2026-11-06-prelive-execution-register.json)、[`执行与结果`](07-code-review/2026-11-06-prelive-revalidation-results.md)、[`具体使用与部署审核包`](07-code-review/2026-11-06-limited-use-review-package.md)。已完成 72 个登记场景与 10/08 起四账户回填；按三市场独立 1M、实盘人工确认、用户不设回撤/单股上限的合同准备使用包，正式迁移和部署待审核。
+
+**四项复审修复**：[`修复与验收`](07-code-review/2026-11-06-review-followup-fixes.md)记录行情身份强校验、共享源码身份 v2、归因对照数量隔离和按报告本金审计；最终 836 项 Python 测试、25 项前端测试通过，511 份报告审计无误报，原策略择优结论不变。旧使用包的源码清单保留为历史冻结记录，部署前须重新绑定当前版本。
+
 1. **[`00-strategy-handbook/`](00-strategy-handbook/) — 策略选型与历史回测全景手册（首选必读）**
    - [`STRATEGY_ATLAS.md`](00-strategy-handbook/STRATEGY_ATLAS.md)：三大主力策略家族（`c98856b4 Top10/Drop1`、`23b92de0 Baseline`、`4e908173 旧生产`）、全实验前五强、2025–2026 逐月（含 2026 年 7–8 月）真实净收益对照、132 套策略淘汰规律及历史数据调取指南。
 2. **[`01-foundation-and-fixes/`](01-foundation-and-fixes/) — 阶段 1：底层审计修复与基础机制摸底（Doc 01 ~ 15）**

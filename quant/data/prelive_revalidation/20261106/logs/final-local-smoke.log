@@ -1,0 +1,10 @@
+[3:MainThread](2026-11-06 04:27:02,673) INFO - qlib.Initialization - [config.py:473] - default_conf: client.
+2026/11/06 04:27:04 INFO mlflow.agent.hint: Load the `instrumenting-with-mlflow-tracing` skill at <checkout>/.venv/lib/python3.12/site-packages/mlflow/assistant/skills/instrumenting-with-mlflow-tracing/SKILL.md before writing any tracing code; it ships with this MLflow install. Set MLFLOW_DISABLE_AGENT_HINT=1 to silence this.
+[3:MainThread](2026-11-06 04:27:04,345) INFO - qlib.Initialization - [__init__.py:82] - qlib successfully initialized based on client settings.
+[3:MainThread](2026-11-06 04:27:04,345) INFO - qlib.Initialization - [__init__.py:84] - data_path={'__DEFAULT_FREQ': PosixPath('/tmp/opencode/audit_provider/cn_data')}
+[replay] csi300_B_S01 extra=0.0bp 21/21 date=2018-01-31 elapsed=0.2s
+{"strategy_cagr": 2.003983, "strategy_max_drawdown": -0.0315, "sharpe": 6.785689, "quote_gap_count": 0}
+[replay] csi300_B_S01 extra=5.0bp 21/21 date=2018-01-31 elapsed=0.2s
+{"strategy_cagr": 1.910218, "strategy_max_drawdown": -0.031628, "sharpe": 6.606772, "quote_gap_count": 0}
+[replay] csi300_B_S01 extra=10.0bp 21/21 date=2018-01-31 elapsed=0.3s
+{"strategy_cagr": 1.789066, "strategy_max_drawdown": -0.03241, "sharpe": 6.316715, "quote_gap_count": 0}

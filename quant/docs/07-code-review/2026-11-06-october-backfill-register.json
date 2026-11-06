@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "status": "REGISTERED_BEFORE_NEW_FITS",
+  "created_at": "2026-11-06T01:27:00.054624+00:00",
+  "purpose": "USER_REQUESTED_CORRECTED_BACKFILL_RECONSTRUCTION",
+  "first_execution": "2026-10-08",
+  "first_signal": "2026-09-30",
+  "last_signal_requested": "2026-11-04",
+  "account_cny_per_market": 1000000,
+  "markets": [
+    "csi300",
+    "csi500",
+    "csi1000"
+  ],
+  "independent_accounts": true,
+  "live_execution": "MANUAL_CONFIRMATION",
+  "paper_automation_allowed": true,
+  "drawdown_limit_enabled": false,
+  "single_weight_limit_enabled": false,
+  "new_hyperparameter_search": false,
+  "new_oos": false,
+  "model_source": "CURRENT_FROZEN_PROFILES_WITH_PRODUCTION_TEMPORAL_HELPERS",
+  "resources": {
+    "cpu_per_market": 20,
+    "memory_mb": 32768,
+    "max_parallel_markets": 3,
+    "timeout_seconds_per_market": 3600,
+    "max_fits_per_market": 3,
+    "smoke_first": "CSI300 first causal block and prefix score equality",
+    "tool_execution": "PERSISTENT_FOREGROUND_ATTACHED",
+    "credible_worst_case_minutes": 90
+  },
+  "provider_release": {
+    "tag_name": "2026-11-04",
+    "published_at": "2026-11-04T15:58:24Z",
+    "assets": [
+      {
+        "name": "qlib_bin.tar.gz",
+        "size": 570637931,
+        "url": "https://github.com/chenditc/investment_data/releases/download/2026-11-04/qlib_bin.tar.gz",
+        "updated_at": "2026-11-04T15:58:54Z",
+        "digest": "sha256:dc917293925635189e982f47d35b960c3db8a9c3f11312c937673c8afdec21aa"
+      }
+    ]
+  },
+  "output_scope": "INDEPENDENT_RESEARCH_VOLUME_ONLY",
+  "production_state_mutation": false,
+  "production_deployment": false,
+  "training_driver_sha256": "ef36418fbabdb0949483dbe9e4b86ea44e54dd3c5cf7a238d893b7a3a29bf7b2",
+  "initial_training_driver_sha256": "891f5304ddfedc75205d086809a2a2d8ad4fa006073eb079f2d1995d1bf91e8c",
+  "amendments_before_full_run": [
+    "Training smoke passed on initial driver. Added cache interval/profile identity and assembled-date checks; re-smoke on final driver before full batch."
+  ]
+}

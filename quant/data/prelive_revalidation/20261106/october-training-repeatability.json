@@ -1,0 +1,7 @@
+{
+  "status": "PASS",
+  "signal_sha256": "46f876d9c87a8f8bde0940ec0ec77ed4c5830389ae80773323f999f77f9b8ea1",
+  "two_independent_full_parameter_fits_exactly_equal": true,
+  "single_date_vs_block_prefix_exactly_equal": true,
+  "model_config_sha256": "b97bc44d1c02acb4d85c344d2d570e00ef9ff365228c8a9550fa45393859ae67"
+}

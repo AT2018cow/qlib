@@ -73,8 +73,8 @@ class PortfolioPerformanceTests(unittest.TestCase):
             "bench": [0.0, 0.0],
             "account": [101.0, 105.0],
         }, index=idx)
-        out = portfolio_performance(report, initial_cash=100.0)
-        self.assertGreater(out["account_return_max_error"], 0.02)
+        with self.assertRaisesRegex(ValueError, "account/return-cost mismatch"):
+            portfolio_performance(report, initial_cash=100.0)
 
     def test_missing_columns_fail_closed(self):
         report = pd.DataFrame({"return": [0.01], "cost": [0.0]})

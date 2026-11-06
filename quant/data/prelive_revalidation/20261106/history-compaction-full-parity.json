@@ -1,0 +1,38 @@
+[
+  {
+    "candidate": "csi300_B_S01",
+    "extra_bps": 0,
+    "days": 1698,
+    "status": "PASS_EXACT_VALUES_AND_LEDGER"
+  },
+  {
+    "candidate": "csi300_B_S01",
+    "extra_bps": 5,
+    "days": 1698,
+    "status": "PASS_EXACT_VALUES_AND_LEDGER"
+  },
+  {
+    "candidate": "csi300_B_S01",
+    "extra_bps": 10,
+    "days": 1698,
+    "status": "PASS_EXACT_VALUES_AND_LEDGER"
+  },
+  {
+    "candidate": "csi300_A_S01",
+    "extra_bps": 0,
+    "days": 1698,
+    "status": "PASS_EXACT_VALUES_AND_LEDGER"
+  },
+  {
+    "candidate": "csi300_A_S01",
+    "extra_bps": 5,
+    "days": 1698,
+    "status": "PASS_EXACT_VALUES_AND_LEDGER"
+  },
+  {
+    "candidate": "csi300_A_S01",
+    "extra_bps": 10,
+    "days": 1698,
+    "status": "PASS_EXACT_VALUES_AND_LEDGER"
+  }
+]
