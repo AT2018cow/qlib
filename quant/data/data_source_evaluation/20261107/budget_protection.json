@@ -1,0 +1,25 @@
+{
+  "status": "ACTIVE",
+  "apps": {
+    "qlib-cn-daily-a10g": "v37",
+    "qlib-website-nav": "v12"
+  },
+  "policy": {
+    "daily_cap_usd": 2.0,
+    "monthly_credit_usd": 30.0,
+    "reserve_usd": 2.0
+  },
+  "probe": {
+    "allowed": true,
+    "reason": "within_budget",
+    "today_cost_usd": 0.0,
+    "monthly_metered_usd": 22.069634,
+    "monthly_credit_usd": 30.0,
+    "reserve_usd": 2.0,
+    "daily_cap_usd": 2.0,
+    "source": "workspace.billing"
+  },
+  "idempotency": "publication.json receipt per source_sha/provider_digest short-circuits ALREADY_PUBLISHED before smoke/full",
+  "main_accepts_skipped_budget": true,
+  "research_policy": "no research, backfill, dry run or canary in the production workspace"
+}

@@ -4345,10 +4345,12 @@ def _update_website_returns():
     result = worker.remote(expected_source_sha256=expected_source)
     if (
         not isinstance(result, dict)
-        or result.get("status") not in ("PUBLISHED", "ALREADY_PUBLISHED")
+        or result.get("status") not in ("PUBLISHED", "ALREADY_PUBLISHED", "SKIPPED_BUDGET")
         or result.get("source_sha256") != expected_source
     ):
         raise RuntimeError("website publication did not return a matching successful receipt")
+    if result.get("status") == "SKIPPED_BUDGET":
+        print(f"[cron] ⚠️ website replay skipped by budget guard: {result.get('budget')}")
     return result
 
 

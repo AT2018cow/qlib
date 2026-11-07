@@ -23,6 +23,7 @@ sys.path.insert(0, str(CODE / "research/regime_reselection"))
 import modal
 from modal_qlib_cn_a10g import image, vol as data_volume
 from daily_pipeline import WEBSITE_STAGE_TIMEOUT_SECONDS, WEBSITE_WORKER_TIMEOUT_SECONDS
+from website_budget import already_published, budget_decision, read_budget_policy
 
 app = modal.App("qlib-website-nav", image=image)
 simulation = modal.Volume.from_name("qlib-website-simulation", create_if_missing=True)
@@ -80,6 +81,68 @@ def latest_asset():
         "release": release["tag_name"],
         "published_at": release["published_at"],
     }
+
+
+def _budget_guard():
+    """Check today's workspace spend and the configured monthly reserve.
+
+    The guard is intentionally fail-open on billing-API errors so a telemetry
+    outage cannot block the production website; set QLIB_BUDGET_STRICT=1 to
+    fail closed instead.
+    """
+    import os
+    from datetime import datetime, time, timezone
+    from zoneinfo import ZoneInfo
+
+    policy = read_budget_policy("/simulation")
+    daily_cap = float(os.environ.get("QLIB_DAILY_BUDGET_USD", policy["daily_cap_usd"]))
+    monthly_credit = float(os.environ.get("QLIB_MONTHLY_CREDIT_USD", policy["monthly_credit_usd"]))
+    reserve = float(os.environ.get("QLIB_BUDGET_RESERVE_USD", policy["reserve_usd"]))
+    try:
+        workspace = modal.Workspace.from_context()
+        local_tz = ZoneInfo("Asia/Shanghai")
+        now_local = datetime.now(local_tz)
+        start_local = datetime.combine(now_local.date(), time.min, tzinfo=local_tz)
+        items = workspace.billing.report(
+            start=start_local.astimezone(timezone.utc),
+            end=now_local.astimezone(timezone.utc),
+            resolution="h",
+        )
+        today_cost = sum(float(item.cost) for item in items)
+        summary = workspace.billing.summary()
+        monthly_metered = float(summary.metered_cost)
+        decision = budget_decision(
+            today_cost_usd=today_cost,
+            monthly_metered_usd=monthly_metered,
+            daily_cap_usd=daily_cap,
+            monthly_credit_usd=monthly_credit,
+            reserve_usd=reserve,
+        )
+        decision.update(
+            {
+                "source": "workspace.billing",
+                "daily_cap_usd": daily_cap,
+                "monthly_credit_usd": monthly_credit,
+                "reserve_usd": reserve,
+            }
+        )
+        print(f"[website] budget guard: {decision}", flush=True)
+        return decision
+    except Exception as exc:  # noqa: BLE001 - billing boundary
+        strict = os.environ.get("QLIB_BUDGET_STRICT", "0") == "1"
+        decision = {
+            "allowed": not strict,
+            "reason": f"guard_unavailable: {type(exc).__name__}: {exc}",
+            "source": "guard_error",
+        }
+        print(f"[website] budget guard unavailable: {decision}", flush=True)
+        return decision
+
+
+@app.function(volumes={"/simulation": simulation}, cpu=1, memory=1024, timeout=120)
+def budget_status():
+    """Small ops probe: verify the in-container billing guard without a replay."""
+    return _budget_guard()
 
 
 def make_job(asset, source, market, mode):
@@ -472,6 +535,26 @@ def daily(expected_source_sha256: str):
     if expected_source_sha256 != source["sha256"]:
         raise ValueError("signal/website deployments have different source identities")
     asset = latest_asset()
+    simulation.reload()
+    receipt = already_published("/simulation", source["sha256"], asset["digest"])
+    if receipt is not None:
+        print(f"[website] idempotent short-circuit: {source['sha256'][:12]}/{asset['digest'][:19]}", flush=True)
+        return {
+            "status": "ALREADY_PUBLISHED",
+            "source_sha256": source["sha256"],
+            "asset_digest": asset["digest"],
+            "files": receipt.get("files", 12),
+            "idempotent_short_circuit": True,
+        }
+    guard = _budget_guard()
+    if not guard["allowed"]:
+        print(f"[website] budget guard blocked expensive replay: {guard}", flush=True)
+        return {
+            "status": "SKIPPED_BUDGET",
+            "source_sha256": source["sha256"],
+            "asset_digest": asset["digest"],
+            "budget": guard,
+        }
     build_market.remote(make_job(asset, source, "csi300", "smoke"))
     results = list(
         build_market.map(
@@ -490,6 +573,9 @@ def main(mode: str = "smoke", output: str = "/tmp/website-simulation", release_f
         raise ValueError("use smoke or full; publishing is a separate deployed operation")
     asset = json.loads(Path(release_file).read_text()) if release_file else latest_asset()
     source = source_manifest("training")
+    guard = _budget_guard()
+    if not guard["allowed"]:
+        raise SystemExit(f"budget guard blocked website replay: {guard}")
     root = Path(output)
     root.mkdir(parents=True, exist_ok=True)
     markets = ["csi300"] if mode == "smoke" else ["csi300", "csi500", "csi1000"]

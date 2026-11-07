@@ -201,8 +201,8 @@ Sina `hfq` 与 raw 的比值在正常日保持不变，在除权日发生跳变�
 
 由于 chenditc 持续缺数、网站处于瘫痪状态，本轮在 canary 尚未跑满 3/3 的情况下执行了**生产切换**，用 fail-closed gate 替代等待：
 
-- 主应用：**v34**，`daily_standalone` 优先读取 `/vol/cn_data_overlay/<asof>`，不存在或非 PASS 才回退 chenditc；
-- 网站应用：**v9**，`latest_asset` 优先读取同一 overlay，网站基准指数行已纳入 overlay；
+- 主应用：当前 **v37**，`daily_standalone` 优先读取 `/vol/cn_data_overlay/<asof>`，不存在或非 PASS 才回退 chenditc；
+- 网站应用：当前 **v12**，`latest_asset` 优先读取同一 overlay，网站基准指数行已纳入 overlay；
 - 生产 overlay：`qlib-cn-data/cn_data_overlay/2026-11-06`，manifest SHA `3ec020b9…`，16 项 gate PASS；
 - 网站数据发布：commit `40b57e1e`，12 个文件，最新日期 2026-11-06；
 - 网站累计收益：CSI300 **-24.4058%**、CSI500 **-11.0430%**、CSI1000 **-20.2963%**；
@@ -220,7 +220,24 @@ Sina `hfq` 与 raw 的比值在正常日保持不变，在除权日发生跳变�
 - paper 阶段被 `require_reference_preopen` 硬门禁拒绝：11/06 订单必须在 11/06 09:30 前有同日 pre-open plan，盘后不能补建；因此**信号未发布，canary paper 仍冻结**；
 - 网站模拟账户 NAV 已是 11/06（独立历史回放账户，不是 canonical paper）；
 - `qlib-data-overlay-canary` 已停止，`qlib-data-overlay-canary` Volume 已删除；11/05/11/06 结果已归档到证据目录；
-- 当前生产只有两个 Modal App：`qlib-cn-daily-a10g`（v35，主信号/paper/发布）和 `qlib-website-nav`（v10，网站模拟 NAV）。
+- 当前生产只有两个 Modal App：`qlib-cn-daily-a10g`（v37，主信号/paper/发布）和 `qlib-website-nav`（v12，网站模拟 NAV）。
+
+### 4.5 成本保护与幂等
+
+- 网站 `daily` 在执行 smoke/full 前先检查
+  `/simulation/<source_sha>/<provider_digest>/publication.json`；同一源码 + 同一 provider 已发布时直接返回
+  `ALREADY_PUBLISHED`，不重跑模型和回放。08:00 补跑不再重复消耗网站回放成本。
+- 预算策略文件：`qlib-website-simulation/budget_policy.json`
+  - `daily_cap_usd=2.0`
+  - `monthly_credit_usd=30.0`
+  - `reserve_usd=2.0`
+- 网站 `daily` 在执行重活前读取该策略并查询 Modal billing：
+  - 当日（Asia/Shanghai）已花费 ≥ $2 时返回 `SKIPPED_BUDGET`；
+  - 本月 metered cost 达到 `monthly_credit - reserve` 时返回 `SKIPPED_BUDGET`；
+  - billing API 异常时默认 fail-open（`QLIB_BUDGET_STRICT=1` 可改为 fail-closed）。
+- 主应用 `_update_website_returns` 接受 `SKIPPED_BUDGET`，只告警，不阻断信号发布。
+- 生产探针结果（2026-11-08）：`allowed=True`，当日花费 $0，本月 metered `$22.07`，按 $30/保留 $2 还有约 `$5.93` 可花。
+- 约定：**研究、回填、dry run、canary 不再在生产 workspace 执行**；只用生产 workspace 跑日常 cron 和必要的生产修复。
 
 ## 5. 推荐接入架构
 
