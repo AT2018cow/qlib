@@ -45,6 +45,12 @@ def download_provider(asset):
     import json
     from provider_archive import safe_extract_provider_archive
 
+    if asset.get("local_path"):
+        local = Path(asset["local_path"])
+        if not (local / "calendars" / "day.txt").is_file():
+            raise ValueError(f"local provider is incomplete: {local}")
+        return local
+
     root = Path("/tmp") / f"october-provider-{asset['digest'].split(':',1)[1][:16]}"
     marker = root / "ready.json"
     if marker.is_file():

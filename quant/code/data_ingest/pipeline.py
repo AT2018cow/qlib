@@ -12,8 +12,8 @@ from data_ingest.calendar import read_calendar, resolve_target_dates
 from data_ingest.csindex import fetch_all_memberships
 from data_ingest.gate import run_gate
 from data_ingest.manifest import canonical_json, sha256_text, write_json
-from data_ingest.model import CrossCheck, Membership, SymbolSeries
-from data_ingest.overlay import build_overlay, read_base_features
+from data_ingest.model import Bar, CrossCheck, Membership, SymbolSeries
+from data_ingest.overlay import BENCHMARK_SYMBOLS, build_overlay, read_base_features
 from data_ingest.sina import SinaSource
 
 
@@ -45,6 +45,30 @@ def _membership_payload(memberships: Mapping[str, Membership]) -> dict:
     }
 
 
+def fetch_benchmark_bars(symbols: Iterable[str], start: str, end: str) -> dict[str, dict[str, Bar]]:
+    """Fetch raw index bars for website backtest benchmarks from Sina."""
+    import akshare as ak
+
+    output: dict[str, dict[str, Bar]] = {}
+    for symbol in symbols:
+        frame = ak.stock_zh_index_daily(symbol=symbol[:2].lower() + symbol[2:])
+        bars: dict[str, Bar] = {}
+        for _, row in frame.iterrows():
+            date = str(row["date"])[:10]
+            if start <= date <= end:
+                bars[date] = Bar(
+                    date=date,
+                    open=float(row["open"]),
+                    high=float(row["high"]),
+                    low=float(row["low"]),
+                    close=float(row["close"]),
+                    volume=float(row["volume"]),
+                    amount=0.0,
+                )
+        output[symbol] = bars
+    return output
+
+
 class OverlayPipeline:
     """Build a versioned overlay and refuse to mark it PASS unless all gates pass."""
 
@@ -57,6 +81,7 @@ class OverlayPipeline:
         calendar_dates: Iterable[str] | None = None,
         crosscheck_count: int = 20,
         require_weights: bool = True,
+        benchmark_fetch=fetch_benchmark_bars,
     ):
         self.sina = sina or SinaSource()
         self.baostock = baostock or BaoStockSource()
@@ -64,6 +89,7 @@ class OverlayPipeline:
         self.calendar_dates = list(calendar_dates) if calendar_dates is not None else None
         self.crosscheck_count = crosscheck_count
         self.require_weights = require_weights
+        self.benchmark_fetch = benchmark_fetch
 
     def build(
         self,
@@ -170,6 +196,8 @@ class OverlayPipeline:
             base_end=base_end,
             preclose=preclose,
         )
+        benchmark_base = read_base_features(base, BENCHMARK_SYMBOLS, base_end)
+        rows.update(self._benchmark_rows(benchmark_base, target_dates))
         print(f"[overlay] adjusted rows={len(rows)}", flush=True)
 
         crosschecks = self._crosschecks(sample, target_dates, primary, fallback)
@@ -239,6 +267,40 @@ class OverlayPipeline:
             raise PipelineError("overlay gate failed: " + "; ".join(report.failures[:5]))
         return manifest
 
+    def _benchmark_rows(
+        self,
+        base_features: Mapping[str, Mapping[str, float]],
+        dates: list[str],
+    ) -> dict[str, dict[str, dict[str, float]]]:
+        if not base_features:
+            return {}
+        bars = self.benchmark_fetch(sorted(base_features), dates[0], dates[-1])
+        output: dict[str, dict[str, dict[str, float]]] = {}
+        for symbol, base in base_features.items():
+            factor = float(base["factor"])
+            previous = float(base["close"])
+            rows: dict[str, dict[str, float]] = {}
+            for date in dates:
+                bar = bars.get(symbol, {}).get(date)
+                if bar is None or bar.close <= 0:
+                    raise PipelineError(f"missing benchmark bar: {symbol}/{date}")
+                close = float(bar.close) * factor
+                rows[date] = {
+                    "open": float(bar.open) * factor,
+                    "high": float(bar.high) * factor,
+                    "low": float(bar.low) * factor,
+                    "close": close,
+                    "volume": 0.0,
+                    "amount": 0.0,
+                    "factor": factor,
+                    "vwap": close,
+                    "change": close / previous - 1.0 if previous > 0 else float("nan"),
+                    "adjclose": float(bar.close),
+                }
+                previous = close
+            output[symbol] = rows
+        return output
+
     def _crosschecks(
         self,
         sample: list[str],
@@ -283,6 +345,8 @@ class OverlayPipeline:
     ) -> list[dict]:
         actions: list[dict] = []
         for symbol, per_date in rows.items():
+            if symbol not in base_features:
+                continue
             previous_close = float(base_features[symbol]["close"])
             previous_factor = float(base_features[symbol]["factor"])
             previous_raw = previous_close / previous_factor

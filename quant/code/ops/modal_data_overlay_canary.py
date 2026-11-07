@@ -87,6 +87,7 @@ PROFILES = {
 
 app = modal.App("qlib-data-overlay-canary", image=image)
 volume = modal.Volume.from_name("qlib-data-overlay-canary", create_if_missing=True)
+production_volume = modal.Volume.from_name("qlib-cn-data")
 
 
 def _latest_completed_trading_day() -> str:
@@ -341,6 +342,56 @@ def _run_canary(asof: str | None = None, validation: bool = False) -> dict:
 )
 def daily_canary(asof: str = "", validation: bool = False):
     return _run_canary(asof=asof or None, validation=validation)
+
+
+@app.function(volumes={"/source": volume, "/target": production_volume}, cpu=8, memory=16384, timeout=3600)
+def promote(asof: str = "2026-11-06"):
+    """Copy a gate-passed canary overlay into the production provider volume.
+
+    Cross-volume copies of 18k tiny bins are slow and can leave a partial
+    target.  Archive on the source side, copy one file, then extract locally
+    inside the target volume.
+    """
+    import hashlib
+    import shutil
+    import tarfile
+
+    source = Path("/source/overlays") / asof
+    target_root = Path("/target/cn_data_overlay")
+    target = target_root / asof
+    manifest_path = source / "manifest.json"
+    if not manifest_path.is_file():
+        raise FileNotFoundError(f"canary overlay missing: {source}")
+    manifest = json.loads(manifest_path.read_text())
+    if manifest.get("status") != "PASS":
+        raise RuntimeError(f"refusing to promote non-PASS overlay: {manifest.get('status')}")
+    target_root.mkdir(parents=True, exist_ok=True)
+    if target.exists():
+        existing_manifest = target / "manifest.json"
+        if existing_manifest.is_file() and json.loads(existing_manifest.read_text()) == manifest:
+            return {"status": "ALREADY_PROMOTED", "asof": asof, "target": str(target)}
+        shutil.rmtree(target)
+    archive = Path("/tmp") / f"{asof}.tar.gz"
+    with tarfile.open(archive, "w:gz") as tar:
+        tar.add(source, arcname=asof)
+    target_archive = target_root / f"{asof}.tar.gz"
+    shutil.copy2(archive, target_archive)
+    with tarfile.open(target_archive) as tar:
+        tar.extractall(target_root)
+    target_archive.unlink(missing_ok=True)
+    if not (target / "manifest.json").is_file():
+        raise RuntimeError(f"promoted overlay is incomplete: {target}")
+    receipt = {
+        "status": "PROMOTED",
+        "asof": asof,
+        "source": str(source),
+        "target": str(target),
+        "manifest_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+    }
+    (target / "promotion_receipt.json").write_text(json.dumps(receipt, ensure_ascii=False, indent=2) + "\n")
+    production_volume.commit()
+    return receipt
 
 
 @app.local_entrypoint()

@@ -49,6 +49,7 @@ APP_NAME = "qlib-cn-daily-a10g"
 VOL_NAME = "qlib-cn-data"
 VOL_ROOT = Path("/vol")
 DATA_DIR = VOL_ROOT / "cn_data"  # 对应 yaml 的 provider_uri
+OVERLAY_PROVIDER_ROOT = VOL_ROOT / "cn_data_overlay"
 MLRUNS_DIR = VOL_ROOT / "mlruns"
 
 vol = modal.Volume.from_name(VOL_NAME, create_if_missing=True)
@@ -267,6 +268,53 @@ def _latest_trading_day(data_dir=None) -> str:
         if lines:
             return lines[-1]
     return "2026-09-11"  # 兜底（仅当数据目录不可读时）
+
+
+def _select_overlay_provider():
+    """Prefer a gate-passed production overlay over the stale chenditc release.
+
+    The overlay is built by ``quant/code/data_ingest`` and promoted into
+    ``/vol/cn_data_overlay/<asof>``.  A missing/stale/non-PASS overlay falls
+    back to the legacy chenditc download, whose own publication gate remains
+    responsible for rejecting stale data.
+    """
+    import json
+    import shutil
+
+    from csi1000_mvp_contract import sha256_file
+
+    root = OVERLAY_PROVIDER_ROOT
+    if not root.is_dir():
+        return None
+    candidates = sorted(path for path in root.iterdir() if (path / "manifest.json").is_file())
+    for path in reversed(candidates):
+        try:
+            manifest = json.loads((path / "manifest.json").read_text())
+        except Exception:
+            continue
+        calendar_file = path / "calendars" / "day.txt"
+        if manifest.get("status") != "PASS" or not calendar_file.is_file():
+            continue
+        calendar = [line.strip() for line in calendar_file.read_text().splitlines() if line.strip()]
+        if not calendar:
+            continue
+        target = Path("/tmp/cn_data")
+        if target.exists():
+            shutil.rmtree(target)
+        shutil.copytree(path, target)
+        manifest_sha = sha256_file(path / "manifest.json")
+        identity = {
+            "name": "overlay",
+            "source_url": "overlay:cn_data_overlay",
+            "archive_sha256": manifest_sha,
+            "calendar_sha256": sha256_file(calendar_file),
+            "calendar_end": calendar[-1],
+            "overlay_manifest_sha256": manifest_sha,
+            "base_archive_sha256": (manifest.get("base") or {}).get("archive_sha256"),
+        }
+        print(f"[daily] 使用 overlay 数据 {path}，日历 {calendar[0]} ~ {calendar[-1]}")
+        return target, identity
+    return None
 
 
 def _runtime_cache_lineage() -> dict:
@@ -3627,40 +3675,49 @@ def daily_standalone(
 
     from provider_archive import safe_extract_provider_archive
 
-    # ---- 1) 下载最新数据包并解压到容器本地盘 ----
-    data_dir = Path("/tmp/cn_data")
-    if data_dir.exists():
-        shutil.rmtree(data_dir)
-    zip_path = Path("/tmp/chenditc_latest.tar.gz")
-    extract = Path("/tmp/chenditc_extract")
-    print(f"[daily] 下载最新数据 {CHENDITC_LATEST_URL} ...")
-    with requests.get(CHENDITC_LATEST_URL, stream=True, timeout=600) as r:
-        r.raise_for_status()
-        with zip_path.open("wb") as f:
-            for chunk in r.iter_content(chunk_size=1 << 20):
-                f.write(chunk)
-    if extract.exists():
-        shutil.rmtree(extract)
-    try:
-        base = Path(safe_extract_provider_archive(zip_path, extract))
-    except Exception:
-        shutil.rmtree(extract, ignore_errors=True)
-        raise
-    shutil.move(str(base), str(data_dir))
-    cal_lines = (data_dir / "calendars" / "day.txt").read_text().strip().splitlines()
+    # ---- 1) 优先使用 gate-passed overlay；否则回退 chenditc ----
     from csi1000_mvp_contract import sha256_file
 
-    provider_identity = {
-        "name": "chenditc",
-        "source_url": CHENDITC_LATEST_URL,
-        "archive_sha256": sha256_file(zip_path),
-        "calendar_sha256": sha256_file(data_dir / "calendars" / "day.txt"),
-        "calendar_end": cal_lines[-1],
-    }
-    print(
-        f"[daily] 数据就绪：日历 {cal_lines[0]} ~ {cal_lines[-1]}（{len(cal_lines)} 个交易日）"
-        f"，archive={provider_identity['archive_sha256'][:12]}"
-    )
+    selected = _select_overlay_provider()
+    if selected is not None:
+        data_dir, provider_identity = selected
+        cal_lines = (data_dir / "calendars" / "day.txt").read_text().strip().splitlines()
+        print(
+            f"[daily] 数据就绪（overlay）：日历 {cal_lines[0]} ~ {cal_lines[-1]}"
+            f"（{len(cal_lines)} 个交易日），manifest={provider_identity['archive_sha256'][:12]}"
+        )
+    else:
+        data_dir = Path("/tmp/cn_data")
+        if data_dir.exists():
+            shutil.rmtree(data_dir)
+        zip_path = Path("/tmp/chenditc_latest.tar.gz")
+        extract = Path("/tmp/chenditc_extract")
+        print(f"[daily] 下载最新数据 {CHENDITC_LATEST_URL} ...")
+        with requests.get(CHENDITC_LATEST_URL, stream=True, timeout=600) as r:
+            r.raise_for_status()
+            with zip_path.open("wb") as f:
+                for chunk in r.iter_content(chunk_size=1 << 20):
+                    f.write(chunk)
+        if extract.exists():
+            shutil.rmtree(extract)
+        try:
+            base = Path(safe_extract_provider_archive(zip_path, extract))
+        except Exception:
+            shutil.rmtree(extract, ignore_errors=True)
+            raise
+        shutil.move(str(base), str(data_dir))
+        cal_lines = (data_dir / "calendars" / "day.txt").read_text().strip().splitlines()
+        provider_identity = {
+            "name": "chenditc",
+            "source_url": CHENDITC_LATEST_URL,
+            "archive_sha256": sha256_file(zip_path),
+            "calendar_sha256": sha256_file(data_dir / "calendars" / "day.txt"),
+            "calendar_end": cal_lines[-1],
+        }
+        print(
+            f"[daily] 数据就绪：日历 {cal_lines[0]} ~ {cal_lines[-1]}（{len(cal_lines)} 个交易日）"
+            f"，archive={provider_identity['archive_sha256'][:12]}"
+        )
 
     # ---- 1b) 新池（chinext/star）：容器本地数据没有合成等权基准（chenditc 包不含），
     # 训练前必须用 board_rules.build_ew_bench_files 构建并与 Volume 研究路径共用同一实现 ----

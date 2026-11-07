@@ -14,6 +14,9 @@ from data_ingest.calendar import read_calendar
 from data_ingest.model import Membership
 
 
+BENCHMARK_SYMBOLS = ("SH000300", "SH000905", "SH000852")
+
+
 class OverlayError(RuntimeError):
     """Raised when the frozen base cannot be extended safely."""
 
@@ -265,7 +268,7 @@ def build_overlay(
         raise OverlayError(f"base calendar ends {base_calendar[-1]}, expected {base_end}")
     if dates[-1] != asof:
         raise OverlayError(f"target dates end {dates[-1]}, expected {asof}")
-    feature_symbols = historical_union(base) | set(rows)
+    feature_symbols = historical_union(base) | set(rows) | set(BENCHMARK_SYMBOLS)
     metadata = copy_base(base, out_dir, feature_symbols=feature_symbols)
     append_calendar(out_dir, dates)
     metadata["bins_appended"] = append_features(out_dir, rows, start_index=len(base_calendar), dates=dates)

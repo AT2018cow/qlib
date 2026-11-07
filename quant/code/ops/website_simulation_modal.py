@@ -21,14 +21,50 @@ ensure_quant_import_paths()
 sys.path.insert(0, str(CODE / "research/regime_reselection"))
 
 import modal
-from modal_qlib_cn_a10g import image
+from modal_qlib_cn_a10g import image, vol as data_volume
 from daily_pipeline import WEBSITE_STAGE_TIMEOUT_SECONDS, WEBSITE_WORKER_TIMEOUT_SECONDS
 
 app = modal.App("qlib-website-nav", image=image)
 simulation = modal.Volume.from_name("qlib-website-simulation", create_if_missing=True)
 
 
+def _latest_overlay_asset():
+    import hashlib
+    import json
+
+    root = Path("/data/cn_data_overlay")
+    if not root.is_dir():
+        return None
+    for path in reversed(sorted(root.iterdir())):
+        manifest_path = path / "manifest.json"
+        calendar_path = path / "calendars" / "day.txt"
+        if not manifest_path.is_file() or not calendar_path.is_file():
+            continue
+        try:
+            manifest = json.loads(manifest_path.read_text())
+        except Exception:
+            continue
+        if manifest.get("status") != "PASS":
+            continue
+        calendar = [line.strip() for line in calendar_path.read_text().splitlines() if line.strip()]
+        if not calendar:
+            continue
+        digest = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+        return {
+            "local_path": str(path),
+            "digest": f"sha256:{digest}",
+            "size": 0,
+            "release": f"overlay-{calendar[-1]}",
+            "published_at": manifest.get("generated_at_utc", ""),
+            "source": "overlay",
+        }
+    return None
+
+
 def latest_asset():
+    overlay = _latest_overlay_asset()
+    if overlay is not None:
+        return overlay
     import requests
 
     response = requests.get("https://api.github.com/repos/chenditc/investment_data/releases/latest", timeout=30)
@@ -59,7 +95,7 @@ def fit_website_model(model, dataset):
 
 
 @app.function(
-    volumes={"/simulation": simulation},
+    volumes={"/simulation": simulation, "/data": data_volume},
     cpu=20,
     memory=32768,
     timeout=WEBSITE_WORKER_TIMEOUT_SECONDS,
@@ -420,7 +456,7 @@ def publish_results(results, source, asset, *, token):
 
 
 @app.function(
-    volumes={"/simulation": simulation},
+    volumes={"/simulation": simulation, "/data": data_volume},
     secrets=[modal.Secret.from_name("github-push")],
     timeout=WEBSITE_STAGE_TIMEOUT_SECONDS,
     cpu=1,
