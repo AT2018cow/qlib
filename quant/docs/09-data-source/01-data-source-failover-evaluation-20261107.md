@@ -1,8 +1,8 @@
 # A 股日线数据源故障转移评估（2026-11-07）
 
-状态：`RESEARCH_ONLY / NOT_PUBLISHED / PAPER_FROZEN`
+状态：`IMPLEMENTED / DRY_RUN_PASS / NOT_PUBLISHED / PAPER_FROZEN`
 
-本文评估在 `chenditc/investment_data` GitHub release 持续缺数时，能否用免费公开源生成可审计的日线增量，并保持三市场生产 profile、TopK/DropN、1M paper 账户不变。**本文不构成生产发布、paper 回补或账户操作授权。**
+本文评估在 `chenditc/investment_data` GitHub release 持续缺数时，能否用免费公开源生成可审计的日线增量，并保持三市场生产 profile、TopK/DropN、1M paper 账户不变。数据接入与 fail-closed gate 已实现并通过生产镜像 dry run；**本文仍不构成生产发布、paper 回补或账户操作授权。**
 
 ## 1. 问题与约束
 
@@ -158,6 +158,30 @@ Sina `hfq` 与 raw 的比值在正常日保持不变，在除权日发生跳变�
 | 9 | SZ002938 | 0.3649904546 |
 | 10 | SZ300394 | 0.3536219989 |
 
+## 4.1 实现与生产镜像 dry run
+
+新增隔离包 `quant/code/data_ingest/`：
+
+- `sina.py`：Sina raw+hfq 主源，线程池 + 重试；
+- `baostock_source.py`：BaoStock 备源，提供 `preclose`、`tradestatus`、`isST`；
+- `csindex.py`：中证官网 `cons.xls` / `closeweight.xls` 解析与 SHA；
+- `adjust.py`：Qlib 口径复权；正常日保持 factor 精确连续，除权日优先用 BaoStock `preclose`；
+- `overlay.py`：复制全部历史成分、追加日历/bin、更新 PIT instruments；
+- `gate.py`：日历、成分、覆盖率、OHLC、底座完整性、抽样对照、除权、qlib smoke；
+- `pipeline.py` / `cli.py`：编排与本地入口；
+- `quant/code/ops/modal_data_overlay_dry_run.py`：生产镜像 dry-run 入口；
+- `quant/tests/test_data_ingest.py`：合成数据单测。
+
+生产镜像 dry run 使用独立的临时 Volume，不挂载生产 `qlib-cn-data`：
+
+- 冻结底座：chenditc 2026-11-04 release，archive SHA `dc9172…`；
+- overlay：`csi300/500/1000` 历史并集 3601 个 feature 目录，追加 2026-11-05/11-06；
+- gate：16 项全部 PASS，包括 300/500/1000 覆盖率、40 次 Sina/BaoStock 抽样对照、11 个除权 factor 校验、qlib smoke；
+- 11/04 复现：`repro_status=PASS`，Top10 与分数逐位一致；
+- 11/06 三市场排名：与第 4 节研究结果逐位一致。
+
+本轮**没有**把新路径接入 `daily_cron`，也没有部署新镜像、发布信号或改动 paper。`baostock` 已加入主应用镜像依赖，下一次部署才会生效。
+
 ## 5. 推荐接入架构
 
 ### 5.1 角色划分
@@ -208,14 +232,20 @@ Sina `hfq` 与 raw 的比值在正常日保持不变，在除权日发生跳变�
 
 - Sina raw+hfq + 中证官网成分 + BaoStock 校验，能够在**不依赖 Tushare**的情况下补齐 11/05/11/06，并在生产镜像中复现 11/04 生产排名；
 - 当前最稳妥的接入方式是“chenditc 历史底座 + 新源日线 overlay”，而不是立即全量重建历史；
+- 数据接入、manifest、cross-check、overlay writer 与 fail-closed gate 已实现；生产镜像 dry run 通过；
 - 11/06 三市场研究排名已生成，但**不得**视为已发布信号，paper 仍冻结。
 
-需单独授权：
+已完成：
 
-1. 批准上述数据源角色划分与 overlay 架构；
-2. 授权实现 ingestion、manifest、cross-check、qlib overlay writer 与 fail-closed gate（含测试）；
-3. 授权在生产镜像中做 11/05–11/06 的正式 dry run，并与本文研究排名逐项对照；
-4. 授权 paper 11/05–11/06 回补及 11/06 override 的处理方案（需另行审计，不与数据源接入捆绑）。
+1. 数据源角色划分与 overlay 架构；
+2. ingestion、manifest、cross-check、qlib overlay writer 与 fail-closed gate（含 6 项合成单测）；
+3. 生产镜像 11/05–11/06 dry run，并与本文研究排名逐项对照。
+
+仍需单独授权：
+
+1. 将 overlay 路径接入 `daily_cron` / `daily_cron_second_chance`，包括版本化快照、原子切换、失败回退和监控；
+2. 部署带 `baostock` 依赖的新主应用镜像，并在生产 shadow 模式下观察若干交易日；
+3. paper 11/05–11/06 回补及 11/06 override 的处理方案（需另行审计，不与数据源接入捆绑）。
 
 ## 8. 证据
 
@@ -225,4 +255,5 @@ Sina `hfq` 与 raw 的比值在正常日保持不变，在除权日发生跳变�
 - `quant/data/data_source_evaluation/20261107/ranking_csi1000_20261106.csv`
 - `quant/data/data_source_evaluation/20261107/ranking_csi500_20261106.csv`
 - `quant/data/data_source_evaluation/20261107/ranking_csi300_20261106.csv`
+- `quant/data/data_source_evaluation/20261107/dryrun_result.json`
 - `quant/data/data_source_evaluation/20261107/SHA256SUMS.json`

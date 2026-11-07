@@ -306,5 +306,251 @@
     "Implement ingestion, manifest, cross-check, qlib overlay writer, and fail-closed gate with tests.",
     "Run a production-image dry run for 2026-11-05/06 and compare with this research ranking before any publication.",
     "Keep paper frozen and the existing 11/06 operator override unchanged until a separate backfill authorization."
-  ]
+  ],
+  "implementation": {
+    "package": "quant/code/data_ingest/",
+    "modules": [
+      "sina.py",
+      "baostock_source.py",
+      "csindex.py",
+      "adjust.py",
+      "overlay.py",
+      "gate.py",
+      "pipeline.py",
+      "manifest.py",
+      "calendar.py",
+      "symbols.py",
+      "model.py",
+      "cli.py"
+    ],
+    "entrypoint": "quant/code/ops/modal_data_overlay_dry_run.py",
+    "production_image_dependency": "baostock added to modal_qlib_cn_a10g.py image pip_install",
+    "tests": "quant/tests/test_data_ingest.py",
+    "wired_into_daily_cron": false
+  },
+  "dryrun": {
+    "status": "PASS",
+    "repro_1104": "PASS",
+    "gate_checks": 16,
+    "gate_failures": [],
+    "memberships": {
+      "csi1000": 1000,
+      "csi300": 300,
+      "csi500": 500
+    },
+    "overlay": {
+      "feature_dirs_copied": 3601,
+      "bins_appended": 17990,
+      "row_symbols": 1799,
+      "calendar_len": 6504
+    },
+    "rankings": {
+      "csi1000": [
+        {
+          "rank": 1,
+          "instrument": "SH688449",
+          "score": 0.3322814688772984
+        },
+        {
+          "rank": 2,
+          "instrument": "SH600353",
+          "score": 0.3255651516905206
+        },
+        {
+          "rank": 3,
+          "instrument": "SH688182",
+          "score": 0.3204190881198316
+        },
+        {
+          "rank": 4,
+          "instrument": "SZ300131",
+          "score": 0.319463632638337
+        },
+        {
+          "rank": 5,
+          "instrument": "SH688627",
+          "score": 0.3189471519932659
+        },
+        {
+          "rank": 6,
+          "instrument": "SZ002484",
+          "score": 0.3089099202125855
+        },
+        {
+          "rank": 7,
+          "instrument": "SH688141",
+          "score": 0.3071649989324255
+        },
+        {
+          "rank": 8,
+          "instrument": "SZ000636",
+          "score": 0.30615571674424014
+        },
+        {
+          "rank": 9,
+          "instrument": "SH605376",
+          "score": 0.29720323002440396
+        },
+        {
+          "rank": 10,
+          "instrument": "SH688362",
+          "score": 0.2958249927374789
+        }
+      ],
+      "csi500": [
+        {
+          "rank": 1,
+          "instrument": "SZ300620",
+          "score": 0.4625403957304775
+        },
+        {
+          "rank": 2,
+          "instrument": "SZ001309",
+          "score": 0.34195821975496415
+        },
+        {
+          "rank": 3,
+          "instrument": "SH688052",
+          "score": 0.3015749802170265
+        },
+        {
+          "rank": 4,
+          "instrument": "SH688266",
+          "score": 0.2785560530558705
+        },
+        {
+          "rank": 5,
+          "instrument": "SZ301536",
+          "score": 0.2690532434581521
+        },
+        {
+          "rank": 6,
+          "instrument": "SH688234",
+          "score": 0.23234498001171694
+        },
+        {
+          "rank": 7,
+          "instrument": "SH688318",
+          "score": 0.2206381274408866
+        },
+        {
+          "rank": 8,
+          "instrument": "SH688120",
+          "score": 0.1990562042659076
+        },
+        {
+          "rank": 9,
+          "instrument": "SH688002",
+          "score": 0.19617502563017378
+        },
+        {
+          "rank": 10,
+          "instrument": "SZ002126",
+          "score": 0.19082965694906281
+        },
+        {
+          "rank": 11,
+          "instrument": "SZ000021",
+          "score": 0.18855434488724318
+        },
+        {
+          "rank": 12,
+          "instrument": "SZ002821",
+          "score": 0.1873112375081383
+        },
+        {
+          "rank": 13,
+          "instrument": "SH688561",
+          "score": 0.18459314693309647
+        },
+        {
+          "rank": 14,
+          "instrument": "SZ000415",
+          "score": 0.18038926109115763
+        },
+        {
+          "rank": 15,
+          "instrument": "SH603899",
+          "score": 0.17461478646342432
+        },
+        {
+          "rank": 16,
+          "instrument": "SH600711",
+          "score": 0.1733487282907508
+        },
+        {
+          "rank": 17,
+          "instrument": "SH600378",
+          "score": 0.17117483204870637
+        },
+        {
+          "rank": 18,
+          "instrument": "SH688122",
+          "score": 0.1709737893525104
+        },
+        {
+          "rank": 19,
+          "instrument": "SH605589",
+          "score": 0.16655909448711184
+        },
+        {
+          "rank": 20,
+          "instrument": "SZ000032",
+          "score": 0.16531974054829238
+        }
+      ],
+      "csi300": [
+        {
+          "rank": 1,
+          "instrument": "SH688521",
+          "score": 0.45314279801974855
+        },
+        {
+          "rank": 2,
+          "instrument": "SH603986",
+          "score": 0.4325347127970122
+        },
+        {
+          "rank": 3,
+          "instrument": "SH601138",
+          "score": 0.40065515794614176
+        },
+        {
+          "rank": 4,
+          "instrument": "SZ301308",
+          "score": 0.3945968379807777
+        },
+        {
+          "rank": 5,
+          "instrument": "SZ000657",
+          "score": 0.38262698182081745
+        },
+        {
+          "rank": 6,
+          "instrument": "SZ300476",
+          "score": 0.3743928821522402
+        },
+        {
+          "rank": 7,
+          "instrument": "SH600183",
+          "score": 0.3727685676485467
+        },
+        {
+          "rank": 8,
+          "instrument": "SZ000988",
+          "score": 0.3652462256600117
+        },
+        {
+          "rank": 9,
+          "instrument": "SZ002938",
+          "score": 0.3649904546352366
+        },
+        {
+          "rank": 10,
+          "instrument": "SZ300394",
+          "score": 0.3536219989307167
+        }
+      ]
+    }
+  }
 }

@@ -98,6 +98,7 @@ image = (
         "nbconvert",
         "setuptools-scm",
         "akshare",
+        "baostock",
     )
     .pip_install("torch")
     .run_commands(
