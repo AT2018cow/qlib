@@ -675,7 +675,7 @@
   },
   "website_publication_blocker": {
     "schema_version": 1,
-    "status": "DATA_PUBLISHED_GITHUB / PUBLIC_SITE_STALE",
+    "status": "RESOLVED",
     "data_commit": "40b57e1e4fcd6a557036f130d04fac6c8f71980a",
     "public_url": "https://qliba158.pages.dev",
     "public_latest_date": "2026-11-04",
@@ -692,6 +692,33 @@
       "csi300_forward_latest": "2026-11-06",
       "csi500_forward_latest": "2026-11-06",
       "csi1000_forward_latest": "2026-11-06"
+    },
+    "resolution": {
+      "workflow_run": "42366583880",
+      "public_latest_date": "2026-11-06",
+      "verified_at": "2026-11-07"
     }
+  },
+  "website_publication_verification": {
+    "schema_version": 1,
+    "status": "PUBLIC_SITE_LIVE",
+    "url": "https://qliba158.pages.dev",
+    "verified_latest_date": "2026-11-06",
+    "returns": {
+      "csi300": -0.24405847000000003,
+      "csi500": -0.11042956000000004,
+      "csi1000": -0.20296287999999996
+    },
+    "fit_receipt_version": 2,
+    "official_reference_price_verified": false,
+    "workflow": "Deploy signal website to GitHub Pages",
+    "workflow_run": "42366583880",
+    "workflow_status": "success",
+    "cloudflare_deploy": "success",
+    "github_pages_deploy": "skipped (GITHUB_PAGES_ENABLED != true; Cloudflare mirror is the public path)",
+    "site_root_http": 200,
+    "notes": [
+      "GitHub Actions had been disabled; re-enabled by operator, then workflow_dispatch succeeded."
+    ]
   }
 }

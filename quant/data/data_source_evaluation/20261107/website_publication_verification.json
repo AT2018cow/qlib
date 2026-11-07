@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "status": "PUBLIC_SITE_LIVE",
+  "url": "https://qliba158.pages.dev",
+  "verified_latest_date": "2026-11-06",
+  "returns": {
+    "csi300": -0.24405847000000003,
+    "csi500": -0.11042956000000004,
+    "csi1000": -0.20296287999999996
+  },
+  "fit_receipt_version": 2,
+  "official_reference_price_verified": false,
+  "workflow": "Deploy signal website to GitHub Pages",
+  "workflow_run": "42366583880",
+  "workflow_status": "success",
+  "cloudflare_deploy": "success",
+  "github_pages_deploy": "skipped (GITHUB_PAGES_ENABLED != true; Cloudflare mirror is the public path)",
+  "site_root_http": 200,
+  "notes": [
+    "GitHub Actions had been disabled; re-enabled by operator, then workflow_dispatch succeeded."
+  ]
+}
