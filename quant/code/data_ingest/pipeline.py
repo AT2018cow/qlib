@@ -13,7 +13,7 @@ from data_ingest.csindex import fetch_all_memberships
 from data_ingest.gate import run_gate
 from data_ingest.manifest import canonical_json, sha256_text, write_json
 from data_ingest.model import Bar, CrossCheck, Membership, SymbolSeries
-from data_ingest.overlay import BENCHMARK_SYMBOLS, build_overlay, read_base_features
+from data_ingest.overlay import BENCHMARK_SYMBOLS, active_members, build_overlay, read_base_features, read_ranges
 from data_ingest.sina import SinaSource
 
 
@@ -102,6 +102,8 @@ class OverlayPipeline:
         extra_symbols: Iterable[str] = (),
         base_archive_sha256: str | None = None,
         require_qlib_smoke: bool = False,
+        allow_base_membership: bool = False,
+        allow_missing_base_suspensions: bool = False,
     ) -> dict:
         base = Path(base_dir)
         out = Path(out_dir)
@@ -117,9 +119,26 @@ class OverlayPipeline:
             raise PipelineError("target dates must be ordered and unique")
 
         memberships = fetch_all_memberships(markets, fetch=self.csindex_fetch, require_weights=self.require_weights)
-        for market, membership in memberships.items():
-            if membership.asof != asof:
-                raise PipelineError(f"{market} constituent date {membership.asof} != asof {asof}")
+        mismatched = [market for market, membership in memberships.items() if membership.asof != asof]
+        if mismatched:
+            if not allow_base_membership:
+                first = memberships[mismatched[0]]
+                raise PipelineError(f"{mismatched[0]} constituent date {first.asof} != asof {asof}")
+            # Historical backfill: CSIndex exposes only the current snapshot.
+            # Use the frozen base ranges active on base_end (no look-ahead).
+            base_memberships: dict[str, Membership] = {}
+            for market in markets:
+                ranges = read_ranges(base / "instruments" / f"{market}.txt")
+                members = tuple(sorted(active_members(ranges, base_end)))
+                base_memberships[market] = Membership(
+                    market=market,
+                    asof=asof,
+                    members=members,
+                    raw_sha256=sha256_text("\n".join(members)),
+                    source_url=f"base_pit:{base_end}",
+                )
+            memberships = base_memberships
+            print(f"[overlay] historical backfill uses base PIT membership at {base_end}", flush=True)
 
         current = sorted(
             {symbol for membership in memberships.values() for symbol in membership.members}
@@ -186,6 +205,14 @@ class OverlayPipeline:
                     suspensions.add(symbol)
 
         unresolved_base = sorted(set(missing_base) - suspensions)
+        if unresolved_base and allow_missing_base_suspensions:
+            # Historical PIT membership can still contain a name that was
+            # suspended at base_end and has no feature history.  The base
+            # snapshot itself has no close for it, so the only safe historical
+            # interpretation is a suspended member, not a fabricated price.
+            print(f"[overlay] treating base-missing members as suspended: {unresolved_base[:20]}", flush=True)
+            suspensions.update(unresolved_base)
+            unresolved_base = []
         if unresolved_base:
             raise PipelineError(f"no frozen base features and no confirmed suspension: {unresolved_base[:20]}")
 

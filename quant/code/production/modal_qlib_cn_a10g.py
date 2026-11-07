@@ -270,13 +270,60 @@ def _latest_trading_day(data_dir=None) -> str:
     return "2026-09-11"  # 兜底（仅当数据目录不可读时）
 
 
-def _select_overlay_provider():
+def _prepare_truncated_overlay(source: Path, asof: str) -> Path:
+    """Derive a historical provider from a newer overlay without look-ahead.
+
+    The source overlay already contains all historical bins.  We copy it to
+    container scratch, truncate the calendar at ``asof``, and reconstruct the
+    PIT membership effective at ``asof`` from the source instrument ranges:
+    names added on the newer date are dropped; names whose last span ended at
+    the frozen base date are extended through ``asof``.
+    """
+    import json
+    import shutil
+
+    source_manifest = json.loads((source / "manifest.json").read_text())
+    base_end = (source_manifest.get("base") or {}).get("calendar_end")
+    target = Path("/tmp/cn_data")
+    if target.exists():
+        shutil.rmtree(target)
+    shutil.copytree(source, target)
+    calendar_path = target / "calendars" / "day.txt"
+    calendar = [line.strip() for line in calendar_path.read_text().splitlines() if line.strip()]
+    if asof not in calendar:
+        raise RuntimeError(f"requested asof {asof} not in overlay calendar {calendar[0]} ~ {calendar[-1]}")
+    calendar_path.write_text("\n".join(calendar[: calendar.index(asof) + 1]) + "\n")
+    for name in ("csi300.txt", "csi500.txt", "csi1000.txt", "csi800.txt", "all.txt"):
+        path = target / "instruments" / name
+        if not path.is_file():
+            continue
+        ranges: dict[str, list[list[str]]] = {}
+        for line in path.read_text().splitlines():
+            if not line.strip():
+                continue
+            code, start, end = line.split("\t")
+            if start > asof:
+                continue
+            if end > asof:
+                end = asof
+            elif base_end and end == base_end:
+                end = asof
+            ranges.setdefault(code, []).append([start, end])
+        path.write_text(
+            "\n".join(f"{code}\t{start}\t{end}" for code in sorted(ranges) for start, end in ranges[code]) + "\n"
+        )
+    print(f"[daily] 派生历史 overlay {asof}（源 {source.name}，base PIT {base_end}）")
+    return target
+
+
+def _select_overlay_provider(asof: str | None = None):
     """Prefer a gate-passed production overlay over the stale chenditc release.
 
     The overlay is built by ``quant/code/data_ingest`` and promoted into
     ``/vol/cn_data_overlay/<asof>``.  A missing/stale/non-PASS overlay falls
     back to the legacy chenditc download, whose own publication gate remains
-    responsible for rejecting stale data.
+    responsible for rejecting stale data.  An explicit ``asof`` is a backfill
+    request and must exist and be PASS.
     """
     import json
     import shutil
@@ -285,8 +332,19 @@ def _select_overlay_provider():
 
     root = OVERLAY_PROVIDER_ROOT
     if not root.is_dir():
+        if asof:
+            raise RuntimeError(f"requested overlay directory missing: {root / asof}")
         return None
-    candidates = sorted(path for path in root.iterdir() if (path / "manifest.json").is_file())
+    if asof:
+        exact = root / str(asof)[:10]
+        if exact.is_dir():
+            candidates = [exact]
+        else:
+            candidates = sorted(path for path in root.iterdir() if (path / "manifest.json").is_file())
+            if not candidates:
+                raise RuntimeError(f"requested overlay missing: {exact}")
+    else:
+        candidates = sorted(path for path in root.iterdir() if (path / "manifest.json").is_file())
     for path in reversed(candidates):
         try:
             manifest = json.loads((path / "manifest.json").read_text())
@@ -298,11 +356,31 @@ def _select_overlay_provider():
         calendar = [line.strip() for line in calendar_file.read_text().splitlines() if line.strip()]
         if not calendar:
             continue
+        manifest_sha = sha256_file(path / "manifest.json")
+        if asof and asof != calendar[-1]:
+            if asof > calendar[-1] or asof < calendar[0]:
+                raise RuntimeError(f"requested asof {asof} outside overlay calendar {calendar[0]} ~ {calendar[-1]}")
+            target = _prepare_truncated_overlay(path, asof)
+            calendar = [
+                line.strip() for line in (target / "calendars" / "day.txt").read_text().splitlines() if line.strip()
+            ]
+            identity = {
+                "name": "overlay",
+                "source_url": "overlay:cn_data_overlay:truncated",
+                "archive_sha256": manifest_sha,
+                "calendar_sha256": sha256_file(target / "calendars" / "day.txt"),
+                "calendar_end": asof,
+                "overlay_manifest_sha256": manifest_sha,
+                "base_archive_sha256": (manifest.get("base") or {}).get("archive_sha256"),
+                "overlay_source_asof": path.name,
+                "overlay_truncated_to": asof,
+            }
+            print(f"[daily] 使用 overlay 数据 {path}，截断至 {asof}")
+            return target, identity
         target = Path("/tmp/cn_data")
         if target.exists():
             shutil.rmtree(target)
         shutil.copytree(path, target)
-        manifest_sha = sha256_file(path / "manifest.json")
         identity = {
             "name": "overlay",
             "source_url": "overlay:cn_data_overlay",
@@ -314,6 +392,8 @@ def _select_overlay_provider():
         }
         print(f"[daily] 使用 overlay 数据 {path}，日历 {calendar[0]} ~ {calendar[-1]}")
         return target, identity
+    if asof:
+        raise RuntimeError(f"requested overlay is not PASS: {root / str(asof)[:10]}")
     return None
 
 
@@ -3651,6 +3731,7 @@ def daily_standalone(
     market: str = "csi1000",
     csi1000_profile: str = None,
     paper_lineage: str = "canonical",
+    overlay_asof: str = "",
 ):
     """每日信号（自包含单容器版，--best --daily 的实现）：
     下载 chenditc 最新全量包 → 解压到容器本地盘 → 训练终审候选 → top-k 信号 → 返回 CSV 内容。
@@ -3678,7 +3759,7 @@ def daily_standalone(
     # ---- 1) 优先使用 gate-passed overlay；否则回退 chenditc ----
     from csi1000_mvp_contract import sha256_file
 
-    selected = _select_overlay_provider()
+    selected = _select_overlay_provider(overlay_asof or None)
     if selected is not None:
         data_dir, provider_identity = selected
         cal_lines = (data_dir / "calendars" / "day.txt").read_text().strip().splitlines()
@@ -4271,7 +4352,11 @@ def _update_website_returns():
     return result
 
 
-def _run_daily_signal_cycle(allow_lag: bool = False):
+def _run_daily_signal_cycle(
+    allow_lag: bool = False,
+    signal_date_override: str | None = None,
+    data_asof_override: str | None = None,
+):
     """云端全自动每日信号：三池 canonical（csi1000/csi500/csi300）→ GitHub API 提交。
 
     ``allow_lag`` is an explicit operator override for a single-session
@@ -4295,14 +4380,19 @@ def _run_daily_signal_cycle(allow_lag: bool = False):
     需 Modal Secret `github-push`（含 GITHUB_TOKEN，对 fork 仓库 Contents 读写权限的 PAT）。"""
     import os
     import uuid
-    from datetime import datetime
+    from datetime import date, datetime
     from zoneinfo import ZoneInfo
 
     # ---- gate 前移：先拿日历做零成本预判定，非交易日直接 return ----
     # CSI1000 canonical 已冻结为严格 T-close -> T+1-open，因此交易日历不可验证时
     # 直接 fail closed，不再为暂停的卫星池保留 generic fail-open 调度。
     today = datetime.now(ZoneInfo("Asia/Shanghai")).date()
-    signal_date = today.isoformat()
+    if signal_date_override:
+        signal_date = str(signal_date_override)[:10]
+        today = date.fromisoformat(signal_date)
+        print(f"[cron] OPERATOR_OVERRIDE signal_date={signal_date}（手动指定）")
+    else:
+        signal_date = today.isoformat()
     try:
         cal = _cn_trading_calendar()
     except Exception as e:  # pylint: disable=W0703
@@ -4386,6 +4476,7 @@ def _run_daily_signal_cycle(allow_lag: bool = False):
             market="csi1000",
             csi1000_profile=CANONICAL_PROFILE,
             paper_lineage=CANONICAL_PAPER_LINEAGE,
+            overlay_asof=data_asof_override or "",
         )
         res_csi500 = daily_standalone.remote(
             topk=CANONICAL_TOPK_BY_MARKET["csi500"],
@@ -4393,6 +4484,7 @@ def _run_daily_signal_cycle(allow_lag: bool = False):
             market="csi500",
             csi1000_profile=CANONICAL_PROFILES_BY_MARKET["csi500"],
             paper_lineage=CANONICAL_PAPER_LINEAGES_BY_MARKET["csi500"],
+            overlay_asof=data_asof_override or "",
         )
         res_csi300 = daily_standalone.remote(
             topk=CANONICAL_TOPK_BY_MARKET["csi300"],
@@ -4400,6 +4492,7 @@ def _run_daily_signal_cycle(allow_lag: bool = False):
             market="csi300",
             csi1000_profile=CANONICAL_PROFILES_BY_MARKET["csi300"],
             paper_lineage=CANONICAL_PAPER_LINEAGES_BY_MARKET["csi300"],
+            overlay_asof=data_asof_override or "",
         )
     except Exception as csi_err:  # pylint: disable=W0703
         raise RuntimeError(
@@ -4835,6 +4928,33 @@ def attest_paper_state_bootstrap(note: str = "", approve: bool = False):
 
 
 # ===================== 第六步：重训频率对比实验（freq 5/20/60） =====================
+
+
+@app.function(
+    volumes={str(VOL_ROOT): vol},
+    secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
+    timeout=MAIN_TIMEOUT_SECONDS,
+    nonpreemptible=True,
+    max_containers=1,
+    retries=0,
+)
+def daily_cron_manual(signal_date_override: str, data_asof_override: str = ""):
+    """Controlled operator backfill for a missed T-close publication.
+
+    ``signal_date_override`` is the usage date, ``data_asof_override`` is the
+    provider calendar end used for the signal.  Example for the missed
+    2026-11-06 morning run: signal_date=2026-11-06, data_asof=2026-11-05.
+    """
+    from daily_pipeline import run_daily_pipeline
+
+    return run_daily_pipeline(
+        lambda: _run_daily_signal_cycle(
+            False,
+            signal_date_override=signal_date_override,
+            data_asof_override=data_asof_override or None,
+        ),
+        _update_website_returns,
+    )
 
 
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=2, memory=4096, timeout=600)

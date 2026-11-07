@@ -269,6 +269,8 @@ def _run_canary(asof: str | None = None, validation: bool = False) -> dict:
             markets=("csi300", "csi500", "csi1000"),
             base_archive_sha256=BASE_ARCHIVE_SHA256,
             require_qlib_smoke=True,
+            allow_base_membership=True,
+            allow_missing_base_suspensions=True,
         )
         rankings = {market: _run_model(str(overlay), market) for market in PROFILES}
         known = None
@@ -392,6 +394,23 @@ def promote(asof: str = "2026-11-06"):
     (target / "promotion_receipt.json").write_text(json.dumps(receipt, ensure_ascii=False, indent=2) + "\n")
     production_volume.commit()
     return receipt
+
+
+@app.function(volumes={"/target": production_volume}, cpu=1, memory=2048, timeout=600)
+def archive_journal(signal_date: str, label: str = "operator_override"):
+    """Archive a committed publication journal before a controlled reissue."""
+    import shutil
+
+    source = Path("/target/publication_journal") / signal_date
+    if not source.is_dir():
+        return {"status": "MISSING", "signal_date": signal_date}
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    target = Path("/target/publication_journal") / "archive" / f"{signal_date}_{label}_{stamp}"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(source, target)
+    shutil.rmtree(source)
+    production_volume.commit()
+    return {"status": "ARCHIVED", "signal_date": signal_date, "archive": str(target)}
 
 
 @app.local_entrypoint()

@@ -1,0 +1,180 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "base": {
+    "path": "/vol/base/chenditc_bin",
+    "calendar_end": "2026-11-04",
+    "calendar_sha256": "6fd735297189e5fbfcf382320b5e7e1765b1c6686d2f6b12974cce5d6d9d4737",
+    "archive_sha256": "dc917293925635189e982f47d35b960c3db8a9c3f11312c937673c8afdec21aa"
+  },
+  "target": {
+    "asof": "2026-11-05",
+    "dates": [
+      "2026-11-05"
+    ]
+  },
+  "memberships": {
+    "csi1000": {
+      "asof": "2026-11-05",
+      "count": 1000,
+      "raw_sha256": "e34fa831bd91e8009398e8a24d2c4ad3b3dee4068c16f56a74ec36c0e1723009",
+      "weights_date": null,
+      "weights_sha256": null,
+      "source_url": "base_pit:2026-11-04"
+    },
+    "csi300": {
+      "asof": "2026-11-05",
+      "count": 300,
+      "raw_sha256": "018336680e88e3d153137315f63c0ab9411ee097187125f81260b4d0b7b88a75",
+      "weights_date": null,
+      "weights_sha256": null,
+      "source_url": "base_pit:2026-11-04"
+    },
+    "csi500": {
+      "asof": "2026-11-05",
+      "count": 500,
+      "raw_sha256": "961096c075574117c736ffa29d941245d293e83d1f27b1e8d442e59fbe0d57a3",
+      "weights_date": null,
+      "weights_sha256": null,
+      "source_url": "base_pit:2026-11-04"
+    }
+  },
+  "sources": {
+    "primary": "sina:stock_zh_a_daily(raw,hfq)",
+    "fallback": "baostock:query_history_k_data_plus(raw,preclose,tradestatus,isST)",
+    "universe": "csindex official cons.xls / closeweight.xls",
+    "sina_errors": {
+      "SH689009": "SH689009: ValueError: Length mismatch: Expected axis has 0 elements, new values have 2 elements"
+    },
+    "baostock_errors": {}
+  },
+  "overlay": {
+    "feature_dirs_copied": 3603,
+    "missing_feature_dirs": [
+      "SHT00018"
+    ],
+    "bins_appended": 18000,
+    "instruments": {
+      "csi300": {
+        "old_count": 300,
+        "new_count": 300,
+        "added": [],
+        "removed": []
+      },
+      "csi500": {
+        "old_count": 500,
+        "new_count": 500,
+        "added": [],
+        "removed": []
+      },
+      "csi1000": {
+        "old_count": 1000,
+        "new_count": 1000,
+        "added": [],
+        "removed": []
+      },
+      "csi800": {
+        "old_count": 800,
+        "new_count": 800
+      }
+    },
+    "base_end": "2026-11-04",
+    "asof": "2026-11-05",
+    "dates": [
+      "2026-11-05"
+    ],
+    "calendar_len": 6503,
+    "row_symbols": 1800
+  },
+  "rows": {
+    "symbols": 1800,
+    "dates": 1,
+    "sha256": "f84056aaf7fc2c3a9cec4c57ea322af5b831970b70b7c9ddcd9fe8fc72ad8949"
+  },
+  "gate": {
+    "status": "PASS",
+    "checks": [
+      {
+        "name": "calendar.base_prefix",
+        "status": "PASS",
+        "detail": "base=6502 overlay=6503"
+      },
+      {
+        "name": "calendar.appended_dates",
+        "status": "PASS",
+        "detail": "expected=['2026-11-05'] got=['2026-11-05']"
+      },
+      {
+        "name": "membership.date.csi300",
+        "status": "PASS",
+        "detail": "file=2026-11-05 asof=2026-11-05"
+      },
+      {
+        "name": "membership.members.csi300",
+        "status": "PASS",
+        "detail": "active=300 expected=300 missing=[] extra=[]"
+      },
+      {
+        "name": "membership.date.csi500",
+        "status": "PASS",
+        "detail": "file=2026-11-05 asof=2026-11-05"
+      },
+      {
+        "name": "membership.members.csi500",
+        "status": "PASS",
+        "detail": "active=500 expected=500 missing=[] extra=[]"
+      },
+      {
+        "name": "membership.date.csi1000",
+        "status": "PASS",
+        "detail": "file=2026-11-05 asof=2026-11-05"
+      },
+      {
+        "name": "membership.members.csi1000",
+        "status": "PASS",
+        "detail": "active=1000 expected=1000 missing=[] extra=[]"
+      },
+      {
+        "name": "coverage.csi300",
+        "status": "PASS",
+        "detail": "300/300 priced; unexplained=[]"
+      },
+      {
+        "name": "coverage.csi500",
+        "status": "PASS",
+        "detail": "500/500 priced; unexplained=[]"
+      },
+      {
+        "name": "coverage.csi1000",
+        "status": "PASS",
+        "detail": "1000/1000 priced; unexplained=[]"
+      },
+      {
+        "name": "rows.ohlc",
+        "status": "PASS",
+        "detail": "checked=1800 bad=[]"
+      },
+      {
+        "name": "base_integrity",
+        "status": "PASS",
+        "detail": "sample=30 bad=[]"
+      },
+      {
+        "name": "crosscheck",
+        "status": "PASS",
+        "detail": "checked=20 failed=[]"
+      },
+      {
+        "name": "corporate_actions",
+        "status": "PASS",
+        "detail": "checked=3 bad=[]"
+      },
+      {
+        "name": "qlib.smoke",
+        "status": "PASS",
+        "detail": "calendar=['2026-11-05'] rows=20"
+      }
+    ],
+    "failures": []
+  }
+}

@@ -213,6 +213,15 @@ Sina `hfq` 与 raw 的比值在正常日保持不变，在除权日发生跳变�
 
 本轮切换绕过了原计划的 2–3 日 canary；canary 应用继续保留作为切换后的每日监控，但不再是发布阻塞项。
 
+### 4.4 11/06 早盘补发尝试与 canary 清理
+
+- 已用 11/05 收盘数据生成 11/06 使用日信号（生产缓存模型，三市场均成功）；
+- 原 11/06 `OPERATOR_OVERRIDE` 的 12 个文件和 journal 已归档；
+- paper 阶段被 `require_reference_preopen` 硬门禁拒绝：11/06 订单必须在 11/06 09:30 前有同日 pre-open plan，盘后不能补建；因此**信号未发布，canary paper 仍冻结**；
+- 网站模拟账户 NAV 已是 11/06（独立历史回放账户，不是 canonical paper）；
+- `qlib-data-overlay-canary` 已停止，`qlib-data-overlay-canary` Volume 已删除；11/05/11/06 结果已归档到证据目录；
+- 当前生产只有两个 Modal App：`qlib-cn-daily-a10g`（v35，主信号/paper/发布）和 `qlib-website-nav`（v10，网站模拟 NAV）。
+
 ## 5. 推荐接入架构
 
 ### 5.1 角色划分
@@ -292,6 +301,8 @@ Sina `hfq` 与 raw 的比值在正常日保持不变，在除权日发生跳变�
 - `quant/data/data_source_evaluation/20261107/ranking_csi300_20261106.csv`
 - `quant/data/data_source_evaluation/20261107/dryrun_result.json`
 - `quant/data/data_source_evaluation/20261107/canary_validation_1106.json`
+- `quant/data/data_source_evaluation/20261107/canary_1105_result.json`
+- `quant/data/data_source_evaluation/20261107/canary_1105_manifest.json`
 - `quant/data/data_source_evaluation/20261107/production_cutover.json`
 - `quant/data/data_source_evaluation/20261107/website_publication_blocker.json`（已 RESOLVED）
 - `quant/data/data_source_evaluation/20261107/website_publication_verification.json`

@@ -53,6 +53,7 @@ EXPECTED_FUNCTIONS = [
     "daily_standalone",
     "daily_cron",
     "daily_cron_second_chance",
+    "daily_cron_manual",
     "attest_paper_state_bootstrap",
     "freq_window",
     "freq_driver",
