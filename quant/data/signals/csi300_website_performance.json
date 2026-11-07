@@ -981,7 +981,7 @@
   "auction_liquidity_verified": false,
   "official_reference_price_verified": false,
   "return_interpretation": "CAUSAL_HISTORICAL_SIMULATION_REFERENCE_ONLY",
-  "source_manifest_sha256": "1bb315b06f96227594425301595930090dc1cca52625e7460d0baa137bdbcfc6",
+  "source_manifest_sha256": "1d951a33d29d1965ca5cb71aafcd4842577d691902270ba14000b40e9b75524b",
   "provider_archive_sha256": "3ec020b924db779f9c7599b111648241fd8957f6c99c62d3b164d395911caeab",
   "fit_receipts": [
     {
