@@ -1,0 +1,19 @@
+{
+  "reason": "Archive the 2026-11-06 operator-override ranking before the controlled 2026-11-05-close backfill.",
+  "signal_date": "2026-11-06",
+  "publication_mode": "OPERATOR_OVERRIDE",
+  "files": {
+    "2026-11-06_chart.json": "3dcf578da3387b3bf8f5913aa86bff081ed731de370942825246ebb8939501ed",
+    "2026-11-06_chart_csi300.json": "b080dd9c685fbc3b7700b728bc104db667967eafa3a96654d5a748dcfdd872b7",
+    "2026-11-06_chart_csi500.json": "8524bb8d395323d0be35ba1f88297861a2c88ce6d5a8020e8f125ff9872e679d",
+    "2026-11-06_mvp_metadata.json": "4b5b623795faceaf24bf33910a19be421ac5dc9305a6cf3de2d28121f35aede8",
+    "2026-11-06_mvp_metadata_csi300.json": "83c8201665418ae422c267871ce90aa621d285a9fc11c0f8086173db7f0a504d",
+    "2026-11-06_mvp_metadata_csi500.json": "01224af3897550b0bcdce340fa4356436ddcc9cc17149c55c2a7b932096af0ca",
+    "2026-11-06_paper_portfolio.json": "105f6a6a137fba8f02d2ce8f027be473ce00a8404fbb3d70ba998c089004abf8",
+    "2026-11-06_paper_portfolio_csi300.json": "eebc3fda8e522b771c17b68b2f018535af6f6d5fcf4595deabb045934d681bb4",
+    "2026-11-06_paper_portfolio_csi500.json": "a4864cfe4ab62902ae292eebc8e501b640e0f641dad60c522dcfb0e863bd99c3",
+    "2026-11-06_top20_lgb158.csv": "14408e5ecad62b74f30ff6c1226bdec69443538d35d9ec156241f5cedf901e06",
+    "2026-11-06_top20_lgb158_csi300.csv": "ae3cae0c03e6b723aee50fec3b6873bbdaf64c42b70016c4c671efafc9417f82",
+    "2026-11-06_top20_lgb158_csi500.csv": "9dfb26e8275be56251f6121dbec9efe5c28ee210b96b19d22ad468b8c4128cb3"
+  }
+}
