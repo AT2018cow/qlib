@@ -1,6 +1,6 @@
 # A 股日线数据源故障转移评估（2026-11-07）
 
-状态：`IMPLEMENTED / DRY_RUN_PASS / NOT_PUBLISHED / PAPER_FROZEN`
+状态：`MERGED / DRY_RUN_PASS / NOT_DEPLOYED / NOT_PUBLISHED / PAPER_FROZEN`
 
 本文评估在 `chenditc/investment_data` GitHub release 持续缺数时，能否用免费公开源生成可审计的日线增量，并保持三市场生产 profile、TopK/DropN、1M paper 账户不变。数据接入与 fail-closed gate 已实现并通过生产镜像 dry run；**本文仍不构成生产发布、paper 回补或账户操作授权。**
 
@@ -180,7 +180,7 @@ Sina `hfq` 与 raw 的比值在正常日保持不变，在除权日发生跳变�
 - 11/04 复现：`repro_status=PASS`，Top10 与分数逐位一致；
 - 11/06 三市场排名：与第 4 节研究结果逐位一致。
 
-本轮**没有**把新路径接入 `daily_cron`，也没有部署新镜像、发布信号或改动 paper。`baostock` 已加入主应用镜像依赖，下一次部署才会生效。
+代码已合并 `main`（commit `1c0328884`）。本轮**没有**把新路径接入 `daily_cron`，也没有部署新镜像、发布信号或改动 paper；`baostock` 已加入主应用镜像依赖，下一次部署才会生效。
 
 ## 5. 推荐接入架构
 

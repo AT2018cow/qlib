@@ -326,7 +326,10 @@
     "entrypoint": "quant/code/ops/modal_data_overlay_dry_run.py",
     "production_image_dependency": "baostock added to modal_qlib_cn_a10g.py image pip_install",
     "tests": "quant/tests/test_data_ingest.py",
-    "wired_into_daily_cron": false
+    "wired_into_daily_cron": false,
+    "merged_to_main": "1c0328884c82abf1608872c2ebc35f80fce19839",
+    "deployed": false,
+    "daily_cron_wired": false
   },
   "dryrun": {
     "status": "PASS",
