@@ -1,6 +1,6 @@
 # A 股日线数据源故障转移评估（2026-11-07）
 
-状态：`MERGED / DRY_RUN_PASS / NOT_DEPLOYED / NOT_PUBLISHED / PAPER_FROZEN`
+状态：`MERGED / DRY_RUN_PASS / CANARY_RUNNING / NOT_DEPLOYED_TO_PRODUCTION / NOT_PUBLISHED / PAPER_FROZEN`
 
 本文评估在 `chenditc/investment_data` GitHub release 持续缺数时，能否用免费公开源生成可审计的日线增量，并保持三市场生产 profile、TopK/DropN、1M paper 账户不变。数据接入与 fail-closed gate 已实现并通过生产镜像 dry run；**本文仍不构成生产发布、paper 回补或账户操作授权。**
 
@@ -182,6 +182,21 @@ Sina `hfq` 与 raw 的比值在正常日保持不变，在除权日发生跳变�
 
 代码已合并 `main`（commit `1c0328884`）。本轮**没有**把新路径接入 `daily_cron`，也没有部署新镜像、发布信号或改动 paper；`baostock` 已加入主应用镜像依赖，下一次部署才会生效。
 
+## 4.2 Canary 部署与验收
+
+独立 canary 应用 `qlib-data-overlay-canary` 已部署：
+
+- 调度：工作日 **07:00 Asia/Shanghai**，与主应用独立；
+- Volume：`qlib-data-overlay-canary`，**不挂载**生产 `qlib-cn-data`；
+- 行为：从冻结 11/04 底座重建 overlay，运行三市场 profile，写结果到 canary Volume；不发布、不改 paper；
+- 手动 11/06 验证：`status=PASS`、16 项 gate 全 PASS、`known_1106=PASS`；
+- 计划 canary 会话：11/06（已手动验证）、11/09、11/10；
+- 最早切换日：**11/12**，前提是 3/3 canary PASS 且无未解释源错误。
+
+11/06 验证中 Sina 对 `SH689009` 报错，BaoStock 备源补齐，gate 仍 PASS；这是 canary 需要持续观察的源健康项。
+
+主应用仍是 v31，`daily_cron` 未接入新路径；canary 通过后再单独执行主应用部署与切换。
+
 ## 5. 推荐接入架构
 
 ### 5.1 角色划分
@@ -239,12 +254,13 @@ Sina `hfq` 与 raw 的比值在正常日保持不变，在除权日发生跳变�
 
 1. 数据源角色划分与 overlay 架构；
 2. ingestion、manifest、cross-check、qlib overlay writer 与 fail-closed gate（含 6 项合成单测）；
-3. 生产镜像 11/05–11/06 dry run，并与本文研究排名逐项对照。
+3. 生产镜像 11/05–11/06 dry run，并与本文研究排名逐项对照；
+4. 部署独立 canary 应用，11/06 手动验证 PASS；11/09–11/10 继续自动运行。
 
 仍需单独授权：
 
-1. 将 overlay 路径接入 `daily_cron` / `daily_cron_second_chance`，包括版本化快照、原子切换、失败回退和监控；
-2. 部署带 `baostock` 依赖的新主应用镜像，并在生产 shadow 模式下观察若干交易日；
+1. canary 3/3 通过后，将 overlay 路径接入 `daily_cron` / `daily_cron_second_chance`，包括版本化快照、原子切换、失败回退和监控；
+2. 部署带 `baostock` 依赖的新主应用镜像，并完成从 canary 到生产调度的切换；
 3. paper 11/05–11/06 回补及 11/06 override 的处理方案（需另行审计，不与数据源接入捆绑）。
 
 ## 8. 证据
@@ -256,4 +272,5 @@ Sina `hfq` 与 raw 的比值在正常日保持不变，在除权日发生跳变�
 - `quant/data/data_source_evaluation/20261107/ranking_csi500_20261106.csv`
 - `quant/data/data_source_evaluation/20261107/ranking_csi300_20261106.csv`
 - `quant/data/data_source_evaluation/20261107/dryrun_result.json`
+- `quant/data/data_source_evaluation/20261107/canary_validation_1106.json`
 - `quant/data/data_source_evaluation/20261107/SHA256SUMS.json`

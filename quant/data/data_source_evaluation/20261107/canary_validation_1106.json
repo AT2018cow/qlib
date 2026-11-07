@@ -1,0 +1,695 @@
+{
+  "status": "PASS",
+  "asof": "2026-11-06",
+  "generated_at_utc": "2026-11-07T04:26:06.484263+00:00",
+  "validation": true,
+  "dates": [
+    "2026-11-05",
+    "2026-11-06"
+  ],
+  "gate": {
+    "status": "PASS",
+    "checks": [
+      {
+        "name": "calendar.base_prefix",
+        "status": "PASS",
+        "detail": "base=6502 overlay=6504"
+      },
+      {
+        "name": "calendar.appended_dates",
+        "status": "PASS",
+        "detail": "expected=['2026-11-05', '2026-11-06'] got=['2026-11-05', '2026-11-06']"
+      },
+      {
+        "name": "membership.date.csi300",
+        "status": "PASS",
+        "detail": "file=2026-11-06 asof=2026-11-06"
+      },
+      {
+        "name": "membership.members.csi300",
+        "status": "PASS",
+        "detail": "active=300 expected=300 missing=[] extra=[]"
+      },
+      {
+        "name": "membership.date.csi500",
+        "status": "PASS",
+        "detail": "file=2026-11-06 asof=2026-11-06"
+      },
+      {
+        "name": "membership.members.csi500",
+        "status": "PASS",
+        "detail": "active=500 expected=500 missing=[] extra=[]"
+      },
+      {
+        "name": "membership.date.csi1000",
+        "status": "PASS",
+        "detail": "file=2026-11-06 asof=2026-11-06"
+      },
+      {
+        "name": "membership.members.csi1000",
+        "status": "PASS",
+        "detail": "active=1000 expected=1000 missing=[] extra=[]"
+      },
+      {
+        "name": "coverage.csi300",
+        "status": "PASS",
+        "detail": "300/300 priced; unexplained=[]"
+      },
+      {
+        "name": "coverage.csi500",
+        "status": "PASS",
+        "detail": "500/500 priced; unexplained=[]"
+      },
+      {
+        "name": "coverage.csi1000",
+        "status": "PASS",
+        "detail": "1000/1000 priced; unexplained=[]"
+      },
+      {
+        "name": "rows.ohlc",
+        "status": "PASS",
+        "detail": "checked=3598 bad=[]"
+      },
+      {
+        "name": "base_integrity",
+        "status": "PASS",
+        "detail": "sample=30 bad=[]"
+      },
+      {
+        "name": "crosscheck",
+        "status": "PASS",
+        "detail": "checked=40 failed=[]"
+      },
+      {
+        "name": "corporate_actions",
+        "status": "PASS",
+        "detail": "checked=11 bad=[]"
+      },
+      {
+        "name": "qlib.smoke",
+        "status": "PASS",
+        "detail": "calendar=['2026-11-06'] rows=20"
+      }
+    ],
+    "failures": []
+  },
+  "sources": {
+    "sina_errors": {
+      "SH689009": "SH689009: ValueError: Length mismatch: Expected axis has 0 elements, new values have 2 elements"
+    },
+    "baostock_errors": {}
+  },
+  "overlay": {
+    "feature_dirs_copied": 3601,
+    "bins_appended": 17990,
+    "row_symbols": 1799,
+    "calendar_len": 6504
+  },
+  "known_1106": {
+    "status": "PASS",
+    "mismatches": {}
+  },
+  "rankings": {
+    "csi1000": {
+      "market": "csi1000",
+      "profile": "c98856b4_top10_drop1",
+      "asof": "2026-11-06",
+      "segments": {
+        "train": [
+          "2016-01-01",
+          "2025-08-19"
+        ],
+        "valid": [
+          "2025-09-17",
+          "2026-10-08"
+        ],
+        "test": [
+          "2026-11-06",
+          "2026-11-06"
+        ]
+      },
+      "raw_top20": [
+        {
+          "rank": 1,
+          "instrument": "SH688449",
+          "score": 0.3322814688772984
+        },
+        {
+          "rank": 2,
+          "instrument": "SH600353",
+          "score": 0.3255651516905206
+        },
+        {
+          "rank": 3,
+          "instrument": "SH688182",
+          "score": 0.3204190881198316
+        },
+        {
+          "rank": 4,
+          "instrument": "SZ300131",
+          "score": 0.319463632638337
+        },
+        {
+          "rank": 5,
+          "instrument": "SH688627",
+          "score": 0.3189471519932659
+        },
+        {
+          "rank": 6,
+          "instrument": "SZ002484",
+          "score": 0.3089099202125855
+        },
+        {
+          "rank": 7,
+          "instrument": "SH688141",
+          "score": 0.3071649989324255
+        },
+        {
+          "rank": 8,
+          "instrument": "SZ000636",
+          "score": 0.30615571674424014
+        },
+        {
+          "rank": 9,
+          "instrument": "SH605376",
+          "score": 0.29720323002440396
+        },
+        {
+          "rank": 10,
+          "instrument": "SH688362",
+          "score": 0.2958249927374789
+        },
+        {
+          "rank": 11,
+          "instrument": "SH603516",
+          "score": 0.29549723229126296
+        },
+        {
+          "rank": 12,
+          "instrument": "SH688630",
+          "score": 0.28850496218950156
+        },
+        {
+          "rank": 13,
+          "instrument": "SZ001267",
+          "score": 0.2870294256221761
+        },
+        {
+          "rank": 14,
+          "instrument": "SH688372",
+          "score": 0.28574442599290506
+        },
+        {
+          "rank": 15,
+          "instrument": "SZ300870",
+          "score": 0.2778356435051319
+        },
+        {
+          "rank": 16,
+          "instrument": "SZ301205",
+          "score": 0.2748112860411666
+        },
+        {
+          "rank": 17,
+          "instrument": "SH688800",
+          "score": 0.2743223224061776
+        },
+        {
+          "rank": 18,
+          "instrument": "SH688127",
+          "score": 0.27106098053522815
+        },
+        {
+          "rank": 19,
+          "instrument": "SH688147",
+          "score": 0.2685176755530672
+        },
+        {
+          "rank": 20,
+          "instrument": "SH688668",
+          "score": 0.2646165034424991
+        }
+      ],
+      "display_top": [
+        {
+          "rank": 1,
+          "instrument": "SH688449",
+          "score": 0.3322814688772984
+        },
+        {
+          "rank": 2,
+          "instrument": "SH600353",
+          "score": 0.3255651516905206
+        },
+        {
+          "rank": 3,
+          "instrument": "SH688182",
+          "score": 0.3204190881198316
+        },
+        {
+          "rank": 4,
+          "instrument": "SZ300131",
+          "score": 0.319463632638337
+        },
+        {
+          "rank": 5,
+          "instrument": "SH688627",
+          "score": 0.3189471519932659
+        },
+        {
+          "rank": 6,
+          "instrument": "SZ002484",
+          "score": 0.3089099202125855
+        },
+        {
+          "rank": 7,
+          "instrument": "SH688141",
+          "score": 0.3071649989324255
+        },
+        {
+          "rank": 8,
+          "instrument": "SZ000636",
+          "score": 0.30615571674424014
+        },
+        {
+          "rank": 9,
+          "instrument": "SH605376",
+          "score": 0.29720323002440396
+        },
+        {
+          "rank": 10,
+          "instrument": "SH688362",
+          "score": 0.2958249927374789
+        }
+      ],
+      "display_limit_removed": 3,
+      "fit_seconds": 158.4,
+      "maxrss_mb": 13292.6
+    },
+    "csi500": {
+      "market": "csi500",
+      "profile": "raw10d_c98856b4_top20_drop2_20d",
+      "asof": "2026-11-06",
+      "segments": {
+        "train": [
+          "2016-01-01",
+          "2025-08-19"
+        ],
+        "valid": [
+          "2025-09-17",
+          "2026-10-08"
+        ],
+        "test": [
+          "2026-11-06",
+          "2026-11-06"
+        ]
+      },
+      "raw_top20": [
+        {
+          "rank": 1,
+          "instrument": "SZ300620",
+          "score": 0.4625403957304775
+        },
+        {
+          "rank": 2,
+          "instrument": "SZ001309",
+          "score": 0.34195821975496415
+        },
+        {
+          "rank": 3,
+          "instrument": "SH688052",
+          "score": 0.3015749802170265
+        },
+        {
+          "rank": 4,
+          "instrument": "SH688266",
+          "score": 0.2785560530558705
+        },
+        {
+          "rank": 5,
+          "instrument": "SZ301536",
+          "score": 0.2690532434581521
+        },
+        {
+          "rank": 6,
+          "instrument": "SH688234",
+          "score": 0.23234498001171694
+        },
+        {
+          "rank": 7,
+          "instrument": "SH688318",
+          "score": 0.2206381274408866
+        },
+        {
+          "rank": 8,
+          "instrument": "SH688120",
+          "score": 0.1990562042659076
+        },
+        {
+          "rank": 9,
+          "instrument": "SH688002",
+          "score": 0.19617502563017378
+        },
+        {
+          "rank": 10,
+          "instrument": "SZ002126",
+          "score": 0.19082965694906281
+        },
+        {
+          "rank": 11,
+          "instrument": "SZ000021",
+          "score": 0.18855434488724318
+        },
+        {
+          "rank": 12,
+          "instrument": "SZ002821",
+          "score": 0.1873112375081383
+        },
+        {
+          "rank": 13,
+          "instrument": "SH688561",
+          "score": 0.18459314693309647
+        },
+        {
+          "rank": 14,
+          "instrument": "SZ000415",
+          "score": 0.18038926109115763
+        },
+        {
+          "rank": 15,
+          "instrument": "SH603899",
+          "score": 0.17461478646342432
+        },
+        {
+          "rank": 16,
+          "instrument": "SH600711",
+          "score": 0.1733487282907508
+        },
+        {
+          "rank": 17,
+          "instrument": "SH600378",
+          "score": 0.17117483204870637
+        },
+        {
+          "rank": 18,
+          "instrument": "SH688122",
+          "score": 0.1709737893525104
+        },
+        {
+          "rank": 19,
+          "instrument": "SH605589",
+          "score": 0.16655909448711184
+        },
+        {
+          "rank": 20,
+          "instrument": "SZ000032",
+          "score": 0.16531974054829238
+        }
+      ],
+      "display_top": [
+        {
+          "rank": 1,
+          "instrument": "SZ300620",
+          "score": 0.4625403957304775
+        },
+        {
+          "rank": 2,
+          "instrument": "SZ001309",
+          "score": 0.34195821975496415
+        },
+        {
+          "rank": 3,
+          "instrument": "SH688052",
+          "score": 0.3015749802170265
+        },
+        {
+          "rank": 4,
+          "instrument": "SH688266",
+          "score": 0.2785560530558705
+        },
+        {
+          "rank": 5,
+          "instrument": "SZ301536",
+          "score": 0.2690532434581521
+        },
+        {
+          "rank": 6,
+          "instrument": "SH688234",
+          "score": 0.23234498001171694
+        },
+        {
+          "rank": 7,
+          "instrument": "SH688318",
+          "score": 0.2206381274408866
+        },
+        {
+          "rank": 8,
+          "instrument": "SH688120",
+          "score": 0.1990562042659076
+        },
+        {
+          "rank": 9,
+          "instrument": "SH688002",
+          "score": 0.19617502563017378
+        },
+        {
+          "rank": 10,
+          "instrument": "SZ002126",
+          "score": 0.19082965694906281
+        },
+        {
+          "rank": 11,
+          "instrument": "SZ000021",
+          "score": 0.18855434488724318
+        },
+        {
+          "rank": 12,
+          "instrument": "SZ002821",
+          "score": 0.1873112375081383
+        },
+        {
+          "rank": 13,
+          "instrument": "SH688561",
+          "score": 0.18459314693309647
+        },
+        {
+          "rank": 14,
+          "instrument": "SZ000415",
+          "score": 0.18038926109115763
+        },
+        {
+          "rank": 15,
+          "instrument": "SH603899",
+          "score": 0.17461478646342432
+        },
+        {
+          "rank": 16,
+          "instrument": "SH600711",
+          "score": 0.1733487282907508
+        },
+        {
+          "rank": 17,
+          "instrument": "SH600378",
+          "score": 0.17117483204870637
+        },
+        {
+          "rank": 18,
+          "instrument": "SH688122",
+          "score": 0.1709737893525104
+        },
+        {
+          "rank": 19,
+          "instrument": "SH605589",
+          "score": 0.16655909448711184
+        },
+        {
+          "rank": 20,
+          "instrument": "SZ000032",
+          "score": 0.16531974054829238
+        }
+      ],
+      "display_limit_removed": 1,
+      "fit_seconds": 101.4,
+      "maxrss_mb": 13292.6
+    },
+    "csi300": {
+      "market": "csi300",
+      "profile": "59b93929_top10_drop1_10d",
+      "asof": "2026-11-06",
+      "segments": {
+        "train": [
+          "2016-01-01",
+          "2025-09-16"
+        ],
+        "valid": [
+          "2025-10-09",
+          "2026-10-22"
+        ],
+        "test": [
+          "2026-11-06",
+          "2026-11-06"
+        ]
+      },
+      "raw_top20": [
+        {
+          "rank": 1,
+          "instrument": "SH688521",
+          "score": 0.45314279801974855
+        },
+        {
+          "rank": 2,
+          "instrument": "SH603986",
+          "score": 0.4325347127970122
+        },
+        {
+          "rank": 3,
+          "instrument": "SH601138",
+          "score": 0.40065515794614176
+        },
+        {
+          "rank": 4,
+          "instrument": "SZ301308",
+          "score": 0.3945968379807777
+        },
+        {
+          "rank": 5,
+          "instrument": "SZ000657",
+          "score": 0.38262698182081745
+        },
+        {
+          "rank": 6,
+          "instrument": "SZ002463",
+          "score": 0.3822504604694152
+        },
+        {
+          "rank": 7,
+          "instrument": "SZ300476",
+          "score": 0.3743928821522402
+        },
+        {
+          "rank": 8,
+          "instrument": "SH600183",
+          "score": 0.3727685676485467
+        },
+        {
+          "rank": 9,
+          "instrument": "SZ002384",
+          "score": 0.37073980471013135
+        },
+        {
+          "rank": 10,
+          "instrument": "SZ000988",
+          "score": 0.3652462256600117
+        },
+        {
+          "rank": 11,
+          "instrument": "SZ002938",
+          "score": 0.3649904546352366
+        },
+        {
+          "rank": 12,
+          "instrument": "SZ300394",
+          "score": 0.3536219989307167
+        },
+        {
+          "rank": 13,
+          "instrument": "SZ002353",
+          "score": 0.3484340834903554
+        },
+        {
+          "rank": 14,
+          "instrument": "SZ300502",
+          "score": 0.34534471111329573
+        },
+        {
+          "rank": 15,
+          "instrument": "SZ300408",
+          "score": 0.3426166472547425
+        },
+        {
+          "rank": 16,
+          "instrument": "SH688082",
+          "score": 0.33384136302765594
+        },
+        {
+          "rank": 17,
+          "instrument": "SZ002916",
+          "score": 0.3331167106775299
+        },
+        {
+          "rank": 18,
+          "instrument": "SH600549",
+          "score": 0.3308532774821707
+        },
+        {
+          "rank": 19,
+          "instrument": "SZ300308",
+          "score": 0.32927873524623213
+        },
+        {
+          "rank": 20,
+          "instrument": "SZ002625",
+          "score": 0.3272365002651705
+        }
+      ],
+      "display_top": [
+        {
+          "rank": 1,
+          "instrument": "SH688521",
+          "score": 0.45314279801974855
+        },
+        {
+          "rank": 2,
+          "instrument": "SH603986",
+          "score": 0.4325347127970122
+        },
+        {
+          "rank": 3,
+          "instrument": "SH601138",
+          "score": 0.40065515794614176
+        },
+        {
+          "rank": 4,
+          "instrument": "SZ301308",
+          "score": 0.3945968379807777
+        },
+        {
+          "rank": 5,
+          "instrument": "SZ000657",
+          "score": 0.38262698182081745
+        },
+        {
+          "rank": 6,
+          "instrument": "SZ300476",
+          "score": 0.3743928821522402
+        },
+        {
+          "rank": 7,
+          "instrument": "SH600183",
+          "score": 0.3727685676485467
+        },
+        {
+          "rank": 8,
+          "instrument": "SZ000988",
+          "score": 0.3652462256600117
+        },
+        {
+          "rank": 9,
+          "instrument": "SZ002938",
+          "score": 0.3649904546352366
+        },
+        {
+          "rank": 10,
+          "instrument": "SZ300394",
+          "score": 0.3536219989307167
+        }
+      ],
+      "display_limit_removed": 3,
+      "fit_seconds": 54.7,
+      "maxrss_mb": 13292.6
+    }
+  },
+  "passed_canary_days": [
+    "2026-11-06"
+  ]
+}

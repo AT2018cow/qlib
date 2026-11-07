@@ -555,5 +555,28 @@
         }
       ]
     }
+  },
+  "canary": {
+    "app": "qlib-data-overlay-canary",
+    "deployed_version": "v1",
+    "schedule": "0 7 * * 1-5 Asia/Shanghai",
+    "validation_1106": "PASS",
+    "validation_gate_checks": 16,
+    "validation_known_1106": {
+      "status": "PASS",
+      "mismatches": {}
+    },
+    "validation_sina_errors": {
+      "SH689009": "SH689009: ValueError: Length mismatch: Expected axis has 0 elements, new values have 2 elements"
+    },
+    "planned_sessions": [
+      "2026-11-06",
+      "2026-11-09",
+      "2026-11-10"
+    ],
+    "cutover_earliest": "2026-11-12",
+    "status": "RUNNING",
+    "writes_production_volume": false,
+    "publishes_signal": false
   }
 }
