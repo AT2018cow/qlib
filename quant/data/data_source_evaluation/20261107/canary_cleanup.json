@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "app": "qlib-data-overlay-canary",
+  "status": "STOPPED_VOLUME_DELETED",
+  "app_state": "stopped",
+  "stopped_at_cst": "2026-11-07T23:21:46+08:00",
+  "volume": "qlib-data-overlay-canary",
+  "volume_deleted": true,
+  "production_apps": [
+    {
+      "name": "qlib-cn-daily-a10g",
+      "version": "v35",
+      "role": "signals, paper, journal, publication, cron"
+    },
+    {
+      "name": "qlib-website-nav",
+      "version": "v10",
+      "role": "website simulated NAV and publication"
+    }
+  ],
+  "note": "The Modal CLI has no delete command for a stopped app record; the record is inert and cannot schedule or bill work. The canary Volume is gone."
+}
