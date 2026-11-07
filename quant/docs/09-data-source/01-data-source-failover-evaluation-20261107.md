@@ -1,6 +1,6 @@
 # A 股日线数据源故障转移评估（2026-11-07）
 
-状态：`MERGED / DRY_RUN_PASS / CANARY_RUNNING / NOT_DEPLOYED_TO_PRODUCTION / NOT_PUBLISHED / PAPER_FROZEN`
+状态：`PRODUCTION_OVERLAY_LIVE / WEBSITE_NAV_11-06 / SIGNAL_PAPER_PENDING_11-09 / PAPER_FROZEN`
 
 本文评估在 `chenditc/investment_data` GitHub release 持续缺数时，能否用免费公开源生成可审计的日线增量，并保持三市场生产 profile、TopK/DropN、1M paper 账户不变。数据接入与 fail-closed gate 已实现并通过生产镜像 dry run；**本文仍不构成生产发布、paper 回补或账户操作授权。**
 
@@ -197,6 +197,21 @@ Sina `hfq` 与 raw 的比值在正常日保持不变，在除权日发生跳变�
 
 主应用仍是 v31，`daily_cron` 未接入新路径；canary 通过后再单独执行主应用部署与切换。
 
+## 4.3 生产切换结果（2026-11-07）
+
+由于 chenditc 持续缺数、网站处于瘫痪状态，本轮在 canary 尚未跑满 3/3 的情况下执行了**生产切换**，用 fail-closed gate 替代等待：
+
+- 主应用：**v34**，`daily_standalone` 优先读取 `/vol/cn_data_overlay/<asof>`，不存在或非 PASS 才回退 chenditc；
+- 网站应用：**v9**，`latest_asset` 优先读取同一 overlay，网站基准指数行已纳入 overlay；
+- 生产 overlay：`qlib-cn-data/cn_data_overlay/2026-11-06`，manifest SHA `3ec020b9…`，16 项 gate PASS；
+- 网站发布：commit `40b57e1e`，12 个文件，最新日期 2026-11-06；
+- 网站累计收益：CSI300 **-24.4058%**、CSI500 **-11.0430%**、CSI1000 **-20.2963%**；
+- 主应用 11/06 CSI1000 信号：使用生产缓存的 2026-11-04 模型（20-session 重训节律），Top10 为 SH603516、SZ002484、SH688182、SH688449、SZ300131、SH688627、SH600353、SH688800、SZ300870、SH603950；
+- 该 11/06 信号尚未写入 GitHub `quant/data/signals/` 的 11/09 使用日文件，paper 仍冻结在 11/05 pending；
+- 下一次 11/09 07:00 主调度应使用 overlay 发布 11/09 信号并推进 paper；网站 signal ranking 也会随之更新。
+
+本轮切换绕过了原计划的 2–3 日 canary；canary 应用继续保留作为切换后的每日监控，但不再是发布阻塞项。
+
 ## 5. 推荐接入架构
 
 ### 5.1 角色划分
@@ -248,20 +263,22 @@ Sina `hfq` 与 raw 的比值在正常日保持不变，在除权日发生跳变�
 - Sina raw+hfq + 中证官网成分 + BaoStock 校验，能够在**不依赖 Tushare**的情况下补齐 11/05/11/06，并在生产镜像中复现 11/04 生产排名；
 - 当前最稳妥的接入方式是“chenditc 历史底座 + 新源日线 overlay”，而不是立即全量重建历史；
 - 数据接入、manifest、cross-check、overlay writer 与 fail-closed gate 已实现；生产镜像 dry run 通过；
-- 11/06 三市场研究排名已生成，但**不得**视为已发布信号，paper 仍冻结。
+- 由于网站瘫痪，已在 canary 未满 3/3 前完成生产切换：主应用 v34、网站 v9，网站 NAV 已到 11/06；
+- 11/06 主信号已用生产缓存模型生成，但尚未发布为 11/09 使用日文件；paper 仍冻结在 11/05 pending。
 
 已完成：
 
 1. 数据源角色划分与 overlay 架构；
 2. ingestion、manifest、cross-check、qlib overlay writer 与 fail-closed gate（含 6 项合成单测）；
 3. 生产镜像 11/05–11/06 dry run，并与本文研究排名逐项对照；
-4. 部署独立 canary 应用，11/06 手动验证 PASS；11/09–11/10 继续自动运行。
+4. 部署独立 canary 应用，11/06 手动验证 PASS；11/09 起继续自动运行；
+5. 生产 overlay 提升、主应用 v34/网站 v9 部署、网站 11/06 NAV 发布。
 
-仍需单独授权：
+仍需单独授权/监控：
 
-1. canary 3/3 通过后，将 overlay 路径接入 `daily_cron` / `daily_cron_second_chance`，包括版本化快照、原子切换、失败回退和监控；
-2. 部署带 `baostock` 依赖的新主应用镜像，并完成从 canary 到生产调度的切换；
-3. paper 11/05–11/06 回补及 11/06 override 的处理方案（需另行审计，不与数据源接入捆绑）。
+1. 11/09 07:00 主调度的 11/09 信号发布与 paper 推进结果核对；若 normal cron 未正常推进，再决定是否执行受控 backfill；
+2. paper 11/05–11/06 回补及 11/06 override 的处理方案（需另行审计，不与数据源接入捆绑）；
+3. 继续观察 canary 与 Sina/BaoStock/CSIndex 的源健康，尤其是 SH689009 等 Sina 不支持代码。
 
 ## 8. 证据
 
@@ -273,4 +290,5 @@ Sina `hfq` 与 raw 的比值在正常日保持不变，在除权日发生跳变�
 - `quant/data/data_source_evaluation/20261107/ranking_csi300_20261106.csv`
 - `quant/data/data_source_evaluation/20261107/dryrun_result.json`
 - `quant/data/data_source_evaluation/20261107/canary_validation_1106.json`
+- `quant/data/data_source_evaluation/20261107/production_cutover.json`
 - `quant/data/data_source_evaluation/20261107/SHA256SUMS.json`

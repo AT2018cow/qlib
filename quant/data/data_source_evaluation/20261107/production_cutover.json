@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "generated_at_utc": "2026-11-07T08:00:00+00:00",
+  "status": "PRODUCTION_OVERLAY_LIVE",
+  "main_app": {
+    "name": "qlib-cn-daily-a10g",
+    "version": "v34",
+    "behavior": "overlay-first, chenditc fallback"
+  },
+  "website_app": {
+    "name": "qlib-website-nav",
+    "version": "v9",
+    "behavior": "overlay-first provider, GitHub publication"
+  },
+  "canary_app": {
+    "name": "qlib-data-overlay-canary",
+    "schedule": "0 7 * * 1-5 Asia/Shanghai",
+    "role": "monitoring after cutover"
+  },
+  "overlay": {
+    "path": "qlib-cn-data/cn_data_overlay/2026-11-06",
+    "manifest_sha256": "3ec020b924db779f9c7599b111648241fd8957f6c99c62d3b164d395911caeab",
+    "manifest_status": "PASS",
+    "gate_checks": 16,
+    "row_symbols": 1802,
+    "feature_dirs": 3604
+  },
+  "website_publication": {
+    "commit": "40b57e1e4fcd6a557036f130d04fac6c8f71980a",
+    "files": 12,
+    "latest_date": "2026-11-06",
+    "returns": {
+      "csi300": -0.24405847000000003,
+      "csi500": -0.11042956000000004,
+      "csi1000": -0.20296287999999996
+    }
+  },
+  "production_signal_1106": {
+    "market": "csi1000",
+    "model_vintage": "2026-11-04 cached production model",
+    "top10": [
+      [
+        "SH603516",
+        0.3647
+      ],
+      [
+        "SZ002484",
+        0.363
+      ],
+      [
+        "SH688182",
+        0.3591
+      ],
+      [
+        "SH688449",
+        0.3522
+      ],
+      [
+        "SZ300131",
+        0.3476
+      ],
+      [
+        "SH688627",
+        0.3375
+      ],
+      [
+        "SH600353",
+        0.3252
+      ],
+      [
+        "SH688800",
+        0.3173
+      ],
+      [
+        "SZ300870",
+        0.3169
+      ],
+      [
+        "SH603950",
+        0.3147
+      ]
+    ],
+    "published": false
+  },
+  "remaining": {
+    "signal_csv_metadata": "still 2026-11-06 override; next daily_cron 2026-11-09 07:00 should publish 2026-11-09 usage signal from overlay",
+    "paper": "frozen at 2026-11-05 pending; next cron should settle with overlay data, but paper backfill needs separate audit",
+    "website_signal_ranking": "not yet updated; NAV is updated"
+  },
+  "notes": [
+    "Website benchmark SH000300/SH000905/SH000852 rows were added to the overlay after the first website attempt failed.",
+    "Main and website source identities were redeployed together after code changes."
+  ]
+}
