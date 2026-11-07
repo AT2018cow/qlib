@@ -2,7 +2,7 @@
 
 本目录按研发演进阶段整理了全部实验报告、审计记录与生产合同：
 
-**数据源故障转移评估**：[`2026-11-07 评估`](09-data-source/01-data-source-failover-evaluation-20261107.md)记录 chenditc 缺数时的免费源验证与接入实现：Sina raw+hfq 与 11/04 快照 1799/1800 在 float32 精度内一致，完整历史 overlay 在生产镜像中逐位复现 11/04 已发布 Top10；`data_ingest`、manifest、fail-closed gate 与合成测试已实现；因 chenditc 持续缺数、网站瘫痪，已完成生产切换：主应用 v34 overlay-first、网站 v9，11/06 网站 NAV 已发布（CSI300 -24.4058%、CSI500 -11.0430%、CSI1000 -20.2963%，commit `40b57e1e`）。11/09 信号/paper 仍待下一交易日 cron 推进；paper 11/05 pending 尚未回补。canary 应用继续作为源健康监控。
+**数据源故障转移评估**：[`2026-11-07 评估`](09-data-source/01-data-source-failover-evaluation-20261107.md)记录 chenditc 缺数时的免费源验证与接入实现：Sina raw+hfq 与 11/04 快照 1799/1800 在 float32 精度内一致，完整历史 overlay 在生产镜像中逐位复现 11/04 已发布 Top10；`data_ingest`、manifest、fail-closed gate 与合成测试已实现；因 chenditc 持续缺数、网站瘫痪，已完成生产切换：主应用 v34 overlay-first、网站 v9，11/06 网站数据已提交（CSI300 -24.4058%、CSI500 -11.0430%、CSI1000 -20.2963%，commit `40b57e1e`）。但 GitHub Actions 已被禁用，Cloudflare 公网 `qliba158.pages.dev` 仍为 11/04，需要恢复 Actions 或 Cloudflare 凭证后部署本地 `_site`。11/09 信号/paper 仍待下一交易日 cron 推进；paper 11/05 pending 尚未回补。canary 应用继续作为源健康监控。
 
 **上线后20项复核**：[`逐项结论与本地修补验收`](07-code-review/2026-11-06-post-rollout-review-resolution.md)区分确认缺陷、审核结论修正与外部证据缺口；922 项 Python、50 个子用例、30 项前端通过，60 份网站日账本及 519 份历史报告对账无误。此次改动已提交 `5ca4b892`，并已部署主应用 v31/网站应用 v6；F19 外部认证仍待完成；[`发布候选说明`](07-code-review/2026-11-06-post-rollout-release-candidate.md)列出具体范围与剩余发布事实。
 

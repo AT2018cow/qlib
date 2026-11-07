@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "status": "DATA_PUBLISHED_GITHUB / PUBLIC_SITE_STALE",
+  "data_commit": "40b57e1e4fcd6a557036f130d04fac6c8f71980a",
+  "public_url": "https://qliba158.pages.dev",
+  "public_latest_date": "2026-11-04",
+  "github_data_latest_date": "2026-11-06",
+  "local_artifact": "/tmp/opencode/site_20261106",
+  "local_artifact_latest_date": "2026-11-06",
+  "blocker": "GitHub Actions is disabled for AT2018cow/qlib; Cloudflare Pages credentials are not available in this environment.",
+  "unblock_options": [
+    "Re-enable GitHub Actions and run the website-deploy workflow on main.",
+    "Provide Cloudflare API token/account via secret management and run quant/website/deploy_cloudflare.sh.",
+    "Upload the built _site artifact manually in the Cloudflare Pages dashboard."
+  ],
+  "verified": {
+    "csi300_forward_latest": "2026-11-06",
+    "csi500_forward_latest": "2026-11-06",
+    "csi1000_forward_latest": "2026-11-06"
+  }
+}

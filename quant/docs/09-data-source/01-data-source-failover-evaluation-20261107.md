@@ -1,6 +1,6 @@
 # A 股日线数据源故障转移评估（2026-11-07）
 
-状态：`PRODUCTION_OVERLAY_LIVE / WEBSITE_NAV_11-06 / SIGNAL_PAPER_PENDING_11-09 / PAPER_FROZEN`
+状态：`PRODUCTION_OVERLAY_LIVE / WEBSITE_DATA_11-06 / PUBLIC_SITE_STALE_11-04 / SIGNAL_PAPER_PENDING_11-09 / PAPER_FROZEN`
 
 本文评估在 `chenditc/investment_data` GitHub release 持续缺数时，能否用免费公开源生成可审计的日线增量，并保持三市场生产 profile、TopK/DropN、1M paper 账户不变。数据接入与 fail-closed gate 已实现并通过生产镜像 dry run；**本文仍不构成生产发布、paper 回补或账户操作授权。**
 
@@ -204,8 +204,9 @@ Sina `hfq` 与 raw 的比值在正常日保持不变，在除权日发生跳变�
 - 主应用：**v34**，`daily_standalone` 优先读取 `/vol/cn_data_overlay/<asof>`，不存在或非 PASS 才回退 chenditc；
 - 网站应用：**v9**，`latest_asset` 优先读取同一 overlay，网站基准指数行已纳入 overlay；
 - 生产 overlay：`qlib-cn-data/cn_data_overlay/2026-11-06`，manifest SHA `3ec020b9…`，16 项 gate PASS；
-- 网站发布：commit `40b57e1e`，12 个文件，最新日期 2026-11-06；
+- 网站数据发布：commit `40b57e1e`，12 个文件，最新日期 2026-11-06；
 - 网站累计收益：CSI300 **-24.4058%**、CSI500 **-11.0430%**、CSI1000 **-20.2963%**；
+- **公网站点仍未更新**：GitHub Actions 已被禁用，Cloudflare Pages 未重新部署；`https://qliba158.pages.dev` 仍显示 2026-11-04。数据 commit 和本地 `_site` 产物（`/tmp/opencode/site_20261106`）已包含 11/06，但需要恢复 Actions 或提供 Cloudflare 凭证才能上线；
 - 主应用 11/06 CSI1000 信号：使用生产缓存的 2026-11-04 模型（20-session 重训节律），Top10 为 SH603516、SZ002484、SH688182、SH688449、SZ300131、SH688627、SH600353、SH688800、SZ300870、SH603950；
 - 该 11/06 信号尚未写入 GitHub `quant/data/signals/` 的 11/09 使用日文件，paper 仍冻结在 11/05 pending；
 - 下一次 11/09 07:00 主调度应使用 overlay 发布 11/09 信号并推进 paper；网站 signal ranking 也会随之更新。
@@ -278,7 +279,8 @@ Sina `hfq` 与 raw 的比值在正常日保持不变，在除权日发生跳变�
 
 1. 11/09 07:00 主调度的 11/09 信号发布与 paper 推进结果核对；若 normal cron 未正常推进，再决定是否执行受控 backfill；
 2. paper 11/05–11/06 回补及 11/06 override 的处理方案（需另行审计，不与数据源接入捆绑）；
-3. 继续观察 canary 与 Sina/BaoStock/CSIndex 的源健康，尤其是 SH689009 等 Sina 不支持代码。
+3. 恢复 GitHub Actions 或提供 Cloudflare 凭证，把已构建的 11/06 `_site` 产物部署到 `qliba158.pages.dev`；
+4. 继续观察 canary 与 Sina/BaoStock/CSIndex 的源健康，尤其是 SH689009 等 Sina 不支持代码。
 
 ## 8. 证据
 
@@ -291,4 +293,5 @@ Sina `hfq` 与 raw 的比值在正常日保持不变，在除权日发生跳变�
 - `quant/data/data_source_evaluation/20261107/dryrun_result.json`
 - `quant/data/data_source_evaluation/20261107/canary_validation_1106.json`
 - `quant/data/data_source_evaluation/20261107/production_cutover.json`
+- `quant/data/data_source_evaluation/20261107/website_publication_blocker.json`
 - `quant/data/data_source_evaluation/20261107/SHA256SUMS.json`
