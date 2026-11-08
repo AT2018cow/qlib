@@ -37,14 +37,20 @@ _REQUIRED_LINEAGE = (
 )
 
 
-def require_reference_preopen(usage_date: str, *, observed_at=None) -> str:
-    """Allow a new reference-only pending order only before its own market open.
+def require_reference_preopen(usage_date: str, *, observed_at=None, signal_data_date=None) -> str:
+    """Allow a reference-only pending order before its execution-day open.
 
-    This does not certify execution-day ST/tradability. It prevents a failed
-    07:00 cron from being rewritten later as if the order was planned pre-open.
-    The timestamp is frozen with the pending order for reproducibility.
+    Two valid windows are supported:
+
+    - same-day usage, before 09:30 Asia/Shanghai (legacy 07:00 cron); or
+    - after the signal data date's close (15:00) and before the usage day's
+      09:30 open (evening T-close -> T+1-open planning).
+
+    The second window lets a T-evening run publish the T+1 ranking and paper
+    pending order while still rejecting any retroactive plan created after the
+    execution day's open.  The timestamp is frozen for reproducibility.
     """
-    from datetime import datetime, time
+    from datetime import date, datetime, time
     from zoneinfo import ZoneInfo
 
     usage_date = _iso_day(usage_date, "usage_date")
@@ -54,12 +60,31 @@ def require_reference_preopen(usage_date: str, *, observed_at=None) -> str:
     if now.tzinfo is None or now.utcoffset() is None:
         raise ValueError("preopen observation must have a timezone")
     cst = now.astimezone(ZoneInfo("Asia/Shanghai"))
-    if cst.date().isoformat() != usage_date or cst.time() >= time(9, 30):
+    usage_day = date.fromisoformat(usage_date)
+    if cst.date() == usage_day:
+        if cst.time() >= time(9, 30):
+            raise RuntimeError(
+                f"reference-only paper requires a same-day pre-open plan before 09:30 "
+                f"Asia/Shanghai; usage_date={usage_date} observed={cst.isoformat()}"
+            )
+        return cst.isoformat()
+    if signal_data_date:
+        signal_date = _iso_day(signal_data_date, "signal_data_date")
+        signal_day = date.fromisoformat(signal_date)
+        if signal_day >= usage_day:
+            raise ValueError("signal_data_date must be earlier than usage_date")
+        signal_close = datetime.combine(signal_day, time(15, 0), tzinfo=ZoneInfo("Asia/Shanghai"))
+        usage_open = datetime.combine(usage_day, time(9, 30), tzinfo=ZoneInfo("Asia/Shanghai"))
+        if signal_close <= cst < usage_open:
+            return cst.isoformat()
         raise RuntimeError(
-            f"reference-only paper requires a same-day pre-open plan before 09:30 "
-            f"Asia/Shanghai; usage_date={usage_date} observed={cst.isoformat()}"
+            f"reference-only paper after-close plan must be between signal close and "
+            f"usage open; usage_date={usage_date} signal_date={signal_date} observed={cst.isoformat()}"
         )
-    return cst.isoformat()
+    raise RuntimeError(
+        f"reference-only paper requires a same-day pre-open plan before 09:30 "
+        f"Asia/Shanghai; usage_date={usage_date} observed={cst.isoformat()}"
+    )
 
 
 def validate_verified_st_snapshot(snapshot: dict, execution_date: str) -> set[str]:

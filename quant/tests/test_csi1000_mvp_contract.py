@@ -303,6 +303,34 @@ def test_reference_pending_requires_same_date_before_market_open():
         require_reference_preopen("2026-10-09", observed_at=ok)
 
 
+def test_reference_pending_allows_prior_evening_for_next_session():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    from csi1000_mvp_contract import require_reference_preopen
+
+    shanghai = ZoneInfo("Asia/Shanghai")
+    evening = datetime(2026, 10, 12, 18, 0, tzinfo=shanghai)
+    assert require_reference_preopen("2026-10-13", observed_at=evening, signal_data_date="2026-10-12").startswith(
+        "2026-10-12T18:00:00"
+    )
+    weekend = datetime(2026, 10, 10, 12, 0, tzinfo=shanghai)
+    assert require_reference_preopen("2026-10-12", observed_at=weekend, signal_data_date="2026-10-09").startswith(
+        "2026-10-10T12:00:00"
+    )
+    with pytest.raises(RuntimeError, match="after-close"):
+        require_reference_preopen(
+            "2026-10-13",
+            observed_at=datetime(2026, 10, 12, 14, 0, tzinfo=shanghai),
+            signal_data_date="2026-10-12",
+        )
+    with pytest.raises(RuntimeError):
+        require_reference_preopen(
+            "2026-10-13",
+            observed_at=datetime(2026, 10, 13, 9, 30, tzinfo=shanghai),
+            signal_data_date="2026-10-12",
+        )
+
+
 def test_verified_st_metadata_requires_real_preopen_source_evidence(tmp_path):
     from csi1000_mvp_contract import VERIFIED_ST_POLICY
 

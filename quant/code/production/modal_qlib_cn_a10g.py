@@ -1592,7 +1592,7 @@ def _apply_paper_portfolio(
         # Try verified ST first. Only a genuine transport outage permits the
         # explicit reference-mode fallback; bad schemas/empty source still fail.
         # Both paths require a real same-day preopen decision, never backdating.
-        require_reference_preopen(usage_date)
+        require_reference_preopen(usage_date, signal_data_date=res["date"])
         st_risk = _current_st_risk_snapshot(sorted(set(pp.positions).union(s for s, _ in res["ranking_full"])))
         if st_risk["status"] == "SOURCE_SNAPSHOT_AVAILABLE":
             st_risk["date"] = usage_date
@@ -1626,7 +1626,7 @@ def _apply_paper_portfolio(
                 "ST response invalid; refusing to bypass risk source: "
                 f"{st_risk.get('detail', 'SOURCE_INVALID_RESPONSE')}"
             )
-        plan_created_at = require_reference_preopen(usage_date)
+        plan_created_at = require_reference_preopen(usage_date, signal_data_date=res["date"])
         planned = pp.plan_signal(
             signal_date=res["date"],
             execution_date=usage_date,
@@ -4304,6 +4304,130 @@ def _early_gate(cal, signal_date: str) -> str:
     return "skip" if signal_date not in cal else "proceed"
 
 
+def _trading_days() -> list[str]:
+    return sorted(_cn_trading_calendar())
+
+
+def _previous_trading_day(day: str) -> str | None:
+    prior = [item for item in _trading_days() if item < day]
+    return prior[-1] if prior else None
+
+
+def _next_trading_day(day: str) -> str | None:
+    later = [item for item in _trading_days() if item > day]
+    return later[0] if later else None
+
+
+def _ensure_overlay_for(trade_date: str) -> None:
+    """Ensure the production overlay for one date exists, building it if needed."""
+    if not OVERLAY_PROVIDER_ROOT.is_dir():
+        # Local unit tests and non-Volume callers have no production overlay mount.
+        return
+    target = OVERLAY_PROVIDER_ROOT / trade_date
+    if (target / "manifest.json").is_file():
+        return
+    print(f"[overlay] {trade_date} missing; building production overlay", flush=True)
+    ensure_overlay.remote(trade_date)
+
+
+@app.function(
+    volumes={str(VOL_ROOT): vol},
+    cpu=8,
+    memory=16384,
+    timeout=3600,
+    max_containers=1,
+    retries=0,
+)
+def ensure_overlay(trade_date: str):
+    """Build one gate-passed daily overlay directly into the production Volume.
+
+    The base is the newest PASS overlay before ``trade_date``; only the missing
+    sessions are fetched.  This is the T-evening data preparation step for the
+    18:00 signal publication.
+    """
+    import json
+    import shutil
+
+    from data_ingest.baostock_source import BaoStockSource
+    from data_ingest.calendar import fetch_sina_calendar, read_calendar, resolve_target_dates
+    from data_ingest.pipeline import OverlayPipeline
+    from data_ingest.sina import SinaSource
+
+    vol.reload()
+    trade_date = str(trade_date)[:10]
+    target = OVERLAY_PROVIDER_ROOT / trade_date
+    manifest_path = target / "manifest.json"
+    if manifest_path.is_file():
+        existing = json.loads(manifest_path.read_text())
+        if existing.get("status") == "PASS":
+            return {"status": "EXISTS", "asof": trade_date, "path": str(target)}
+    root = OVERLAY_PROVIDER_ROOT
+    bases: list[tuple[Path, dict]] = []
+    if root.is_dir():
+        for path in sorted(root.iterdir()):
+            if path.name >= trade_date:
+                continue
+            candidate = path / "manifest.json"
+            if not candidate.is_file():
+                continue
+            try:
+                payload = json.loads(candidate.read_text())
+            except Exception:
+                continue
+            if payload.get("status") == "PASS":
+                bases.append((path, payload))
+    if not bases:
+        raise RuntimeError(f"no PASS overlay base before {trade_date}")
+    base, base_manifest = bases[-1]
+    base_calendar = read_calendar(base)
+    dates = resolve_target_dates(base_calendar, trade_date, fetch_sina_calendar())
+    if target.exists():
+        shutil.rmtree(target)
+    pipeline = OverlayPipeline(
+        sina=SinaSource(workers=6),
+        baostock=BaoStockSource(),
+        crosscheck_count=20,
+        require_weights=True,
+    )
+    manifest = pipeline.build(
+        base,
+        target,
+        asof=trade_date,
+        dates=dates,
+        markets=("csi300", "csi500", "csi1000"),
+        base_archive_sha256=(base_manifest.get("base") or {}).get("archive_sha256"),
+        require_qlib_smoke=True,
+    )
+    vol.commit()
+    print(f"[overlay] {trade_date} PASS rows={manifest['overlay']['row_symbols']}", flush=True)
+    return {
+        "status": manifest["status"],
+        "asof": trade_date,
+        "rows": manifest["overlay"]["row_symbols"],
+        "gate": manifest["gate"]["status"],
+    }
+
+
+def _run_evening_cycle():
+    """T-close signal + T NAV publication for the next trading session."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
+    calendar = _trading_days()
+    if today not in calendar:
+        return {"status": "SKIPPED_NON_TRADING_DAY", "signal_date": today}
+    signal_date = _next_trading_day(today)
+    if signal_date is None:
+        return {"status": "SKIPPED_NO_NEXT_SESSION", "signal_date": today}
+    _ensure_overlay_for(today)
+    return _run_daily_signal_cycle(
+        False,
+        signal_date_override=signal_date,
+        data_asof_override=today,
+    )
+
+
 @app.function(
     volumes={str(VOL_ROOT): vol},
     schedule=modal.Cron(
@@ -4322,9 +4446,17 @@ def _early_gate(cal, signal_date: str) -> str:
     retries=0,  # 08:00 入口负责恢复；不对最长 10.5h 的整条流水线叠加自动重试。
 )
 def daily_cron(allow_lag: bool = False):
-    """Publish signals and website returns under the same serialized daily run."""
+    """Pre-open idempotent check and last-resort repair for the evening run."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
     from daily_pipeline import run_daily_pipeline
 
+    today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
+    if today in _trading_days():
+        previous = _previous_trading_day(today)
+        if previous:
+            _ensure_overlay_for(previous)
     return run_daily_pipeline(lambda: _run_daily_signal_cycle(allow_lag), _update_website_returns)
 
 
@@ -4862,18 +4994,15 @@ def _update_code_name_map(headers):
 
 
 @app.function(
-    schedule=modal.Cron("0 8 * * 1-5", timezone="Asia/Shanghai"),  # 周一~周五 08:00 幂等补跑
     timeout=BACKUP_TIMEOUT_SECONDS,  # 含最多一个主跑的排队等待及本次运行。
-    nonpreemptible=True,  # 与 daily_cron 同语义：补跑被抢占会丢当天兜底
+    nonpreemptible=True,  # 手动补跑被抢占会丢当天兜底
     max_containers=1,
 )
 def daily_cron_second_chance():
-    """08:00 幂等二次调度：信号和网站收益均重新核验，恢复未完成部分。
+    """Manual legacy 08:00-style repair entrypoint (no schedule).
 
-    转发调用由 Modal 平台按 max_containers=1 排队：首跑未结束前本补跑不会启动；
-    信号已成功时仅核验 journal，再继续检查网站收益；首跑中断时按冻结载荷
-    完成推送与三池状态提交。网站收益使用独立、幂等的发布收据。平台单执行
-    保证两次运行不重叠，无需任何跨容器文件锁。
+    The primary publication moved to 18:00 with a 19:00 retry; this function is
+    retained only for explicit operator recovery.
     """
     return daily_cron.remote()
 
@@ -4930,6 +5059,38 @@ def attest_paper_state_bootstrap(note: str = "", approve: bool = False):
 
 
 # ===================== 第六步：重训频率对比实验（freq 5/20/60） =====================
+
+
+@app.function(
+    volumes={str(VOL_ROOT): vol},
+    secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
+    schedule=modal.Cron("0 18 * * 1-5", timezone="Asia/Shanghai"),
+    cpu=2,
+    memory=4096,
+    timeout=MAIN_TIMEOUT_SECONDS,
+    nonpreemptible=True,
+    max_containers=1,
+    retries=0,
+)
+def daily_evening():
+    """Primary T-close publication: T+1 signal, T NAV, T+1 paper plan."""
+    return _run_evening_cycle()
+
+
+@app.function(
+    volumes={str(VOL_ROOT): vol},
+    secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
+    schedule=modal.Cron("0 19 * * 1-5", timezone="Asia/Shanghai"),
+    cpu=2,
+    memory=4096,
+    timeout=MAIN_TIMEOUT_SECONDS,
+    nonpreemptible=True,
+    max_containers=1,
+    retries=0,
+)
+def daily_evening_retry():
+    """19:00 retry; idempotent and cheap when 18:00 already committed."""
+    return _run_evening_cycle()
 
 
 @app.function(

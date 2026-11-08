@@ -145,7 +145,8 @@ def test_only_main_and_eight_oclock_backup_are_scheduled():
                                 )
     assert schedules == [
         ("daily_cron", "0 7 * * 1-5", {"timezone": "Asia/Shanghai"}),
-        ("daily_cron_second_chance", "0 8 * * 1-5", {"timezone": "Asia/Shanghai"}),
+        ("daily_evening", "0 18 * * 1-5", {"timezone": "Asia/Shanghai"}),
+        ("daily_evening_retry", "0 19 * * 1-5", {"timezone": "Asia/Shanghai"}),
     ]
 
 

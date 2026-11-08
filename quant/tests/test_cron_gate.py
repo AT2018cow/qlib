@@ -47,7 +47,8 @@ def test_cron_schedule_registered():
                             )
     assert schedules == {
         "daily_cron": ("0 7 * * 1-5", {"timezone": "Asia/Shanghai"}),
-        "daily_cron_second_chance": ("0 8 * * 1-5", {"timezone": "Asia/Shanghai"}),
+        "daily_evening": ("0 18 * * 1-5", {"timezone": "Asia/Shanghai"}),
+        "daily_evening_retry": ("0 19 * * 1-5", {"timezone": "Asia/Shanghai"}),
     }, "production cron schedule missing, moved to another function or changed"
     assert "nonpreemptible=True" in src
     assert 'modal.Secret.from_name(_GH_SECRET_NAME := "github-push")' in src
@@ -325,7 +326,7 @@ def test_paper_planner_prefers_st_and_only_transport_fallback(tmp_path, monkeypa
     mod = types.ModuleType("paper_portfolio")
     mod.PaperPortfolio = StubPaperPortfolio
     monkeypatch.setitem(sys.modules, "paper_portfolio", mod)
-    monkeypatch.setattr(contract, "require_reference_preopen", lambda day: day + "T07:01:00+08:00")
+    monkeypatch.setattr(contract, "require_reference_preopen", lambda day, **kwargs: day + "T07:01:00+08:00")
 
     outcome = {}
     namespace = {
