@@ -4,6 +4,8 @@
 
 **数据源故障转移评估**：[`2026-11-07 评估`](09-data-source/01-data-source-failover-evaluation-20261107.md)记录 chenditc 缺数时的免费源验证与接入实现：Sina raw+hfq 与 11/04 快照 1799/1800 在 float32 精度内一致，完整历史 overlay 在生产镜像中逐位复现 11/04 已发布 Top10；`data_ingest`、manifest、fail-closed gate 与合成测试已实现；因 chenditc 持续缺数、网站瘫痪，已完成生产切换：主应用 v37 overlay-first、网站 v12，11/06 网站数据已发布（CSI300 -24.4058%、CSI500 -11.0430%、CSI1000 -20.2963%，commit `40b57e1e`）。GitHub Actions 恢复后，Cloudflare 公网 `qliba158.pages.dev` 已更新到 11/06（workflow `42366583880`）。11/09 信号/paper 仍待下一交易日 cron 推进；paper 11/05 pending 尚未回补。canary 应用已停止、Volume 已删除；当前生产仅 `qlib-cn-daily-a10g` v37 与 `qlib-website-nav` v12。网站 App 已加发布收据幂等短路和预算保护（日上限 $2、月度保留 $2），研究/回填/dry run 不再在生产 workspace 执行。
 
+**T 日收盘后发布**：[`2026-11-09 调度`](07-code-review/2026-11-09-evening-publication-schedule.md)记录 18:00 主发 T+1 信号与 T 日 NAV、19:00 幂等重试、07:00 轻量兜底；08:00 备份调度已移除，paper 允许 T 收盘后规划 T+1。
+
 **上线后20项复核**：[`逐项结论与本地修补验收`](07-code-review/2026-11-06-post-rollout-review-resolution.md)区分确认缺陷、审核结论修正与外部证据缺口；922 项 Python、50 个子用例、30 项前端通过，60 份网站日账本及 519 份历史报告对账无误。此次改动已提交 `5ca4b892`，并已部署主应用 v31/网站应用 v6；F19 外部认证仍待完成；[`发布候选说明`](07-code-review/2026-11-06-post-rollout-release-candidate.md)列出具体范围与剩余发布事实。
 
 **统一每日调度**：[`07:00 主跑 / 08:00 补跑`](07-code-review/2026-11-06-unified-daily-schedule.md)记录已完成的合并部署及两入口实际调用验收；网站收益随主跑和补跑统一更新，云端已确认取消独立 08:15 调度。

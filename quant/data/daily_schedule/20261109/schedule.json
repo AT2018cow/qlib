@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "status": "DEPLOYED_MONITORING",
+  "apps": {
+    "qlib-cn-daily-a10g": "v40",
+    "qlib-website-nav": "v15"
+  },
+  "schedules": {
+    "daily_cron": "0 7 * * 1-5 Asia/Shanghai",
+    "daily_evening": "0 18 * * 1-5 Asia/Shanghai",
+    "daily_evening_retry": "0 19 * * 1-5 Asia/Shanghai"
+  },
+  "removed_0800_backup": true,
+  "paper_preopen_window": "signal_data_date 15:00 -> usage_date 09:30 Asia/Shanghai (or same-day before 09:30)",
+  "overlay_builder": "ensure_overlay(trade_date) with previous PASS overlay as base",
+  "website_worker_timeout_seconds": 5400,
+  "signal_20261109": {
+    "status": "PUBLISHED",
+    "publication_mode": "CANONICAL_T1",
+    "lag_sessions": 0,
+    "signal_data_date": "2026-11-06",
+    "usage_date": "2026-11-09",
+    "public_available_dates_head": "2026-11-09",
+    "paper_pending": {
+      "signal_date": "2026-11-06",
+      "execution_date": "2026-11-09"
+    }
+  },
+  "website_nav": {
+    "latest_date": "2026-11-06",
+    "next_calculation": "2026-11-09 18:00 evening"
+  },
+  "incident": {
+    "website_stage": "FunctionTimeoutError at 60m on cold CSI1000 replay",
+    "mitigation": "worker timeout 3600 -> 5400 seconds"
+  },
+  "research_workspace_policy": "experiments use Modal profile/workspace infi; production workspace only cron and production repairs"
+}
