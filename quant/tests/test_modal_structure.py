@@ -52,7 +52,7 @@ EXPECTED_FUNCTIONS = [
     "batch_b",
     "daily_standalone",
     "daily_cron",
-    "daily_cron_second_chance",
+    "daily_repair_manual",
     "daily_cron_manual",
     "ensure_overlay",
     "daily_evening",

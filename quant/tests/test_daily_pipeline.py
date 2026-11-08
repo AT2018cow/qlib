@@ -89,7 +89,7 @@ def test_backup_returns_the_same_pipeline_receipt(monkeypatch):
 
     receipt = {"status": "COMPLETED", "stages": {"website": {"status": "SUCCEEDED"}}}
     monkeypatch.setattr(production, "daily_cron", SimpleNamespace(remote=lambda: receipt))
-    assert production.daily_cron_second_chance.local() == receipt
+    assert production.daily_repair_manual.local() == receipt
 
 
 @pytest.mark.parametrize("receipt", [None, {"status": "FAILED"}, {"status": "PUBLISHED", "source_sha256": "b" * 64}])

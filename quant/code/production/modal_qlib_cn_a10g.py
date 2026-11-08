@@ -4998,8 +4998,8 @@ def _update_code_name_map(headers):
     nonpreemptible=True,  # 手动补跑被抢占会丢当天兜底
     max_containers=1,
 )
-def daily_cron_second_chance():
-    """Manual legacy 08:00-style repair entrypoint (no schedule).
+def daily_repair_manual():
+    """Manual legacy repair entrypoint (no schedule).
 
     The primary publication moved to 18:00 with a 19:00 retry; this function is
     retained only for explicit operator recovery.
