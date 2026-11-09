@@ -72,6 +72,12 @@ def test_actual_cron_checks_website_after_signal_fast_path(monkeypatch, signal_s
 
     monkeypatch.setattr(production, "_run_daily_signal_cycle", signals)
     monkeypatch.setattr(production, "_update_website_returns", website)
+    # Keep the wrapper test independent of the live akshare/Sina calendar.
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
+    monkeypatch.setattr(production, "_trading_days", lambda: [today])
     if signal_status == "SKIPPED_STALE_DATA":
         with pytest.raises(DailyPipelineError) as caught:
             production.daily_cron.local()
