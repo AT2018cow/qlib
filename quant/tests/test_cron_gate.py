@@ -292,6 +292,69 @@ def test_st_source_prefers_real_valid_snapshot_and_classifies_outage(monkeypatch
     assert bad["failure_kind"] == "INVALID_RESPONSE"
 
 
+def test_st_source_falls_back_to_tencent_name_list(monkeypatch):
+    import sys
+    import time
+    import types
+
+    import pandas as pd
+
+    exceptions = types.ModuleType("requests.exceptions")
+
+    class ConnectionError(Exception):
+        pass
+
+    class Timeout(Exception):
+        pass
+
+    class HTTPError(Exception):
+        pass
+
+    exceptions.ConnectionError = ConnectionError
+    exceptions.Timeout = Timeout
+    exceptions.HTTPError = HTTPError
+    requests = types.ModuleType("requests")
+    requests.exceptions = exceptions
+    monkeypatch.setitem(sys.modules, "requests", requests)
+    monkeypatch.setitem(sys.modules, "requests.exceptions", exceptions)
+
+    ak = types.ModuleType("akshare")
+    monkeypatch.setitem(sys.modules, "akshare", ak)
+    monkeypatch.setattr(time, "sleep", lambda _: None)
+    fn = _modal_helper_from_source("_current_st_risk_snapshot")
+
+    def transport_outage():
+        raise ConnectionError("RemoteDisconnected")
+
+    frame = pd.DataFrame(
+        {
+            "code": ["sh600000", "sh600001", "sz000001", "sz000002"],
+            "name": ["浦发银行", "*ST某某", "平安银行", "ST某某"],
+        }
+    )
+    ak.stock_zh_a_st_em = transport_outage
+    ak.stock_zh_a_spot_tx = lambda: frame
+    result = fn(["SH600000", "SH600001", "SZ000002"])
+    assert result["status"] == "SOURCE_SNAPSHOT_AVAILABLE"
+    assert result["source"] == "akshare.stock_zh_a_spot_tx"
+    assert result["top20_st"] == ["SH600001", "SZ000002"]
+    assert result["source_row_count"] == 2
+
+    ak.stock_zh_a_st_em = lambda: pd.DataFrame({"代码": ["BAD"]})
+    assert fn(["SH600001"])["source"] == "akshare.stock_zh_a_spot_tx"
+
+    ak.stock_zh_a_spot_tx = lambda: pd.DataFrame({"code": ["sh600000"], "name": ["浦发银行"]})
+    invalid_backup = fn(["SH600000"])
+    assert invalid_backup["status"] == "UNAVAILABLE"
+    assert invalid_backup["failure_kind"] == "INVALID_RESPONSE"
+
+    ak.stock_zh_a_st_em = transport_outage
+    ak.stock_zh_a_spot_tx = transport_outage
+    outage = fn(["SH600000"])
+    assert outage["status"] == "UNAVAILABLE"
+    assert outage["failure_kind"] == "TRANSPORT"
+
+
 def test_paper_planner_prefers_st_and_only_transport_fallback(tmp_path, monkeypatch):
     """Test the real planner against each source outcome without calling Modal."""
     import sys

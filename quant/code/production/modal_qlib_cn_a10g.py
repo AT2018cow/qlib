@@ -1623,9 +1623,11 @@ def _apply_paper_portfolio(
         st_risk = _current_st_risk_snapshot(sorted(set(pp.positions).union(s for s, _ in res["ranking_full"])))
         if st_risk["status"] == "SOURCE_SNAPSHOT_AVAILABLE":
             st_risk["date"] = usage_date
+            st_risk["signal_data_date"] = res["date"]
             policy = VERIFIED_ST_POLICY
             frozen_st = {
                 "date": usage_date,
+                "signal_data_date": res["date"],
                 "status": st_risk["status"],
                 "source": st_risk["source"],
                 "fetched_at_cst": st_risk["fetched_at_cst"],
@@ -1702,6 +1704,7 @@ def _apply_paper_portfolio(
             st_risk = {
                 "status": "SOURCE_SNAPSHOT_AVAILABLE",
                 "date": snapshot.get("date"),
+                "signal_data_date": snapshot.get("signal_data_date"),
                 "source": snapshot.get("source"),
                 "source_row_count": snapshot.get("source_row_count"),
                 "scope": "frozen preopen pending",
@@ -4211,7 +4214,14 @@ def _current_st_risk_snapshot(instruments: list[str]) -> dict:
     selection filter.  It is published only as an explicit research-MVP risk
     boundary.  Source failure is surfaced as UNAVAILABLE rather than silently
     claiming the names are clean.
+
+    Primary source is the Eastmoney ST board.  Its ``push2`` endpoint is
+    occasionally IP-rate-limited, so a Tencent full-A-share name list is used
+    as an independent fallback and filtered for names containing ``ST``.  Both
+    sources are validated for non-empty, well-formed six-digit codes; only a
+    transport outage on all sources permits the reference-only policy.
     """
+    import re
     import time
     from datetime import datetime
     from zoneinfo import ZoneInfo
@@ -4224,69 +4234,121 @@ def _current_st_risk_snapshot(instruments: list[str]) -> dict:
     )
 
     wanted = [str(x).upper() for x in instruments]
-    last_err = None
-    failure_kind = "INVALID_RESPONSE"
-    for attempt in (1, 2):
-        try:
-            frame = ak.stock_zh_a_st_em()
-            code_col = next(
-                (col for col in frame.columns if str(col).strip().lower() in ("代码", "证券代码", "code")),
-                None,
-            )
-            if code_col is None:
-                raise RuntimeError(f"ST source has no code column: {list(frame.columns)}")
-            # A successful HTTP response is not automatically a trustworthy
-            # snapshot: reject empty/partial/error payloads rather than
-            # classifying unknown securities as ST-free.
-            if frame.empty or frame[code_col].isna().any():
-                raise RuntimeError("ST source returned empty or missing-code rows")
-            import re
+    primary_source = "akshare.stock_zh_a_st_em"
+    backup_source = "akshare.stock_zh_a_spot_tx"
 
-            codes = [str(value).strip().split(".")[0] for value in frame[code_col].tolist()]
-            if any(not re.fullmatch(r"\d{6}", code) for code in codes):
-                raise RuntimeError("ST source returned invalid security codes")
-            st_codes = set(codes)
-            matches = sorted(inst for inst in wanted if inst[2:] in st_codes)
-            return {
-                "status": "SOURCE_SNAPSHOT_AVAILABLE",
-                "source": "akshare.stock_zh_a_st_em",
-                "scope": "current risk-warning board snapshot",
-                "fetched_at_cst": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
-                "source_row_count": len(codes),
-                "top20_st": matches,
-                "top20_st_count": len(matches),
-                "selection_filter_applied": False,
-                "tradeability_certified": False,
-            }
-        except Exception as exc:  # pylint: disable=W0703
-            last_err = exc
-            # Fail-open applies exclusively to transport failure. A malformed
-            # response, missing codes or unknown HTTP status is NOT a legitimate
-            # reason to ignore exchange risk on a public paper series.
-            failure_kind = (
-                "TRANSPORT"
-                if isinstance(exc, (RequestsConnectionError, RequestsTimeout))
-                or (
-                    isinstance(exc, RequestsHTTPError)
-                    and getattr(getattr(exc, "response", None), "status_code", None) in (502, 503, 504)
+    def _failure_kind(exc: Exception) -> str:
+        # Fail-open applies exclusively to transport failure. A malformed
+        # response, missing codes or unknown HTTP status is NOT a legitimate
+        # reason to ignore exchange risk on a public paper series.
+        if isinstance(exc, (RequestsConnectionError, RequestsTimeout)):
+            return "TRANSPORT"
+        if isinstance(exc, RequestsHTTPError) and getattr(getattr(exc, "response", None), "status_code", None) in (
+            502,
+            503,
+            504,
+        ):
+            return "TRANSPORT"
+        return "INVALID_RESPONSE"
+
+    def _normalize_code(value) -> str:
+        text = str(value).strip()
+        match = re.fullmatch(r"(?:[A-Za-z]{2})?(\d{6})(?:\.0)?", text)
+        if match is None:
+            raise RuntimeError(f"ST source returned invalid security code: {value!r}")
+        return match.group(1)
+
+    def _primary_codes() -> list[str]:
+        frame = ak.stock_zh_a_st_em()
+        code_col = next(
+            (col for col in frame.columns if str(col).strip().lower() in ("代码", "证券代码", "code")),
+            None,
+        )
+        if code_col is None:
+            raise RuntimeError(f"ST source has no code column: {list(frame.columns)}")
+        # A successful HTTP response is not automatically a trustworthy
+        # snapshot: reject empty/partial/error payloads rather than
+        # classifying unknown securities as ST-free.
+        if frame.empty or frame[code_col].isna().any():
+            raise RuntimeError("ST source returned empty or missing-code rows")
+        return sorted({_normalize_code(value) for value in frame[code_col].tolist()})
+
+    def _backup_codes() -> list[str]:
+        fetcher = getattr(ak, "stock_zh_a_spot_tx", None)
+        if fetcher is None:
+            raise RuntimeError("backup ST source is unavailable")
+        frame = fetcher()
+        code_col = next(
+            (col for col in frame.columns if str(col).strip().lower() in ("code", "代码", "证券代码")),
+            None,
+        )
+        name_col = next(
+            (col for col in frame.columns if str(col).strip().lower() in ("name", "名称", "股票名称", "证券简称")),
+            None,
+        )
+        if code_col is None or name_col is None:
+            raise RuntimeError(f"backup ST source missing code/name columns: {list(frame.columns)}")
+        if frame.empty:
+            raise RuntimeError("backup ST source returned empty rows")
+        names = frame[name_col].astype(str).str.upper()
+        st_rows = frame[names.str.contains("ST", na=False)]
+        if st_rows.empty:
+            raise RuntimeError("backup ST source returned no ST rows")
+        return sorted({_normalize_code(value) for value in st_rows[code_col].tolist()})
+
+    sources = [(primary_source, _primary_codes)]
+    if getattr(ak, "stock_zh_a_spot_tx", None) is not None:
+        sources.append((backup_source, _backup_codes))
+
+    failures: dict[str, dict[str, str]] = {}
+    for source_name, fetcher in sources:
+        for attempt in (1, 2):
+            try:
+                codes = fetcher()
+                st_codes = set(codes)
+                matches = sorted(inst for inst in wanted if inst[2:] in st_codes)
+                return {
+                    "status": "SOURCE_SNAPSHOT_AVAILABLE",
+                    "source": source_name,
+                    "scope": "current risk-warning board snapshot",
+                    "fetched_at_cst": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
+                    "source_row_count": len(codes),
+                    "top20_st": matches,
+                    "top20_st_count": len(matches),
+                    "selection_filter_applied": False,
+                    "tradeability_certified": False,
+                }
+            except Exception as exc:  # pylint: disable=W0703
+                kind = _failure_kind(exc)
+                failures[source_name] = {
+                    "kind": kind,
+                    "detail": f"{type(exc).__name__}: {str(exc)[:180]}",
+                }
+                print(
+                    f"[risk] ST source={source_name} attempt={attempt}/2 {kind}: "
+                    f"{type(exc).__name__}: {str(exc)[:180]}"
                 )
-                else "INVALID_RESPONSE"
-            )
-            print(f"[risk] ST snapshot attempt={attempt}/2 {failure_kind}: " f"{type(exc).__name__}: {str(exc)[:180]}")
-            if failure_kind != "TRANSPORT":
-                break
-            if attempt == 1:
-                time.sleep(5)
+                if kind != "TRANSPORT":
+                    break
+                if attempt == 1:
+                    time.sleep(5)
+
+    failure_kind = (
+        "INVALID_RESPONSE"
+        if any(failure["kind"] == "INVALID_RESPONSE" for failure in failures.values())
+        else "TRANSPORT"
+    )
+    detail = "; ".join(f"{source}:{failure['kind']}:{failure['detail']}" for source, failure in failures.items())[:500]
     return {
         "status": "UNAVAILABLE",
         "failure_kind": failure_kind,
-        "source": "akshare.stock_zh_a_st_em",
+        "source": primary_source,
         "scope": "current risk-warning board snapshot",
         "top20_st": [],
         "top20_st_count": None,
         "selection_filter_applied": False,
         "tradeability_certified": False,
-        "detail": f"{type(last_err).__name__}: {str(last_err)[:180]}",
+        "detail": detail,
     }
 
 

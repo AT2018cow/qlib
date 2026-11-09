@@ -23,6 +23,7 @@ MVP_CONTRACT_VERSION = "csi1000_mvp_daily_v1"
 # Explicit execution assumption, separate from the frozen model/candidate identity.
 REFERENCE_ST_POLICY = "ST_IGNORED_REFERENCE_ONLY"
 VERIFIED_ST_POLICY = "ST_VERIFIED_PREOPEN"
+VERIFIED_ST_SOURCES = ("akshare.stock_zh_a_st_em", "akshare.stock_zh_a_spot_tx")
 LEGACY_WINNER_LINEAGE = "stage_b_winner_canonical"
 EXPECTED_POOL_COUNTS = {"csi1000": 1000, "csi500": 500, "csi300": 300}
 _SYMBOL = re.compile(r"^(SH|SZ|BJ)\d{6}$")
@@ -98,7 +99,7 @@ def validate_verified_st_snapshot(snapshot: dict, execution_date: str) -> set[st
         raise ValueError("verified ST date mismatch")
     if snapshot.get("status") != "SOURCE_SNAPSHOT_AVAILABLE":
         raise ValueError("verified ST source status missing")
-    if snapshot.get("source") != "akshare.stock_zh_a_st_em":
+    if snapshot.get("source") not in VERIFIED_ST_SOURCES:
         raise ValueError("unrecognized verified ST source")
     count = snapshot.get("source_row_count")
     if type(count) is not int or count <= 0:
@@ -117,8 +118,22 @@ def validate_verified_st_snapshot(snapshot: dict, execution_date: str) -> set[st
         local = at.astimezone(ZoneInfo("Asia/Shanghai"))
     except (TypeError, KeyError, ValueError) as exc:
         raise ValueError("verified ST timestamp missing/invalid") from exc
-    if local.date().isoformat() != execution_date or local.time() >= time(9, 30):
-        raise ValueError("verified ST was not captured before execution-day open")
+    signal_data_date = snapshot.get("signal_data_date")
+    if signal_data_date is not None:
+        try:
+            signal_data_date = _iso_day(signal_data_date, "signal_data_date")
+        except ValueError as exc:
+            raise ValueError("verified ST signal_data_date invalid") from exc
+        if signal_data_date >= execution_date:
+            raise ValueError("verified ST signal_data_date must precede execution date")
+    if local.date().isoformat() == execution_date:
+        if local.time() >= time(9, 30):
+            raise ValueError("verified ST was not captured before execution-day open")
+    elif signal_data_date is not None and local.date().isoformat() == signal_data_date:
+        if local.time() < time(15, 0):
+            raise ValueError("verified ST T-close snapshot must be captured after 15:00")
+    else:
+        raise ValueError("verified ST was not captured in the T-close or pre-open window")
     return set(symbols)
 
 
@@ -560,6 +575,7 @@ def build_mvp_metadata(
         validate_verified_st_snapshot(
             {
                 "date": risk["st"].get("date"),
+                "signal_data_date": risk["st"].get("signal_data_date"),
                 "status": risk["st"]["status"],
                 "source": risk["st"].get("source"),
                 "fetched_at_cst": risk["st"].get("fetched_at_cst"),

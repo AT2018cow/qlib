@@ -378,6 +378,33 @@ def test_verified_st_snapshot_rejects_wrong_date_source_and_corrupt_symbols():
             validate_verified_st_snapshot(broken, "2026-10-13")
 
 
+def test_verified_st_snapshot_accepts_tclose_backup_source_window():
+    from csi1000_mvp_contract import validate_verified_st_snapshot
+
+    snapshot = {
+        "date": "2026-10-13",
+        "signal_data_date": "2026-10-12",
+        "status": "SOURCE_SNAPSHOT_AVAILABLE",
+        "source": "akshare.stock_zh_a_spot_tx",
+        "fetched_at_cst": "2026-10-12T18:30:00+08:00",
+        "source_row_count": 197,
+        "st_symbols": ["SH600000"],
+    }
+    assert validate_verified_st_snapshot(snapshot, "2026-10-13") == {"SH600000"}
+    for stamp in (
+        "2026-10-12T14:59:00+08:00",
+        "2026-10-13T09:30:00+08:00",
+        "2026-10-11T18:30:00+08:00",
+    ):
+        broken = dict(snapshot, fetched_at_cst=stamp)
+        with pytest.raises(ValueError):
+            validate_verified_st_snapshot(broken, "2026-10-13")
+    for signal_date in ("2026-10-11", "2026-10-13", "2026-10-14"):
+        broken = dict(snapshot, signal_data_date=signal_date)
+        with pytest.raises(ValueError):
+            validate_verified_st_snapshot(broken, "2026-10-13")
+
+
 def test_mvp_contract_top10_champion_happy_path(tmp_path):
     from csi1000_production_config import (
         CANONICAL_PAPER_LINEAGE,
