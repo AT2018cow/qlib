@@ -132,7 +132,7 @@ function formatScore(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return { text: '—', klass: '' };
   return {
-    text: `${n >= 0 ? '+' : ''}${n.toFixed(3)}`,
+    text: `${n.toFixed(3)}`,
     klass: n >= 0 ? 'positive' : 'negative',
   };
 }

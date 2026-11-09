@@ -194,7 +194,7 @@ test('sparkline placeholders explain missing, discontinuous and loading data vis
   assert.ok(startRows >= 0 && endRows > startRows);
   const { buildRows } = vm.runInNewContext(
     source.slice(start, end) + source.slice(startRows, endRows) + ';({ buildRows })',
-    { qlibCode: code => code, thsUrl: code => code, formatScore: () => ({ text: '+0.010', klass: 'positive' }) }
+    { qlibCode: code => code, thsUrl: code => code, formatScore: () => ({ text: '0.010', klass: 'positive' }) }
   );
   const rows = [{ rank: '1', instrument: 'SH600000', score: '0.01' }];
   const result = (chart) => buildRows(rows, {}, null, chart)[0].spark;
