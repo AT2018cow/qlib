@@ -143,11 +143,28 @@ image = (
         remote_path="/root/qlib",
         copy=True,
         ignore=lambda path: (
-            str(path).endswith((".cpp", ".so"))
+            str(path).endswith(
+                (
+                    ".cpp",
+                    ".so",
+                    ".pem",
+                    ".key",
+                    ".p12",
+                    ".pfx",
+                    ".netrc",
+                    ".npmrc",
+                    ".pypirc",
+                )
+            )
             or any(
                 part in str(path)
                 for part in (
                     ".venv",
+                    ".env",
+                    "secrets",
+                    "credentials",
+                    ".ssh",
+                    ".docker",
                     ".worktrees",
                     "mlruns",
                     "__pycache__",

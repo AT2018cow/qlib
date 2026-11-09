@@ -18,6 +18,17 @@ dist/
 !quant/data/**
 
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+.netrc
+.npmrc
+.pypirc
+secrets/
+credentials*
 .venv/
 .vim
 .nvimrc
