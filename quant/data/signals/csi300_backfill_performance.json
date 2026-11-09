@@ -16,8 +16,8 @@
     "nd": 1,
     "horizon": 10
   },
-  "latest_date": "2026-11-06",
-  "cumulative_return": -0.24405847000000003,
+  "latest_date": "2026-11-09",
+  "cumulative_return": -0.23978567000000006,
   "points": [
     {
       "date": "2026-10-08",
@@ -606,7 +606,7 @@
       },
       "signal_date": "2026-10-26",
       "fit_asof": "2026-10-26",
-      "model_sha256": "a96fd7c9f73b311b9f0f8118110491a2b60bc0688634d52209999903fb27a5f1"
+      "model_sha256": "e559e42b9f4722feb79e35383adde25c94907c89a08c013d212cf67fa27e4b8f"
     },
     {
       "date": "2026-10-28",
@@ -649,7 +649,7 @@
       },
       "signal_date": "2026-10-27",
       "fit_asof": "2026-10-26",
-      "model_sha256": "a96fd7c9f73b311b9f0f8118110491a2b60bc0688634d52209999903fb27a5f1"
+      "model_sha256": "e559e42b9f4722feb79e35383adde25c94907c89a08c013d212cf67fa27e4b8f"
     },
     {
       "date": "2026-10-29",
@@ -692,7 +692,7 @@
       },
       "signal_date": "2026-10-28",
       "fit_asof": "2026-10-26",
-      "model_sha256": "a96fd7c9f73b311b9f0f8118110491a2b60bc0688634d52209999903fb27a5f1"
+      "model_sha256": "e559e42b9f4722feb79e35383adde25c94907c89a08c013d212cf67fa27e4b8f"
     },
     {
       "date": "2026-10-30",
@@ -735,7 +735,7 @@
       },
       "signal_date": "2026-10-29",
       "fit_asof": "2026-10-26",
-      "model_sha256": "a96fd7c9f73b311b9f0f8118110491a2b60bc0688634d52209999903fb27a5f1"
+      "model_sha256": "e559e42b9f4722feb79e35383adde25c94907c89a08c013d212cf67fa27e4b8f"
     },
     {
       "date": "2026-11-02",
@@ -778,7 +778,7 @@
       },
       "signal_date": "2026-10-30",
       "fit_asof": "2026-10-26",
-      "model_sha256": "a96fd7c9f73b311b9f0f8118110491a2b60bc0688634d52209999903fb27a5f1"
+      "model_sha256": "e559e42b9f4722feb79e35383adde25c94907c89a08c013d212cf67fa27e4b8f"
     },
     {
       "date": "2026-11-03",
@@ -821,7 +821,7 @@
       },
       "signal_date": "2026-11-02",
       "fit_asof": "2026-10-26",
-      "model_sha256": "a96fd7c9f73b311b9f0f8118110491a2b60bc0688634d52209999903fb27a5f1"
+      "model_sha256": "e559e42b9f4722feb79e35383adde25c94907c89a08c013d212cf67fa27e4b8f"
     },
     {
       "date": "2026-11-04",
@@ -864,7 +864,7 @@
       },
       "signal_date": "2026-11-03",
       "fit_asof": "2026-10-26",
-      "model_sha256": "a96fd7c9f73b311b9f0f8118110491a2b60bc0688634d52209999903fb27a5f1"
+      "model_sha256": "e559e42b9f4722feb79e35383adde25c94907c89a08c013d212cf67fa27e4b8f"
     },
     {
       "date": "2026-11-05",
@@ -907,7 +907,7 @@
       },
       "signal_date": "2026-11-04",
       "fit_asof": "2026-10-26",
-      "model_sha256": "a96fd7c9f73b311b9f0f8118110491a2b60bc0688634d52209999903fb27a5f1"
+      "model_sha256": "e559e42b9f4722feb79e35383adde25c94907c89a08c013d212cf67fa27e4b8f"
     },
     {
       "date": "2026-11-06",
@@ -950,7 +950,50 @@
       },
       "signal_date": "2026-11-05",
       "fit_asof": "2026-10-26",
-      "model_sha256": "a96fd7c9f73b311b9f0f8118110491a2b60bc0688634d52209999903fb27a5f1"
+      "model_sha256": "e559e42b9f4722feb79e35383adde25c94907c89a08c013d212cf67fa27e4b8f"
+    },
+    {
+      "date": "2026-11-09",
+      "nav": 0.7602143299999999,
+      "daily_return": 0.005652289007061162,
+      "cumulative_return": -0.23978567000000006,
+      "portfolio_value_close": 760214.33,
+      "cash": 6916.38,
+      "cost": 161.68,
+      "data_mode": "CAUSAL_SIMULATION",
+      "opening_state": {
+        "cash": 3907.7,
+        "shares": {
+          "SH688521": 83619.99797519301,
+          "SH603986": 1184.2080684032464,
+          "SZ002384": 9174.82263554967,
+          "SZ301308": 29299.220718929446,
+          "SH688072": 16442.464258159944,
+          "SZ002353": 4592.925433678122,
+          "SZ002938": 25907.805488459697,
+          "SZ300394": 1105.7743190928193,
+          "SH688082": 40002.194095185914,
+          "SH688183": 23561.8331316597
+        }
+      },
+      "closing_state": {
+        "cash": 6916.38,
+        "shares": {
+          "SH688521": 83619.99797519301,
+          "SH603986": 1184.2080684032464,
+          "SZ301308": 29299.220718929446,
+          "SH688072": 16442.464258159944,
+          "SZ002353": 4592.925433678122,
+          "SZ002938": 25907.805488459697,
+          "SZ300394": 1105.7743190928193,
+          "SH688082": 40002.194095185914,
+          "SH688183": 23561.8331316597,
+          "SZ000657": 7118.923896662153
+        }
+      },
+      "signal_date": "2026-11-06",
+      "fit_asof": "2026-10-26",
+      "model_sha256": "e559e42b9f4722feb79e35383adde25c94907c89a08c013d212cf67fa27e4b8f"
     }
   ],
   "trading_dates": [
@@ -975,14 +1018,15 @@
     "2026-11-03",
     "2026-11-04",
     "2026-11-05",
-    "2026-11-06"
+    "2026-11-06",
+    "2026-11-09"
   ],
   "execution_st_policy": "ST_HISTORY_UNVERIFIED_REFERENCE_ONLY",
   "auction_liquidity_verified": false,
   "official_reference_price_verified": false,
   "return_interpretation": "CAUSAL_HISTORICAL_SIMULATION_REFERENCE_ONLY",
-  "source_manifest_sha256": "692c2a580f8d54483073e9237b8165a531234de7acf48d0a4b2f6670c9cf2c2d",
-  "provider_archive_sha256": "3ec020b924db779f9c7599b111648241fd8957f6c99c62d3b164d395911caeab",
+  "source_manifest_sha256": "a8870427ee717891152fd21186dc718c9e43e677b604e45b9eced935ddc7d951",
+  "provider_archive_sha256": "fda0921e96b557fbafb51b648a60416d1be959dd6cc062a69a647833d78e0164",
   "fit_receipts": [
     {
       "fit_asof": "2026-09-30",
@@ -1000,9 +1044,9 @@
     },
     {
       "fit_asof": "2026-10-26",
-      "signal_end": "2026-11-06",
+      "signal_end": "2026-11-09",
       "profile": "59b93929_top10_drop1_10d",
-      "model_sha256": "a96fd7c9f73b311b9f0f8118110491a2b60bc0688634d52209999903fb27a5f1",
+      "model_sha256": "e559e42b9f4722feb79e35383adde25c94907c89a08c013d212cf67fa27e4b8f",
       "training_contract": {
         "asof": "2026-10-26",
         "train_end": "2025-09-03",
@@ -1014,7 +1058,7 @@
     }
   ],
   "fit_receipt_version": 2,
-  "total_fees": 4353.360000000001,
+  "total_fees": 4515.040000000001,
   "broker_fills_certified": false,
   "live_trading_approved": false
 }

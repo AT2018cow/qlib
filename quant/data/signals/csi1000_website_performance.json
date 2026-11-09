@@ -16,8 +16,8 @@
     "nd": 1,
     "horizon": 20
   },
-  "latest_date": "2026-11-06",
-  "cumulative_return": -0.20296287999999996,
+  "latest_date": "2026-11-09",
+  "cumulative_return": -0.19675405,
   "points": [
     {
       "date": "2026-10-08",
@@ -49,7 +49,7 @@
       },
       "signal_date": "2026-09-30",
       "fit_asof": "2026-09-30",
-      "model_sha256": "a6490d529cda80dd6ecea7a38403a7f637488abce4b6e42f1f8821c11f92c971"
+      "model_sha256": "68e8346614dd45dcb6484529ad2548c3807fe1b668fdd605d8c1c6752af281ff"
     },
     {
       "date": "2026-10-09",
@@ -92,7 +92,7 @@
       },
       "signal_date": "2026-10-08",
       "fit_asof": "2026-09-30",
-      "model_sha256": "a6490d529cda80dd6ecea7a38403a7f637488abce4b6e42f1f8821c11f92c971"
+      "model_sha256": "68e8346614dd45dcb6484529ad2548c3807fe1b668fdd605d8c1c6752af281ff"
     },
     {
       "date": "2026-10-12",
@@ -135,7 +135,7 @@
       },
       "signal_date": "2026-10-09",
       "fit_asof": "2026-09-30",
-      "model_sha256": "a6490d529cda80dd6ecea7a38403a7f637488abce4b6e42f1f8821c11f92c971"
+      "model_sha256": "68e8346614dd45dcb6484529ad2548c3807fe1b668fdd605d8c1c6752af281ff"
     },
     {
       "date": "2026-10-13",
@@ -178,7 +178,7 @@
       },
       "signal_date": "2026-10-12",
       "fit_asof": "2026-09-30",
-      "model_sha256": "a6490d529cda80dd6ecea7a38403a7f637488abce4b6e42f1f8821c11f92c971"
+      "model_sha256": "68e8346614dd45dcb6484529ad2548c3807fe1b668fdd605d8c1c6752af281ff"
     },
     {
       "date": "2026-10-14",
@@ -221,7 +221,7 @@
       },
       "signal_date": "2026-10-13",
       "fit_asof": "2026-09-30",
-      "model_sha256": "a6490d529cda80dd6ecea7a38403a7f637488abce4b6e42f1f8821c11f92c971"
+      "model_sha256": "68e8346614dd45dcb6484529ad2548c3807fe1b668fdd605d8c1c6752af281ff"
     },
     {
       "date": "2026-10-15",
@@ -264,7 +264,7 @@
       },
       "signal_date": "2026-10-14",
       "fit_asof": "2026-09-30",
-      "model_sha256": "a6490d529cda80dd6ecea7a38403a7f637488abce4b6e42f1f8821c11f92c971"
+      "model_sha256": "68e8346614dd45dcb6484529ad2548c3807fe1b668fdd605d8c1c6752af281ff"
     },
     {
       "date": "2026-10-16",
@@ -307,7 +307,7 @@
       },
       "signal_date": "2026-10-15",
       "fit_asof": "2026-09-30",
-      "model_sha256": "a6490d529cda80dd6ecea7a38403a7f637488abce4b6e42f1f8821c11f92c971"
+      "model_sha256": "68e8346614dd45dcb6484529ad2548c3807fe1b668fdd605d8c1c6752af281ff"
     },
     {
       "date": "2026-10-19",
@@ -350,7 +350,7 @@
       },
       "signal_date": "2026-10-16",
       "fit_asof": "2026-09-30",
-      "model_sha256": "a6490d529cda80dd6ecea7a38403a7f637488abce4b6e42f1f8821c11f92c971"
+      "model_sha256": "68e8346614dd45dcb6484529ad2548c3807fe1b668fdd605d8c1c6752af281ff"
     },
     {
       "date": "2026-10-20",
@@ -393,7 +393,7 @@
       },
       "signal_date": "2026-10-19",
       "fit_asof": "2026-09-30",
-      "model_sha256": "a6490d529cda80dd6ecea7a38403a7f637488abce4b6e42f1f8821c11f92c971"
+      "model_sha256": "68e8346614dd45dcb6484529ad2548c3807fe1b668fdd605d8c1c6752af281ff"
     },
     {
       "date": "2026-10-21",
@@ -436,7 +436,7 @@
       },
       "signal_date": "2026-10-20",
       "fit_asof": "2026-09-30",
-      "model_sha256": "a6490d529cda80dd6ecea7a38403a7f637488abce4b6e42f1f8821c11f92c971"
+      "model_sha256": "68e8346614dd45dcb6484529ad2548c3807fe1b668fdd605d8c1c6752af281ff"
     },
     {
       "date": "2026-10-22",
@@ -479,7 +479,7 @@
       },
       "signal_date": "2026-10-21",
       "fit_asof": "2026-09-30",
-      "model_sha256": "a6490d529cda80dd6ecea7a38403a7f637488abce4b6e42f1f8821c11f92c971"
+      "model_sha256": "68e8346614dd45dcb6484529ad2548c3807fe1b668fdd605d8c1c6752af281ff"
     },
     {
       "date": "2026-10-23",
@@ -522,7 +522,7 @@
       },
       "signal_date": "2026-10-22",
       "fit_asof": "2026-09-30",
-      "model_sha256": "a6490d529cda80dd6ecea7a38403a7f637488abce4b6e42f1f8821c11f92c971"
+      "model_sha256": "68e8346614dd45dcb6484529ad2548c3807fe1b668fdd605d8c1c6752af281ff"
     },
     {
       "date": "2026-10-26",
@@ -565,7 +565,7 @@
       },
       "signal_date": "2026-10-23",
       "fit_asof": "2026-09-30",
-      "model_sha256": "a6490d529cda80dd6ecea7a38403a7f637488abce4b6e42f1f8821c11f92c971"
+      "model_sha256": "68e8346614dd45dcb6484529ad2548c3807fe1b668fdd605d8c1c6752af281ff"
     },
     {
       "date": "2026-10-27",
@@ -608,7 +608,7 @@
       },
       "signal_date": "2026-10-26",
       "fit_asof": "2026-10-26",
-      "model_sha256": "e939fea1d81afdf95f91d55388400fd011077258d18f5d3344d9e5dbfc8b0f9b"
+      "model_sha256": "56720796b6952d00afa8e79bcffd8df2a9b0522776090acf136a55c34e5771e6"
     },
     {
       "date": "2026-10-28",
@@ -651,7 +651,7 @@
       },
       "signal_date": "2026-10-27",
       "fit_asof": "2026-10-26",
-      "model_sha256": "e939fea1d81afdf95f91d55388400fd011077258d18f5d3344d9e5dbfc8b0f9b"
+      "model_sha256": "56720796b6952d00afa8e79bcffd8df2a9b0522776090acf136a55c34e5771e6"
     },
     {
       "date": "2026-10-29",
@@ -694,7 +694,7 @@
       },
       "signal_date": "2026-10-28",
       "fit_asof": "2026-10-26",
-      "model_sha256": "e939fea1d81afdf95f91d55388400fd011077258d18f5d3344d9e5dbfc8b0f9b"
+      "model_sha256": "56720796b6952d00afa8e79bcffd8df2a9b0522776090acf136a55c34e5771e6"
     },
     {
       "date": "2026-10-30",
@@ -737,7 +737,7 @@
       },
       "signal_date": "2026-10-29",
       "fit_asof": "2026-10-26",
-      "model_sha256": "e939fea1d81afdf95f91d55388400fd011077258d18f5d3344d9e5dbfc8b0f9b"
+      "model_sha256": "56720796b6952d00afa8e79bcffd8df2a9b0522776090acf136a55c34e5771e6"
     },
     {
       "date": "2026-11-02",
@@ -780,7 +780,7 @@
       },
       "signal_date": "2026-10-30",
       "fit_asof": "2026-10-26",
-      "model_sha256": "e939fea1d81afdf95f91d55388400fd011077258d18f5d3344d9e5dbfc8b0f9b"
+      "model_sha256": "56720796b6952d00afa8e79bcffd8df2a9b0522776090acf136a55c34e5771e6"
     },
     {
       "date": "2026-11-03",
@@ -823,7 +823,7 @@
       },
       "signal_date": "2026-11-02",
       "fit_asof": "2026-10-26",
-      "model_sha256": "e939fea1d81afdf95f91d55388400fd011077258d18f5d3344d9e5dbfc8b0f9b"
+      "model_sha256": "56720796b6952d00afa8e79bcffd8df2a9b0522776090acf136a55c34e5771e6"
     },
     {
       "date": "2026-11-04",
@@ -866,7 +866,7 @@
       },
       "signal_date": "2026-11-03",
       "fit_asof": "2026-10-26",
-      "model_sha256": "e939fea1d81afdf95f91d55388400fd011077258d18f5d3344d9e5dbfc8b0f9b"
+      "model_sha256": "56720796b6952d00afa8e79bcffd8df2a9b0522776090acf136a55c34e5771e6"
     },
     {
       "date": "2026-11-05",
@@ -909,7 +909,7 @@
       },
       "signal_date": "2026-11-04",
       "fit_asof": "2026-10-26",
-      "model_sha256": "e939fea1d81afdf95f91d55388400fd011077258d18f5d3344d9e5dbfc8b0f9b"
+      "model_sha256": "56720796b6952d00afa8e79bcffd8df2a9b0522776090acf136a55c34e5771e6"
     },
     {
       "date": "2026-11-06",
@@ -952,7 +952,50 @@
       },
       "signal_date": "2026-11-05",
       "fit_asof": "2026-10-26",
-      "model_sha256": "e939fea1d81afdf95f91d55388400fd011077258d18f5d3344d9e5dbfc8b0f9b"
+      "model_sha256": "56720796b6952d00afa8e79bcffd8df2a9b0522776090acf136a55c34e5771e6"
+    },
+    {
+      "date": "2026-11-09",
+      "nav": 0.80324595,
+      "daily_return": 0.007789888129676958,
+      "cumulative_return": -0.19675405,
+      "portfolio_value_close": 803245.95,
+      "cash": 4376.69,
+      "cost": 165.59,
+      "data_mode": "CAUSAL_SIMULATION",
+      "opening_state": {
+        "cash": 5990.78,
+        "shares": {
+          "SZ300870": 29391.529634716142,
+          "SZ002484": 12022.389719624025,
+          "SH688362": 64369.21840805779,
+          "SH688409": 55935.43937499317,
+          "SH688147": 43384.95318508362,
+          "SH605376": 14494.129854833669,
+          "SH603516": 16121.818726166177,
+          "SZ002364": 23707.76163652408,
+          "SH688449": 81201.83311903059,
+          "SZ300131": 24844.232726650363
+        }
+      },
+      "closing_state": {
+        "cash": 4376.69,
+        "shares": {
+          "SZ300870": 29391.529634716142,
+          "SZ002484": 12022.389719624025,
+          "SH688362": 64369.21840805779,
+          "SH688409": 55935.43937499317,
+          "SH688147": 43384.95318508362,
+          "SH605376": 14494.129854833669,
+          "SH603516": 16121.818726166177,
+          "SH688449": 81201.83311903059,
+          "SZ300131": 24844.232726650363,
+          "SH688182": 85204.60936295216
+        }
+      },
+      "signal_date": "2026-11-06",
+      "fit_asof": "2026-10-26",
+      "model_sha256": "56720796b6952d00afa8e79bcffd8df2a9b0522776090acf136a55c34e5771e6"
     }
   ],
   "trading_dates": [
@@ -977,20 +1020,21 @@
     "2026-11-03",
     "2026-11-04",
     "2026-11-05",
-    "2026-11-06"
+    "2026-11-06",
+    "2026-11-09"
   ],
   "execution_st_policy": "ST_HISTORY_UNVERIFIED_REFERENCE_ONLY",
   "auction_liquidity_verified": false,
   "official_reference_price_verified": false,
   "return_interpretation": "CAUSAL_HISTORICAL_SIMULATION_REFERENCE_ONLY",
-  "source_manifest_sha256": "692c2a580f8d54483073e9237b8165a531234de7acf48d0a4b2f6670c9cf2c2d",
-  "provider_archive_sha256": "3ec020b924db779f9c7599b111648241fd8957f6c99c62d3b164d395911caeab",
+  "source_manifest_sha256": "a8870427ee717891152fd21186dc718c9e43e677b604e45b9eced935ddc7d951",
+  "provider_archive_sha256": "fda0921e96b557fbafb51b648a60416d1be959dd6cc062a69a647833d78e0164",
   "fit_receipts": [
     {
       "fit_asof": "2026-09-30",
       "signal_end": "2026-10-23",
       "profile": "c98856b4_top10_drop1",
-      "model_sha256": "a6490d529cda80dd6ecea7a38403a7f637488abce4b6e42f1f8821c11f92c971",
+      "model_sha256": "68e8346614dd45dcb6484529ad2548c3807fe1b668fdd605d8c1c6752af281ff",
       "training_contract": {
         "asof": "2026-09-30",
         "train_end": "2025-07-18",
@@ -1002,9 +1046,9 @@
     },
     {
       "fit_asof": "2026-10-26",
-      "signal_end": "2026-11-06",
+      "signal_end": "2026-11-09",
       "profile": "c98856b4_top10_drop1",
-      "model_sha256": "e939fea1d81afdf95f91d55388400fd011077258d18f5d3344d9e5dbfc8b0f9b",
+      "model_sha256": "56720796b6952d00afa8e79bcffd8df2a9b0522776090acf136a55c34e5771e6",
       "training_contract": {
         "asof": "2026-10-26",
         "train_end": "2025-08-06",
@@ -1016,7 +1060,7 @@
     }
   ],
   "fit_receipt_version": 2,
-  "total_fees": 4206.54,
+  "total_fees": 4372.13,
   "broker_fills_certified": false,
   "live_trading_approved": false
 }
