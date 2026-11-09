@@ -21,12 +21,12 @@ ensure_quant_import_paths()
 sys.path.insert(0, str(CODE / "research/regime_reselection"))
 
 import modal
-from modal_qlib_cn_a10g import image, vol as data_volume
+from modal_qlib_cn_a10g import WEBSITE_APP_NAME, WEBSITE_SIM_VOLUME, image, vol as data_volume
 from daily_pipeline import WEBSITE_STAGE_TIMEOUT_SECONDS, WEBSITE_WORKER_TIMEOUT_SECONDS
 from website_budget import already_published, budget_decision, read_budget_policy
 
-app = modal.App("qlib-website-nav", image=image)
-simulation = modal.Volume.from_name("qlib-website-simulation", create_if_missing=True)
+app = modal.App(WEBSITE_APP_NAME, image=image)
+simulation = modal.Volume.from_name(WEBSITE_SIM_VOLUME, create_if_missing=True)
 
 
 def _latest_overlay_asset():

@@ -15,6 +15,8 @@
 # - 数据与 mlruns 都落到同一个 Volume 的不同子目录，避免容器销毁丢失。
 # - 烟雾模式只缩 n_epochs/early_stop，不动数据区间，用于验证 CUDA + 数据链路。
 
+import os
+
 import modal
 from pathlib import Path
 from daily_pipeline import MAIN_TIMEOUT_SECONDS, BACKUP_TIMEOUT_SECONDS, SIGNAL_WORKER_TIMEOUT_SECONDS
@@ -45,8 +47,17 @@ from board_rules import (
     star_chn_backtest_guard,
 )
 
-APP_NAME = "qlib-cn-daily-a10g"
-VOL_NAME = "qlib-cn-data"
+DEPLOY_PROFILE = os.environ.get("QLIB_DEPLOY_PROFILE", "legacy")
+if DEPLOY_PROFILE == "infi-prod":
+    APP_NAME = "qlib-prod-daily"
+    WEBSITE_APP_NAME = "qlib-prod-website"
+    VOL_NAME = "qlib-prod-data"
+    WEBSITE_SIM_VOLUME = "qlib-prod-website-simulation"
+else:
+    APP_NAME = "qlib-cn-daily-a10g"
+    WEBSITE_APP_NAME = "qlib-website-nav"
+    VOL_NAME = "qlib-cn-data"
+    WEBSITE_SIM_VOLUME = "qlib-website-simulation"
 VOL_ROOT = Path("/vol")
 DATA_DIR = VOL_ROOT / "cn_data"  # 对应 yaml 的 provider_uri
 OVERLAY_PROVIDER_ROOT = VOL_ROOT / "cn_data_overlay"
@@ -67,6 +78,9 @@ image = (
     .env(
         {
             "MLFLOW_ALLOW_FILE_STORE": "true",
+            # Deployment profile selects the Modal app/volume names.  The value
+            # is baked into the image so containers resolve the same names.
+            "QLIB_DEPLOY_PROFILE": DEPLOY_PROFILE,
             # The image excludes .git, so setuptools_scm cannot infer a version from
             # tags.  A fixed build-time version avoids the setuptools_scm /
             # vcs-versioning resolver incompatibility seen on 2026-11-06.
@@ -4473,7 +4487,7 @@ def _update_website_returns():
         from research_identity import source_manifest
 
     expected_source = source_manifest("training")["sha256"]
-    worker = modal.Function.from_name("qlib-website-nav", "daily")
+    worker = modal.Function.from_name(WEBSITE_APP_NAME, "daily")
     result = worker.remote(expected_source_sha256=expected_source)
     if (
         not isinstance(result, dict)
