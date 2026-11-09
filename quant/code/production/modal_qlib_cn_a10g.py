@@ -16,9 +16,22 @@
 # - 烟雾模式只缩 n_epochs/early_stop，不动数据区间，用于验证 CUDA + 数据链路。
 
 import os
+import sys
 
 import modal
 from pathlib import Path
+
+# The Modal entrypoint is mounted at /root while the repository lives at
+# /root/qlib.  Add the quant code root before importing helper packages such as
+# data_ingest so container imports match local/CI behavior.
+_QUANT_CODE = "/root/qlib/quant/code"
+if os.path.isdir(_QUANT_CODE):
+    if _QUANT_CODE not in sys.path:
+        sys.path.insert(0, _QUANT_CODE)
+    from quant_bootstrap import ensure_quant_import_paths
+
+    ensure_quant_import_paths()
+
 from daily_pipeline import MAIN_TIMEOUT_SECONDS, BACKUP_TIMEOUT_SECONDS, SIGNAL_WORKER_TIMEOUT_SECONDS
 from qlib_audit_fixes import read_trading_calendar, purge_cfg_splits
 from qlib_live_retrain import (
