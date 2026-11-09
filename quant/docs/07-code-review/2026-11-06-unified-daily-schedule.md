@@ -1,5 +1,7 @@
 # 每日信号与网站收益统一调度（2026-11-06）
 
+> **历史文档（2026-11-06）：** 07:00 主跑 + 08:00 补跑已被 2026-11-09 T 收盘调度取代。当前为 T 18:00 `daily_evening`、T 19:00 `daily_evening_retry`、T+1 07:00 `daily_cron`；08:00 补跑已移除。见 [`2026-11-09-evening-publication-schedule.md`](2026-11-09-evening-publication-schedule.md)。
+
 状态：`COMPLETE / DEPLOYED / MANUAL_MAIN_AND_BACKUP_VERIFIED`。用户已批准将网站收益并入主跑和补跑，并将补跑调整到北京时间 08:00；代码、云端配置及两个入口的实际调用均已验收。
 
 ## 调度与恢复合同

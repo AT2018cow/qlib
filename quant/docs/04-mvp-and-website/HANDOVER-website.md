@@ -1,6 +1,7 @@
 # 网站交接文档（当前状态）
 
-> 2026-11-03 更新：网站已从 CSI1000-only 切换为 **CSI300 / CSI500 / CSI1000 三市场**；每市场独立 100 万账户，分市场 TopK/DropN。
+> 2026-11-10 更新：网站已从 CSI1000-only 切换为 **CSI300 / CSI500 / CSI1000 三市场**；每市场独立 100 万账户，分市场 TopK/DropN。
+> 当前为 T 日收盘后发布（T 18:00）、19:00 幂等重试、T+1 07:00 盘前检查/补发；08:00 补跑已移除。公网为 Cloudflare Pages `https://qliba158.pages.dev`，GitHub Pages 暂停。
 > 旧的 `23-web-ui-handoff-20261008.md` 只作历史背景；当前以本文件、`AGENTS.md` 和 `quant/website/methodology.html` 为准。
 
 ## 当前公开页面
@@ -18,8 +19,9 @@
 
 - 公开信号：`quant/data/signals/`（CSV、chart、paper、metadata、forward/backfill JSON、日期索引）；
 - 旧 100M 数据：`quant/data/signals/archive/legacy_100m_2026-10/`，不进入公开索引；
-- Pages workflow：`.github/workflows/website-deploy.yml`，在 `quant/data/signals/**` 或 `quant/website/**` 变化时构建；
-- 构建必须把 HTML、JS、CSS、图标和 signals 一起复制到 `_site`，并在上传前检查关键文件存在；
+- Cloudflare Pages workflow：`.github/workflows/website-deploy.yml`，在 `quant/data/signals/**` 或 `quant/website/**` 变化时构建并部署；GitHub Pages 暂停；
+- 构建必须把 HTML、JS、CSS、图标、`_headers` 和 signals 一起复制到 `_site`，并在上传前检查关键文件存在；
+- 网站安全头（CSP/HSTS/X-Frame/Permissions-Policy）由 `quant/website/_headers` 提供；详见 `quant/docs/07-code-review/2026-11-10-security-hardening.md`；
 - forward performance 由回补前缀 + live ledger 合并生成，不能再退回“等待首个估值”。
 
 ## 不应回退的行为
@@ -39,4 +41,4 @@
 3. cron publication gate 通过；
 4. 网页 allowlist 才增加新 pool；
 5. 方法论页同步说明证据与风险；
-6. Pages 打包与手机/桌面响应式测试通过。
+6. Cloudflare Pages 打包与手机/桌面响应式测试通过。

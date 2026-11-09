@@ -1,5 +1,7 @@
 # A 股日线数据源故障转移评估（2026-11-07）
 
+> **历史评估快照（2026-11-07）：** 当前生产已迁移到 `qlib-prod-*` v8，网站 NAV 已到 2026-11-09；本文的状态行与 v31/v6 描述保留为当时的评估记录。
+
 状态：`PRODUCTION_OVERLAY_LIVE / PUBLIC_SITE_11-06 / SIGNAL_PAPER_PENDING_11-09 / PAPER_FROZEN`
 
 本文评估在 `chenditc/investment_data` GitHub release 持续缺数时，能否用免费公开源生成可审计的日线增量，并保持三市场生产 profile、TopK/DropN、1M paper 账户不变。数据接入与 fail-closed gate 已实现并通过生产镜像 dry run；**本文仍不构成生产发布、paper 回补或账户操作授权。**

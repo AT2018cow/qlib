@@ -22,7 +22,7 @@
 
 ## 3. 18:00 / 19:00 首轮发布
 
-18:00 首轮失败于三个问题，均已修复并重新部署：
+18:00 首轮失败于四个问题，均已修复并重新部署：
 
 | 问题 | 修复 |
 |---|---|
@@ -79,3 +79,10 @@
 2. 取消 `QLIB_DEPLOY_PROFILE=infi-prod`（或设为默认值）后重新部署旧名称；
 3. 确认旧 App 恢复 schedule 后，再重新启用新生产；
 4. 严禁两个工作区同时运行 18:00/19:00/07:00 调度。
+
+## 8. 2026-11-10 后续加固
+
+- 生产 App 当前为 v8（commit `35f28a9`）；网站安全头、Pages 权限收敛、Modal 镜像 `.env`/key/`node_modules` ignore 已上线；
+- 生产 `github-push` 已改为 Contents-only PAT：Contents 写探针通过（临时分支创建/删除），Actions 写探针返回 403；
+- Cloudflare token 只在 website deploy step 注入，build/test 步骤只看到布尔开关；
+- 详细记录见 [`2026-11-10-security-hardening.md`](2026-11-10-security-hardening.md)。

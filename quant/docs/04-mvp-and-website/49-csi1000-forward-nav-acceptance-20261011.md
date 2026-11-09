@@ -1,5 +1,7 @@
 # CSI1000 paper NAV close-out acceptance (PR #63, 2026-10-11)
 
+> **历史文档（2026-10-11）：** 本文的 100M CSI1000-only 账户口径已被 2026-11-02 三市场独立 1M 账户取代；当前口径见 `AGENTS.md`、`HANDOVER-website.md` 与 `quant/docs/08-current-window-backtest/16-production-cutover-20261102.md`。
+
 Scope: the **public forward simulated cumulative-return panel**, without
 changing the frozen Stage-B evidence, model selection, 100m CNY paper account,
 broker status or depth-free full-fill assumption.

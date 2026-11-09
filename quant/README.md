@@ -1,4 +1,4 @@
-# `quant/` — A股中证1000量化选股与模拟组合系统
+# `quant/` — A股 CSI300/500/1000 量化选股与模拟组合系统
 
 本目录集中存放我们自己的全部量化研发代码、策略文档、历史回测数据库、每日线上信号以及前端网站源码，与上层 Microsoft Qlib 框架本体文件（`qlib/`, `docs/`, `scripts/`, `tests/`, `examples/`）彻底分离。
 
@@ -36,10 +36,10 @@ quant/
 │   ├── round1_stage_ab/                   #   第一轮 Stage-A / Stage-B 原始结果与策略选择基准证据
 │   ├── round1_audit_evidence/             #   第一轮 F1~F6 独立审计证据与 56 套修正重跑账本
 │   ├── pre_tuner_experiments/             #   早期调仓频率、相位归因、卫星池实验数据
-│   └── signals/                           #   线上每日自动发布的 CSI1000 Top10 信号四件套
+│   └── signals/                           #   线上三市场 canonical 信号（CSI300 Top10/Drop1、CSI500 Top20/Drop2、CSI1000 Top10/Drop1；每日 12 个文件）
 │
-├── website/                               # 【4. 前端静态站点源码】GitHub Pages 每日信号与模拟组合看板
-└── tests/                                 # 【5. 自动化测试集】50 个针对量化生产、执行、搜索与前端的单元/回归测试
+├── website/                               # 【4. 前端静态站点源码】Cloudflare Pages 每日信号与模拟组合看板（GitHub Pages 暂停）
+└── tests/                                 # 【5. 自动化测试集】量化生产、执行、搜索与前端的单元/回归测试
 ```
 
 ---

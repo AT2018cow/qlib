@@ -32,6 +32,7 @@
   - CSI500 (`csi500`): `raw10d_c98856b4_top20_drop2_20d` (`m10_raw10d_c98856b4` 20d + `Top20/Drop2`, lineage `raw10d_c98856b4_top20_drop2_20d_canonical_1m`)
   - CSI1000 (`csi1000`): `c98856b4_top10_drop1` (`c98856b4` 20d + `Top10/Drop1`, lineage `c98856b4_top10_drop1_canonical_1m`)
   - Defined in `quant/code/production/csi1000_production_config.py`.
+- **Security hardening**: production GitHub PAT is Contents-only; the Cloudflare Pages token is scoped to the website deploy step; local `.env`/key/node_modules files are excluded from the Modal image; the public site serves CSP/HSTS/X-Frame headers. See `quant/docs/07-code-review/2026-11-10-security-hardening.md`.
 - **ChiNext is paused in production**: research code/history remain, but scheduled daily publication and the public website entry are disabled until a new model passes a separately versioned validation gate.
 - **STAR is not rejected**: its corrected prediction reproducibility gate has not passed, so alpha is unknown. Repair reproducibility/data lineage before interpreting profitability.
 - **Current account/execution contract**: three independent 1M accounts (2026-09-30 start; 2026-10-08–2026-11-02 point-in-time backfill; 2026-11-03 live paper), T-close scoring -> T+1-open execution, per-market TopK/DropN (CSI300/CSI1000 Top10/Drop1, CSI500 Top20/Drop2), board/date-aware CNY tick limits, 5bp buy / 15bp sell with CNY 5 minimum, no 5% high-open overlay, 20-session retrain, deterministic LightGBM.

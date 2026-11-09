@@ -1,14 +1,22 @@
 # `quant/docs/` — 研发与生产文档总索引
 
+> **当前生产状态（2026-11-10）**
+>
+> - 生产 App：`qlib-prod-daily` / `qlib-prod-website` v8；数据卷 `qlib-prod-data` / `qlib-prod-website-simulation`；生产 profile 由 `QLIB_DEPLOY_PROFILE=infi-prod` 选择。
+> - 调度：T 18:00 `daily_evening`、T 19:00 `daily_evening_retry`、T+1 07:00 `daily_cron`；08:00 补跑已移除。
+> - 最新信号：2026-11-10；网站 NAV：2026-11-09；公网 `https://qliba158.pages.dev`（GitHub Pages 暂停）。
+> - 安全加固：见 [`2026-11-10-security-hardening.md`](07-code-review/2026-11-10-security-hardening.md)。
+> - 下文旧条目保留为历史记录；其中 v37/v12、07:00/08:00、11/06 数据等描述不再代表当前生产。
+
 本目录按研发演进阶段整理了全部实验报告、审计记录与生产合同：
 
-**数据源故障转移评估**：[`2026-11-07 评估`](09-data-source/01-data-source-failover-evaluation-20261107.md)记录 chenditc 缺数时的免费源验证与接入实现：Sina raw+hfq 与 11/04 快照 1799/1800 在 float32 精度内一致，完整历史 overlay 在生产镜像中逐位复现 11/04 已发布 Top10；`data_ingest`、manifest、fail-closed gate 与合成测试已实现；因 chenditc 持续缺数、网站瘫痪，已完成生产切换：主应用 v37 overlay-first、网站 v12，11/06 网站数据已发布（CSI300 -24.4058%、CSI500 -11.0430%、CSI1000 -20.2963%，commit `40b57e1e`）。GitHub Actions 恢复后，Cloudflare 公网 `qliba158.pages.dev` 已更新到 11/06（workflow `42366583880`）。11/09 信号/paper 仍待下一交易日 cron 推进；paper 11/05 pending 尚未回补。canary 应用已停止、Volume 已删除；当前生产仅 `qlib-cn-daily-a10g` v37 与 `qlib-website-nav` v12。网站 App 已加发布收据幂等短路和预算保护（日上限 $2、月度保留 $2），研究/回填/dry run 不再在生产 workspace 执行。
+**历史记录（截至 2026-11-06）— 数据源故障转移评估**：[`2026-11-07 评估`](09-data-source/01-data-source-failover-evaluation-20261107.md)记录 chenditc 缺数时的免费源验证与接入实现：Sina raw+hfq 与 11/04 快照 1799/1800 在 float32 精度内一致，完整历史 overlay 在生产镜像中逐位复现 11/04 已发布 Top10；`data_ingest`、manifest、fail-closed gate 与合成测试已实现；因 chenditc 持续缺数、网站瘫痪，已完成生产切换：主应用 v37 overlay-first、网站 v12，11/06 网站数据已发布（CSI300 -24.4058%、CSI500 -11.0430%、CSI1000 -20.2963%，commit `40b57e1e`）。GitHub Actions 恢复后，Cloudflare 公网 `qliba158.pages.dev` 已更新到 11/06（workflow `42366583880`）。（该记录截至 11/06；后续 11/09、11/10 信号与 paper 已按 T 收盘调度推进，见上方当前状态。）canary 应用已停止、Volume 已删除；当时生产为 `qlib-cn-daily-a10g` v37 与 `qlib-website-nav` v12，现已迁移到 `qlib-prod-*` v8。网站 App 已加发布收据幂等短路和预算保护（日上限 $2、月度保留 $2）。（当时）研究/回填/dry run 不在旧生产 workspace 执行；2026-11-09 迁移后生产与实验共用同一 Modal workspace，隔离风险见安全加固文档第 7 节。
 
-**T 日收盘后发布**：[`2026-11-09 调度`](07-code-review/2026-11-09-evening-publication-schedule.md)记录 18:00 主发 T+1 信号与 T 日 NAV、19:00 幂等重试、07:00 轻量兜底；08:00 备份调度已移除，paper 允许 T 收盘后规划 T+1。
+**T 日收盘后发布**：[`2026-11-09 调度`](07-code-review/2026-11-09-evening-publication-schedule.md)记录 18:00 主发 T+1 信号与 T 日 NAV、19:00 幂等重试、07:00 盘前检查/补发；08:00 备份调度已移除，paper 允许 T 收盘后规划 T+1。
 
-**上线后20项复核**：[`逐项结论与本地修补验收`](07-code-review/2026-11-06-post-rollout-review-resolution.md)区分确认缺陷、审核结论修正与外部证据缺口；922 项 Python、50 个子用例、30 项前端通过，60 份网站日账本及 519 份历史报告对账无误。此次改动已提交 `5ca4b892`，并已部署主应用 v31/网站应用 v6；F19 外部认证仍待完成；[`发布候选说明`](07-code-review/2026-11-06-post-rollout-release-candidate.md)列出具体范围与剩余发布事实。
+**历史记录（2026-11-06）— 上线后20项复核**：[`逐项结论与本地修补验收`](07-code-review/2026-11-06-post-rollout-review-resolution.md)区分确认缺陷、审核结论修正与外部证据缺口；922 项 Python、50 个子用例、30 项前端通过，60 份网站日账本及 519 份历史报告对账无误。此次改动已提交 `5ca4b892`，并已部署主应用 v31/网站应用 v6；F19 外部认证仍待完成；[`发布候选说明`](07-code-review/2026-11-06-post-rollout-release-candidate.md)列出具体范围与剩余发布事实。
 
-**统一每日调度**：[`07:00 主跑 / 08:00 补跑`](07-code-review/2026-11-06-unified-daily-schedule.md)记录已完成的合并部署及两入口实际调用验收；网站收益随主跑和补跑统一更新，云端已确认取消独立 08:15 调度。
+**历史记录（2026-11-06，已被 2026-11-09 T 收盘调度取代）— 统一每日调度**：[`07:00 主跑 / 08:00 补跑`](07-code-review/2026-11-06-unified-daily-schedule.md)记录已完成的合并部署及两入口实际调用验收；网站收益随主跑和补跑统一更新，云端已确认取消独立 08:15 调度；08:00 补跑已于 2026-11-09 移除。
 
 **最新扩展层审查与修复**：[`计算与逻辑审查`](07-code-review/2026-11-06-extension-calculation-and-logic-audit.md)记录修复前 Q01–Q16；[`2026-11-06 修复与验收`](07-code-review/2026-11-06-extension-repair-acceptance.md)记录实现、回归、380 份历史账本影响及外部证据待办。代码已修复；后续生产部署与网站收益修正见下方“网站模拟收益上线”。
 
@@ -27,7 +35,7 @@
 4. **[`03-independent-audit-f1-f6/`](03-independent-audit-f1-f6/) — 阶段 3：独立账本审计与 F1 出池股断流修复（Doc 24 ~ 39）**
    - Stage-B 原始账本独立复算、发现并修复“成分股调出中证1000后缺少报价导致仓位冻结”的 F1 关键缺陷、F5/F6 SHA 门禁与 28 模型全量修正重跑。
 5. **[`04-mvp-and-website/`](04-mvp-and-website/) — 阶段 4：线上 MVP 发布合同、模拟组合净值验收与前端看板（Doc 21 ~ 23, 40 ~ 49）**
-   - 每日信号四件套强校验合同、模拟组合统一会计核算、前向净值独立审计与 GitHub Pages 静态站点设计。
+   - 每日信号四件套强校验合同、模拟组合统一会计核算、前向净值独立审计与静态站点设计（当前由 Cloudflare Pages 发布，GitHub Pages 暂停）。
 6. **[`05-round2-layered-search/`](05-round2-layered-search/) — 阶段 5：第二轮预算受控分层策略搜索与终局报告（Doc 50 ~ 60）**
    - `P0 -> L1 -> L2 -> L3 -> L4` 完整实验方案、L1（132套策略）持仓规则筛选、L2 超参搜索、L3 重训周期验证、L4 五相位终审及 [`60-csi1000-two-round-strategy-research-final-report-20261015.md`](05-round2-layered-search/60-csi1000-two-round-strategy-research-final-report-20261015.md) 终局技术报告。
 7. **[`08-current-window-backtest/`](08-current-window-backtest/) — 当前短窗口候选策略同期回测**

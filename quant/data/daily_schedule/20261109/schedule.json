@@ -3,8 +3,8 @@
   "status": "CUTOVER_VERIFIED",
   "workspace_profile": "QLIB_DEPLOY_PROFILE=infi-prod",
   "apps": {
-    "qlib-prod-daily": "v5",
-    "qlib-prod-website": "v5"
+    "qlib-prod-daily": "v8",
+    "qlib-prod-website": "v8"
   },
   "app_ids": {
     "qlib-prod-daily": "ap-R8aMsHOTPtIdzzypHOR4m0",
@@ -58,6 +58,15 @@
     "reserve_usd": 2.0,
     "cold_start_temp_daily_cap_usd": 10.0,
     "note": "cold-start cap reverted to 2.0 after the first website replay; platform balance remains the hard limit"
+  },
+  "security": {
+    "github_pat": "Contents read/write only; Actions write denied",
+    "legacy_github_secret": "retained by operator decision; legacy apps stopped",
+    "cloudflare_token": "deploy step only; Pages:Edit; account-scoped",
+    "website_headers": "CSP/HSTS/X-Frame/Permissions-Policy live",
+    "headers_commit": "1834ce3df",
+    "modal_image_ignore": ".env/.pem/.key/.p12/.pfx/secrets/credentials/.ssh/.docker/node_modules",
+    "github_secret_scanning": "enabled with push protection"
   },
   "website_nav": {
     "latest_date": "2026-11-09",

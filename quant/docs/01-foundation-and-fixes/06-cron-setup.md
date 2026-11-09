@@ -1,22 +1,24 @@
 # 每日信号自动运行（当前生产说明）
 
-> 2026-11-03 更新：生产已切换为 CSI300 / CSI500 / CSI1000 三市场、每市场独立 100 万账户、分市场 TopK/DropN。
+> 2026-11-10 更新：生产已切换为 T 日收盘后发布（T 18:00）、19:00 重试、T+1 07:00 盘前检查/补发；08:00 补跑已移除。
+> 生产已切换为 CSI300 / CSI500 / CSI1000 三市场、每市场独立 100 万账户、分市场 TopK/DropN。
 > ChiNext 日更与网页展示继续暂停。部署凭据与私有 workspace 信息不写入公开仓库。
+> 安全边界与凭证加固见 `quant/docs/07-code-review/2026-11-10-security-hardening.md`。
 
 ## 当前架构
 
 ```text
-工作日 07:00（北京时间）
-  → 获取交易日历并验证当天是否为交易日
-  → 下载最新日频数据
+T 18:00（北京时间）
+  → 构建 T 日 PASS overlay
   → 分别运行 CSI300 / CSI500 / CSI1000 的冻结 profile
   → 要求数据日与 signal date 之间交易日 lag = 0
-  → 生成各市场 TopK ranking / chart / paper artifact
+  → 生成 T+1 各市场 TopK ranking / chart / paper artifact
   → journal 冻结 payloads，推送仓库，提交三市场 paper state
-  → 触发静态网站更新
-```
+  → 发布 T 日 NAV 并触发静态网站更新
 
-07:45 的 `daily_cron_second_chance` 是同一 journal 状态机下的幂等补跑，不另建账户。
+T 19:00 `daily_evening_retry`：同一 journal 状态机下的幂等重试
+T+1 07:00 `daily_cron`：盘前检查；缺失时补建 overlay/补发，已提交则幂等返回
+```
 
 ## 生产协议
 
@@ -45,7 +47,8 @@
 ```bash
 git checkout main
 git pull --ff-only
-modal deploy quant/code/production/modal_qlib_cn_a10g.py
+QLIB_DEPLOY_PROFILE=<production-profile> modal --profile <authorized-profile> deploy quant/code/production/modal_qlib_cn_a10g.py
+QLIB_DEPLOY_PROFILE=<production-profile> modal --profile <authorized-profile> deploy quant/code/ops/website_simulation_modal.py
 ```
 
 部署后检查：三市场 journal、paper state、`available_dates`、forward performance 与网站渲染。
