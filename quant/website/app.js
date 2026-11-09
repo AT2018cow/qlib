@@ -924,7 +924,7 @@ function pageShell(dates) {
           <div class="eyebrow"><span class="status-dot"></span> A股主流宽基量化多因子选股</div>
           <div class="pool-switcher" role="tablist" aria-label="选择指数股票池">${poolTabs}</div>
           <h1><span id="hero-pool-name">${currentPool.label}</span><span>每日选股信号</span></h1>
-          <p class="hero-lede" id="hero-lede">LightGBM + Alpha158 量价模型，每日开盘前生成指数成分股 Top ${currentPool.topk} 信号。</p>
+          <p class="hero-lede" id="hero-lede">LightGBM + Alpha158 量价模型，T 日收盘后生成指数成分股 Top ${currentPool.topk} 信号，T+1 开盘使用。</p>
         </div>
         <aside class="protocol-card">
           <h2>当前策略</h2>
@@ -933,13 +933,14 @@ function pageShell(dates) {
             <div class="protocol-row"><span>模型</span><strong>${PRODUCTION.model}</strong></div>
             <div class="protocol-row"><span>目标</span><strong id="protocol-target">${currentPool.horizonDays} 交易日前瞻收益</strong></div>
             <div class="protocol-row"><span>组合</span><strong id="protocol-portfolio">${portfolioLabel(currentPool)}</strong></div>
+            <div class="protocol-row"><span>信号时点</span><strong>T 收盘后生成 · T+1 开盘使用</strong></div>
           </div>
         </aside>
       </section>
 
       <section class="status-grid" aria-label="信号状态">
         <div class="stat-card">
-          <div class="stat-label">榜单日期</div>
+          <div class="stat-label">适用交易日</div>
           <div class="stat-value" id="stat-date">—</div>
         </div>
         <div class="stat-card">
@@ -1223,7 +1224,7 @@ async function main() {
     const heroLede = document.getElementById('hero-lede');
     if (heroLede) {
       heroLede.textContent =
-        `LightGBM + Alpha158 量价模型，每日开盘前生成指数成分股 Top ${nextPool.topk} 信号。`;
+        `LightGBM + Alpha158 量价模型，T 日收盘后生成指数成分股 Top ${nextPool.topk} 信号，T+1 开盘使用。`;
     }
     const protoPool = document.getElementById('protocol-pool');
     if (protoPool) protoPool.textContent = `${nextPool.label} (${nextPool.code})`;
