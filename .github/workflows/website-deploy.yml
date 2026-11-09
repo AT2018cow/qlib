@@ -93,6 +93,7 @@ jobs:
       - name: Deploy mirror to Cloudflare Pages
         if: ${{ env.CLOUDFLARE_ENABLED == 'true' }}
         env:
+          # Scope this token to Account -> Cloudflare Pages -> Edit only.
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: bash quant/website/deploy_cloudflare.sh _site
