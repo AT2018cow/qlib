@@ -1,0 +1,108 @@
+{
+  "contract_version": "csi1000_mvp_daily_v1",
+  "label_maturity": {
+    "fit_asof": "2026-11-04",
+    "horizon_sessions": 10,
+    "signal_data_date": "2026-11-09",
+    "status": "PASS",
+    "train_end": "2025-09-12",
+    "train_label_last_observation": "2025-09-26",
+    "train_start": "2016-01-01",
+    "train_start_effective": "2016-01-04",
+    "train_start_resolution": "FROZEN_HOLIDAY_TO_NEXT_SESSION",
+    "valid_end": "2026-10-20",
+    "valid_label_last_observation": "2026-11-03",
+    "valid_start": "2025-09-29"
+  },
+  "market": "csi300",
+  "paper": {
+    "execution_date": "2026-11-10",
+    "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
+    "n_positions": 10,
+    "pending_execution_date": "2026-11-10",
+    "pending_signal_date": "2026-11-09",
+    "planned_buy_count": 1,
+    "planned_sell_count": 1,
+    "prior_execution_blocked_order_count": 0,
+    "prior_execution_report": "present",
+    "real_fill_execution": "NOT_CERTIFIED_PAPER_ONLY",
+    "return_interpretation": "REFERENCE_ONLY_ST_NOT_MODELED",
+    "signal_date": "2026-11-09",
+    "status": "planned"
+  },
+  "pit_universe": {
+    "asof": "2026-11-09",
+    "expected_count": 300,
+    "member_count": 300,
+    "membership_sha256": "6e4a273b8665d2ba9a34e90a3c261be1d1eda370657563e3f267c01cee868e05",
+    "source_sha256": "5d53f599ff7656991eb10b0e69d6b112f73152a2bbd3cbd33e7d00095f6d1fa4",
+    "status": "PASS"
+  },
+  "production_lineage": {
+    "candidate_id": "59b93929bff1e736228d31403a167781aff433d27da1870bcf9fe34e04b6bbb9",
+    "contract_version": "csi1000_stage_b_forward_v1",
+    "model_config_sha256": "b97bc44d1c02acb4d85c344d2d570e00ef9ff365228c8a9550fa45393859ae67",
+    "profile": "59b93929_top10_drop1_10d",
+    "stage_b_snapshot_token": "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1"
+  },
+  "provider": {
+    "archive_sha256": "fda0921e96b557fbafb51b648a60416d1be959dd6cc062a69a647833d78e0164",
+    "base_archive_sha256": "dc917293925635189e982f47d35b960c3db8a9c3f11312c937673c8afdec21aa",
+    "calendar_end": "2026-11-09",
+    "calendar_sha256": "87a27e965843978792a3edeb6b7852986ac7e99f146c48d89ad7b4a283a0bbf7",
+    "name": "overlay",
+    "overlay_manifest_sha256": "fda0921e96b557fbafb51b648a60416d1be959dd6cc062a69a647833d78e0164",
+    "source_url": "overlay:cn_data_overlay"
+  },
+  "publication": {
+    "canonical_freshness_gate": "multi-market canonical freshness PASS: csi1000/csi500/csi300 data_date=2026-11-09 lag=0, archive=fda0921e96b5, calendar=87a27e965843 identical",
+    "lag_sessions": 0,
+    "publication_mode": "CANONICAL_T1",
+    "same_day_revision_policy": "EXPLICIT_VERSIONED_AMENDMENT_ONLY",
+    "signal_data_date": "2026-11-09",
+    "status": "PASS",
+    "usage_date": "2026-11-10"
+  },
+  "risk": {
+    "execution_st_policy": "ST_IGNORED_REFERENCE_ONLY",
+    "st": {
+      "date": "2026-11-10",
+      "detail": "Push2RateLimitError: 东方财富 push2 行情服务器断开了连接，通常是短时间内请求过多，当前 IP 被临时限流。首次限流一般约 5 分钟后恢复，反复触发后可能需要 40 分钟以上；等待期间不要重复调用东方财富的行情接口，否则会延长限流。",
+      "failure_kind": "TRANSPORT",
+      "scope": "transport outage; reference paper without ST restrictions",
+      "selection_filter_applied": false,
+      "source": "akshare.stock_zh_a_st_em",
+      "status": "NOT_CHECKED_REFERENCE_ONLY",
+      "top20_st": null,
+      "top20_st_count": null,
+      "tradeability_certified": false
+    },
+    "tradeability_certified": false,
+    "usage_day_suspension": {
+      "note": "Execution-day suspension cannot be certified from the prior close package. Paper settlement waits for the later provider refresh and records blocked orders.",
+      "scope": "2026-11-10",
+      "selection_filter_applied": false,
+      "status": "NOT_INDEPENDENTLY_VERIFIED_PREOPEN",
+      "tradeability_certified": false
+    }
+  },
+  "signal_lineage": {
+    "display_surface": "board_aware_close_limit_filtered_top20",
+    "display_top20_instruments": [
+      "SH688521",
+      "SZ300476",
+      "SZ301308",
+      "SH603986",
+      "SH600183",
+      "SZ002938",
+      "SZ002384",
+      "SZ002916",
+      "SZ000988",
+      "SZ300308"
+    ],
+    "display_top20_sha256": "5eb6a4102a80c09eb17da1b554cf2aec209f55c097b920f4d30519166b37379c",
+    "paper_planner_source": "pre_display_limit_filter_full_ranking",
+    "paper_ranking_count": 300,
+    "paper_ranking_full_sha256": "ebfac6e60a4d8d96bdbb37ebbaa9b516f1f8cebbec7d6b16a3126775477d5916"
+  }
+}
