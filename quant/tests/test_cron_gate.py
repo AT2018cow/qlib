@@ -297,8 +297,6 @@ def test_st_source_falls_back_to_tencent_name_list(monkeypatch):
     import time
     import types
 
-    import pandas as pd
-
     exceptions = types.ModuleType("requests.exceptions")
 
     class ConnectionError(Exception):
@@ -323,14 +321,75 @@ def test_st_source_falls_back_to_tencent_name_list(monkeypatch):
     monkeypatch.setattr(time, "sleep", lambda _: None)
     fn = _modal_helper_from_source("_current_st_risk_snapshot")
 
+    class Codes:
+        def __init__(self, values):
+            self.values = values
+
+        def isna(self):
+            return self
+
+        def any(self):
+            return False
+
+        def tolist(self):
+            return self.values
+
+    class PrimaryFrame:
+        columns = ["代码"]
+        empty = False
+
+        def __init__(self, values):
+            self.values = values
+
+        def __getitem__(self, key):
+            return Codes(self.values)
+
+    class Names:
+        def __init__(self, values):
+            self.values = values
+
+        def astype(self, _):
+            return self
+
+        @property
+        def str(self):
+            return self
+
+        def upper(self):
+            return Names([str(value).upper() for value in self.values])
+
+        def contains(self, token, na=False):
+            return [token in str(value).upper() for value in self.values]
+
+    class BackupFrame:
+        columns = ["code", "name"]
+
+        def __init__(self, rows):
+            self.rows = rows
+
+        @property
+        def empty(self):
+            return not self.rows
+
+        def __getitem__(self, key):
+            if key == "code":
+                return Codes([row["code"] for row in self.rows])
+            if key == "name":
+                return Names([row["name"] for row in self.rows])
+            if isinstance(key, list):
+                return BackupFrame([row for row, keep in zip(self.rows, key) if keep])
+            raise KeyError(key)
+
     def transport_outage():
         raise ConnectionError("RemoteDisconnected")
 
-    frame = pd.DataFrame(
-        {
-            "code": ["sh600000", "sh600001", "sz000001", "sz000002"],
-            "name": ["浦发银行", "*ST某某", "平安银行", "ST某某"],
-        }
+    frame = BackupFrame(
+        [
+            {"code": "sh600000", "name": "浦发银行"},
+            {"code": "sh600001", "name": "*ST某某"},
+            {"code": "sz000001", "name": "平安银行"},
+            {"code": "sz000002", "name": "ST某某"},
+        ]
     )
     ak.stock_zh_a_st_em = transport_outage
     ak.stock_zh_a_spot_tx = lambda: frame
@@ -340,10 +399,10 @@ def test_st_source_falls_back_to_tencent_name_list(monkeypatch):
     assert result["top20_st"] == ["SH600001", "SZ000002"]
     assert result["source_row_count"] == 2
 
-    ak.stock_zh_a_st_em = lambda: pd.DataFrame({"代码": ["BAD"]})
+    ak.stock_zh_a_st_em = lambda: PrimaryFrame(["BAD"])
     assert fn(["SH600001"])["source"] == "akshare.stock_zh_a_spot_tx"
 
-    ak.stock_zh_a_spot_tx = lambda: pd.DataFrame({"code": ["sh600000"], "name": ["浦发银行"]})
+    ak.stock_zh_a_spot_tx = lambda: BackupFrame([{"code": "sh600000", "name": "浦发银行"}])
     invalid_backup = fn(["SH600000"])
     assert invalid_backup["status"] == "UNAVAILABLE"
     assert invalid_backup["failure_kind"] == "INVALID_RESPONSE"
