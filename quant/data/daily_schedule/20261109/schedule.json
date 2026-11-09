@@ -92,7 +92,7 @@
   },
   "known_issues": {
     "ci_numpy": "Quant extension checks failed on NumPy 2.4.6; workflow now pins numpy==1.26.4",
-    "st_snapshot_20261109": "eastmoney push2 rate limit; TRANSPORT reference-only, publication not blocked"
+    "st_snapshot_20261109": "eastmoney push2 rate limit; TRANSPORT reference-only, publication not blocked; Tencent name-list fallback added in 8023cc5"
   },
   "research_workspace_policy": "experiments use Modal profile/workspace infi; production workspace only cron and production repairs"
 }

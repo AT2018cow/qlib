@@ -70,7 +70,7 @@
 
 - `Quant extension checks` 自 2026-11-08 起失败：`pip install -e .` 把 NumPy 升级到 2.4.6，与按 1.26 编译的 Cython 扩展不兼容。已在该工作流中追加 `numpy==1.26.4` 约束。
 - `cn_data` 基础数据需要在下一次研究/训练任务前重新下载；日常信号与网站不依赖它。
-- 18:00 首轮的数据源 ST 快照遇到东方财富限流，按 `TRANSPORT` 语义降级为 reference-only，未阻塞信号发布。
+- 18:00 首轮的数据源 ST 快照遇到东方财富限流，按 `TRANSPORT` 语义降级为 reference-only，未阻塞信号发布；现已增加腾讯全 A 股名称列表备份源（`akshare.stock_zh_a_spot_tx`），详见 `2026-11-09-st-source-fallback.md`。
 - 名称映射更新遇到深交所接口超时，不影响信号发布。
 
 ## 7. 回滚
