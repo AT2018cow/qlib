@@ -165,6 +165,7 @@ image = (
                     "credentials",
                     ".ssh",
                     ".docker",
+                    "node_modules",
                     ".worktrees",
                     "mlruns",
                     "__pycache__",
