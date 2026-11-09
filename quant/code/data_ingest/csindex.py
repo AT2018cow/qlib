@@ -24,11 +24,29 @@ class CSIndexError(RuntimeError):
 
 
 def _default_fetch(url: str) -> bytes:
+    """Fetch one CSIndex file with bounded retries.
+
+    The official OSS host is occasionally slow (observed 60s+ read timeouts
+    from Modal while the same file returned in ~9s locally).  A single hard
+    timeout aborts the whole overlay build, so retry with a longer read
+    timeout before failing closed.
+    """
+    import time
+
     import requests
 
-    response = requests.get(url, timeout=60)
-    response.raise_for_status()
-    return response.content
+    last_error: Exception | None = None
+    for attempt in range(3):
+        try:
+            response = requests.get(url, timeout=(10, 120))
+            response.raise_for_status()
+            return response.content
+        except requests.RequestException as exc:
+            last_error = exc
+            if attempt < 2:
+                time.sleep(5 * (attempt + 1))
+    assert last_error is not None
+    raise last_error
 
 
 def _as_date(value) -> str:
