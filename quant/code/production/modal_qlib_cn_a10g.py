@@ -4460,6 +4460,8 @@ def _run_evening_cycle():
     from datetime import datetime
     from zoneinfo import ZoneInfo
 
+    from daily_pipeline import run_daily_pipeline
+
     today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
     calendar = _trading_days()
     if today not in calendar:
@@ -4468,10 +4470,13 @@ def _run_evening_cycle():
     if signal_date is None:
         return {"status": "SKIPPED_NO_NEXT_SESSION", "signal_date": today}
     _ensure_overlay_for(today)
-    return _run_daily_signal_cycle(
-        False,
-        signal_date_override=signal_date,
-        data_asof_override=today,
+    return run_daily_pipeline(
+        lambda: _run_daily_signal_cycle(
+            False,
+            signal_date_override=signal_date,
+            data_asof_override=today,
+        ),
+        _update_website_returns,
     )
 
 
