@@ -1,0 +1,155 @@
+{
+  "schema_version": 1,
+  "status": "CLEANED",
+  "repository": "AT2018cow/qlib",
+  "fork_of": "microsoft/qlib",
+  "visibility": "public",
+  "local_workflow_files": 18,
+  "active_workflows_before": 30,
+  "active_workflows_after": 18,
+  "disabled_workflows": [
+    {
+      "id": "361782242",
+      "name": "Apply Qlib audit patch (temporary)",
+      "path": ".github/workflows/qlib-audit-apply.yml",
+      "reason": "removed from main but still registered; one-time/temporary or stale verification"
+    },
+    {
+      "id": "361792919",
+      "name": "Apply Qlib live retraining upgrade (temporary)",
+      "path": ".github/workflows/qlib-live-apply.yml",
+      "reason": "removed from main but still registered; one-time/temporary or stale verification"
+    },
+    {
+      "id": "374863380",
+      "name": "Review regression checks",
+      "path": ".github/workflows/review-regression.yml",
+      "reason": "removed from main but still registered; one-time/temporary or stale verification"
+    },
+    {
+      "id": "375502837",
+      "name": "Verify execution attribution",
+      "path": ".github/workflows/verify-execution-attribution.yml",
+      "reason": "removed from main but still registered; one-time/temporary or stale verification"
+    },
+    {
+      "id": "376611092",
+      "name": "Verify phase extension orchestration",
+      "path": ".github/workflows/verify-phase-orchestration.yml",
+      "reason": "removed from main but still registered; one-time/temporary or stale verification"
+    },
+    {
+      "id": "376433343",
+      "name": "Verify phase audit reuse",
+      "path": ".github/workflows/verify-phase-reuse.yml",
+      "reason": "removed from main but still registered; one-time/temporary or stale verification"
+    },
+    {
+      "id": "375764707",
+      "name": "Verify portfolio metrics",
+      "path": ".github/workflows/verify-portfolio-metrics.yml",
+      "reason": "removed from main but still registered; one-time/temporary or stale verification"
+    },
+    {
+      "id": "376238032",
+      "name": "Verify PR8 reproducibility gate",
+      "path": ".github/workflows/verify-pr8-repro.yml",
+      "reason": "removed from main but still registered; one-time/temporary or stale verification"
+    },
+    {
+      "id": "375979299",
+      "name": "Verify pre-tuner audit extended pools",
+      "path": ".github/workflows/verify-pre-tuner-audit-extended.yml",
+      "reason": "removed from main but still registered; one-time/temporary or stale verification"
+    },
+    {
+      "id": "375958860",
+      "name": "Verify pre-tuner audit",
+      "path": ".github/workflows/verify-pre-tuner-audit.yml",
+      "reason": "removed from main but still registered; one-time/temporary or stale verification"
+    },
+    {
+      "id": "375980141",
+      "name": "Verify multi-pool pre-tuner audit",
+      "path": ".github/workflows/verify-pre-tuner-multipool.yml",
+      "reason": "removed from main but still registered; one-time/temporary or stale verification"
+    },
+    {
+      "id": "375224950",
+      "name": "Verify R24 R27 R28 fixes",
+      "path": ".github/workflows/verify-r24-r27-r28.yml",
+      "reason": "removed from main but still registered; one-time/temporary or stale verification"
+    },
+    {
+      "id": "376746199",
+      "name": "Verify satellite gate screen",
+      "path": ".github/workflows/verify-satellite-gate-screen.yml",
+      "reason": "removed from main but still registered; one-time/temporary or stale verification"
+    },
+    {
+      "id": "376682562",
+      "name": "Verify zero-fit phase attribution",
+      "path": ".github/workflows/verify-zero-fit-phase-attribution.yml",
+      "reason": "removed from main but still registered; one-time/temporary or stale verification"
+    },
+    {
+      "id": "375036178",
+      "name": "Wrapper bugfix verification",
+      "path": ".github/workflows/wrapper-bugfix-check.yml",
+      "reason": "removed from main but still registered; one-time/temporary or stale verification"
+    },
+    {
+      "id": "376720935",
+      "name": "Verify zero-fit regime model-age attribution",
+      "path": ".github/workflows/verify-zero-fit-regime-age.yml",
+      "reason": "removed from main but still registered; one-time/temporary or stale verification"
+    }
+  ],
+  "upstream_qlib_actions": "none of the upstream qlib test/lint/docs/release workflows are present in this fork",
+  "recent_run_sample": {
+    "fetched": 200,
+    "by_workflow": {
+      "Deploy signal website to GitHub Pages": 73,
+      "Quant extension checks": 63,
+      "CSI1000 MVP publication contract": 40,
+      "Website visual review": 10,
+      "others": 14
+    },
+    "by_event": {
+      "push": 175,
+      "pull_request": 14,
+      "workflow_dispatch": 11
+    },
+    "by_month": {
+      "2026-11": 124,
+      "2026-10": 76
+    }
+  },
+  "likely_disable_causes": [
+    "repository-level Actions setting or fork/org policy",
+    "billing/spending limit or usage protection (exact reason not readable with the current fine-grained token)",
+    "high run frequency / abuse protection is possible, but workflow count alone is not a documented auto-disable cause"
+  ],
+  "recommended_active_set": [
+    "website-deploy.yml",
+    "csi1000-tuner-core.yml",
+    "csi1000-mvp.yml",
+    "website-visual-review.yml",
+    "unified-paper-nav.yml",
+    "paper-nav-independent-audit.yml"
+  ],
+  "optional_second_wave": [
+    "csi1000-stage-a-corrected-replay.yml",
+    "csi1000-stage-b-corrected-rerank.yml",
+    "csi1000-stage-b-f5-gates.yml",
+    "csi1000-stage-b-f6-preflight.yml",
+    "csi1000-stage-b-independent-audit.yml",
+    "csi1000-stage-b-independent-ledger.yml",
+    "csi1000-stage-b-rapid-triage.yml",
+    "csi1000-f1-quote-fix.yml",
+    "csi1000-forward-shadow-pair-preflight.yml",
+    "csi1000-l2-fastlane.yml",
+    "csi1000-l3-offline.yml",
+    "csi1000-l4-offline.yml"
+  ]
+}
