@@ -150,6 +150,6 @@ jobs:
       - name: Build Qlib extensions and install the checked out code
         run: |
           make prerequisite
-          python -m pip install --disable-pip-version-check --no-build-isolation -e .
+          python -m pip install --disable-pip-version-check --no-build-isolation -e . "numpy==1.26.4"
       - name: Discover every extension regression test
         run: python -m pytest -q quant/tests

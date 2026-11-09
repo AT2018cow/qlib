@@ -1,9 +1,14 @@
 {
   "schema_version": 1,
-  "status": "DEPLOYED_MONITORING",
+  "status": "CUTOVER_VERIFIED",
+  "workspace_profile": "QLIB_DEPLOY_PROFILE=infi-prod",
   "apps": {
-    "qlib-cn-daily-a10g": "v40",
-    "qlib-website-nav": "v15"
+    "qlib-prod-daily": "v5",
+    "qlib-prod-website": "v5"
+  },
+  "app_ids": {
+    "qlib-prod-daily": "ap-R8aMsHOTPtIdzzypHOR4m0",
+    "qlib-prod-website": "ap-Ir4xqr9l6D4StZKc7Oeguj"
   },
   "schedules": {
     "daily_cron": "0 7 * * 1-5 Asia/Shanghai",
@@ -26,13 +31,61 @@
       "execution_date": "2026-11-09"
     }
   },
+  "signal_20261110": {
+    "status": "PUBLISHED",
+    "publication_mode": "CANONICAL_T1",
+    "lag_sessions": 0,
+    "signal_data_date": "2026-11-09",
+    "usage_date": "2026-11-10",
+    "journal_stage": "VOLUME_COMMITTED",
+    "files": 12,
+    "github_commit": "f9ce60049",
+    "overlay": {
+      "asof": "2026-11-09",
+      "status": "PASS",
+      "rows": 1802,
+      "base_pit": "2026-11-06"
+    }
+  },
+  "paper_state": {
+    "pending_signal_data_date": "2026-11-09",
+    "pending_execution_date": "2026-11-10",
+    "last_settled": "2026-11-09 open (signal data 2026-11-06)"
+  },
   "website_nav": {
-    "latest_date": "2026-11-06",
-    "next_calculation": "2026-11-09 18:00 evening"
+    "latest_date": "2026-11-09",
+    "public_url": "https://qliba158.pages.dev",
+    "publication_commit": "9992cec39",
+    "receipt_status": "PUBLISHED",
+    "receipt_files": 12,
+    "asset_digest": "sha256:fda0921e96b557fbafb51b648a60416d1be959dd6cc062a69a647833d78e0164",
+    "source_sha256": "a8870427ee717891152fd21186dc718c9e43e677b604e45b9eced935ddc7d951",
+    "navs": {
+      "csi1000": 0.80324595,
+      "csi500": 0.89409338,
+      "csi300": 0.76021433
+    }
+  },
+  "cutover": {
+    "legacy_apps_stopped_at": "2026-11-09 17:38 +08",
+    "migration_archive_bytes": 443339508,
+    "migration_archive_sha256": "59e062a2abd0460f47db2b840f97df02d519a7263b19081aa34361075b63352b",
+    "migration_archive_removed": true,
+    "base_cn_data": "partial copy; .chenditc marker removed so next _ensure_data re-downloads; daily signal path uses overlay"
   },
   "incident": {
     "website_stage": "FunctionTimeoutError at 60m on cold CSI1000 replay",
-    "mitigation": "worker timeout 3600 -> 5400 seconds"
+    "mitigation": "worker timeout 3600 -> 5400 seconds",
+    "evening_20261109": [
+      "18:00 data_ingest import path fixed in 32fdaa3",
+      "CSIndex read timeout retries fixed in 2d6767f",
+      "CSIndex same-day constituent lag handled in f261706",
+      "evening website NAV stage added in 9c42769"
+    ]
+  },
+  "known_issues": {
+    "ci_numpy": "Quant extension checks failed on NumPy 2.4.6; workflow now pins numpy==1.26.4",
+    "st_snapshot_20261109": "eastmoney push2 rate limit; TRANSPORT reference-only, publication not blocked"
   },
   "research_workspace_policy": "experiments use Modal profile/workspace infi; production workspace only cron and production repairs"
 }
