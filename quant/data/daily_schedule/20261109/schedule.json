@@ -52,6 +52,13 @@
     "pending_execution_date": "2026-11-10",
     "last_settled": "2026-11-09 open (signal data 2026-11-06)"
   },
+  "budget_policy": {
+    "daily_cap_usd": 2.0,
+    "monthly_credit_usd": 40.0,
+    "reserve_usd": 2.0,
+    "cold_start_temp_daily_cap_usd": 10.0,
+    "note": "cold-start cap reverted to 2.0 after the first website replay; platform balance remains the hard limit"
+  },
   "website_nav": {
     "latest_date": "2026-11-09",
     "public_url": "https://qliba158.pages.dev",
