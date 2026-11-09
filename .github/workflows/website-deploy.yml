@@ -14,8 +14,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -27,6 +25,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # GitHub Pages build steps are disabled while GITHUB_PAGES_ENABLED is false.
+    # If re-enabled, grant pages: write to this job for configure-pages/upload.
     env:
       # Only a boolean is exposed to the build/test steps.  The actual
       # Cloudflare token is scoped to the deploy step below.
@@ -44,6 +44,7 @@ jobs:
           mkdir -p _site/signals
           # Keep all local HTML/JS/CSS dependencies together in Pages artifact.
           cp quant/website/*.html quant/website/*.js quant/website/*.css quant/website/*.svg quant/website/*.png quant/website/*.ico _site/
+          cp quant/website/_headers _site/
           cp quant/data/signals/*.csv quant/data/signals/*.json _site/signals/
           python3 quant/website/build_index.py \
             --signals quant/data/signals \
@@ -74,6 +75,7 @@ jobs:
           test -s _site/index.html
           test -s _site/methodology.html
           test -s _site/app.js
+          test -s _site/_headers
           test -s _site/styles.css
           test -s _site/favicon.svg
           test -s _site/favicon-32.png
@@ -101,6 +103,9 @@ jobs:
   deploy:
     needs: build
     if: ${{ vars.GITHUB_PAGES_ENABLED == 'true' }}
+    permissions:
+      pages: write
+      id-token: write
     runs-on: ubuntu-latest
     environment:
       name: github-pages
