@@ -12,6 +12,7 @@
   --blue-soft: #22374f;
   --teal: #72d3ad;
   --teal-soft: #1d3a34;
+  --green: #7ee787;
   --red: #ff9198;
   --red-soft: #382b38;
   --amber: #efc580;
@@ -356,7 +357,7 @@ h1, h2, h3, p { margin-top: 0; }
   white-space: nowrap;
 }
 .score.positive { color: var(--red); }
-.score.negative { color: var(--teal); }
+.score.negative { color: var(--green); }
 .tag {
   display: inline-block;
   min-width: 38px;
