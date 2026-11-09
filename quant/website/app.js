@@ -127,10 +127,12 @@ function formatDate(date) {
 }
 
 function formatScore(value) {
-  const n = Number(value) * 100;
+  // Raw regression output on the N-day return label.  It is an ordering
+  // score, not a calibrated expected return, so never render it as a percent.
+  const n = Number(value);
   if (!Number.isFinite(n)) return { text: '—', klass: '' };
   return {
-    text: `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`,
+    text: `${n >= 0 ? '+' : ''}${n.toFixed(3)}`,
     klass: n >= 0 ? 'positive' : 'negative',
   };
 }
@@ -931,7 +933,7 @@ function pageShell(dates) {
           <div class="protocol-list">
             <div class="protocol-row"><span>股票池</span><strong id="protocol-pool">${currentPool.label} (${currentPool.code})</strong></div>
             <div class="protocol-row"><span>模型</span><strong>${PRODUCTION.model}</strong></div>
-            <div class="protocol-row"><span>目标</span><strong id="protocol-target">${currentPool.horizonDays} 交易日前瞻收益</strong></div>
+            <div class="protocol-row"><span>目标</span><strong id="protocol-target">${currentPool.horizonDays} 日横截面相对强弱</strong></div>
             <div class="protocol-row"><span>组合</span><strong id="protocol-portfolio">${portfolioLabel(currentPool)}</strong></div>
             <div class="protocol-row"><span>信号时点</span><strong>T 收盘后生成 · T+1 开盘使用</strong></div>
           </div>
@@ -969,11 +971,12 @@ function pageShell(dates) {
         <div class="table-wrap">
           <table class="signal-table">
             <thead>
-              <tr><th>排名</th><th>代码</th><th>名称</th><th id="th-pred-horizon">${currentPool.horizonDays}日预测</th><th>排名变化</th><th>近60日</th></tr>
+              <tr><th>排名</th><th>代码</th><th>名称</th><th id="th-pred-horizon" title="模型原始回归评分，仅用于横截面排序；不是预期涨幅">${currentPool.horizonDays}日模型评分</th><th>排名变化</th><th>近60日</th></tr>
             </thead>
             <tbody id="signal-rows"></tbody>
           </table>
         </div>
+        <p class="muted ranking-score-note">模型评分为原始回归输出，仅用于横截面排序，不代表预期涨幅或校准收益率。</p>
         <div id="mobile-cards" class="mobile-cards"></div>
         <div id="rebalance" class="rebalance-block" hidden>
           <div class="rebalance-head">
@@ -1033,6 +1036,7 @@ function pageShell(dates) {
           </div>
           <ul class="governance-list">
             <li>CSI300/CSI1000 为 Top10/Drop1，CSI500 为 Top20/Drop2；新进榜单不等于立即买入。</li>
+            <li>模型评分为原始回归输出，仅用于横截面排序，不代表预期涨幅或校准收益率。</li>
             <li>三个独立 100 万元模拟账户自 2026.10.08 开盘建仓，按策略连续调仓并扣费；历史重建未核实逐日 ST 和开盘成交量，收益为模拟参考。</li>
           </ul>
         </div>
@@ -1229,7 +1233,7 @@ async function main() {
     const protoPool = document.getElementById('protocol-pool');
     if (protoPool) protoPool.textContent = `${nextPool.label} (${nextPool.code})`;
     const protoTarget = document.getElementById('protocol-target');
-    if (protoTarget) protoTarget.textContent = `${nextPool.horizonDays} 交易日前瞻收益`;
+    if (protoTarget) protoTarget.textContent = `${nextPool.horizonDays} 日横截面相对强弱`;
     const protoPortfolio = document.getElementById('protocol-portfolio');
     if (protoPortfolio) protoPortfolio.textContent = portfolioLabel(nextPool);
     const rebalanceKicker = document.getElementById('rebalance-kicker');
@@ -1237,7 +1241,7 @@ async function main() {
       rebalanceKicker.textContent = `Top ${nextPool.topk} · Drop${nextPool.nd}`;
     }
     const thPred = document.getElementById('th-pred-horizon');
-    if (thPred) thPred.textContent = `${nextPool.horizonDays}日预测`;
+    if (thPred) thPred.textContent = `${nextPool.horizonDays}日模型评分`;
 
     if (!indexCache.has(nextPool.key)) {
       indexCache.set(nextPool.key, loadAvailableDates(nextPool));

@@ -499,6 +499,7 @@ h1, h2, h3, p { margin-top: 0; }
   justify-content: flex-end;
 }
 .muted { color: var(--quiet); font-size: 12px; }
+.ranking-score-note { margin: 10px 2px 0; }
 .mobile-cards { display: none; }
 
 .history-wrap { padding: 18px 24px 22px; }

@@ -70,7 +70,7 @@ test('renderers escape name/instrument/url instead of emitting live markup', () 
     rank: 1,
     instrument: 'SH600000',
     name: '<img src=x onerror=alert(1)>',
-    score: { text: '+1.0%', klass: 'positive' },
+    score: { text: '+0.010', klass: 'positive' },
     tag: '',
     spark: '',
     url: 'https://example.test/?x=<script>',
