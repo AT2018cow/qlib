@@ -76,6 +76,7 @@
     "receipt_files": 12,
     "asset_digest": "sha256:fda0921e96b557fbafb51b648a60416d1be959dd6cc062a69a647833d78e0164",
     "source_sha256": "a8870427ee717891152fd21186dc718c9e43e677b604e45b9eced935ddc7d951",
+    "source_note": "11/09 receipt was produced before v8; v8 creates a new receipt on the next website stage",
     "navs": {
       "csi1000": 0.80324595,
       "csi500": 0.89409338,
