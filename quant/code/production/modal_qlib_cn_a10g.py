@@ -4373,11 +4373,13 @@ def ensure_overlay(trade_date: str):
     18:00 signal publication.
     """
     import json
+    import re
     import shutil
+    from datetime import date
 
     from data_ingest.baostock_source import BaoStockSource
     from data_ingest.calendar import fetch_sina_calendar, read_calendar, resolve_target_dates
-    from data_ingest.pipeline import OverlayPipeline
+    from data_ingest.pipeline import OverlayPipeline, PipelineError
     from data_ingest.sina import SinaSource
 
     vol.reload()
@@ -4416,15 +4418,33 @@ def ensure_overlay(trade_date: str):
         crosscheck_count=20,
         require_weights=True,
     )
-    manifest = pipeline.build(
-        base,
-        target,
+    build_kwargs = dict(
         asof=trade_date,
         dates=dates,
         markets=("csi300", "csi500", "csi1000"),
         base_archive_sha256=(base_manifest.get("base") or {}).get("archive_sha256"),
         require_qlib_smoke=True,
     )
+    try:
+        manifest = pipeline.build(base, target, **build_kwargs)
+    except PipelineError as exc:
+        # CSIndex publishes the same-day constituent/weight file only after the
+        # evening build on some days.  When the latest official snapshot is the
+        # frozen base date (or at most one weekend behind), reuse the base PIT
+        # membership instead of failing the whole T-close publication.  A larger
+        # lag stays fail-closed so a real index rebalance is never skipped.
+        match = re.search(r"constituent date (\d{4}-\d{2}-\d{2}) != asof", str(exc))
+        if match is None:
+            raise
+        lag_days = (date.fromisoformat(trade_date) - date.fromisoformat(match.group(1))).days
+        if lag_days < 0 or lag_days > 3:
+            raise
+        print(
+            f"[overlay] CSIndex snapshot {match.group(1)} lags asof {trade_date} by {lag_days}d; "
+            "using frozen base PIT membership",
+            flush=True,
+        )
+        manifest = pipeline.build(base, target, allow_base_membership=True, **build_kwargs)
     vol.commit()
     print(f"[overlay] {trade_date} PASS rows={manifest['overlay']['row_symbols']}", flush=True)
     return {
