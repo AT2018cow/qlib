@@ -224,8 +224,10 @@ modal run quant/code/production/modal_qlib_cn_a10g.py::daily_cron \
 
 | App | 最终版本 | Commit | 时间（北京时间） |
 |---|---|---|---|
-| `qlib-prod-daily` | v17 | `f77a3b349` | 2026-11-11 03:30 |
-| `qlib-prod-website` | v17 | `f77a3b349` | 2026-11-11 03:32 |
+| `qlib-prod-daily` | v18 | `1fdc8a751` | 2026-11-11 03:44 |
+| `qlib-prod-website` | v18 | `1fdc8a751` | 2026-11-11 03:45 |
+
+中间版本：v16 `78883ef`（首次切换）、v17 `f77a3b3`（digest 前缀修复）。最终 v18 与 `f77a3b3` 的 Python 代码完全相同，只多了验收文档；`_code_source_sha` 不变，marker 继续有效。
 
 首次部署 v16 `78883ef` 后，`modal app info qlib-prod-daily` 只剩：
 `daily_cron` 06:00、`daily_preopen_retry` 07:30、`daily_readonly_check` 09:00。
@@ -260,11 +262,12 @@ marker 的 provider digest 是裸 64 位 hex，而 website `status` 接口要求
 - `daily_cron` 无 override（模拟 06:00）：`ALREADY_COMPLETED`；
 - `daily_readonly_check`：`{"status":"OK","provider_digest":"6585…","journal_commit":"d2df363b…"}`；
 - 新 website JSON 与上一版除 `source_manifest_sha256`/`provider_archive_sha256`/`model_sha256` 外完全相等；最新 NAV 0.82346966、累计 -0.17653034 不变。
+- 最终 v18 `1fdc8a751` 部署后再次调用 `daily_preopen_retry`，仍返回 `ALREADY_COMPLETED`，说明 docs-only 提交没有改变训练/发布身份。
 
 ### 10.5 成本
 
 切换前 `budget_status`：today $0.6065，monthly metered $34.3838/$40，reserve $2，允许。
-切换后（含探测、两次 website replay、封存）：today $0.6065（账单报表尚未滚动今日口径），monthly metered $34.6740。实际增量约 **$0.29**；仍需在普通日/重训日分别统计 App 账单，不能把本次一次性 replay 当作日常成本。
+切换后（含探测、两次 website replay、封存）：today $0.6065（账单报表尚未滚动今日口径），monthly metered $34.6740。实际增量约 **$0.29**；仍需在普通日/重训日分别统计 App 账单，不能把本次一次性 replay 当作日常成本。注意 monthly reserve 仅剩约 $3.3（$40 credit - $34.67 metered - $2 reserve），11-12 首次重训 + website 可能触及 website budget guard。
 
 ### 10.6 剩余验收门
 
