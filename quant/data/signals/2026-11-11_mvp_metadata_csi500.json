@@ -1,0 +1,119 @@
+{
+  "contract_version": "csi1000_mvp_daily_v1",
+  "label_maturity": {
+    "fit_asof": "2026-11-04",
+    "horizon_sessions": 20,
+    "signal_data_date": "2026-11-10",
+    "status": "PASS",
+    "train_end": "2025-08-15",
+    "train_label_last_observation": "2025-09-12",
+    "train_start": "2016-01-01",
+    "train_start_effective": "2016-01-04",
+    "train_start_resolution": "FROZEN_HOLIDAY_TO_NEXT_SESSION",
+    "valid_end": "2026-09-29",
+    "valid_label_last_observation": "2026-11-03",
+    "valid_start": "2025-09-15"
+  },
+  "market": "csi500",
+  "paper": {
+    "execution_date": "2026-11-11",
+    "execution_st_policy": "ST_VERIFIED_PREOPEN",
+    "n_positions": 20,
+    "pending_execution_date": "2026-11-11",
+    "pending_signal_date": "2026-11-10",
+    "planned_buy_count": 2,
+    "planned_sell_count": 2,
+    "prior_execution_blocked_order_count": 0,
+    "prior_execution_report": "present",
+    "real_fill_execution": "NOT_CERTIFIED_PAPER_ONLY",
+    "return_interpretation": "PAPER_ONLY",
+    "signal_date": "2026-11-10",
+    "status": "planned"
+  },
+  "pit_universe": {
+    "asof": "2026-11-10",
+    "expected_count": 500,
+    "member_count": 500,
+    "membership_sha256": "10c6729d3d32e9894d2b478a6f5617a7764f40805bc6ef567c255e7b47d50391",
+    "source_sha256": "fe255043c0029827e227556a3ac5194847ec3277b9f761542c094bd55975a6e9",
+    "status": "PASS"
+  },
+  "production_lineage": {
+    "candidate_id": "99627a9d20842f5ac43874593b71b175cc533fe2f09666a9417a589f35c7eb1f",
+    "contract_version": "csi1000_stage_b_forward_v1",
+    "model_config_sha256": "d49e893ad37c821a6a092fb17baf7ee29c9ff71289bbeb1205132e34e3854c50",
+    "profile": "raw10d_c98856b4_top20_drop2_20d",
+    "stage_b_snapshot_token": "51756897fc75230493194aef2e48815e4e9f3cc7426cc135f47bb8ba8e0d21e1"
+  },
+  "provider": {
+    "archive_sha256": "d76b373f1e9efc955024c0c6935e1d0b3a6d82e92d400d9b96aba48a8f180a51",
+    "base_archive_sha256": "dc917293925635189e982f47d35b960c3db8a9c3f11312c937673c8afdec21aa",
+    "calendar_end": "2026-11-10",
+    "calendar_sha256": "d27c0c6b76379a5843e546d8061a5383bedf4c5bb7da3e14658cb2475469aca6",
+    "name": "overlay",
+    "overlay_manifest_sha256": "d76b373f1e9efc955024c0c6935e1d0b3a6d82e92d400d9b96aba48a8f180a51",
+    "source_url": "overlay:cn_data_overlay"
+  },
+  "publication": {
+    "canonical_freshness_gate": "multi-market canonical freshness PASS: csi1000/csi500/csi300 data_date=2026-11-10 lag=0, archive=d76b373f1e9e, calendar=d27c0c6b7637 identical",
+    "lag_sessions": 0,
+    "publication_mode": "CANONICAL_T1",
+    "same_day_revision_policy": "EXPLICIT_VERSIONED_AMENDMENT_ONLY",
+    "signal_data_date": "2026-11-10",
+    "status": "PASS",
+    "usage_date": "2026-11-11"
+  },
+  "risk": {
+    "execution_st_policy": "ST_VERIFIED_PREOPEN",
+    "st": {
+      "date": "2026-11-11",
+      "fetched_at_cst": "2026-11-10T19:56:00.898241+08:00",
+      "scope": "current risk-warning board snapshot",
+      "selection_filter_applied": false,
+      "signal_data_date": "2026-11-10",
+      "source": "akshare.stock_zh_a_st_em",
+      "source_row_count": 386,
+      "status": "SOURCE_SNAPSHOT_AVAILABLE",
+      "top20_st": [],
+      "top20_st_count": 0,
+      "tradeability_certified": false
+    },
+    "tradeability_certified": false,
+    "usage_day_suspension": {
+      "note": "Execution-day suspension cannot be certified from the prior close package. Paper settlement waits for the later provider refresh and records blocked orders.",
+      "scope": "2026-11-11",
+      "selection_filter_applied": false,
+      "status": "NOT_INDEPENDENTLY_VERIFIED_PREOPEN",
+      "tradeability_certified": false
+    }
+  },
+  "signal_lineage": {
+    "display_surface": "board_aware_close_limit_filtered_top20",
+    "display_top20_instruments": [
+      "SZ300620",
+      "SZ001309",
+      "SH688120",
+      "SH688347",
+      "SH603529",
+      "SH688234",
+      "SH600377",
+      "SH688002",
+      "SZ000032",
+      "SZ002966",
+      "SH600988",
+      "SH605589",
+      "SZ300395",
+      "SH600901",
+      "SH688122",
+      "SH688318",
+      "SZ002465",
+      "SH601298",
+      "SZ002773",
+      "SH600380"
+    ],
+    "display_top20_sha256": "2cccd35701a17c9d52f1349a4a6661aef94ec7e3e739d392d733b2539df4fd91",
+    "paper_planner_source": "pre_display_limit_filter_full_ranking",
+    "paper_ranking_count": 499,
+    "paper_ranking_full_sha256": "d371e0bdd85a3926158a90981df911b708d0cd2cab4da397d2f0dcd581cfb783"
+  }
+}
