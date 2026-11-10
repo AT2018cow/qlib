@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def _daily_cron_source() -> str:
     src = (ROOT / "quant/code/production/modal_qlib_cn_a10g.py").read_text()
-    start = src.index("def daily_cron(allow_lag: bool = False):")
+    start = src.index("def daily_cron(")
     end = src.index("# ===================== 第六步", start)
     return src[start:end]
 

@@ -53,12 +53,13 @@ EXPECTED_FUNCTIONS = [
     "daily_standalone",
     "daily_cron",
     "daily_preopen_retry",
+    "daily_readonly_check",
     "ensure_chenditc_provider",
     "daily_repair_manual",
     "daily_cron_manual",
     "ensure_overlay",
-    "daily_evening",
-    "daily_evening_retry",
+    "daily_evening_manual",
+    "daily_evening_retry_manual",
     "attest_paper_state_bootstrap",
     "freq_window",
     "freq_driver",
@@ -117,7 +118,7 @@ def test_daily_cron_single_execution_contract():
     assert "expires_at" not in src
     assert "PUBLICATION_LEASE_WAIT_SECONDS" not in src
     # Each invocation gets a globally unique id (never a PID, which can repeat).
-    cron = src[src.index("def daily_cron(allow_lag: bool = False):") : src.index("# ===================== 第六步")]
+    cron = src[src.index("def daily_cron(") : src.index("# ===================== 第六步")]
     assert "invocation_id = uuid.uuid4().hex" in cron
     assert "os.getpid()" not in cron
     assert "max_containers=1 的平台单执行" in cron

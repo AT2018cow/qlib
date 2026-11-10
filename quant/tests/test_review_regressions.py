@@ -6,6 +6,10 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def function_source(path: str, name: str) -> str:
+    # The Modal wrapper delegates to this implementation; source-level
+    # regression checks inspect the implementation body.
+    if name == "daily_standalone":
+        name = "_daily_standalone_impl"
     text = (ROOT / path).read_text()
     tree = ast.parse(text)
     for node in tree.body:

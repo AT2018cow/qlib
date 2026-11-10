@@ -48,7 +48,12 @@ def test_cron_schedule_registered():
     assert schedules == {
         "daily_cron": ("0 6 * * 1-5", {"timezone": "Asia/Shanghai"}),
         "daily_preopen_retry": ("30 7 * * 1-5", {"timezone": "Asia/Shanghai"}),
+        "daily_readonly_check": ("0 9 * * 1-5", {"timezone": "Asia/Shanghai"}),
     }, "production cron schedule missing, moved to another function or changed"
+    # Legacy evening/manual entries must never carry an independent schedule.
+    for legacy in ("daily_evening_manual", "daily_evening_retry_manual"):
+        assert legacy not in schedules, f"{legacy} must not have its own cron"
+    assert "\ndef daily_evening_retry(" not in src
     assert "nonpreemptible=True" in src
     assert 'modal.Secret.from_name(_GH_SECRET_NAME := "github-push")' in src
 
@@ -550,7 +555,7 @@ def test_reference_execution_context_requires_explicit_mode_and_keeps_price_gate
     src = (Path(__file__).resolve().parents[2] / "quant/code/production/modal_qlib_cn_a10g.py").read_text()
     assert "from paper_execution_context import build_paper_execution_context" in src
     context = (Path(__file__).resolve().parents[2] / "quant/code/production/paper_execution_context.py").read_text()
-    cron = src.split("def daily_cron(allow_lag: bool = False):", 1)[1].split("\n# ===================== 第六步", 1)[0]
+    cron = src.split("def daily_cron(", 1)[1].split("\n# ===================== 第六步", 1)[0]
     assert "execution_st_policy == REFERENCE_ST_POLICY" in context
     assert "st_symbols = set()" in context
     assert "validate_verified_st_snapshot(snapshot, execution_date)" in context

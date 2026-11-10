@@ -70,7 +70,7 @@ def test_name_map_runs_on_all_daily_cron_paths():
     from pathlib import Path
 
     src = (Path(__file__).resolve().parents[2] / "quant/code/production/modal_qlib_cn_a10g.py").read_text()
-    cron = src[src.index("def daily_cron(allow_lag: bool = False):") : src.index("# ===================== 第六步")]
+    cron = src[src.index("def daily_cron(") : src.index("# ===================== 第六步")]
     # Same-day rerun fast paths AND the normal publish path refresh the map,
     # so an already-complete day can no longer skip the name update (R07).
     assert cron.count("_update_code_name_map(headers)") >= 3

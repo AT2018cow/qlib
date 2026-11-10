@@ -110,7 +110,7 @@ def test_calendar_unavailable_or_holiday():
 
 def test_daily_cron_validates_all_markets_before_side_effects():
     src = (ROOT / "quant/code/production/modal_qlib_cn_a10g.py").read_text()
-    cron = src[src.index("def daily_cron(allow_lag: bool = False):") : src.index("# ===================== 第六步")]
+    cron = src[src.index("def daily_cron(") : src.index("# ===================== 第六步")]
     gate = cron.index("validate_multi_market_publication(")
     assert gate < cron.index("_apply_paper_portfolio(")
     assert gate < cron.index("journal.prepare(")

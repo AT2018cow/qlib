@@ -54,6 +54,27 @@ def test_failed_stage_does_not_hide_or_undo_other_publication(failed_stage):
     assert result["stages"][next(n for n in published if n != failed_stage)]["result"]["status"] == "ALREADY_PUBLISHED"
 
 
+def _provider_receipt(asof: str) -> dict:
+    return {
+        "status": "PUBLISHED",
+        "date": asof,
+        "digest": "a" * 64,
+        "calendar_end": asof,
+        "receipt_sha256": "b" * 64,
+        "gate": "PASS",
+    }
+
+
+def _committed_journal(tmp_path: Path, signal_date: str) -> None:
+    from publication_journal import FilesystemStorage, PublicationJournal
+
+    storage = FilesystemStorage(tmp_path)
+    journal = PublicationJournal(storage)
+    record = journal.prepare(signal_date, "test-holder", {}, {})
+    journal.mark(record, "GITHUB_PUBLISHED")
+    journal.mark(record, "VOLUME_COMMITTED")
+
+
 @pytest.mark.parametrize(
     "signal_status", ["ALREADY_PUBLISHED", "RECOVERED", "SKIPPED_STALE_DATA", "SKIPPED_NON_TRADING_DAY"]
 )
@@ -77,43 +98,47 @@ def test_actual_cron_checks_website_after_signal_fast_path(tmp_path, monkeypatch
     monkeypatch.setattr(production, "_update_website_returns", website)
     monkeypatch.setattr(production, "_previous_trading_day", lambda _today: "2026-01-01")
     monkeypatch.setattr(
-        production, "ensure_chenditc_provider", SimpleNamespace(remote=lambda _asof: {"status": "STALE"})
+        production,
+        "ensure_overlay",
+        SimpleNamespace(remote=lambda asof, refresh_memberships=False: _provider_receipt(asof)),
     )
-    monkeypatch.setattr(production, "_ensure_overlay_for", lambda _asof: None)
-    # Keep the wrapper test independent of the live akshare/Sina calendar.
     from datetime import datetime
     from zoneinfo import ZoneInfo
 
     today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
     monkeypatch.setattr(production, "_trading_days", lambda: [today])
+    _committed_journal(tmp_path, today)
     if signal_status == "SKIPPED_STALE_DATA":
         with pytest.raises(DailyPipelineError) as caught:
             production.daily_cron.local()
         result = {"stages": caught.value.stages}
         assert result["stages"]["signals"]["status"] == "INCOMPLETE_STALE_DATA"
+        failed = json.loads((tmp_path / "preopen_status" / f"{today}.json").read_text())
+        assert failed["status"] == "FAILED"
+        assert failed["signal_date"] == today
     else:
         result = production.daily_cron.local()
+        assert result["stages"]["signals"]["result"]["status"] == signal_status
+        assert result["stages"]["website"]["result"]["status"] == "ALREADY_PUBLISHED"
+        marker = json.loads((tmp_path / "preopen_status" / f"{today}.json").read_text())
+        assert marker["status"] == "COMPLETED"
+        assert marker["provider"]["digest"] == "a" * 64
     assert seen == ["signals", "website"]
-    assert result["stages"]["signals"]["result"]["status"] == signal_status
-    assert result["stages"]["website"]["result"]["status"] == "ALREADY_PUBLISHED"
 
 
-def test_preopen_cycle_skips_overlay_when_chenditc_ready(tmp_path, monkeypatch):
+def test_preopen_cycle_uses_the_self_hosted_provider(tmp_path, monkeypatch):
     import modal_qlib_cn_a10g as production
 
     seen = []
+    provider_calls = []
     monkeypatch.setattr(production, "VOL_ROOT", tmp_path)
     monkeypatch.setattr(production, "vol", SimpleNamespace(reload=lambda: None, commit=lambda: None))
-    monkeypatch.setattr(
-        production,
-        "ensure_chenditc_provider",
-        SimpleNamespace(remote=lambda _asof: {"status": "READY", "calendar_end": _asof}),
-    )
-    monkeypatch.setattr(
-        production,
-        "_ensure_overlay_for",
-        lambda _asof: pytest.fail("READY chenditc must not build the overlay"),
-    )
+
+    def ensure_provider(asof, refresh_memberships=False):
+        provider_calls.append((asof, refresh_memberships))
+        return _provider_receipt(asof)
+
+    monkeypatch.setattr(production, "ensure_overlay", SimpleNamespace(remote=ensure_provider))
 
     def signals(allow_lag, **kwargs):
         seen.append(("signals", allow_lag, kwargs))
@@ -125,21 +150,24 @@ def test_preopen_cycle_skips_overlay_when_chenditc_ready(tmp_path, monkeypatch):
 
     monkeypatch.setattr(production, "_run_daily_signal_cycle", signals)
     monkeypatch.setattr(production, "_update_website_returns", website)
-    monkeypatch.setattr(production, "_trading_days", lambda: ["2026-11-10"])
-    monkeypatch.setattr(production, "_previous_trading_day", lambda _today: "2026-11-09")
-    result = production.daily_cron.local()
-    assert result["status"] == "COMPLETED"
-    assert seen[0][0] == "signals"
-    assert seen[0][1] is False
-    assert seen[0][2]["data_asof_override"] == "2026-11-09"
-    assert seen[1] == ("website", "2026-11-09")
     from datetime import datetime
     from zoneinfo import ZoneInfo
 
     today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
+    monkeypatch.setattr(production, "_trading_days", lambda: [today])
+    monkeypatch.setattr(production, "_previous_trading_day", lambda _today: "2026-11-09")
+    _committed_journal(tmp_path, today)
+    result = production.daily_cron.local()
+    assert result["status"] == "COMPLETED"
+    assert provider_calls == [("2026-11-09", False)]
+    assert seen[0][0] == "signals"
+    assert seen[0][1] is False
+    assert seen[0][2]["data_asof_override"] == "2026-11-09"
+    assert seen[1] == ("website", "2026-11-09")
     marker = json.loads((tmp_path / "preopen_status" / f"{today}.json").read_text())
     assert marker["status"] == "COMPLETED"
-    assert marker["provider_source"] == "chenditc"
+    assert marker["provider"]["digest"] == "a" * 64
+    assert marker["data_asof"] == "2026-11-09"
 
 
 def test_preopen_retry_skips_after_completed_marker(tmp_path, monkeypatch):
@@ -150,16 +178,45 @@ def test_preopen_retry_skips_after_completed_marker(tmp_path, monkeypatch):
     today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
     marker = tmp_path / "preopen_status" / f"{today}.json"
     marker.parent.mkdir(parents=True)
-    marker.write_text('{"status": "COMPLETED", "signal_date": "%s"}' % today)
+    marker.write_text(json.dumps({"status": "COMPLETED", "signal_date": today, "data_asof": "2026-11-09"}))
     monkeypatch.setattr(production, "VOL_ROOT", tmp_path)
     monkeypatch.setattr(production, "vol", SimpleNamespace(reload=lambda: None, commit=lambda: None))
+    monkeypatch.setattr(production, "_trading_days", lambda: [today])
+    monkeypatch.setattr(production, "_previous_trading_day", lambda _today: "2026-11-09")
+    monkeypatch.setattr(production, "_preopen_marker_valid", lambda *args: (True, "test"))
     monkeypatch.setattr(
         production,
         "daily_cron",
-        SimpleNamespace(remote=lambda: pytest.fail("completed preopen must not be retried")),
+        SimpleNamespace(remote=lambda **kwargs: pytest.fail("completed preopen must not be retried")),
     )
     result = production.daily_preopen_retry.local()
     assert result["status"] == "ALREADY_COMPLETED"
+
+
+def test_preopen_marker_rejects_unverified_receipts(tmp_path, monkeypatch):
+    import modal_qlib_cn_a10g as production
+    import data_ingest.store as store
+
+    monkeypatch.setattr(production, "VOL_ROOT", tmp_path)
+    monkeypatch.setattr(production, "vol", SimpleNamespace(reload=lambda: None, commit=lambda: None))
+    snapshot = SimpleNamespace(digest="a" * 64, calendar_end="2026-11-10")
+    monkeypatch.setattr(store, "load_snapshot", lambda root, date: snapshot)
+    monkeypatch.setattr(production, "_code_source_sha", lambda: "c" * 64)
+    base = {
+        "status": "COMPLETED",
+        "signal_date": "2026-11-11",
+        "data_asof": "2026-11-10",
+        "provider": {"digest": "a" * 64, "calendar_end": "2026-11-10"},
+        "code_source_sha256": "c" * 64,
+    }
+    # No journal record in an empty volume.
+    valid, reason = production._preopen_marker_valid(base, "2026-11-11", "2026-11-10")
+    assert not valid
+    assert "journal" in reason or "provider" in reason
+    wrong = dict(base, provider={"digest": "d" * 64, "calendar_end": "2026-11-10"})
+    valid, reason = production._preopen_marker_valid(wrong, "2026-11-11", "2026-11-10")
+    assert not valid
+    assert "provider" in reason
 
 
 def test_backup_returns_the_same_pipeline_receipt(monkeypatch):
@@ -204,7 +261,7 @@ def test_website_worker_refuses_wrong_deployment_before_fetching_data(monkeypatc
         worker.daily.local(expected_source_sha256="wrong-deployment")
 
 
-def test_only_main_and_eight_oclock_backup_are_scheduled():
+def test_only_main_retry_and_readonly_checks_are_scheduled():
     schedules = []
     for relative in ["quant/code/production/modal_qlib_cn_a10g.py", "quant/code/ops/website_simulation_modal.py"]:
         tree = ast.parse((ROOT / relative).read_text())
@@ -224,6 +281,7 @@ def test_only_main_and_eight_oclock_backup_are_scheduled():
     assert schedules == [
         ("daily_cron", "0 6 * * 1-5", {"timezone": "Asia/Shanghai"}),
         ("daily_preopen_retry", "30 7 * * 1-5", {"timezone": "Asia/Shanghai"}),
+        ("daily_readonly_check", "0 9 * * 1-5", {"timezone": "Asia/Shanghai"}),
     ]
 
 
@@ -265,3 +323,72 @@ print("REUSED_WORKER_PASS")
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert "REUSED_WORKER_PASS" in result.stdout
+
+
+def test_select_overlay_provider_materializes_archive(tmp_path, monkeypatch):
+    import json
+    from pathlib import Path
+
+    import numpy as np
+
+    from data_ingest.store import build_receipt, create_provider_archive, publish_archive
+
+    provider = tmp_path / "provider"
+    (provider / "calendars").mkdir(parents=True)
+    (provider / "calendars" / "day.txt").write_text("2026-11-09\n2026-11-10\n")
+    (provider / "instruments").mkdir()
+    (provider / "instruments" / "csi300.txt").write_text("SH600000\t2026-11-09\t2026-11-10\n")
+    feature = provider / "features" / "sh600000"
+    feature.mkdir(parents=True)
+    for field in ("open", "high", "low", "close", "volume", "amount", "factor", "vwap", "change", "adjclose"):
+        np.hstack([[0.0], [10.0, 10.5]]).astype("<f").tofile(feature / f"{field}.day.bin")
+    (provider / "manifest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "base": {"calendar_end": "2026-11-09", "path": "provider:base"},
+                "target": {"asof": "2026-11-10", "dates": ["2026-11-10"]},
+            }
+        )
+    )
+    root = tmp_path / "root"
+    archive = tmp_path / "x.tar.gz"
+    meta = create_provider_archive(provider, archive)
+    import hashlib
+
+    receipt = build_receipt(
+        None,
+        date="2026-11-10",
+        archive=meta,
+        manifest_sha256=hashlib.sha256((provider / "manifest.json").read_bytes()).hexdigest(),
+        calendar_sha256=hashlib.sha256((provider / "calendars/day.txt").read_bytes()).hexdigest(),
+        base={"calendar_end": "2026-11-09", "path": "provider:base"},
+        provenance={"builder": "test"},
+    )
+    root.mkdir()
+    publish_archive(
+        root,
+        receipt,
+        archive,
+        local_manifest=provider / "manifest.json",
+        local_calendar=provider / "calendars" / "day.txt",
+    )
+    import modal_qlib_cn_a10g as production
+
+    monkeypatch.setattr(production, "OVERLAY_PROVIDER_ROOT", root)
+    monkeypatch.setattr(production, "vol", SimpleNamespace(reload=lambda: None, commit=lambda: None))
+    data_dir, identity = production._select_overlay_provider("2026-11-10")
+    assert (data_dir / "calendars" / "day.txt").read_text().splitlines()[-1] == "2026-11-10"
+    assert identity["provider_kind"] == "archive"
+    assert identity["archive_sha256"] == meta["sha256"]
+    assert identity["calendar_end"] == "2026-11-10"
+
+
+def test_select_overlay_provider_refuses_missing_snapshot(tmp_path, monkeypatch):
+    import modal_qlib_cn_a10g as production
+
+    monkeypatch.setattr(production, "OVERLAY_PROVIDER_ROOT", tmp_path / "empty")
+    monkeypatch.setattr(production, "vol", SimpleNamespace(reload=lambda: None, commit=lambda: None))
+    (tmp_path / "empty").mkdir()
+    with pytest.raises(RuntimeError, match="requested provider missing"):
+        production._select_overlay_provider("2026-11-10")

@@ -1,0 +1,219 @@
+# 唯一自建行情管道：实施与验收记录
+
+> 日期：2026-11-11  
+> 实施基线：`83f710a76`（交接文档 `2026-11-10-overlay-primary-implementation-handoff.md`）  
+> 状态：本地/隔离验收完成；生产部署与首次切换验收见第 8 节。本文只记录真实命令、测量和产物，不把单元测试数量当作生产稳定证明。
+
+## 1. 实施前重新核对（与交接文档的差异）
+
+| 项目 | 交接文档 | 实际核对结果 |
+|---|---|---|
+| Git HEAD | `83f710a76` | 一致；工作树仅有交接文档未跟踪 |
+| `qlib-prod-daily` | v15 @ `83f710a76` | 一致（2026-11-10 21:57 部署） |
+| `qlib-prod-website` | v15 @ `83f710a76` | 一致 |
+| 06:00 / 07:30 cron | 存在 | 一致 |
+| 旧晚间入口 | “已无 schedule” | **不一致**：部署 v15 仍有 `daily_evening` 18:00、`daily_evening_retry` 19:00 两个 cron；源码在 `4c317a246` 已移除 schedule，但 Modal 保留了旧触发器。2026-11-10 18:00 日志确认 `_run_evening_cycle` 实际运行并被抢占。 |
+| 11/10 晚间周期 | 20:06 完成 | 一致；实际是旧晚间入口/手动入口触发 overlay 构建后发布 11/11 信号 |
+| 冻结 base | `/vol/base/chenditc_bin` | **该目录已不存在**；11-06 manifest 仍指向它。实际可用锚点是 `cn_data_overlay/2026-11-06`。 |
+| 快照规模 | 未记录 | 每个目录快照 **36,051 个文件 / 574 MB**（3,607 个目录） |
+| `preopen_status` | 未说明 | Volume 上不存在；v15 尚未经历过 06:00 preopen |
+
+因此本轮不能沿用“18/19 点晚间入口已无调度”的假设；第 4 阶段必须显式删除/重命名旧函数并验证部署后的 cron 清单。
+
+## 2. 数据存储与 I/O 测量（真实 Modal Volume）
+
+在只读生产 Volume + 隔离 probe Volume 上测量（`quant/code/ops/overlay_primary_probe.py`）：
+
+| 操作 | 结果 |
+|---|---|
+| 遍历 36,051 个文件（仅 `stat`） | 35–42 s |
+| 顺序读取 240 个 bin | 冷缓存 0.54 MiB/s；热缓存 25 MiB/s（逐文件延迟主导） |
+| 从目录顺序构建 `tar.gz` | 冷缓存 1,082 s；热缓存 75 s |
+| 单文件顺序读取 443 MB archive | **1.47 s（287 MiB/s）**，SHA256 校验通过 |
+| 解压 archive 到本地 | **17.7 s** |
+| 并行（32 线程）封存 11-10 目录 | **213 s**（对比顺序 >58 min 未完成） |
+| 18 只股票真实重建 11-10 | 47.4 s 总耗时，build 23.2 s，**0 行差异** |
+
+结论：日常构建和消费都应使用“单个 archive + 本地解包”，不再把 36k 文件目录复制到 Volume 或让 qlib 直接读 Volume。首次迁移需要一次 11-10 封存，并行读取后约 3.5 分钟。
+
+## 3. 阶段 1：稳定性、可观测性和单一入口
+
+代码：
+- `quant/code/ops/resource_sampler.py`：进程树 RSS/PSS/CPU + cgroup v2（可读时）采样；不可读指标明确记为 `unavailable`，异常路径仍产出 summary。
+- `quant/code/production/daily_pipeline.py`：可选 sampler，按阶段记录 wall/CPU；阶段失败仍保留其他阶段结果。
+- `quant/code/production/modal_qlib_cn_a10g.py`：
+  - `daily_standalone`、`ensure_overlay`、website `build_market` 均写资源/失败记录。
+  - `_preopen_marker_valid` 校验 provider digest、journal `VOLUME_COMMITTED`、paper state 哈希、GitHub artifact 哈希、website receipt、代码 source SHA。
+  - `daily_readonly_check`：09:00、只读 Volume、无 secret，任何缺失/不一致直接 raise。
+  - `daily_cron` 成为唯一协调器；`daily_preopen_retry` 转发到同一函数（平台 `max_containers=1` 串行）。
+  - `daily_cron_manual` / 晚间入口转发到 `daily_cron`，不再直接执行重活；旧函数改名为 `daily_evening_manual` / `daily_evening_retry_manual`，无 schedule。
+- `quant/code/ops/website_simulation_modal.py`：`status` 只读 receipt 查询；`build_market` 失败资源记录。
+
+验证：
+- `pytest -q quant/tests`：**982 passed, 2 skipped, 50 subtests passed**（本地）。
+- `test_daily_pipeline.py` 覆盖：marker 不能伪造、失败写 FAILED marker、provider 单一入口、09:00 调度、archive materialize、缺失 provider fail-closed。
+- `test_resource_sampler.py`：进程树/cgroup 聚合、不可读指标、异常路径。
+
+## 4. 阶段 2：采集、缓存和本地构建
+
+### 4.1 Sina raw/hfq 复用
+
+`data_ingest/sina.py`：
+- 每只股票 **1 次 history（klc2）+ 1 次 hfq factor**，不再为 raw/hfq 各下载/解码一次历史；跳过流通股本请求。
+- 使用 AkShare 1.18.94 的公开 decoder/URL，版本不匹配自动回退到 public API（1 次 history + 1 次 factor）。
+- 每请求 connect/read timeout，符号级重试/退避，整批 deadline；超时保留已完成结果。
+
+真实等价性（本地，4 只股票 × 7 日，逐字段）：
+- 与 `ak.stock_zh_a_daily(adjust="")` / `adjust="hfq"` **完全相等**（open/high/low/close/volume/amount）。
+- 单股耗时：fast 0.17–0.34 s，public 0.97–1.64 s。
+
+### 4.2 断点缓存
+
+`data_ingest/cache.py`：
+- `ingest_cache/<trade_date>/<contract>/`：memberships、`sina-*.parquet` 批次、errors/stats、`baostock.parquet`、`history.json.gz`。
+- 每批完成后 commit；重试只重取缺失 symbol/date；空响应不写成完整数据。
+- `test_ingest_cache.py` 覆盖批次合并、后写覆盖、空批次不持久化、损坏 parquet、membership/history 往返。
+
+### 4.3 BaoStock 有界串行
+
+`data_ingest/baostock_source.py`：
+- `isolate=True` 时在 killable 子进程中运行，symbol 级增量文件；超时终止并保留已完成结果。
+- 全历史 `fetch_history` 用于新成分回填；BaoStock `preclose` 是公司行为精确来源。
+- 生产 `ensure_overlay` 使用 `BaoStockSource(isolate=True, deadline_seconds=600)`。
+
+### 4.4 成分与退指持仓
+
+- `OverlayPipeline` 复用同一次 build 的 CSIndex 结果（两次 fallback 不重复下载）。
+- membership 滞后回退仅在“官方快照成员 == base PIT 成员”且单日缺口时允许；多日缺口/成员不一致直接 fail-closed（`membership_policy` 记录在 manifest）。
+- `ensure_overlay` 汇总 paper 持仓/待执行 + website 最新 `final_state.json` 持仓，作为 `extra_symbols`；持仓股票缺失报价会由 gate 的 `coverage.required_extras` 拦截。
+- 新成分无 frozen features 时，用 BaoStock full history + preclose 按 provider 的“首根 bar close=1.0”约定回填；manifest 记录 `history_backfill` 来源/锚点，不静默排除。
+
+约定验证（probe）：
+- provider `close = raw × factor`；`factor` 是在该股票 provider 首根 bar 归一化为 1.0 的前复权因子，不是 `hfq/raw` 的今日归一化。
+- BaoStock `adjustflag=3 + preclose` 重建与 frozen bins 的误差：多数 0.01–0.04%；Pudong Bank/Ping An 等老股票在 2005–2010 有一次未捕获的公司行为，导致之后恒定 9–23% 偏移。新成分没有 provider 历史，采用同一锚点约定，并在 manifest 记录来源；该限制已在文档中说明，未用于改写已冻结历史。
+
+### 4.5 archive store
+
+`data_ingest/store.py`：
+- 确定性 `tar.gz`（mtime=0、uid/gid=0、排序、gzip mtime=0），同时记录 archive sha256 与 provider content sha256（tree hash）。
+- `archives/<date>/<digest>.tar.gz + receipt.json + manifest.json + calendar.txt + latest.json`；receipt 是唯一 commit point。
+- `materialize` 校验 size/SHA/manifest/calendar 后本地解包；损坏 archive 拒绝。
+- `seal_directory_snapshot` 一次性迁移旧目录，不修改目录本身。
+- `prune_archives` 默认 dry-run，只处理 archive，不删除冻结目录。
+
+### 4.6 本地构建
+
+`production/provider_build.py`（Modal-free，生产 `ensure_overlay` 与隔离 probe 共用）：
+1. 解析/封存 exact snapshot；
+2. 解析 base（archive 优先）；
+3. 本地解包 base；
+4. `OverlayPipeline` 采集 + gate + qlib smoke；
+5. 本地生成 archive；
+6. 上传 staging → rename → receipt → latest；
+7. 失败写 `provider_builds/<date>/failed-*.json` 后 fail-closed。
+
+真实隔离复现：18 只股票、真实 Sina/BaoStock、真实 gate/qlib smoke、与 frozen 11-10 逐字段比较 **0 mismatch**；archive 大小 3 MiB（样本），耗时 47 s。
+
+## 5. 阶段 3：计算与资源
+
+### 5.1 信号短窗口
+
+`daily_standalone` cache-hit 分支在 `QLIB_SIGNAL_SHORT_WINDOW=1` 时把 handler `start_time` 设为 `asof - 180` 个交易日；重训日仍走完整训练。
+
+真实等价性 probe（production image，11-10 provider，cached csi1000 model `3529e523...`）：
+- long window 2015-01-01 vs short window 2026-02-06；
+- **1,000/1,000 predictions，index equal，max_abs diff 0.0，exact_equal=true**；
+- long 44.3 s / short 35.5 s（本 probe 的增益主要来自数据加载；生产仍保留 8 CPU/16 GiB）。
+
+已把 `QLIB_SIGNAL_SHORT_WINDOW=1` 写入生产镜像环境。新增运行时保护：有限预测数低于 PIT 成员数 90% 直接失败。
+
+### 5.2 Website 增量与 archive
+
+- `latest_asset` 只解析自建 provider（archive 优先，directory 兼容），缺失即报错；chenditc 自动选择退出日常路径。
+- `download_provider` 支持 `archive_path`：单文件读取 → SHA/size 校验 → 本地解包 → digest cache。
+- `_overlay_base` 优先使用 receipt 的 `base.digest/calendar_end`；`_incremental_prior` 要求 prior `asset_digest == base.digest`、`provider_calendar_end == previous`，跨源/跨 digest 不拼接。
+- 新增 `status` 只读 receipt 查询；09:00/07:30 用它核验 website 发布。
+
+### 5.3 资源测量
+
+- 18 只股票 mini build：wall 23.2 s，进程树 CPU 15.82 s，avg 0.68 core，RSS max 4.81 GiB（包含 qlib smoke 进程树；cgroup/PSS 在 Modal 容器内不可读，已标记 `unavailable`，未当作 0）。
+- 首轮仍采用候选配置：provider build 4 CPU / 8 GiB；信号 worker 8 CPU / 16 GiB；website 8 CPU / 16 GiB；coordinator 1 CPU / 2 GiB。**没有**依据 4.8 GiB 样本宣称 2 CPU / 4 GiB 足够；等真实全市场普通日/重训日账单后再评估。
+
+## 6. 阶段 4：调度与单一写入入口
+
+最终调度（北京时间工作日）：
+
+| 时间 | 函数 | 行为 |
+|---|---|---|
+| 06:00 | `daily_cron` | 唯一主协调器：provider → signals → website；`max_containers=1` |
+| 07:30 | `daily_preopen_retry` | 先核验 receipt；不足则 `daily_cron.remote(refresh_provider=True)` 排队 |
+| 09:00 | `daily_readonly_check` | 只读 Volume、无 secret，检查日期/provider/journal/state/website receipt；异常 raise |
+
+旧 `daily_evening`/`daily_evening_retry` 已改名为 `*_manual`，无 schedule，只转发 `daily_cron`。部署后必须用 `modal app info` 确认只剩以上 3 个 cron；v15 的 18:00/19:00 触发器是平台残留，不能只凭源码没有 schedule 就认为已消失。
+
+手动入口：
+- `daily_cron_manual(signal_date_override, data_asof_override)` → `daily_cron.remote(...)`
+- `daily_evening_manual` / `daily_evening_retry_manual` → 同一入口
+- `daily_repair_manual` → 同一入口
+- 研究/回填函数不再被调度；它们仍可能写 `signals/` 研究目录，不能与主入口同时运行。
+
+回滚：
+- 回滚到明确提交，不删除 journal、不回滚已发生账户交易。
+- v15 不是 overlay-only 回滚点（它仍会选 chenditc、且平台保留旧晚间 cron）；回滚说明必须写明数据源语义。
+- 回滚后先停旧触发器/确认 cron 清单，再恢复 06:00。
+
+## 7. 已知限制与未完成项
+
+1. **首次全市场新日期构建尚未在 06:00 调度中发生**。11-11 的信号/账户已在 11-10 晚间发布；本轮部署后的首次手动验收复用 11-10 provider（封存），首次真正“从 archive base 追加新交易日”的构建预计 11-12 06:00（data_asof=11-11）。在它通过前不能宣称生产稳定。
+2. 旧目录封存需要读 36k 文件；并行后 213 s，但仍是冷缓存下的一次性成本。
+3. cgroup/PSS 在 Modal 容器内不可读；RSS 是进程树汇总，可能重复计算共享页。
+4. 新成分历史回填使用 BaoStock 重建，不能保证与 chenditc 历史特有的老公司行为完全一致；manifest 已记录来源/锚点/限制，且不回写冻结历史。
+5. Website 首次切换因 source digest 变化会全量 replay；之后同为 archive source 才增量。全量 replay 不得被误读为“账户回滚”。
+6. budget guard 若返回 `SKIPPED_BUDGET`，信号可发布但网站 NAV 不推进；09:00 会告警。不要把它当作成功。
+7. 旧晚间/manual 函数虽已转发，但仍有独立函数名和 `max_containers=1`；真正的跨函数互斥仍依赖它们只调用 `daily_cron.remote()`，不能再加入直接执行路径。
+
+## 8. 部署与验收清单
+
+部署前：
+```bash
+pytest -q quant/tests
+black . -l 120 --check --diff --exclude qlib/_version.py
+# 生产 selector 必须显式：
+QLIB_DEPLOY_PROFILE=infi-prod modal deploy quant/code/production/modal_qlib_cn_a10g.py
+QLIB_DEPLOY_PROFILE=infi-prod modal deploy quant/code/ops/website_simulation_modal.py
+```
+部署后：
+```bash
+modal app history qlib-prod-daily      # 记录 v16/commit
+modal app history qlib-prod-website
+modal app info qlib-prod-daily         # 必须只有 06:00/07:30/09:00 三个 cron
+modal app info qlib-prod-website      # 无 cron
+```
+首次验收（手动、前台、attached）：
+```bash
+modal run quant/code/production/modal_qlib_cn_a10g.py::daily_cron \
+  --signal-date-override 2026-11-11 --data-asof-override 2026-11-10
+```
+预期：
+1. `ensure_overlay(2026-11-10)` 把旧目录封存为 archive（约 3.5 min）；
+2. 11-11 signal journal 已 `VOLUME_COMMITTED` → `ALREADY_PUBLISHED`，不重算；
+3. website 因 source digest 变化全量 replay 三市场，发布新的 source/digest snapshot；
+4. marker 写入，包含 provider digest/journal 哈希/website receipt；
+5. 随后 `daily_preopen_retry` 或 06:00 应返回 `ALREADY_COMPLETED`，不重复执行。
+
+验收证据必须保存：app version/commit、实际命令、退出码、阶段耗时、provider receipt、journal record、website receipt、三市场 NAV 与上一版对比。若 website NAV 与上一版不一致，先查数据/模型 identity，不能直接接受“全量重算导致差异”。
+
+## 9. 本轮真实验证记录
+
+| 验证 | 命令/位置 | 结果 |
+|---|---|---|
+| 本地全量测试 | `pytest -q quant/tests` | 982 passed, 2 skipped, 50 subtests |
+| Sina fast vs public | 本地 4 symbols | 逐字段完全相等；fast 0.17–0.34 s vs 0.97–1.64 s |
+| Archive 读取 | probe `archive_read_bench` | 443 MB / 1.47 s / 287 MiB/s，SHA 通过 |
+| Archive 解包 | probe `archive_read_bench` | 17.7 s |
+| 并行封存 | probe `seal_bench` | 213 s，receipt PASS |
+| 真实 mini rebuild | probe `mini_build` | 18 symbols，0 mismatch，47 s |
+| 短窗口等价 | probe `short_window_probe` | 1000/1000，max_abs 0.0，exact_equal=true |
+| 全量目录顺序封存 | probe `build_repro` | >58 min 未完成（已取消，无生产写入）；已用并行封存替代 |
+
+未完成：11-12 06:00 首次全市场新日期调度构建；生产账单/阶段成本；真实全市场 build RSS/cgroup。

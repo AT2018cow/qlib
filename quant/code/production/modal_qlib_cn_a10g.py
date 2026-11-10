@@ -77,6 +77,13 @@ OVERLAY_PROVIDER_ROOT = VOL_ROOT / "cn_data_overlay"
 MLRUNS_DIR = VOL_ROOT / "mlruns"
 
 vol = modal.Volume.from_name(VOL_NAME, create_if_missing=True)
+# The 09:00 check must be able to verify receipts without any write capability.
+vol_readonly = vol.with_mount_options(read_only=True)
+# The data builder reads website holdings to keep retired names priced; it never
+# writes the website account volume.
+website_simulation = modal.Volume.from_name(WEBSITE_SIM_VOLUME, create_if_missing=True)
+website_simulation_readonly = website_simulation.with_mount_options(read_only=True)
+PROVIDER_MODE = os.environ.get("QLIB_PROVIDER_MODE", "overlay")
 
 # GPU 容器自带 CUDA driver，默认 PyPI 的 torch wheel 即含 CUDA，无需手动指定 index-url
 # （官方示例：modal.Image.debian_slim().pip_install("torch") + gpu="A10G" 即可）。
@@ -94,6 +101,13 @@ image = (
             # Deployment profile selects the Modal app/volume names.  The value
             # is baked into the image so containers resolve the same names.
             "QLIB_DEPLOY_PROFILE": DEPLOY_PROFILE,
+            # One self-hosted provider; the legacy chenditc selector is not a
+            # runtime switch on the daily path.
+            "QLIB_PROVIDER_MODE": "overlay",
+            # Verified exactly (1,000/1,000 predictions, max abs diff 0.0) on
+            # the 2026-11-10 provider with the cached csi1000 model.  Retrain
+            # days still use the full training path.
+            "QLIB_SIGNAL_SHORT_WINDOW": "1",
             # The image excludes .git, so setuptools_scm cannot infer a version from
             # tags.  A fixed build-time version avoids the setuptools_scm /
             # vcs-versioning resolver incompatibility seen on 2026-11-06.
@@ -125,7 +139,9 @@ image = (
         "jupyter",
         "nbconvert",
         "setuptools-scm",
-        "akshare",
+        # Pinned because the raw/hfq adapter uses AkShare's published decoder
+        # and history URL; an unexpected version falls back to the public API.
+        "akshare==1.18.94",
         "baostock",
     )
     .pip_install("torch")
@@ -316,13 +332,13 @@ def _latest_trading_day(data_dir=None) -> str:
 
 
 def _prepare_truncated_overlay(source: Path, asof: str) -> Path:
-    """Derive a historical provider from a newer overlay without look-ahead.
+    """Derive a historical provider from a newer provider without look-ahead.
 
-    The source overlay already contains all historical bins.  We copy it to
-    container scratch, truncate the calendar at ``asof``, and reconstruct the
-    PIT membership effective at ``asof`` from the source instrument ranges:
-    names added on the newer date are dropped; names whose last span ended at
-    the frozen base date are extended through ``asof``.
+    The source already contains all historical bins.  We copy it to container
+    scratch, truncate the calendar at ``asof``, and reconstruct the PIT
+    membership effective at ``asof`` from the source instrument ranges: names
+    added on the newer date are dropped; names whose last span ended at the
+    frozen base date are extended through ``asof``.
     """
     import json
     import shutil
@@ -336,7 +352,7 @@ def _prepare_truncated_overlay(source: Path, asof: str) -> Path:
     calendar_path = target / "calendars" / "day.txt"
     calendar = [line.strip() for line in calendar_path.read_text().splitlines() if line.strip()]
     if asof not in calendar:
-        raise RuntimeError(f"requested asof {asof} not in overlay calendar {calendar[0]} ~ {calendar[-1]}")
+        raise RuntimeError(f"requested asof {asof} not in provider calendar {calendar[0]} ~ {calendar[-1]}")
     calendar_path.write_text("\n".join(calendar[: calendar.index(asof) + 1]) + "\n")
     for name in ("csi300.txt", "csi500.txt", "csi1000.txt", "csi800.txt", "all.txt"):
         path = target / "instruments" / name
@@ -357,100 +373,68 @@ def _prepare_truncated_overlay(source: Path, asof: str) -> Path:
         path.write_text(
             "\n".join(f"{code}\t{start}\t{end}" for code in sorted(ranges) for start, end in ranges[code]) + "\n"
         )
-    print(f"[daily] 派生历史 overlay {asof}（源 {source.name}，base PIT {base_end}）")
+    print(f"[daily] 派生历史 provider {asof}（源 {source.name}，base PIT {base_end}）")
     return target
 
 
 def _select_overlay_provider(asof: str | None = None):
-    """Prefer a current cached chenditc provider, then a gate-passed overlay.
+    """Resolve the single self-hosted provider snapshot for a session.
 
-    The 06:00 job caches one chenditc release under ``/vol/chenditc_cache``.
-    When that cache ends at the requested session, every signal worker reads the
-    same local provider.  A stale/missing cache falls back to the gate-passed
-    overlay; the overlay remains the audited backup source.
+    The archive receipt is authoritative; legacy directory snapshots remain
+    readable frozen anchors.  The daily path no longer prefers chenditc: a
+    missing provider is an error, not a silent source switch.
     """
-    import json
-    import shutil
+    from data_ingest.store import list_snapshots, load_snapshot, materialize
 
     from csi1000_mvp_contract import sha256_file
-    from provider_cache import CACHE_DIRNAME, provider_identity, select_cached_provider
 
-    if asof:
-        vol.reload()
-        cached = select_cached_provider(asof, VOL_ROOT / CACHE_DIRNAME)
-        if cached is not None:
-            print(
-                f"[daily] 使用 chenditc 缓存 {cached['calendar_end']} "
-                f"release={cached.get('release')} digest={str(cached.get('digest'))[:19]}",
-                flush=True,
-            )
-            return Path(cached["local_path"]), provider_identity(cached)
-
+    vol.reload()
     root = OVERLAY_PROVIDER_ROOT
     if not root.is_dir():
         if asof:
-            raise RuntimeError(f"requested overlay directory missing: {root / asof}")
+            raise RuntimeError(f"provider root missing: {root}")
         return None
     if asof:
-        exact = root / str(asof)[:10]
-        if exact.is_dir():
-            candidates = [exact]
+        exact = load_snapshot(root, asof)
+        if exact is not None:
+            data_dir = materialize(exact, Path("/tmp/cn_data"), cache_root="/tmp/provider-cache")
+            identity = exact.identity()
+            print(
+                f"[daily] 使用 provider {exact.kind} {exact.date}，日历 {exact.calendar_start} ~ "
+                f"{exact.calendar_end}，digest={exact.digest[:16]}",
+                flush=True,
+            )
+            return data_dir, identity
+        snapshots = list_snapshots(root)
+        covering = [
+            snapshot for snapshot in snapshots.values() if snapshot.calendar_start <= asof <= snapshot.calendar_end
+        ]
+        if not covering:
+            raise RuntimeError(f"requested provider missing: {root / str(asof)[:10]}")
+        source = sorted(covering, key=lambda snapshot: snapshot.date)[-1]
+        if source.kind == "archive":
+            materialized = materialize(source, Path("/tmp/provider-truncate"), cache_root="/tmp/provider-cache")
         else:
-            candidates = sorted(path for path in root.iterdir() if (path / "manifest.json").is_file())
-            if not candidates:
-                raise RuntimeError(f"requested overlay missing: {exact}")
-    else:
-        candidates = sorted(path for path in root.iterdir() if (path / "manifest.json").is_file())
-    for path in reversed(candidates):
-        try:
-            manifest = json.loads((path / "manifest.json").read_text())
-        except Exception:
-            continue
-        calendar_file = path / "calendars" / "day.txt"
-        if manifest.get("status") != "PASS" or not calendar_file.is_file():
-            continue
-        calendar = [line.strip() for line in calendar_file.read_text().splitlines() if line.strip()]
-        if not calendar:
-            continue
-        manifest_sha = sha256_file(path / "manifest.json")
-        if asof and asof != calendar[-1]:
-            if asof > calendar[-1] or asof < calendar[0]:
-                raise RuntimeError(f"requested asof {asof} outside overlay calendar {calendar[0]} ~ {calendar[-1]}")
-            target = _prepare_truncated_overlay(path, asof)
-            calendar = [
-                line.strip() for line in (target / "calendars" / "day.txt").read_text().splitlines() if line.strip()
-            ]
-            identity = {
-                "name": "overlay",
+            materialized = source.path
+        target = _prepare_truncated_overlay(materialized, asof)
+        identity = source.identity()
+        identity.update(
+            {
                 "source_url": "overlay:cn_data_overlay:truncated",
-                "archive_sha256": manifest_sha,
-                "calendar_sha256": sha256_file(target / "calendars" / "day.txt"),
                 "calendar_end": asof,
-                "overlay_manifest_sha256": manifest_sha,
-                "base_archive_sha256": (manifest.get("base") or {}).get("archive_sha256"),
-                "overlay_source_asof": path.name,
+                "calendar_sha256": sha256_file(target / "calendars" / "day.txt"),
+                "overlay_source_asof": source.date,
                 "overlay_truncated_to": asof,
             }
-            print(f"[daily] 使用 overlay 数据 {path}，截断至 {asof}")
-            return target, identity
-        target = Path("/tmp/cn_data")
-        if target.exists():
-            shutil.rmtree(target)
-        shutil.copytree(path, target)
-        identity = {
-            "name": "overlay",
-            "source_url": "overlay:cn_data_overlay",
-            "archive_sha256": manifest_sha,
-            "calendar_sha256": sha256_file(calendar_file),
-            "calendar_end": calendar[-1],
-            "overlay_manifest_sha256": manifest_sha,
-            "base_archive_sha256": (manifest.get("base") or {}).get("archive_sha256"),
-        }
-        print(f"[daily] 使用 overlay 数据 {path}，日历 {calendar[0]} ~ {calendar[-1]}")
+        )
         return target, identity
-    if asof:
-        raise RuntimeError(f"requested overlay is not PASS: {root / str(asof)[:10]}")
-    return None
+    snapshots = list_snapshots(root)
+    if not snapshots:
+        return None
+    latest = sorted(snapshots.values(), key=lambda snapshot: snapshot.date)[-1]
+    data_dir = materialize(latest, Path("/tmp/cn_data"), cache_root="/tmp/provider-cache")
+    print(f"[daily] 使用 provider {latest.kind} {latest.date}，日历至 {latest.calendar_end}", flush=True)
+    return data_dir, latest.identity()
 
 
 def _runtime_cache_lineage() -> dict:
@@ -715,8 +699,6 @@ def _load_and_patch_cfg(
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=1800)
 def bench_years():
     """拉基准指数年度收益（用于把滚动超额换算成绝对收益图景）。"""
-    import pandas as pd
-
     import qlib
     from qlib.data import D
 
@@ -3782,7 +3764,7 @@ CHENDITC_LATEST_URL = "https://github.com/chenditc/investment_data/releases/late
     # manual/cron invocations instead of running duplicate heavy containers.
     max_containers=1,
     nonpreemptible=True,  # 每日信号是生产职责：抢占会导致当天无信号；保留可靠性优先语义
-    retries=0,  # 由 08:00 补跑恢复，不把每个 90min 任务再扩成三倍预算。
+    retries=0,  # 由 07:30 补跑恢复，不把每个 90min 任务再扩成三倍预算。
 )
 def daily_standalone(
     topk: int = 10,
@@ -3792,20 +3774,65 @@ def daily_standalone(
     paper_lineage: str = "canonical",
     overlay_asof: str = "",
 ):
-    """每日信号（自包含单容器版，--best --daily 的实现）：
-    下载 chenditc 最新全量包 → 解压到容器本地盘 → 训练终审候选 → top-k 信号 → 返回 CSV 内容。
-    - 无 Volume 依赖：每次必然最新数据（根治"忘记 force-data 导致数据陈旧"）
-    - 结果由本地入口写入 quant/data/signals/ 并 git 推送（Volume 仅在研究批并行场景保留）
-    """
-    import shutil
+    """Run one market's signal with a process-tree resource receipt."""
+    import json
+    import time
+    import uuid
+
+    from resource_sampler import ResourceSampler
+
+    sampler = ResourceSampler(interval=2.0)
+    sampler.start()
+    try:
+        result = _daily_standalone_impl(
+            topk=topk,
+            nd=nd,
+            market=market,
+            csi1000_profile=csi1000_profile,
+            paper_lineage=paper_lineage,
+            overlay_asof=overlay_asof,
+        )
+    except Exception as exc:
+        resources = sampler.stop()
+        try:
+            path = VOL_ROOT / "metrics" / "signal_failures" / f"{market}-{int(time.time())}-{uuid.uuid4().hex[:8]}.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                json.dumps(
+                    {
+                        "status": "FAILED",
+                        "market": market,
+                        "error_type": type(exc).__name__,
+                        "error": str(exc)[:2000],
+                        "resources": resources,
+                    },
+                    indent=2,
+                    sort_keys=True,
+                    allow_nan=False,
+                )
+                + "\n"
+            )
+            vol.commit()
+        except Exception as record_exc:  # noqa: BLE001 - do not mask the signal error
+            print(f"[daily] ⚠️ could not persist failure metrics: {record_exc}", flush=True)
+        raise
+    result["resources"] = sampler.stop()
+    return result
+
+
+def _daily_standalone_impl(
+    topk: int = 10,
+    nd: int = 1,
+    market: str = "csi1000",
+    csi1000_profile: str = None,
+    paper_lineage: str = "canonical",
+    overlay_asof: str = "",
+):
+    """每日信号：唯一自建 provider → 本地训练/推理 → top-k 信号。"""
     import hashlib
     import json
     import os
     import pickle
-
-    import numpy as np
-    import pandas as pd
-    import requests
 
     import qlib
     from qlib.data import D
@@ -3813,51 +3840,16 @@ def daily_standalone(
     from qlib.model.base import Model
     from qlib.utils import init_instance_by_config
 
-    from provider_archive import safe_extract_provider_archive
-
-    # ---- 1) 优先使用 gate-passed overlay；否则回退 chenditc ----
-    from csi1000_mvp_contract import sha256_file
-
+    # ---- 1) 单一自建 provider：archive 优先，directory 仅作冻结历史 ----
     selected = _select_overlay_provider(overlay_asof or None)
-    if selected is not None:
-        data_dir, provider_identity = selected
-        cal_lines = (data_dir / "calendars" / "day.txt").read_text().strip().splitlines()
-        print(
-            f"[daily] 数据就绪（overlay）：日历 {cal_lines[0]} ~ {cal_lines[-1]}"
-            f"（{len(cal_lines)} 个交易日），manifest={provider_identity['archive_sha256'][:12]}"
-        )
-    else:
-        data_dir = Path("/tmp/cn_data")
-        if data_dir.exists():
-            shutil.rmtree(data_dir)
-        zip_path = Path("/tmp/chenditc_latest.tar.gz")
-        extract = Path("/tmp/chenditc_extract")
-        print(f"[daily] 下载最新数据 {CHENDITC_LATEST_URL} ...")
-        with requests.get(CHENDITC_LATEST_URL, stream=True, timeout=600) as r:
-            r.raise_for_status()
-            with zip_path.open("wb") as f:
-                for chunk in r.iter_content(chunk_size=1 << 20):
-                    f.write(chunk)
-        if extract.exists():
-            shutil.rmtree(extract)
-        try:
-            base = Path(safe_extract_provider_archive(zip_path, extract))
-        except Exception:
-            shutil.rmtree(extract, ignore_errors=True)
-            raise
-        shutil.move(str(base), str(data_dir))
-        cal_lines = (data_dir / "calendars" / "day.txt").read_text().strip().splitlines()
-        provider_identity = {
-            "name": "chenditc",
-            "source_url": CHENDITC_LATEST_URL,
-            "archive_sha256": sha256_file(zip_path),
-            "calendar_sha256": sha256_file(data_dir / "calendars" / "day.txt"),
-            "calendar_end": cal_lines[-1],
-        }
-        print(
-            f"[daily] 数据就绪：日历 {cal_lines[0]} ~ {cal_lines[-1]}（{len(cal_lines)} 个交易日）"
-            f"，archive={provider_identity['archive_sha256'][:12]}"
-        )
+    if selected is None:
+        raise RuntimeError("no self-hosted provider snapshot is available; refusing a silent chenditc fallback")
+    data_dir, provider_identity = selected
+    cal_lines = (data_dir / "calendars" / "day.txt").read_text().strip().splitlines()
+    print(
+        f"[daily] 数据就绪（{provider_identity.get('provider_kind', 'provider')}）：日历 {cal_lines[0]} ~ "
+        f"{cal_lines[-1]}（{len(cal_lines)} 个交易日），digest={provider_identity['archive_sha256'][:12]}"
+    )
 
     # ---- 1b) 新池（chinext/star）：容器本地数据没有合成等权基准（chenditc 包不含），
     # 训练前必须用 board_rules.build_ew_bench_files 构建并与 Volume 研究路径共用同一实现 ----
@@ -3931,7 +3923,7 @@ def daily_standalone(
         )
     # Today is a feature/prediction date, NEVER a training/validation label date.
     profile_horizon = int((production_lineage or {}).get("label_horizon", 20))
-    live_split = configure_asof(cfg, calendar, asof, horizon=profile_horizon)
+    configure_asof(cfg, calendar, asof, horizon=profile_horizon)
     runtime_lineage = _runtime_cache_lineage()
     signature = cache_signature(cfg, horizon=profile_horizon, runtime_lineage=runtime_lineage)
     cache_dir = VOL_ROOT / "live_models"
@@ -4032,8 +4024,20 @@ def daily_standalone(
         opts["handler"]["kwargs"]["fit_start_time"] = saved["fit_start"]
         opts["handler"]["kwargs"]["fit_end_time"] = saved["fit_end"]
         # Today's only test row has no matured label and is never used in fit.
+        # Alpha158 features are causal and its infer processors are empty, so a
+        # bounded lookback is sufficient.  The equivalence probe must pass
+        # before this is enabled in production; retrain days use the full path.
         opts["segments"]["test"] = [asof, asof]
         opts["handler"]["kwargs"]["end_time"] = asof
+        if os.environ.get("QLIB_SIGNAL_SHORT_WINDOW", "0") == "1":
+            lookback = int(os.environ.get("QLIB_SIGNAL_LOOKBACK_SESSIONS", "180"))
+            asof_index = calendar.index(asof)
+            opts["handler"]["kwargs"]["start_time"] = calendar[max(0, asof_index - lookback)]
+            print(
+                f"[daily] short-window inference: {opts['handler']['kwargs']['start_time']}..{asof} "
+                f"({min(lookback, asof_index)} sessions)",
+                flush=True,
+            )
         dataset = init_instance_by_config(cfg["task"]["dataset"], accept_types=Dataset)
         with model_file.open("rb") as f:
             model_obj = pickle.load(f)
@@ -4065,6 +4069,10 @@ def daily_standalone(
     if str(predict_date)[:10] != asof:
         raise RuntimeError(f"Inference date {predict_date} != latest bar {asof}")
     day = pred.loc[predict_date].dropna()
+    if market in _expected_pit_counts and len(day) < int(0.9 * _expected_pit_counts[market]):
+        raise RuntimeError(
+            f"{market} inference coverage collapsed: {len(day)}/{_expected_pit_counts[market]} " "finite predictions"
+        )
     from csi1000_tuner_core import deterministic_score_order
 
     # Freeze score desc / instrument asc at the production boundary.  The
@@ -4436,114 +4444,156 @@ def _next_trading_day(day: str) -> str | None:
     return later[0] if later else None
 
 
+_CODE_SOURCE_SHA: str | None = None
+
+
+def _code_source_sha() -> str:
+    """Executable extension identity for the provider receipt (best effort)."""
+    global _CODE_SOURCE_SHA
+    if _CODE_SOURCE_SHA is None:
+        try:
+            from research_identity import source_manifest
+
+            _CODE_SOURCE_SHA = str(source_manifest("training")["sha256"])
+        except Exception:  # noqa: BLE001 - identity is audit evidence, not a build gate
+            _CODE_SOURCE_SHA = "unavailable"
+    return _CODE_SOURCE_SHA
+
+
+def _paper_holding_symbols() -> tuple[set[str], set[str]]:
+    """Symbols held or pending in the three canonical paper accounts.
+
+    Retired index members must keep quotes until the paper account actually
+    sells them; current membership alone is not a sufficient universe.
+    """
+    import json
+
+    from csi1000_production_config import CANONICAL_PAPER_LINEAGES_BY_MARKET
+
+    held: set[str] = set()
+    pending: set[str] = set()
+    for market, lineage in CANONICAL_PAPER_LINEAGES_BY_MARKET.items():
+        path = _paper_state_path(market, lineage)
+        if not path.is_file():
+            continue
+        try:
+            payload = json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue
+        for symbol in payload.get("positions") or {}:
+            held.add(str(symbol).upper())
+        signal = payload.get("pending_signal") or {}
+        for key in ("planned_buy", "planned_sell"):
+            for symbol in signal.get(key) or []:
+                pending.add(str(symbol).upper())
+    return held | pending, held | pending
+
+
+def _website_holding_symbols(root: Path) -> tuple[set[str], set[str]]:
+    """Read the latest completed website account state (read-only mount)."""
+    import json
+
+    if not root.is_dir():
+        return set(), set()
+    states: dict[str, tuple[float, Path]] = {}
+    for path in root.glob("*/*/csi*/full/final_state.json"):
+        try:
+            mtime = path.stat().st_mtime
+        except OSError:
+            continue
+        market = path.parents[1].name
+        if market not in states or mtime > states[market][0]:
+            states[market] = (mtime, path)
+    symbols: set[str] = set()
+    for _, path in states.values():
+        try:
+            payload = json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue
+        symbols.update(str(symbol).upper() for symbol in (payload.get("positions") or {}))
+        signal = payload.get("pending_signal") or {}
+        for key in ("planned_buy", "planned_sell"):
+            symbols.update(str(symbol).upper() for symbol in signal.get(key) or [])
+    return symbols, symbols
+
+
 def _ensure_overlay_for(trade_date: str) -> None:
-    """Ensure the production overlay for one date exists, building it if needed."""
+    """Ensure the production provider for one date exists, building it if needed."""
     if not OVERLAY_PROVIDER_ROOT.is_dir():
         # Local unit tests and non-Volume callers have no production overlay mount.
         return
-    target = OVERLAY_PROVIDER_ROOT / trade_date
-    if (target / "manifest.json").is_file():
+    from data_ingest.store import load_snapshot
+
+    target = load_snapshot(OVERLAY_PROVIDER_ROOT, str(trade_date)[:10])
+    if target is not None:
         return
-    print(f"[overlay] {trade_date} missing; building production overlay", flush=True)
+    print(f"[overlay] {trade_date} missing; building the production provider archive", flush=True)
     ensure_overlay.remote(trade_date)
 
 
+def _provider_failure_record(trade_date: str, exc: Exception, resources: dict, context: dict) -> None:
+    import json
+    import time
+    import uuid
+
+    from data_ingest.manifest import write_json
+
+    path = VOL_ROOT / "provider_builds" / trade_date / f"failed-{int(time.time())}-{uuid.uuid4().hex[:8]}.json"
+    payload = {
+        "schema_version": 1,
+        "status": "FAILED",
+        "date": trade_date,
+        "error_type": type(exc).__name__,
+        "error": str(exc)[:2000],
+        "failed_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "resources": resources,
+        "context": context,
+    }
+    try:
+        write_json(path, json.loads(json.dumps(payload, allow_nan=False)))
+        vol.commit()
+    except Exception as record_exc:  # noqa: BLE001 - failure path must not mask the build error
+        print(f"[overlay] ⚠️ failed to persist failure record: {type(record_exc).__name__}: {record_exc}", flush=True)
+
+
 @app.function(
-    volumes={str(VOL_ROOT): vol},
-    cpu=8,
-    memory=16384,
-    timeout=3600,
+    volumes={str(VOL_ROOT): vol, "/simulation": website_simulation_readonly},
+    cpu=4,
+    memory=8192,
+    timeout=90 * 60,
     max_containers=1,
+    nonpreemptible=False,
     retries=0,
 )
-def ensure_overlay(trade_date: str):
-    """Build one gate-passed daily overlay directly into the production Volume.
+def ensure_overlay(trade_date: str, refresh_memberships: bool = False):
+    """Build one gate-passed provider archive in local scratch and publish it.
 
-    The base is the newest PASS overlay before ``trade_date``; only the missing
-    sessions are fetched.  This is the T-evening data preparation step for the
-    18:00 signal publication.
+    The actual build lives in ``provider_build.build_provider_archive`` so the
+    isolated read-only probe exercises the same code.  The Volume receives one
+    archive, its manifest/calendar, and an immutable PASS receipt -- never a
+    36k-file provider tree.
     """
-    import json
-    import re
-    import shutil
-    from datetime import date
-
-    from data_ingest.baostock_source import BaoStockSource
-    from data_ingest.calendar import fetch_sina_calendar, read_calendar, resolve_target_dates
-    from data_ingest.pipeline import OverlayPipeline, PipelineError
-    from data_ingest.sina import SinaSource
+    from provider_build import build_provider_archive
 
     vol.reload()
-    trade_date = str(trade_date)[:10]
-    target = OVERLAY_PROVIDER_ROOT / trade_date
-    manifest_path = target / "manifest.json"
-    if manifest_path.is_file():
-        existing = json.loads(manifest_path.read_text())
-        if existing.get("status") == "PASS":
-            return {"status": "EXISTS", "asof": trade_date, "path": str(target)}
-    root = OVERLAY_PROVIDER_ROOT
-    bases: list[tuple[Path, dict]] = []
-    if root.is_dir():
-        for path in sorted(root.iterdir()):
-            if path.name >= trade_date:
-                continue
-            candidate = path / "manifest.json"
-            if not candidate.is_file():
-                continue
-            try:
-                payload = json.loads(candidate.read_text())
-            except Exception:
-                continue
-            if payload.get("status") == "PASS":
-                bases.append((path, payload))
-    if not bases:
-        raise RuntimeError(f"no PASS overlay base before {trade_date}")
-    base, base_manifest = bases[-1]
-    base_calendar = read_calendar(base)
-    dates = resolve_target_dates(base_calendar, trade_date, fetch_sina_calendar())
-    if target.exists():
-        shutil.rmtree(target)
-    pipeline = OverlayPipeline(
-        sina=SinaSource(workers=6),
-        baostock=BaoStockSource(),
-        crosscheck_count=20,
-        require_weights=True,
+    paper_extra, paper_required = _paper_holding_symbols()
+    website_extra, website_required = _website_holding_symbols(Path("/simulation"))
+    extra_symbols = paper_extra | website_extra
+    required_symbols = paper_required | website_required
+    print(
+        f"[overlay] holdings universe: extras={len(extra_symbols)} required={len(required_symbols)}",
+        flush=True,
     )
-    build_kwargs = dict(
-        asof=trade_date,
-        dates=dates,
-        markets=("csi300", "csi500", "csi1000"),
-        base_archive_sha256=(base_manifest.get("base") or {}).get("archive_sha256"),
+    return build_provider_archive(
+        OVERLAY_PROVIDER_ROOT,
+        trade_date,
+        commit_fn=vol.commit,
+        extra_symbols=extra_symbols,
+        required_symbols=required_symbols,
+        refresh_memberships=refresh_memberships,
         require_qlib_smoke=True,
+        failure_record_fn=_provider_failure_record,
     )
-    try:
-        manifest = pipeline.build(base, target, **build_kwargs)
-    except PipelineError as exc:
-        # CSIndex publishes the same-day constituent/weight file only after the
-        # evening build on some days.  When the latest official snapshot is the
-        # frozen base date (or at most one weekend behind), reuse the base PIT
-        # membership instead of failing the whole T-close publication.  A larger
-        # lag stays fail-closed so a real index rebalance is never skipped.
-        match = re.search(r"constituent date (\d{4}-\d{2}-\d{2}) != asof", str(exc))
-        if match is None:
-            raise
-        lag_days = (date.fromisoformat(trade_date) - date.fromisoformat(match.group(1))).days
-        if lag_days < 0 or lag_days > 3:
-            raise
-        print(
-            f"[overlay] CSIndex snapshot {match.group(1)} lags asof {trade_date} by {lag_days}d; "
-            "using frozen base PIT membership",
-            flush=True,
-        )
-        manifest = pipeline.build(base, target, allow_base_membership=True, **build_kwargs)
-    vol.commit()
-    print(f"[overlay] {trade_date} PASS rows={manifest['overlay']['row_symbols']}", flush=True)
-    return {
-        "status": manifest["status"],
-        "asof": trade_date,
-        "rows": manifest["overlay"]["row_symbols"],
-        "gate": manifest["gate"]["status"],
-    }
 
 
 @app.function(
@@ -4638,96 +4688,233 @@ def ensure_chenditc_provider(asof: str):
     return {**descriptor, "status": "READY"}
 
 
-def _run_preopen_cycle(allow_lag: bool = False):
-    """06:00 pre-open publication: chenditc primary, overlay fallback."""
+def _preopen_marker_valid(marker, signal_date: str, data_asof: str) -> tuple[bool, str]:
+    """Verify a completion marker against the real provider/journal/receipt.
+
+    ``preopen_status`` is only a convenience index.  A marker that was written
+    for a different provider, code identity, journal record or website receipt
+    must never suppress the 07:30 recovery.
+    """
+    import os
+
+    from csi1000_mvp_contract import sha256_file
+    from data_ingest.manifest import canonical_json, sha256_text
+    from data_ingest.store import load_snapshot
+    from publication_journal import FilesystemStorage, PublicationJournal
+
+    if not isinstance(marker, dict) or marker.get("status") != "COMPLETED":
+        return False, "marker is not COMPLETED"
+    if marker.get("signal_date") != signal_date or marker.get("data_asof") != data_asof:
+        return False, "marker dates changed"
+    snapshot = load_snapshot(OVERLAY_PROVIDER_ROOT, data_asof)
+    if snapshot is None:
+        return False, "provider snapshot is missing"
+    provider = marker.get("provider") or {}
+    if provider.get("digest") != snapshot.digest or provider.get("calendar_end") != snapshot.calendar_end:
+        return False, "provider identity changed"
+    if marker.get("code_source_sha256") != _code_source_sha():
+        return False, "code source identity changed"
+    storage = FilesystemStorage(VOL_ROOT, reload_fn=vol.reload, commit_fn=vol.commit)
+    journal = PublicationJournal(storage)
+    record = journal.load(signal_date)
+    if record is None or record.get("stage") != "VOLUME_COMMITTED":
+        return False, "signal journal is not VOLUME_COMMITTED"
+    signal = marker.get("signal") or {}
+    if signal.get("record_sha256") != sha256_text(canonical_json(record)):
+        return False, "signal journal record changed"
+    try:
+        files, _states = journal.read_payloads(record)
+        for market, entry in record["states"].items():
+            path = VOL_ROOT / entry["path"]
+            if not path.is_file() or sha256_file(path) != entry["sha256"]:
+                return False, f"{market} paper state differs from journal post-state"
+        token = os.environ.get("GITHUB_TOKEN")
+        if not token:
+            return False, "GITHUB_TOKEN unavailable for artifact verification"
+        headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
+        missing = journal.plan_completion(record, _github_existing_files(list(files), headers))
+        if missing:
+            return False, f"{len(missing)} published artifacts are missing"
+    except Exception as exc:  # noqa: BLE001 - marker verification boundary
+        return False, f"journal verification failed: {type(exc).__name__}: {exc}"
+    if (marker.get("website") or {}).get("status") == "SKIPPED_BUDGET":
+        print("[cron] ⚠️ prior completion recorded a budget-skipped website replay", flush=True)
+        return True, "website intentionally skipped by budget"
+    try:
+        status_fn = modal.Function.from_name(WEBSITE_APP_NAME, "status")
+        result = status_fn.remote(_code_source_sha(), provider.get("digest"))
+    except Exception as exc:  # noqa: BLE001 - cross-app receipt boundary
+        return False, f"website receipt check failed: {type(exc).__name__}: {exc}"
+    if not isinstance(result, dict) or result.get("status") not in (
+        "PUBLISHED",
+        "ALREADY_PUBLISHED",
+        "RECOVERED_AFTER_PUBLICATION",
+    ):
+        return False, f"website receipt is not published: {result!r}"
+    if result.get("asset_digest") != provider.get("digest") or result.get("source_sha256") != _code_source_sha():
+        return False, "website receipt identity differs"
+    return True, "receipts verified"
+
+
+def _write_preopen_marker(status_path: Path, payload: dict) -> None:
+    from data_ingest.manifest import write_json
+
+    write_json(status_path, payload)
+    vol.commit()
+
+
+def _run_preopen_cycle(
+    allow_lag: bool = False,
+    signal_date_override: str = "",
+    data_asof_override: str = "",
+    refresh_provider: bool = False,
+):
+    """Single serialized publication coordinator.
+
+    The 06:00 schedule and every manual recovery entry reach this function
+    through ``daily_cron`` (max_containers=1).  Provider, signal and website
+    stages are independently idempotent; the marker is written only after all
+    three produced verifiable receipts.
+    """
     import json
+    import time
+    import uuid
     from datetime import datetime
     from zoneinfo import ZoneInfo
 
     from daily_pipeline import run_daily_pipeline
+    from publication_journal import FilesystemStorage, PublicationJournal
+    from resource_sampler import ResourceSampler
 
     today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
     calendar = _trading_days()
-    if today not in calendar:
-        return {"status": "SKIPPED_NON_TRADING_DAY", "signal_date": today}
-    data_asof = _previous_trading_day(today)
-    if data_asof is None:
-        return {"status": "SKIPPED_NO_PREVIOUS_SESSION", "signal_date": today}
-    status_path = VOL_ROOT / "preopen_status" / f"{today}.json"
+    if signal_date_override:
+        signal_date = str(signal_date_override)[:10]
+    else:
+        if today not in calendar:
+            return {"status": "SKIPPED_NON_TRADING_DAY", "signal_date": today}
+        signal_date = today
+    data_asof = str(data_asof_override)[:10] if data_asof_override else _previous_trading_day(signal_date)
+    if not data_asof:
+        return {"status": "SKIPPED_NO_PREVIOUS_SESSION", "signal_date": signal_date}
+    status_path = VOL_ROOT / "preopen_status" / f"{signal_date}.json"
     vol.reload()
     if status_path.is_file():
         try:
             prior = json.loads(status_path.read_text())
         except Exception:
             prior = None
-        if prior is not None and prior.get("status") == "COMPLETED":
-            return {"status": "ALREADY_COMPLETED", "signal_date": today, "prior": prior}
+        valid, reason = _preopen_marker_valid(prior, signal_date, data_asof)
+        if valid:
+            print(f"[cron] marker verified ({reason}); retry skipped", flush=True)
+            return {"status": "ALREADY_COMPLETED", "signal_date": signal_date, "prior": prior}
+        print(f"[cron] marker not sufficient ({reason}); continuing recovery", flush=True)
+
+    provider = ensure_overlay.remote(data_asof, refresh_memberships=refresh_provider)
+    if provider.get("status") not in ("PUBLISHED", "EXISTS", "SEALED"):
+        raise RuntimeError(f"provider stage returned no PASS receipt: {provider}")
+    print(
+        f"[cron] provider {provider['status']} {data_asof} digest={str(provider.get('digest'))[:16]}",
+        flush=True,
+    )
+
+    sampler = ResourceSampler(interval=2.0)
+    sampler.start()
     try:
-        provider = ensure_chenditc_provider.remote(data_asof)
-        print(f"[cron] chenditc provider: {provider.get('status')} asof={data_asof}", flush=True)
-    except Exception as exc:  # noqa: BLE001 - provider boundary
-        provider = {"status": "ERROR", "error": f"{type(exc).__name__}: {exc}"}
-        print(f"[cron] chenditc provider failed: {provider['error']}", flush=True)
-    if provider.get("status") != "READY":
-        _ensure_overlay_for(data_asof)
-    result = run_daily_pipeline(
-        lambda: _run_daily_signal_cycle(
-            allow_lag,
-            signal_date_override=today,
-            data_asof_override=data_asof,
-        ),
-        lambda: _update_website_returns(expected_provider_end=data_asof),
-    )
-    status_path.parent.mkdir(parents=True, exist_ok=True)
-    status_path.write_text(
-        json.dumps(
-            {
-                "status": "COMPLETED",
-                "signal_date": today,
-                "data_asof": data_asof,
-                "provider_status": provider.get("status"),
-                "provider_source": "chenditc" if provider.get("status") == "READY" else "overlay",
-                "stages": {name: stage.get("status") for name, stage in (result.get("stages") or {}).items()},
-            },
-            indent=2,
-            sort_keys=True,
+        result = run_daily_pipeline(
+            lambda: _run_daily_signal_cycle(
+                allow_lag,
+                signal_date_override=signal_date,
+                data_asof_override=data_asof,
+            ),
+            lambda: _update_website_returns(expected_provider_end=data_asof),
+            sampler=sampler,
         )
-        + "\n"
+    except Exception as exc:
+        resources = sampler.stop()
+        _write_preopen_marker(
+            status_path,
+            {
+                "status": "FAILED",
+                "signal_date": signal_date,
+                "data_asof": data_asof,
+                "provider": provider,
+                "error_type": type(exc).__name__,
+                "error": str(exc)[:2000],
+                "resources": resources,
+                "failed_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            },
+        )
+        raise
+    resources = sampler.stop()
+
+    storage = FilesystemStorage(VOL_ROOT, reload_fn=vol.reload, commit_fn=vol.commit)
+    journal = PublicationJournal(storage)
+    record = journal.load(signal_date)
+    if record is None or record.get("stage") != "VOLUME_COMMITTED":
+        raise RuntimeError("signals completed without a VOLUME_COMMITTED journal record")
+    website_stage = (result.get("stages") or {}).get("website") or {}
+    website_result = website_stage.get("result") or {}
+    from data_ingest.manifest import canonical_json, sha256_text, write_json
+
+    marker = {
+        "status": "COMPLETED",
+        "signal_date": signal_date,
+        "data_asof": data_asof,
+        "provider": {
+            "status": provider.get("status"),
+            "digest": provider.get("digest"),
+            "calendar_end": provider.get("calendar_end"),
+            "receipt_sha256": provider.get("receipt_sha256"),
+        },
+        "signal": {
+            "record_sha256": sha256_text(canonical_json(record)),
+            "stage": record.get("stage"),
+            "github_commit": record.get("github_commit"),
+        },
+        "website": {
+            "status": website_result.get("status"),
+            "source_sha256": website_result.get("source_sha256") or _code_source_sha(),
+            "asset_digest": website_result.get("asset_digest") or provider.get("digest"),
+        },
+        "code_source_sha256": _code_source_sha(),
+        "stages": {name: stage.get("status") for name, stage in (result.get("stages") or {}).items()},
+        "resources": resources,
+        "completed_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+    metrics_path = VOL_ROOT / "metrics" / signal_date / f"{int(time.time())}-{uuid.uuid4().hex[:8]}.json"
+    write_json(
+        metrics_path,
+        {
+            "signal_date": signal_date,
+            "data_asof": data_asof,
+            "provider": provider,
+            "resources": resources,
+            "stages": result.get("stages") or {},
+        },
     )
-    vol.commit()
-    return result
+    _write_preopen_marker(status_path, marker)
+    print(f"[cron] ✅ {signal_date} publication receipts verified and marker written", flush=True)
+    return {**result, "marker": marker, "provider": provider}
 
 
-def _run_evening_cycle():
-    """T-close signal + T NAV publication for the next trading session."""
+def _evening_overrides() -> tuple[str, str] | None:
+    """Signal/as-of dates for an explicit evening recovery, through daily_cron."""
     from datetime import datetime
     from zoneinfo import ZoneInfo
 
-    from daily_pipeline import run_daily_pipeline
-
     today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
-    calendar = _trading_days()
-    if today not in calendar:
-        return {"status": "SKIPPED_NON_TRADING_DAY", "signal_date": today}
+    if today not in _trading_days():
+        return None
     signal_date = _next_trading_day(today)
     if signal_date is None:
-        return {"status": "SKIPPED_NO_NEXT_SESSION", "signal_date": today}
-    _ensure_overlay_for(today)
-    return run_daily_pipeline(
-        lambda: _run_daily_signal_cycle(
-            False,
-            signal_date_override=signal_date,
-            data_asof_override=today,
-        ),
-        _update_website_returns,
-    )
+        return None
+    return signal_date, today
 
 
 @app.function(
     volumes={str(VOL_ROOT): vol},
-    schedule=modal.Cron(
-        "0 6 * * 1-5", timezone="Asia/Shanghai"
-    ),  # 周一~周五 06:00：chenditc T-1 数据已发布，留出 overlay fallback 时间
+    schedule=modal.Cron("0 6 * * 1-5", timezone="Asia/Shanghai"),  # 周一~周五 06:00：自建数据管道使用上一交易日收盘数据
     # ⚠️ 此 schedule 行曾被重构编辑意外吞掉（2026-09-28 gate 上线时），导致 09-29 静默无调度——
     #    任何触碰此装饰器的编辑后必须运行 tests/test_cron_gate.py 的守护测试。
     secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
@@ -4740,27 +4927,40 @@ def _run_evening_cycle():
     max_containers=1,
     retries=0,  # 07:30 入口负责恢复；不对最长 10.5h 的整条流水线叠加自动重试。
 )
-def daily_cron(allow_lag: bool = False):
-    """06:00 primary publication: chenditc first, overlay fallback."""
-    return _run_preopen_cycle(allow_lag)
+def daily_cron(
+    allow_lag: bool = False,
+    signal_date_override: str = "",
+    data_asof_override: str = "",
+    refresh_provider: bool = False,
+):
+    """06:00 primary publication (single self-hosted provider)."""
+    return _run_preopen_cycle(
+        allow_lag,
+        signal_date_override=signal_date_override,
+        data_asof_override=data_asof_override,
+        refresh_provider=refresh_provider,
+    )
 
 
 @app.function(
     volumes={str(VOL_ROOT): vol},
     secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
     schedule=modal.Cron("30 7 * * 1-5", timezone="Asia/Shanghai"),
-    timeout=MAIN_TIMEOUT_SECONDS,
+    timeout=BACKUP_TIMEOUT_SECONDS,
     nonpreemptible=True,
     max_containers=1,
     retries=0,
 )
 def daily_preopen_retry():
-    """07:30 idempotent retry; skips when the 06:00 run already completed."""
+    """07:30 serialized recovery; skips only after real receipts verify."""
     import json
     from datetime import datetime
     from zoneinfo import ZoneInfo
 
     today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
+    if today not in _trading_days():
+        return {"status": "SKIPPED_NON_TRADING_DAY", "signal_date": today}
+    data_asof = _previous_trading_day(today)
     status_path = VOL_ROOT / "preopen_status" / f"{today}.json"
     vol.reload()
     if status_path.is_file():
@@ -4768,10 +4968,101 @@ def daily_preopen_retry():
             prior = json.loads(status_path.read_text())
         except Exception:
             prior = None
-        if prior is not None and prior.get("status") == "COMPLETED":
-            print(f"[cron] preopen already completed for {today}; retry skipped", flush=True)
+        valid, reason = _preopen_marker_valid(prior, today, data_asof)
+        if valid:
+            print(f"[cron] preopen already completed for {today} ({reason}); retry skipped", flush=True)
             return {"status": "ALREADY_COMPLETED", "signal_date": today, "prior": prior}
-    return daily_cron.remote()
+        print(f"[cron] preopen marker not sufficient ({reason}); queueing recovery", flush=True)
+    return daily_cron.remote(refresh_provider=True)
+
+
+@app.function(
+    volumes={str(VOL_ROOT): vol_readonly},
+    cpu=1,
+    memory=1024,
+    timeout=5 * 60,
+    schedule=modal.Cron("0 9 * * 1-5", timezone="Asia/Shanghai"),
+    max_containers=1,
+    retries=0,
+)
+def daily_readonly_check():
+    """09:00 read-only verification: dates, state, receipts, no third run.
+
+    This function has no publication secret and mounts the production Volume
+    read-only.  It raises on any missing/mismatched receipt so Modal marks the
+    scheduled run failed and the operator sees an explicit stale/aborted state.
+    """
+    import json
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    from csi1000_mvp_contract import sha256_file
+    from data_ingest.store import load_snapshot
+    from publication_journal import FilesystemStorage, PublicationJournal
+
+    today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
+    if today not in _trading_days():
+        return {"status": "SKIPPED_NON_TRADING_DAY", "signal_date": today}
+    data_asof = _previous_trading_day(today)
+    problems = []
+    snapshot = load_snapshot(OVERLAY_PROVIDER_ROOT, data_asof)
+    if snapshot is None:
+        problems.append(f"provider snapshot {data_asof} is missing or not PASS")
+    storage = FilesystemStorage(VOL_ROOT, reload_fn=vol.reload, commit_fn=None)
+    journal = PublicationJournal(storage)
+    record = journal.load(today)
+    if record is None:
+        problems.append(f"signal journal {today} is missing")
+    elif record.get("stage") != "VOLUME_COMMITTED":
+        problems.append(f"signal journal {today} stage={record.get('stage')}")
+    else:
+        try:
+            journal.read_payloads(record)
+            for market, entry in record["states"].items():
+                path = VOL_ROOT / entry["path"]
+                if not path.is_file() or sha256_file(path) != entry["sha256"]:
+                    problems.append(f"{market} paper state differs from journal post-state")
+        except Exception as exc:  # noqa: BLE001 - read-only receipt boundary
+            problems.append(f"signal journal verification failed: {type(exc).__name__}: {exc}")
+    marker_path = VOL_ROOT / "preopen_status" / f"{today}.json"
+    marker = None
+    if marker_path.is_file():
+        try:
+            marker = json.loads(marker_path.read_text())
+        except Exception:
+            marker = None
+    if marker is None or marker.get("status") != "COMPLETED":
+        problems.append(f"preopen marker {today} is not COMPLETED")
+    elif snapshot is not None:
+        provider = marker.get("provider") or {}
+        if provider.get("digest") != snapshot.digest:
+            problems.append("marker provider digest differs from the published snapshot")
+        if provider.get("calendar_end") != snapshot.calendar_end:
+            problems.append("marker provider calendar differs from the published snapshot")
+        if marker.get("code_source_sha256") != _code_source_sha():
+            problems.append("marker code source identity differs from the deployed code")
+        try:
+            result = modal.Function.from_name(WEBSITE_APP_NAME, "status").remote(_code_source_sha(), snapshot.digest)
+        except Exception as exc:  # noqa: BLE001 - cross-app receipt boundary
+            result = {"status": "ERROR", "error": f"{type(exc).__name__}: {exc}"}
+        if not isinstance(result, dict) or result.get("status") not in (
+            "PUBLISHED",
+            "ALREADY_PUBLISHED",
+            "RECOVERED_AFTER_PUBLICATION",
+            "SKIPPED_BUDGET",
+        ):
+            problems.append(f"website receipt missing: {result!r}")
+        elif result.get("status") == "SKIPPED_BUDGET":
+            problems.append("website replay was skipped by the budget guard")
+    if problems:
+        raise RuntimeError("[alert] daily publication incomplete: " + "; ".join(problems))
+    return {
+        "status": "OK",
+        "signal_date": today,
+        "data_asof": data_asof,
+        "provider_digest": snapshot.digest,
+        "journal_commit": record.get("github_commit"),
+    }
 
 
 def _update_website_returns(expected_provider_end: str | None = None):
@@ -5383,14 +5674,22 @@ def attest_paper_state_bootstrap(note: str = "", approve: bool = False):
     secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
     cpu=2,
     memory=4096,
-    timeout=MAIN_TIMEOUT_SECONDS,
+    timeout=BACKUP_TIMEOUT_SECONDS,
     nonpreemptible=True,
     max_containers=1,
     retries=0,
 )
-def daily_evening():
-    """Manual evening publication; scheduled production runs at 06:00."""
-    return _run_evening_cycle()
+def daily_evening_manual():
+    """Explicit evening recovery; queued on the single daily_cron coordinator."""
+    overrides = _evening_overrides()
+    if overrides is None:
+        return {"status": "SKIPPED_NON_TRADING_DAY"}
+    signal_date, data_asof = overrides
+    return daily_cron.remote(
+        signal_date_override=signal_date,
+        data_asof_override=data_asof,
+        refresh_provider=True,
+    )
 
 
 @app.function(
@@ -5398,40 +5697,35 @@ def daily_evening():
     secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
     cpu=2,
     memory=4096,
-    timeout=MAIN_TIMEOUT_SECONDS,
+    timeout=BACKUP_TIMEOUT_SECONDS,
     nonpreemptible=True,
     max_containers=1,
     retries=0,
 )
-def daily_evening_retry():
-    """Manual evening retry; scheduled production retry runs at 07:30."""
-    return _run_evening_cycle()
+def daily_evening_retry_manual():
+    """Alias of the explicit evening recovery; no independent heavy path."""
+    return daily_evening_manual.local()
 
 
 @app.function(
     volumes={str(VOL_ROOT): vol},
     secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
-    timeout=MAIN_TIMEOUT_SECONDS,
+    timeout=BACKUP_TIMEOUT_SECONDS,
     nonpreemptible=True,
     max_containers=1,
     retries=0,
 )
 def daily_cron_manual(signal_date_override: str, data_asof_override: str = ""):
-    """Controlled operator backfill for a missed T-close publication.
+    """Controlled operator backfill, serialized on daily_cron.
 
     ``signal_date_override`` is the usage date, ``data_asof_override`` is the
     provider calendar end used for the signal.  Example for the missed
     2026-11-06 morning run: signal_date=2026-11-06, data_asof=2026-11-05.
     """
-    from daily_pipeline import run_daily_pipeline
-
-    return run_daily_pipeline(
-        lambda: _run_daily_signal_cycle(
-            False,
-            signal_date_override=signal_date_override,
-            data_asof_override=data_asof_override or None,
-        ),
-        _update_website_returns,
+    return daily_cron.remote(
+        signal_date_override=signal_date_override,
+        data_asof_override=data_asof_override,
+        refresh_provider=True,
     )
 
 
