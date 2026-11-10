@@ -91,13 +91,23 @@ class DailyPipelineError(RuntimeError):
         return type(self), (self.stages,)
 
 
-def run_daily_pipeline(signal_runner, website_runner):
-    """Attempt both stages; their own journals make subsequent runs idempotent."""
+def run_daily_pipeline(signal_runner, website_runner, *, sampler=None):
+    """Attempt both stages; their own journals make subsequent runs idempotent.
+
+    ``sampler`` is an optional object exposing ``stage(name)`` as a context
+    manager (see ``ops/resource_sampler.py``).  Its per-stage wall/CPU numbers
+    are attached to the stage receipt; no metric is fabricated when a stage
+    fails or sampling is unavailable.
+    """
+    from contextlib import nullcontext
+
     stages = {}
     first_error = None
     for name, runner in (("signals", signal_runner), ("website", website_runner)):
+        stage = sampler.stage(name) if sampler is not None else nullcontext()
         try:
-            result = runner()
+            with stage:
+                result = runner()
             outcome = result.get("status") if isinstance(result, dict) else None
             incomplete = outcome == "SKIPPED_STALE_DATA" or any(
                 marker in str(outcome) for marker in ("OPERATOR_OVERRIDE", "UNVERIFIED_LEGACY")
@@ -122,6 +132,9 @@ def run_daily_pipeline(signal_runner, website_runner):
             first_error = first_error or exc
             stages[name] = {"status": "FAILED", "error_type": type(exc).__name__}
             print(f"[daily] {name}: FAILED ({type(exc).__name__})", flush=True)
+        finally:
+            if sampler is not None:
+                stages.setdefault(name, {})["resources"] = sampler.summary().get("stages", [])[-1:]
     if first_error is not None:
         raise DailyPipelineError(stages) from first_error
     return {"status": "COMPLETED", "stages": stages}
