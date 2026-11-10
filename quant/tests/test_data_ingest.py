@@ -119,7 +119,7 @@ class FakeSina:
         self.fail = set(fail)
         self.bad = set(bad)
 
-    def fetch_pair(self, symbols, start, end):
+    def fetch_pair(self, symbols, start, end, *, on_progress=None, progress_every=200):
         batch = FetchBatch()
         for symbol in symbols:
             if symbol in self.fail:

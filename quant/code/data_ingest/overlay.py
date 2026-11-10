@@ -252,6 +252,30 @@ def read_bin_value(provider_dir: str | Path, symbol: str, field: str, date: str)
         return struct.unpack("<f", payload)[0] if len(payload) == 4 else float("nan")
 
 
+def write_feature_history(
+    out_dir: str | Path,
+    symbol: str,
+    rows: Mapping[str, Mapping[str, float]],
+    *,
+    dates: list[str],
+    start_index: int,
+) -> int:
+    """Write a new symbol's historical bins, aligned to ``dates``.
+
+    ``dates`` must start at the bin's ``start_index`` and end at the frozen
+    base date.  Missing rows become NaN; nothing is fabricated.
+    """
+    out = Path(out_dir) / "features" / symbol.lower()
+    out.mkdir(parents=True, exist_ok=True)
+    written = 0
+    for field in FIELDS:
+        values = [float(rows.get(date, {}).get(field, float("nan"))) for date in dates]
+        path = out / f"{field}.day.bin"
+        np.hstack([[float(start_index)], values]).astype("<f").tofile(path)
+        written += 1
+    return written
+
+
 def build_overlay(
     base_dir: str | Path,
     out_dir: str | Path,
@@ -261,6 +285,8 @@ def build_overlay(
     memberships: Mapping[str, Membership],
     base_end: str,
     asof: str,
+    history_rows: Mapping[str, Mapping[str, Mapping[str, float]]] | None = None,
+    history_start: Mapping[str, int] | None = None,
 ) -> dict:
     base = Path(base_dir)
     base_calendar = read_calendar(base)
@@ -270,6 +296,22 @@ def build_overlay(
         raise OverlayError(f"target dates end {dates[-1]}, expected {asof}")
     feature_symbols = historical_union(base) | set(rows) | set(BENCHMARK_SYMBOLS)
     metadata = copy_base(base, out_dir, feature_symbols=feature_symbols)
+    history_rows = history_rows or {}
+    history_start = history_start or {}
+    appended_history = 0
+    for symbol in sorted(history_rows):
+        start = int(history_start.get(symbol, 0))
+        if start < 0 or start >= len(base_calendar):
+            raise OverlayError(f"invalid history start for {symbol}: {start}")
+        appended_history += write_feature_history(
+            out_dir,
+            symbol,
+            history_rows[symbol],
+            dates=base_calendar[start:],
+            start_index=start,
+        )
+    metadata["history_bins"] = appended_history
+    metadata["history_symbols"] = sorted(history_rows)
     append_calendar(out_dir, dates)
     metadata["bins_appended"] = append_features(out_dir, rows, start_index=len(base_calendar), dates=dates)
     metadata["instruments"] = update_instruments(out_dir, memberships, base_end=base_end, asof=asof, row_symbols=rows)

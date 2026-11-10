@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import time
 from io import BytesIO
 from typing import Callable
 
 import pandas as pd
+import requests
 
 from data_ingest.manifest import sha256_bytes
 from data_ingest.model import Membership
@@ -31,10 +33,6 @@ def _default_fetch(url: str) -> bytes:
     timeout aborts the whole overlay build, so retry with a longer read
     timeout before failing closed.
     """
-    import time
-
-    import requests
-
     last_error: Exception | None = None
     for attempt in range(3):
         try:
@@ -121,6 +119,9 @@ def fetch_membership(
         weights_sha256=weights_sha,
         source_url=cons_url,
         weights_source_url=weights_url if require_weights else None,
+        raw_bytes=len(content),
+        weights_bytes=len(weights_content) if require_weights else None,
+        fetched_at_utc=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     )
 
 

@@ -35,6 +35,8 @@ def run_gate(
     require_crosscheck: bool = True,
     min_crosschecks: int = 1,
     require_qlib: bool = False,
+    required_symbols: Iterable[str] = (),
+    base_symbols: Iterable[str] | None = None,
 ) -> GateReport:
     report = GateReport()
     base = Path(base_dir)
@@ -85,6 +87,17 @@ def run_gate(
             f"unexplained={missing[:10]}",
         )
 
+    required_missing = []
+    for symbol in {str(item).upper() for item in required_symbols}:
+        close = read_bin_value(overlay, symbol, "close", asof)
+        if not _finite(close) and symbol not in suspension_set:
+            required_missing.append(symbol)
+    report.require(
+        not required_missing,
+        "coverage.required_extras",
+        f"held/extra symbols without a close: {required_missing[:10]}",
+    )
+
     bad_rows = []
     nonempty = 0
     for symbol, per_date in rows.items():
@@ -107,14 +120,20 @@ def run_gate(
     report.require(not bad_rows, "rows.ohlc", f"checked={nonempty} bad={bad_rows[:10]}")
 
     sample = sorted(rows)[:30]
+    base_set = {str(item).upper() for item in base_symbols} if base_symbols is not None else None
     bad_base = []
     for symbol in sample:
+        if base_set is not None and symbol not in base_set:
+            # A controlled history backfill has no frozen base row to compare.
+            continue
         for field in ("close", "factor", "volume"):
             left = read_bin_value(base, symbol, field, base_end)
             right = read_bin_value(overlay, symbol, field, base_end)
-            if _finite(left) and _finite(right) and not _close_enough(left, right, 1e-7):
+            if not _finite(left):
+                continue
+            if _finite(right) and not _close_enough(left, right, 1e-7):
                 bad_base.append(f"{symbol}/{field}: {left} != {right}")
-            elif _finite(left) != _finite(right):
+            elif not _finite(right):
                 bad_base.append(f"{symbol}/{field}: finite mismatch")
     report.require(not bad_base, "base_integrity", f"sample={len(sample)} bad={bad_base[:10]}")
 

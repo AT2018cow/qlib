@@ -53,6 +53,7 @@ class FetchBatch:
 
     series: dict[str, SymbolSeries] = field(default_factory=dict)
     errors: dict[str, str] = field(default_factory=dict)
+    stats: dict = field(default_factory=dict)
 
     @property
     def symbols(self) -> set[str]:
@@ -68,9 +69,12 @@ class Membership:
     members: tuple[str, ...]
     weights_date: str | None = None
     raw_sha256: str = ""
+    raw_bytes: int | None = None
     weights_sha256: str | None = None
+    weights_bytes: int | None = None
     source_url: str = ""
     weights_source_url: str | None = None
+    fetched_at_utc: str | None = None
 
 
 @dataclass(frozen=True)
