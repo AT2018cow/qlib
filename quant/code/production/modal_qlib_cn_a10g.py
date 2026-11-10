@@ -4581,7 +4581,7 @@ def ensure_chenditc_provider(asof: str):
     root = VOL_ROOT / CACHE_DIRNAME
     cached = select_cached_provider(asof, root)
     if cached is not None:
-        return {"status": "READY", **cached}
+        return {**cached, "status": "READY"}
 
     release = latest_release()
     if str(release.get("tag", ""))[:10] < asof:
@@ -4635,7 +4635,7 @@ def ensure_chenditc_provider(asof: str):
         f"digest={digest_hex[:16]} size={written // 1024**2}MiB",
         flush=True,
     )
-    return {"status": "READY", **descriptor}
+    return {**descriptor, "status": "READY"}
 
 
 def _run_preopen_cycle(allow_lag: bool = False):

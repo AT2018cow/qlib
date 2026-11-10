@@ -208,9 +208,34 @@ def _modal_helper_from_source(name, namespace=None):
     src = Path(__file__).resolve().parents[2] / "quant/code/production/modal_qlib_cn_a10g.py"
     tree = ast.parse(src.read_text())
     node = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == name)
+    node.decorator_list = []
     ns = dict(namespace or {})
     exec(compile(ast.Module(body=[node], type_ignores=[]), str(src), "exec"), ns)
     return ns[name]
+
+
+def test_ensure_chenditc_provider_ready_status_wins(monkeypatch, tmp_path):
+    """A cached manifest status PASS must not overwrite the READY signal."""
+    import provider_cache
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(
+        provider_cache,
+        "select_cached_provider",
+        lambda expected, root: {
+            "status": "PASS",
+            "calendar_end": expected,
+            "digest": "sha256:" + "a" * 64,
+            "local_path": str(tmp_path),
+        },
+    )
+    function = _modal_helper_from_source(
+        "ensure_chenditc_provider",
+        namespace={"vol": SimpleNamespace(reload=lambda: None, commit=lambda: None), "VOL_ROOT": tmp_path},
+    )
+    result = function("2026-11-09")
+    assert result["status"] == "READY"
+    assert result["calendar_end"] == "2026-11-09"
 
 
 def test_st_source_prefers_real_valid_snapshot_and_classifies_outage(monkeypatch):
