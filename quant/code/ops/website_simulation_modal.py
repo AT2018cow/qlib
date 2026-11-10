@@ -298,6 +298,11 @@ def _incremental_prior(source_sha, asset, market, end, calendar):
                 or series.get("latest_date") != previous
             ):
                 continue
+            # Plan A: a provider-source change is a lineage boundary.  Never
+            # splice an overlay series onto a chenditc series (or vice versa);
+            # replay the whole account under the current source instead.
+            if payload.get("provider_source") != asset.get("source"):
+                continue
             validate_website_series(series, market=market)
             identity = series.get("account_identity") or {}
             if (
@@ -741,6 +746,7 @@ def build_market(job):
         "provider_calendar_end": calendar[-1],
         "previous_completed_session": completed[-1],
         "provider_lag_sessions": len([d for d in completed if d > calendar[-1]]),
+        "provider_source": asset.get("source", ""),
         "prefix_prediction_exact": mode == "smoke",
         "replay_mode": replay_mode,
         "incremental": incremental_evidence,

@@ -340,6 +340,7 @@ def test_incremental_prefix_requires_a_complete_ancestor_ledger(tmp_path, monkey
         "market": "csi300",
         "source_sha256": source_sha,
         "asset_digest": f"sha256:{prior_digest}",
+        "provider_source": "chenditc",
         "series": series,
         "ledger_file_sha256": {
             "signal.parquet": hashlib.sha256((result_dir / "signal.parquet").read_bytes()).hexdigest(),
@@ -376,11 +377,20 @@ def test_incremental_prefix_requires_a_complete_ancestor_ledger(tmp_path, monkey
 
     monkeypatch.setattr(module, "Path", redirected)
     calendar = ["2026-09-18", "2026-09-30", "2026-10-08", "2026-10-09", "2026-10-12"]
-    asset = {"local_path": str(current_dir), "digest": f"sha256:{current_digest}"}
+    asset = {"local_path": str(current_dir), "digest": f"sha256:{current_digest}", "source": "chenditc"}
     prefix = module._incremental_prior(source_sha, asset, "csi300", "2026-10-12", calendar)
     assert prefix is not None
     assert prefix["previous"] == "2026-10-09"
     assert prefix["result_dir"] == result_dir
+
+    # Plan A: both directions are lineage boundaries.
+    overlay_asset = {**asset, "source": "overlay"}
+    assert module._incremental_prior(source_sha, overlay_asset, "csi300", "2026-10-12", calendar) is None
+    payload["provider_source"] = "overlay"
+    (result_dir / "result.json").write_text(json.dumps(payload))
+    assert module._incremental_prior(source_sha, overlay_asset, "csi300", "2026-10-12", calendar) is not None
+    payload["provider_source"] = "chenditc"
+    (result_dir / "result.json").write_text(json.dumps(payload))
 
     (result_dir / "signal.parquet").unlink()
     signal.iloc[:-1].to_parquet(result_dir / "signal.parquet")

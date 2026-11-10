@@ -2,6 +2,7 @@
 
 import ast
 import importlib.util
+import json
 import pickle
 import subprocess
 import sys
@@ -132,6 +133,13 @@ def test_preopen_cycle_skips_overlay_when_chenditc_ready(tmp_path, monkeypatch):
     assert seen[0][1] is False
     assert seen[0][2]["data_asof_override"] == "2026-11-09"
     assert seen[1] == ("website", "2026-11-09")
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
+    marker = json.loads((tmp_path / "preopen_status" / f"{today}.json").read_text())
+    assert marker["status"] == "COMPLETED"
+    assert marker["provider_source"] == "chenditc"
 
 
 def test_preopen_retry_skips_after_completed_marker(tmp_path, monkeypatch):
