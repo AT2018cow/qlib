@@ -27,70 +27,107 @@ from website_budget import already_published, budget_decision, read_budget_polic
 
 app = modal.App(WEBSITE_APP_NAME, image=image)
 simulation = modal.Volume.from_name(WEBSITE_SIM_VOLUME, create_if_missing=True)
+simulation_readonly = simulation.with_mount_options(read_only=True)
 
 
-def _latest_overlay_asset():
+def _latest_overlay_asset(expected_end: str | None = None):
+    """Return the single self-hosted provider asset (archive preferred)."""
     import hashlib
     import json
 
     root = Path("/data/cn_data_overlay")
     if not root.is_dir():
         return None
+    archive_root = root / "archives"
+    candidates = []
+    if archive_root.is_dir():
+        for directory in sorted(archive_root.iterdir()):
+            if not directory.is_dir() or len(directory.name) != 10:
+                continue
+            receipt_path = directory / "receipt.json"
+            try:
+                receipt = json.loads(receipt_path.read_text())
+            except (OSError, ValueError):
+                continue
+            if receipt.get("status") != "PASS" or receipt.get("date") != directory.name:
+                continue
+            if expected_end is not None and directory.name != expected_end:
+                continue
+            archive = receipt.get("archive") or {}
+            relative = archive.get("path")
+            if not isinstance(relative, str):
+                continue
+            path = root / relative
+            if not path.is_file() or path.stat().st_size != int(archive.get("size") or -1):
+                continue
+            calendar_path = directory / "calendar.txt"
+            calendar = (
+                [line.strip() for line in calendar_path.read_text().splitlines() if line.strip()]
+                if calendar_path.is_file()
+                else []
+            )
+            candidates.append(
+                {
+                    "kind": "archive",
+                    "archive_path": str(path),
+                    "digest": f"sha256:{archive['sha256']}",
+                    "size": int(archive["size"]),
+                    "release": f"overlay-{directory.name}",
+                    "published_at": receipt.get("published_at_utc", ""),
+                    "source": "overlay",
+                    "calendar_end": receipt.get("calendar_end", directory.name),
+                    "calendar": calendar,
+                    "base": receipt.get("base") or {},
+                    "manifest_sha256": (receipt.get("manifest") or {}).get("sha256"),
+                    "content_sha256": archive.get("content_sha256"),
+                }
+            )
+    if candidates:
+        return candidates[-1]
     for path in reversed(sorted(root.iterdir())):
+        if not path.is_dir() or len(path.name) != 10:
+            continue
+        if expected_end is not None and path.name != expected_end:
+            continue
         manifest_path = path / "manifest.json"
         calendar_path = path / "calendars" / "day.txt"
         if not manifest_path.is_file() or not calendar_path.is_file():
             continue
         try:
             manifest = json.loads(manifest_path.read_text())
-        except Exception:
+        except (OSError, ValueError):
             continue
         if manifest.get("status") != "PASS":
             continue
         calendar = [line.strip() for line in calendar_path.read_text().splitlines() if line.strip()]
-        if not calendar:
+        if not calendar or (expected_end is not None and calendar[-1] != expected_end):
             continue
         digest = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
         return {
+            "kind": "directory",
             "local_path": str(path),
             "digest": f"sha256:{digest}",
             "size": 0,
             "release": f"overlay-{calendar[-1]}",
             "published_at": manifest.get("generated_at_utc", ""),
             "source": "overlay",
+            "calendar_end": calendar[-1],
+            "calendar": calendar,
+            "base": manifest.get("base") or {},
+            "manifest_sha256": digest,
+            "content_sha256": None,
         }
     return None
 
 
 def latest_asset(expected_end: str | None = None):
-    """Prefer the cached chenditc provider; fall back to a gate-passed overlay."""
-    from provider_cache import CACHE_DIRNAME, provider_asset, select_cached_provider
-
-    cached = select_cached_provider(expected_end, Path("/data") / CACHE_DIRNAME)
-    if cached is not None:
-        return provider_asset(cached)
-    overlay = _latest_overlay_asset()
-    if overlay is not None:
-        if expected_end is None:
-            return overlay
-        calendar = _provider_calendar(overlay) or []
-        if calendar and calendar[-1] == expected_end:
-            return overlay
-        raise ValueError(
-            f"no current chenditc/overlay provider for {expected_end}; overlay ends {calendar[-1] if calendar else 'unknown'}"
-        )
-    if expected_end:
-        raise ValueError(f"no current chenditc/overlay provider for {expected_end}")
-    from provider_cache import latest_release
-
-    release = latest_release()
-    return {
-        "url": release["url"],
-        "digest": release["digest"],
-        "size": release["size"],
-        "release": release["tag"],
-        "published_at": release["published_at"],
-    }
+    """Resolve the self-hosted provider; a missing session is a hard error."""
+    asset = _latest_overlay_asset(expected_end)
+    if asset is None:
+        raise ValueError(f"no PASS self-hosted provider for {expected_end or 'latest'}")
+    if expected_end is not None and asset["calendar_end"] != expected_end:
+        raise ValueError(f"provider ends {asset['calendar_end']}, expected {expected_end}")
+    return asset
 
 
 def _budget_guard():
@@ -155,6 +192,42 @@ def budget_status():
     return _budget_guard()
 
 
+@app.function(
+    volumes={"/simulation": simulation_readonly},
+    cpu=1,
+    memory=1024,
+    timeout=120,
+    max_containers=1,
+    retries=0,
+)
+def status(expected_source_sha256: str, asset_digest: str = ""):
+    """Read-only publication receipt lookup for the daily coordinator."""
+    from website_budget import already_published
+
+    simulation.reload()
+    if not asset_digest:
+        return {
+            "status": "MISSING",
+            "source_sha256": expected_source_sha256,
+            "asset_digest": asset_digest,
+            "reason": "no asset digest supplied",
+        }
+    receipt = already_published("/simulation", expected_source_sha256, asset_digest)
+    if receipt is None:
+        return {
+            "status": "MISSING",
+            "source_sha256": expected_source_sha256,
+            "asset_digest": asset_digest,
+        }
+    return {
+        "status": receipt.get("status"),
+        "source_sha256": receipt.get("source_sha256"),
+        "asset_digest": receipt.get("asset_digest"),
+        "commit": receipt.get("commit"),
+        "files": receipt.get("files"),
+    }
+
+
 def make_job(asset, source, market, mode):
     return {"asset": asset, "source_manifest": source, "market": market, "mode": mode}
 
@@ -178,18 +251,27 @@ def _sha256_path(path):
 
 
 def _provider_calendar(asset):
-    if not asset.get("local_path"):
-        return None
-    path = Path(asset["local_path"]) / "calendars" / "day.txt"
-    if not path.is_file():
-        return None
-    return [line.strip() for line in path.read_text().splitlines() if line.strip()]
+    calendar = asset.get("calendar")
+    if isinstance(calendar, list) and calendar:
+        return [str(item) for item in calendar]
+    if asset.get("local_path"):
+        path = Path(asset["local_path"]) / "calendars" / "day.txt"
+        if path.is_file():
+            return [line.strip() for line in path.read_text().splitlines() if line.strip()]
+    return None
 
 
 def _overlay_base(asset):
-    """Return the immediate base path/date recorded by the current overlay."""
+    """Return the immediate base identity recorded by the current provider."""
     import json
 
+    base = asset.get("base")
+    if isinstance(base, dict) and base.get("calendar_end"):
+        return {
+            "path": str(base.get("path") or ""),
+            "calendar_end": str(base.get("calendar_end") or "")[:10],
+            "digest": str(base.get("digest") or base.get("archive_sha256") or ""),
+        }
     if not asset.get("local_path"):
         return None
     manifest = Path(asset["local_path"]) / "manifest.json"
@@ -203,6 +285,7 @@ def _overlay_base(asset):
     return {
         "path": str(base.get("path") or ""),
         "calendar_end": str(base.get("calendar_end") or "")[:10],
+        "digest": str(base.get("digest") or base.get("archive_sha256") or ""),
     }
 
 
@@ -268,8 +351,9 @@ def _incremental_prior(source_sha, asset, market, end, calendar):
         return None
     current_digest = asset["digest"].split(":")[1]
     base = _overlay_base(asset)
-    if base is None or base["calendar_end"] != previous or Path(base["path"]).name[:10] != previous:
+    if base is None or base["calendar_end"] != previous:
         return None
+    base_digest = str(base.get("digest") or "")
     blocks = fit_blocks(calendar, FIRST_EXECUTION, end)
     block = next((item for item in blocks if item["fit_asof"] <= end <= item["signal_end"]), None)
     if block is None:
@@ -292,6 +376,8 @@ def _incremental_prior(source_sha, asset, market, end, calendar):
                 or payload.get("market") != market
                 or payload.get("source_sha256") != source_sha
                 or payload.get("asset_digest") != f"sha256:{asset_dir.name}"
+                or payload.get("provider_calendar_end") != previous
+                or (base_digest and payload.get("asset_digest") != f"sha256:{base_digest}")
                 or series.get("market") != market
                 or series.get("source_manifest_sha256") != source_sha
                 or series.get("provider_archive_sha256") != asset_dir.name
@@ -427,6 +513,51 @@ def _predict_days(model, cfg, provider, calendar, days):
     scaledown_window=5,
 )
 def build_market(job):
+    """Run one market replay while capturing a process-tree resource receipt."""
+    import json
+    import time
+    import uuid
+
+    from resource_sampler import ResourceSampler
+
+    sampler = ResourceSampler(interval=2.0)
+    sampler.start()
+    try:
+        return _build_market_impl(job, sampler=sampler)
+    except Exception as exc:
+        resources = sampler.stop()
+        try:
+            path = (
+                Path("/simulation/metrics/failures")
+                / f"{market_name(job)}-{int(time.time())}-{uuid.uuid4().hex[:8]}.json"
+            )
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                json.dumps(
+                    {
+                        "status": "FAILED",
+                        "market": market_name(job),
+                        "error_type": type(exc).__name__,
+                        "error": str(exc)[:2000],
+                        "resources": resources,
+                    },
+                    indent=2,
+                    sort_keys=True,
+                    allow_nan=False,
+                )
+                + "\n"
+            )
+            simulation.commit()
+        except Exception as record_exc:  # noqa: BLE001 - do not mask the replay error
+            print(f"[website] ⚠️ could not persist failure metrics: {record_exc}", flush=True)
+        raise
+
+
+def market_name(job):
+    return str((job or {}).get("market") or "unknown")
+
+
+def _build_market_impl(job, sampler=None):
     import copy
     import hashlib
     import importlib.metadata
@@ -759,6 +890,7 @@ def build_market(job):
         for p in sorted(signal_dir.rglob("*"))
         if p.is_file() and p.name != "result.json"
     }
+    payload["resources"] = sampler.summary() if sampler is not None else None
     write_immutable(finished, json.dumps(payload, indent=2, allow_nan=False) + "\n")
     if mode == "smoke":
         write_immutable(

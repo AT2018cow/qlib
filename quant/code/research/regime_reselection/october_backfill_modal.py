@@ -65,18 +65,27 @@ def download_provider(asset):
     digest = hashlib.sha256()
     written = 0
     mark = 0
-    with requests.get(asset["url"], stream=True, timeout=(30, 180)) as response:
-        response.raise_for_status()
-        with archive.open("wb") as stream:
-            for chunk in response.iter_content(8 * 1024 * 1024):
+    if asset.get("archive_path"):
+        with Path(asset["archive_path"]).open("rb") as response, archive.open("wb") as stream:
+            for chunk in iter(lambda: response.read(8 * 1024 * 1024), b""):
                 digest.update(chunk)
                 stream.write(chunk)
                 written += len(chunk)
-                if written // (64 * 1024 * 1024) > mark:
-                    mark = written // (64 * 1024 * 1024)
-                    print(f"[provider] downloaded {written//1024**2}MiB", flush=True)
+    elif asset.get("url"):
+        with requests.get(asset["url"], stream=True, timeout=(30, 180)) as response:
+            response.raise_for_status()
+            with archive.open("wb") as stream:
+                for chunk in response.iter_content(8 * 1024 * 1024):
+                    digest.update(chunk)
+                    stream.write(chunk)
+                    written += len(chunk)
+                    if written // (64 * 1024 * 1024) > mark:
+                        mark = written // (64 * 1024 * 1024)
+                        print(f"[provider] downloaded {written//1024**2}MiB", flush=True)
+    else:
+        raise ValueError("provider asset has neither archive_path nor url")
     if written != asset["size"] or "sha256:" + digest.hexdigest() != asset["digest"]:
-        raise ValueError("public release size/SHA256 mismatch")
+        raise ValueError("provider archive size/SHA256 mismatch")
     print("[provider] digest passed; extracting to container scratch", flush=True)
     extracted = Path(safe_extract_provider_archive(archive, root))
     marker.write_text(json.dumps({"digest": asset["digest"], "relative_root": str(extracted.relative_to(root))}))

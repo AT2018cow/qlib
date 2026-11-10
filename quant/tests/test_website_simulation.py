@@ -307,7 +307,11 @@ def test_incremental_prefix_requires_a_complete_ancestor_ledger(tmp_path, monkey
             {
                 "status": "PASS",
                 "source": "chenditc",
-                "base": {"path": "provider:chenditc/2026-10-09", "calendar_end": "2026-10-09"},
+                "base": {
+                    "path": "provider:chenditc/2026-10-09",
+                    "calendar_end": "2026-10-09",
+                    "digest": prior_digest,
+                },
             }
         )
     )
@@ -341,6 +345,7 @@ def test_incremental_prefix_requires_a_complete_ancestor_ledger(tmp_path, monkey
         "source_sha256": source_sha,
         "asset_digest": f"sha256:{prior_digest}",
         "provider_source": "chenditc",
+        "provider_calendar_end": "2026-10-09",
         "series": series,
         "ledger_file_sha256": {
             "signal.parquet": hashlib.sha256((result_dir / "signal.parquet").read_bytes()).hexdigest(),
@@ -401,11 +406,10 @@ def test_incremental_prefix_requires_a_complete_ancestor_ledger(tmp_path, monkey
     assert module._incremental_prior(source_sha, asset, "csi300", "2026-10-12", calendar) is None
 
 
-def test_latest_asset_prefers_cached_chenditc_provider(tmp_path, monkeypatch):
+def test_latest_asset_resolves_archive_then_directory(tmp_path, monkeypatch):
     import importlib.util
+    import json
     from pathlib import Path
-
-    from provider_cache import install_provider
 
     path = Path(__file__).resolve().parents[1] / "code/ops/website_simulation_modal.py"
     spec = importlib.util.spec_from_file_location("website_simulation_asset_test", path)
@@ -413,18 +417,34 @@ def test_latest_asset_prefers_cached_chenditc_provider(tmp_path, monkeypatch):
     spec.loader.exec_module(module)
 
     data = tmp_path / "data"
-    provider = tmp_path / "extracted"
-    (provider / "calendars").mkdir(parents=True)
-    (provider / "calendars" / "day.txt").write_text("2026-11-06\n2026-11-09\n")
-    digest = "c" * 64
-    install_provider(
-        provider,
-        data / "chenditc_cache",
-        digest=f"sha256:{digest}",
-        release="2026-11-09",
-        published_at="2026-11-09T12:16:03Z",
-        source_url="https://example.invalid/qlib_bin.tar.gz",
-    )
+    overlay = data / "cn_data_overlay"
+    archive_dir = overlay / "archives" / "2026-11-09"
+    archive_dir.mkdir(parents=True)
+    (archive_dir / "calendar.txt").write_text("2026-11-06\n2026-11-09\n")
+    (archive_dir / "manifest.json").write_text(json.dumps({"status": "PASS", "base": {}}))
+    archive = archive_dir / ("d" * 64 + ".tar.gz")
+    archive.write_bytes(b"abc")
+    receipt = {
+        "schema_version": 1,
+        "status": "PASS",
+        "date": "2026-11-09",
+        "calendar_end": "2026-11-09",
+        "archive": {
+            "path": f"archives/2026-11-09/{'d' * 64}.tar.gz",
+            "sha256": "d" * 64,
+            "size": 3,
+            "content_sha256": "e" * 64,
+        },
+        "manifest": {"sha256": "f" * 64},
+        "base": {"calendar_end": "2026-11-06", "digest": "a" * 64},
+    }
+    (archive_dir / "receipt.json").write_text(json.dumps(receipt))
+
+    legacy = overlay / "2026-11-10"
+    (legacy / "calendars").mkdir(parents=True)
+    (legacy / "calendars" / "day.txt").write_text("2026-11-09\n2026-11-10\n")
+    (legacy / "manifest.json").write_text(json.dumps({"status": "PASS", "base": {}}))
+
     real_path = Path
 
     def redirected(value):
@@ -434,12 +454,15 @@ def test_latest_asset_prefers_cached_chenditc_provider(tmp_path, monkeypatch):
         return real_path(value)
 
     monkeypatch.setattr(module, "Path", redirected)
-    asset = module.latest_asset(expected_end="2026-11-09")
-    assert asset["source"] == "chenditc"
-    assert asset["digest"] == f"sha256:{digest}"
-    assert asset["local_path"].endswith(digest)
-    with pytest.raises(ValueError, match="no current"):
-        module.latest_asset(expected_end="2026-11-10")
+    archived = module.latest_asset(expected_end="2026-11-09")
+    assert archived["kind"] == "archive"
+    assert archived["digest"] == "sha256:" + "d" * 64
+    assert archived["calendar"] == ["2026-11-06", "2026-11-09"]
+    directory = module.latest_asset(expected_end="2026-11-10")
+    assert directory["kind"] == "directory"
+    assert directory["calendar_end"] == "2026-11-10"
+    with pytest.raises(ValueError, match="no PASS self-hosted provider"):
+        module.latest_asset(expected_end="2026-11-11")
 
 
 def test_incremental_prediction_uses_an_equivalent_bounded_window(tmp_path):
@@ -522,3 +545,58 @@ def test_incremental_prediction_uses_an_equivalent_bounded_window(tmp_path):
     bounded = module._predict_days(SumModel(), cfg, tmp_path, days, [previous, target])
     full = SumModel().predict(DatasetH(handler=handler, segments={"test": [previous, target]}), segment="test")
     pd.testing.assert_series_equal(bounded, full, check_exact=True, check_names=False)
+
+
+def test_download_provider_archive_roundtrip(tmp_path):
+    import hashlib
+    import importlib.util
+    from pathlib import Path
+
+    import numpy as np
+
+    from data_ingest.store import create_provider_archive
+
+    path = Path(__file__).resolve().parents[1] / "code/research/regime_reselection/october_backfill_modal.py"
+    spec = importlib.util.spec_from_file_location("october_backfill_asset_test", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    provider = tmp_path / "provider"
+    (provider / "calendars").mkdir(parents=True)
+    (provider / "calendars" / "day.txt").write_text("2026-11-09\n2026-11-10\n")
+    feature = provider / "features" / "sh600000"
+    feature.mkdir(parents=True)
+    np.array([0.0, 10.0, 10.5], dtype="<f").tofile(feature / "close.day.bin")
+    (provider / "manifest.json").write_text("{}")
+    archive = tmp_path / "provider.tar.gz"
+    meta = create_provider_archive(provider, archive)
+    asset = {
+        "archive_path": str(archive),
+        "digest": f"sha256:{meta['sha256']}",
+        "size": meta["size"],
+        "source": "overlay",
+    }
+    local = module.download_provider(asset)
+    assert (local / "calendars" / "day.txt").is_file()
+    assert (local / "features" / "sh600000" / "close.day.bin").is_file()
+    # Cached re-entry returns the same extracted path.
+    assert module.download_provider(asset) == local
+
+
+def test_overlay_base_prefers_archive_receipt_identity():
+    import importlib.util
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[1] / "code/ops/website_simulation_modal.py"
+    spec = importlib.util.spec_from_file_location("website_simulation_base_test", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    asset = {
+        "digest": "sha256:" + "c" * 64,
+        "source": "overlay",
+        "base": {"path": "archives/2026-11-09/x.tar.gz", "calendar_end": "2026-11-09", "digest": "d" * 64},
+    }
+    assert module._overlay_base(asset) == {
+        "path": "archives/2026-11-09/x.tar.gz",
+        "calendar_end": "2026-11-09",
+        "digest": "d" * 64,
+    }
