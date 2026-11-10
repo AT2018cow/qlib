@@ -217,3 +217,57 @@ modal run quant/code/production/modal_qlib_cn_a10g.py::daily_cron \
 | 全量目录顺序封存 | probe `build_repro` | >58 min 未完成（已取消，无生产写入）；已用并行封存替代 |
 
 未完成：11-12 06:00 首次全市场新日期调度构建；生产账单/阶段成本；真实全市场 build RSS/cgroup。
+
+## 10. 生产部署与切换验收（真实结果，2026-11-11 凌晨）
+
+### 10.1 部署
+
+| App | 最终版本 | Commit | 时间（北京时间） |
+|---|---|---|---|
+| `qlib-prod-daily` | v17 | `f77a3b349` | 2026-11-11 03:30 |
+| `qlib-prod-website` | v17 | `f77a3b349` | 2026-11-11 03:32 |
+
+首次部署 v16 `78883ef` 后，`modal app info qlib-prod-daily` 只剩：
+`daily_cron` 06:00、`daily_preopen_retry` 07:30、`daily_readonly_check` 09:00。
+旧 `daily_evening`/`daily_evening_retry` 函数名已不存在，18:00/19:00 触发器随函数删除而消失；这验证了“源码没有 schedule 不等于平台触发器已删除”。
+
+### 10.2 切换验收（v16）
+
+命令：通过 `modal.Function.from_name("qlib-prod-daily","daily_cron").remote(signal_date_override="2026-11-11", data_asof_override="2026-11-10")`，前台 attached，耗时 **640 s**。
+
+- provider：`SEALED` 11-10 目录 → archive `658555ec…`，seal wall **181.6 s**，receipt `fa1744e2…`；
+- signals：`ALREADY_PUBLISHED`（39.4 s；journal `VOLUME_COMMITTED`，GitHub commit `d2df363b…` 未变）；
+- website：`PUBLISHED`（395.3 s；source `3d44ecf6…`，commit `317ee0a1…`，assets 12）；
+- marker 写入 `preopen_status/2026-11-11.json`，包含 provider/journal/website/code 身份。
+
+与上一版 website 发布比较：NAV、cash、持仓、费用、收益 **完全相同**；`model_sha256` 因新 source 重新序列化而不同。进一步比较 `signal.parquet`：7,478 行，**score 完全相等（max abs diff 0.0），rank 顺序完全一致**。因此全量 replay 只改变代码/来源身份，不改变业务路径。
+
+### 10.3 发现并修复 07:30 误判（v17）
+
+首次调用 `daily_preopen_retry` 时返回了重跑而不是跳过。日志原因：
+`website receipt is not published: {'status':'MISSING', ... 'asset_digest':'6585…'}`。
+marker 的 provider digest 是裸 64 位 hex，而 website `status` 接口要求 `sha256:` 前缀；验证器已按 `sha256:` 形式比较 website 结果。修复提交 `f77a3b349`，并在 07:30/09:00 两处统一 `_asset_digest` 归一化。
+
+修复后重新部署 daily v17；由于 daily/website source identity 必须一致，website 也重新部署 v17。v17 首次运行中 daily 正确拒绝了 v16 website（不同 source identity），证明身份门禁有效；website 部署 v17 后再次运行成功。
+
+### 10.4 v17 验收
+
+命令与 v16 相同，耗时 **483 s**：
+
+- signals：`ALREADY_PUBLISHED`（3.9 s；无重复发布）；
+- website：`PUBLISHED`（470.1 s；source `3b8a473a…`，commit `abb837d0…`）；
+- `daily_preopen_retry`：`ALREADY_COMPLETED`；
+- `daily_cron` 无 override（模拟 06:00）：`ALREADY_COMPLETED`；
+- `daily_readonly_check`：`{"status":"OK","provider_digest":"6585…","journal_commit":"d2df363b…"}`；
+- 新 website JSON 与上一版除 `source_manifest_sha256`/`provider_archive_sha256`/`model_sha256` 外完全相等；最新 NAV 0.82346966、累计 -0.17653034 不变。
+
+### 10.5 成本
+
+切换前 `budget_status`：today $0.6065，monthly metered $34.3838/$40，reserve $2，允许。
+切换后（含探测、两次 website replay、封存）：today $0.6065（账单报表尚未滚动今日口径），monthly metered $34.6740。实际增量约 **$0.29**；仍需在普通日/重训日分别统计 App 账单，不能把本次一次性 replay 当作日常成本。
+
+### 10.6 剩余验收门
+
+**尚未发生**：11-12 06:00 的首次“从 archive base 追加新交易日 + 信号（预计因 source 变化重训）+ website 增量”调度运行。这是唯一仍未真实验证的主路径；在它通过前，本轮状态应为“切换验收通过，日常新日期构建待首次调度验收”，不能宣布生产已完全稳定。
+
+建议验收：11-12 06:30 检查 `preopen_status/2026-11-12.json`、`provider_builds/` 失败记录、`cn_data_overlay/archives/2026-11-11/` receipt、signal journal/website status、`daily_readonly_check` 09:00 结果；并保存普通日账单。
