@@ -193,18 +193,77 @@ def numerical_ledger(report):
         raise ValueError("cash/fees/NAV conservation failure")
 
 
-def replay(data, candidate, *, account=1_000_000, slippage_bps=0, progress_every=250, engine_history_limit=0):
-    pp = PaperPortfolio(topk=candidate["topk"], nd=candidate["dropn"], initial_cash=account)
+def _longest_underwater_sessions(accounts, initial_peak):
+    peak = float(initial_peak)
+    length = longest = 0
+    for value in accounts:
+        value = float(value)
+        if value >= peak:
+            peak, length = value, 0
+        else:
+            length += 1
+            longest = max(longest, length)
+    return longest
+
+
+def _load_prior(prior, days, initial_state):
+    """Validate an incremental continuation and return its accumulated ledger."""
+    if prior is None or initial_state is None:
+        raise ValueError("incremental replay requires both prior and initial_state")
+    if days[0] != str(initial_state.get("last_execution_date") or "")[:10]:
+        raise ValueError("incremental state does not end at the previous session")
+    report = prior["report"].sort_index()
+    if report.empty or str(report.index[-1])[:10] != days[0] or report.index.has_duplicates:
+        raise ValueError("incremental report does not end at the previous session")
+    sessions = list(prior["sessions"])
+    if not sessions or str(sessions[-1].get("date"))[:10] != days[0]:
+        raise ValueError("incremental sessions do not end at the previous session")
+    if prior.get("final_state") != initial_state:
+        raise ValueError("incremental final state differs from the supplied checkpoint")
+    return {
+        "report": report,
+        "sessions": sessions,
+        "orders": list(prior["orders"]),
+        "gaps": list(prior["gaps"]),
+        "metrics": dict(prior["metrics"]),
+    }
+
+
+def replay(
+    data,
+    candidate,
+    *,
+    account=1_000_000,
+    slippage_bps=0,
+    progress_every=250,
+    engine_history_limit=0,
+    initial_state=None,
+    prior=None,
+):
+    if (initial_state is None) != (prior is None):
+        raise ValueError("initial_state and prior must be supplied together")
+    days = data["days"]
+    prior_ledger = _load_prior(prior, days, initial_state) if prior is not None else None
+    if prior_ledger is not None:
+        pp = PaperPortfolio.from_dict(initial_state)
+        if (
+            pp.topk != int(candidate["topk"])
+            or pp.nd != int(candidate["dropn"])
+            or abs(pp.initial_cash - float(account)) > 1e-9
+            or pp.pending_signal is not None
+        ):
+            raise ValueError("incremental paper state does not match the candidate/account")
+        rows, reports, gaps, orders = [], [], [], []
+        previous_nav = float(prior_ledger["report"]["account"].iloc[-1])
+    else:
+        pp = PaperPortfolio(topk=candidate["topk"], nd=candidate["dropn"], initial_cash=account)
+        rows, reports, gaps, orders = [], [], [], []
+        previous_nav = float(account)
     signal_days = {
         str(day)[:10]: values.droplevel("datetime")
         for day, values in data["signal"].groupby(level="datetime", sort=True)
     }
-    rows, reports, gaps, orders = [], [], [], []
-    previous_nav = float(account)
     verified_sessions = 0
-    peak = float(account)
-    drawdown_length = max_drawdown_length = 0
-    days = data["days"]
     started = time.monotonic()
     for i, (signal_day, day) in enumerate(zip(days, days[1:]), 1):
         ranking = [(str(s), float(v)) for s, v in signal_days[signal_day].items()]
@@ -289,11 +348,6 @@ def replay(data, candidate, *, account=1_000_000, slippage_bps=0, progress_every
                 "quote_gap_count": len(missing),
             }
         )
-        if nav >= peak:
-            peak, drawdown_length = nav, 0
-        else:
-            drawdown_length += 1
-            max_drawdown_length = max(max_drawdown_length, drawdown_length)
         reports.append(report)
         previous_nav = nav
         if progress_every and (i % progress_every == 0 or i == len(days) - 1):
@@ -301,16 +355,26 @@ def replay(data, candidate, *, account=1_000_000, slippage_bps=0, progress_every
                 f"[replay] {candidate['id']} extra={slippage_bps}bp {i}/{len(days)-1} date={day} elapsed={time.monotonic()-started:.1f}s",
                 flush=True,
             )
-    report_frame = pd.DataFrame(rows).set_index("datetime")
-    metrics = portfolio_performance(report_frame, initial_cash=account, backtest_start=days[1])
+    new_frame = pd.DataFrame(rows).set_index("datetime")
+    if prior_ledger is not None:
+        reports = prior_ledger["sessions"] + reports
+        orders = prior_ledger["orders"] + orders
+        gaps = prior_ledger["gaps"] + gaps
+        verified_sessions += int(prior_ledger["metrics"].get("valuation_verified_sessions", 0))
+        report_frame = pd.concat([prior_ledger["report"], new_frame]).sort_index()
+        if report_frame.index.has_duplicates:
+            raise ValueError("incremental report overlaps the prior session")
+    else:
+        report_frame = new_frame
+    metrics = portfolio_performance(report_frame, initial_cash=account, backtest_start=report_frame.index[0])
     annual = {}
     for year, frame in report_frame.groupby(report_frame.index.year):
-        prior = (
+        starting_cash = (
             float(account)
             if frame.index[0] == report_frame.index[0]
             else float(report_frame.loc[report_frame.index < frame.index[0], "account"].iloc[-1])
         )
-        annual[str(year)] = portfolio_performance(frame, initial_cash=prior, backtest_start=frame.index[0])
+        annual[str(year)] = portfolio_performance(frame, initial_cash=starting_cash, backtest_start=frame.index[0])
     metrics.update(
         {
             "candidate": candidate,
@@ -328,7 +392,7 @@ def replay(data, candidate, *, account=1_000_000, slippage_bps=0, progress_every
             "mean_cash_fraction": float((report_frame.cash / report_frame.account).mean()),
             "blocked_buy": int(report_frame.blocked_buy.sum()),
             "blocked_sell": int(report_frame.blocked_sell.sum()),
-            "longest_underwater_sessions": max_drawdown_length,
+            "longest_underwater_sessions": _longest_underwater_sessions(report_frame["account"], account),
             "annual": annual,
             "promotion_eligible": False,
             "live_approved": False,

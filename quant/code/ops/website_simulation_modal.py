@@ -157,10 +157,266 @@ def fit_website_model(model, dataset):
         model.fit(dataset)
 
 
+def _sha256_path(path):
+    import hashlib
+
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _provider_calendar(asset):
+    if not asset.get("local_path"):
+        return None
+    path = Path(asset["local_path"]) / "calendars" / "day.txt"
+    if not path.is_file():
+        return None
+    return [line.strip() for line in path.read_text().splitlines() if line.strip()]
+
+
+def _overlay_ancestor_digests(asset):
+    """DIGESTs of PASS overlay manifests strictly older than the current asset."""
+    import json
+
+    root = Path("/data/cn_data_overlay")
+    if not asset.get("local_path") or not root.is_dir():
+        return set()
+    manifests = {}
+    for path in root.iterdir():
+        manifest = path / "manifest.json"
+        if manifest.is_file():
+            manifests[_sha256_path(manifest)] = manifest
+    ancestors = set()
+    current = Path(asset["local_path"]) / "manifest.json"
+    seen = set()
+    while current.is_file():
+        digest = _sha256_path(current)
+        if digest in seen:
+            break
+        seen.add(digest)
+        try:
+            payload = json.loads(current.read_text())
+        except Exception:
+            break
+        parent = (payload.get("base") or {}).get("archive_sha256")
+        if not parent or parent not in manifests:
+            break
+        ancestors.add(parent)
+        current = manifests[parent]
+    return ancestors
+
+
+def _cached_model(source_sha, market, profile, fit_asof, expected_sha, *, load=True):
+    """Load the exact model that generated a prior published signal prefix."""
+    import hashlib
+    import json
+    import pickle
+
+    root = Path("/simulation/model_cache") / market
+    if not root.is_dir():
+        return None
+    for receipt in sorted(root.glob("*/receipt.json")):
+        try:
+            meta = json.loads(receipt.read_text())
+            identity = meta.get("identity") or {}
+            if (
+                identity.get("source_sha256") != source_sha
+                or identity.get("market") != market
+                or identity.get("profile") != profile
+                or identity.get("fit_asof") != fit_asof
+                or meta.get("model_sha256") != expected_sha
+            ):
+                continue
+            model_path = receipt.with_name("model.pkl")
+            if not model_path.is_file():
+                continue
+            if hashlib.sha256(model_path.read_bytes()).hexdigest() != expected_sha:
+                continue
+            if not load:
+                return model_path, meta
+            return pickle.loads(model_path.read_bytes()), meta
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            continue
+    return None
+
+
+def _incremental_prior(source_sha, asset, market, end, calendar):
+    """Find and validate the immediately preceding same-source replay result.
+
+    Incremental mode is intentionally restricted to exactly one new execution
+    session.  A missed day, a missing model cache, or a non-ancestor overlay
+    falls back to the full replay instead of splicing arbitrary history.
+    """
+    import json
+    import pandas as pd
+    from csi1000_production_config import (
+        CANONICAL_ND_BY_MARKET,
+        CANONICAL_PROFILES_BY_MARKET,
+        CANONICAL_TOPK_BY_MARKET,
+    )
+    from october_backfill_plan import fit_blocks
+    from website_simulation import FIRST_EXECUTION, FIRST_SIGNAL, validate_website_series
+
+    if not asset.get("local_path") or end not in calendar:
+        return None
+    end_index = calendar.index(end)
+    if end_index < 1:
+        return None
+    previous = calendar[end_index - 1]
+    source_root = Path("/simulation") / source_sha
+    if not source_root.is_dir():
+        return None
+    current_digest = asset["digest"].split(":")[1]
+    ancestors = _overlay_ancestor_digests(asset)
+    blocks = fit_blocks(calendar, FIRST_EXECUTION, end)
+    block = next((item for item in blocks if item["fit_asof"] <= end <= item["signal_end"]), None)
+    if block is None:
+        return None
+    candidates = []
+    for asset_dir in sorted(source_root.iterdir()):
+        if not asset_dir.is_dir() or asset_dir.name == current_digest:
+            continue
+        result_dir = asset_dir / market / "full"
+        result_path = result_dir / "result.json"
+        final_path = result_dir / "final_state.json"
+        signal_path = result_dir / "signal.parquet"
+        if not (result_path.is_file() and final_path.is_file() and signal_path.is_file()):
+            continue
+        try:
+            payload = json.loads(result_path.read_text())
+            series = payload.get("series") or {}
+            if (
+                payload.get("status") != "COMPLETED"
+                or payload.get("market") != market
+                or payload.get("source_sha256") != source_sha
+                or payload.get("asset_digest") != f"sha256:{asset_dir.name}"
+                or series.get("market") != market
+                or series.get("source_manifest_sha256") != source_sha
+                or series.get("provider_archive_sha256") != asset_dir.name
+                or series.get("latest_date") != previous
+            ):
+                continue
+            validate_website_series(series, market=market)
+            identity = series.get("account_identity") or {}
+            if (
+                identity.get("profile") != CANONICAL_PROFILES_BY_MARKET[market]
+                or identity.get("topk") != CANONICAL_TOPK_BY_MARKET[market]
+                or identity.get("nd") != CANONICAL_ND_BY_MARKET[market]
+                or asset_dir.name not in ancestors
+            ):
+                continue
+            state = json.loads(final_path.read_text())
+            if (
+                state.get("version") != 2
+                or state.get("last_execution_date") != previous
+                or state.get("pending_signal") is not None
+                or (state.get("config") or {}).get("topk") != CANONICAL_TOPK_BY_MARKET[market]
+                or (state.get("config") or {}).get("nd") != CANONICAL_ND_BY_MARKET[market]
+                or (state.get("config") or {}).get("initial_cash") != series.get("initial_cash")
+            ):
+                continue
+            for relative, digest in (payload.get("ledger_file_sha256") or {}).items():
+                rel = Path(relative)
+                if rel.is_absolute() or ".." in rel.parts or _sha256_path(result_dir / rel) != digest:
+                    raise ValueError(f"prior ledger hash mismatch: {relative}")
+            signal = pd.read_parquet(signal_path)["score"].sort_index()
+            if list(signal.index.names) != ["datetime", "instrument"] or signal.index.has_duplicates:
+                raise ValueError("prior signal schema is invalid")
+            dates = sorted({str(day)[:10] for day in signal.index.get_level_values(0)})
+            if dates != [day for day in calendar if FIRST_SIGNAL <= day <= previous]:
+                raise ValueError("prior signal prefix is incomplete")
+            prior_fits = series.get("fit_receipts") or []
+            if block["fit_asof"] <= previous:
+                covering = [fit for fit in prior_fits if fit.get("fit_asof") == block["fit_asof"]]
+                if len(covering) != 1:
+                    raise ValueError("prior fit does not cover the next signal day")
+                if (
+                    _cached_model(
+                        source_sha,
+                        market,
+                        CANONICAL_PROFILES_BY_MARKET[market],
+                        block["fit_asof"],
+                        covering[0]["model_sha256"],
+                        load=False,
+                    )
+                    is None
+                ):
+                    raise ValueError("prior model cache is unavailable")
+            candidates.append(
+                {
+                    "previous": previous,
+                    "result_dir": result_dir,
+                    "signal_path": signal_path,
+                    "final_state": state,
+                    "payload": payload,
+                    "asset_digest": payload["asset_digest"],
+                    "new_fit_required": block["fit_asof"] > previous,
+                    "fit_asof": block["fit_asof"],
+                }
+            )
+        except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
+            print(f"[website] incremental prefix rejected {asset_dir.name[:12]} {market}: {exc}", flush=True)
+            continue
+    if len(candidates) > 1:
+        print(f"[website] {market} has multiple incremental prefixes; using full replay", flush=True)
+        return None
+    return candidates[0] if candidates else None
+
+
+def _load_prior_ledger(result_dir):
+    import json
+    import pandas as pd
+
+    ledger = result_dir / "ledger"
+    return {
+        "report": pd.read_parquet(ledger / "report.parquet"),
+        "sessions": [json.loads(line) for line in (ledger / "sessions.jsonl").read_text().splitlines() if line.strip()],
+        "orders": pd.read_parquet(ledger / "orders.parquet").to_dict("records"),
+        "metrics": json.loads((ledger / "metrics.json").read_text()),
+        "gaps": json.loads((ledger / "gaps.json").read_text()),
+        "final_state": json.loads((result_dir / "final_state.json").read_text()),
+    }
+
+
+def _predict_days(model, cfg, provider, calendar, days):
+    """Predict recent days from a bounded window; Alpha158 features are causal."""
+    import copy
+    import numpy as np
+    import pandas as pd
+    from qlib.data.dataset import Dataset
+    from qlib.utils import init_instance_by_config
+
+    first = days[0]
+    start = calendar[max(0, calendar.index(first) - 130)]
+    light = copy.deepcopy(cfg)
+    handler = light["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
+    handler["start_time"] = start
+    handler["end_time"] = days[-1]
+    handler["fit_start_time"] = start
+    handler["fit_end_time"] = days[-1]
+    light["task"]["dataset"]["kwargs"]["segments"] = {"test": [first, days[-1]]}
+    dataset = init_instance_by_config(light["task"]["dataset"], accept_types=Dataset)
+    pred = model.predict(dataset, segment="test")
+    if isinstance(pred, pd.DataFrame):
+        pred = pred.iloc[:, 0]
+    pred = pred.sort_index()
+    actual = sorted({str(day)[:10] for day in pred.index.get_level_values(0)})
+    if (
+        pred.index.has_duplicates
+        or not np.isfinite(pred.to_numpy()).all()
+        or actual != days
+        or list(pred.index.names) != ["datetime", "instrument"]
+    ):
+        raise ValueError("incremental prediction coverage/finiteness mismatch")
+    return pred
+
+
 @app.function(
     volumes={"/simulation": simulation, "/data": data_volume},
-    cpu=20,
-    memory=32768,
+    cpu=8,
+    memory=16384,
     timeout=WEBSITE_WORKER_TIMEOUT_SECONDS,
     max_containers=3,
     retries=0,
@@ -211,15 +467,6 @@ def build_market(job):
     simulation.reload()
     root = Path("/simulation") / source_sha / asset["digest"].split(":")[1]
     smoke_path = root / "smoke.json"
-    if mode == "full":
-        smoke = json.loads(smoke_path.read_text())
-        if (
-            smoke.get("status") != "SMOKE_PASS"
-            or smoke.get("source_sha256") != source_sha
-            or smoke.get("asset_digest") != asset["digest"]
-            or smoke.get("prefix_prediction_exact") is not True
-        ):
-            raise ValueError("matching successful cloud smoke required before full replay")
     provider = download_provider(asset)
     calendar = (provider / "calendars/day.txt").read_text().splitlines()
     verified_calendar = sorted(_cn_trading_calendar())
@@ -263,6 +510,16 @@ def build_market(job):
                 raise ValueError("cached website ledger file hash mismatch")
         verify_source_manifest(job["source_manifest"], "training")
         return cached
+    incremental = _incremental_prior(source_sha, asset, market, end, calendar) if mode == "full" else None
+    if mode == "full" and incremental is None:
+        smoke = json.loads(smoke_path.read_text())
+        if (
+            smoke.get("status") != "SMOKE_PASS"
+            or smoke.get("source_sha256") != source_sha
+            or smoke.get("asset_digest") != asset["digest"]
+            or smoke.get("prefix_prediction_exact") is not True
+        ):
+            raise ValueError("matching successful cloud smoke required before full replay")
     profile = CANONICAL_PROFILES_BY_MARKET[market]
     horizon = profile_manifest(profile)["label_horizon"]
     qlib.init(
@@ -275,9 +532,16 @@ def build_market(job):
             "kwargs": {"uri": "file:/tmp/website-mlruns", "default_exp_name": "website-simulation"},
         },
     )
-    forecasts, fits = [], []
+    candidate = {
+        "id": profile,
+        "market": market,
+        "topk": CANONICAL_TOPK_BY_MARKET[market],
+        "dropn": CANONICAL_ND_BY_MARKET[market],
+    }
     new_fits = 0
-    for block in blocks:
+
+    def fit_block(block):
+        nonlocal new_fits
         cfg = _load_and_patch_cfg(
             MODEL_CFG["lgb158"],
             smoke=False,
@@ -346,36 +610,117 @@ def build_market(job):
             prefix = model.predict(prefix_ds, segment="test")
             if isinstance(prefix, pd.DataFrame):
                 prefix = prefix.iloc[:, 0]
+            # Compare the same signal day from both dataset horizons; the
+            # prefix dataset intentionally covers the full test window.
             pd.testing.assert_series_equal(
                 pred.loc[[pd.Timestamp(block["fit_asof"])]].sort_index(),
-                prefix.sort_index(),
+                prefix.loc[[pd.Timestamp(block["fit_asof"])]].sort_index(),
                 check_exact=True,
                 check_names=False,
             )
-        forecasts.append(pred.to_frame("score"))
-        fits.append(
-            {
-                "fit_asof": block["fit_asof"],
-                "signal_end": block["signal_end"],
-                "profile": profile,
-                "model_sha256": meta["model_sha256"],
-                "training_contract": temporal,
-                "data_prefix_sha256": fit_identity["data_prefix_sha256"],
-            }
+        receipt = {
+            "fit_asof": block["fit_asof"],
+            "signal_end": block["signal_end"],
+            "profile": profile,
+            "model_sha256": meta["model_sha256"],
+            "training_contract": temporal,
+            "data_prefix_sha256": fit_identity["data_prefix_sha256"],
+        }
+        return pred, receipt
+
+    incremental_evidence = None
+    if incremental is not None:
+        previous = incremental["previous"]
+        print(
+            f"[website] {market} incremental prefix {previous} -> {end} " f"(asset {incremental['asset_digest'][:19]})",
+            flush=True,
         )
-    merged = pd.concat(forecasts).sort_index()
-    signal_dir = root / market / mode
-    signal_dir.mkdir(parents=True, exist_ok=True)
-    signal_path = signal_dir / "signal.parquet"
-    merged.to_parquet(signal_path)
-    data = prepare_data(provider, [signal_path], market, FIRST_SIGNAL, end)
-    candidate = {
-        "id": profile,
-        "market": market,
-        "topk": CANONICAL_TOPK_BY_MARKET[market],
-        "dropn": CANONICAL_ND_BY_MARKET[market],
-    }
-    result = replay(data, candidate, engine_history_limit=120)
+        prior_signal = pd.read_parquet(incremental["signal_path"])["score"].sort_index()
+        prior_signal = prior_signal[prior_signal.index.get_level_values(0) <= pd.Timestamp(previous)]
+        prior_fits = copy.deepcopy(incremental["payload"]["series"]["fit_receipts"])
+        block = next(item for item in blocks if item["fit_asof"] <= end <= item["signal_end"])
+        if block["fit_asof"] <= previous:
+            covering = [fit for fit in prior_fits if fit.get("fit_asof") == block["fit_asof"]]
+            if len(covering) != 1:
+                raise ValueError("incremental fit receipt does not cover the previous session")
+            model, meta = _cached_model(source_sha, market, profile, block["fit_asof"], covering[0]["model_sha256"])
+            if model is None:
+                raise ValueError("incremental model cache disappeared after prefix validation")
+            cfg = _load_and_patch_cfg(
+                MODEL_CFG["lgb158"],
+                smoke=False,
+                recent=True,
+                long_train=True,
+                label20=horizon == 20,
+                market=market,
+                provider_dir=str(provider),
+                csi1000_profile=profile,
+            )
+            pred = _predict_days(model, cfg, provider, calendar, [previous, end])
+            expected = prior_signal.xs(pd.Timestamp(previous), level="datetime").sort_index()
+            actual = pred.xs(pd.Timestamp(previous), level="datetime").sort_index()
+            pd.testing.assert_series_equal(actual, expected, check_exact=True, check_names=False)
+            for fit in prior_fits:
+                if fit["fit_asof"] == block["fit_asof"]:
+                    if fit["model_sha256"] != meta["model_sha256"]:
+                        raise ValueError("incremental model hash changed at the prefix boundary")
+                    fit["signal_end"] = end
+            fits = prior_fits
+            new_pred = pred.loc[[pd.Timestamp(end)]]
+            incremental_evidence = {
+                "previous_result": str(incremental["result_dir"]),
+                "previous_asset_digest": incremental["asset_digest"],
+                "prefix_prediction_exact": True,
+                "new_fit": False,
+            }
+        else:
+            if prior_fits and prior_fits[-1]["signal_end"] >= block["fit_asof"]:
+                raise ValueError("incremental fit blocks overlap the prior signal")
+            pred, receipt = fit_block(block)
+            if receipt["signal_end"] != end:
+                raise ValueError("incremental fit did not extend through the new session")
+            fits = prior_fits + [receipt]
+            new_pred = pred.loc[[pd.Timestamp(end)]]
+            incremental_evidence = {
+                "previous_result": str(incremental["result_dir"]),
+                "previous_asset_digest": incremental["asset_digest"],
+                "prefix_prediction_exact": None,
+                "new_fit": True,
+            }
+        merged = pd.concat([prior_signal, new_pred.to_frame("score")]).sort_index()
+        if merged.index.has_duplicates:
+            raise ValueError("incremental signal prefix overlaps the new session")
+        print(f"[website] {market} incremental signal ready elapsed={time.monotonic() - started:.1f}s", flush=True)
+        signal_dir = root / market / mode
+        signal_dir.mkdir(parents=True, exist_ok=True)
+        signal_path = signal_dir / "signal.parquet"
+        merged.to_parquet(signal_path)
+        data = prepare_data(provider, [signal_path], market, previous, end)
+        print(f"[website] {market} incremental inputs ready elapsed={time.monotonic() - started:.1f}s", flush=True)
+        prior_ledger = _load_prior_ledger(incremental["result_dir"])
+        result = replay(
+            data,
+            candidate,
+            engine_history_limit=120,
+            initial_state=incremental["final_state"],
+            prior=prior_ledger,
+        )
+        print(f"[website] {market} incremental replay done elapsed={time.monotonic() - started:.1f}s", flush=True)
+        replay_mode = "INCREMENTAL"
+    else:
+        forecasts, fits = [], []
+        for block in blocks:
+            pred, receipt = fit_block(block)
+            forecasts.append(pred.to_frame("score"))
+            fits.append(receipt)
+        merged = pd.concat(forecasts).sort_index()
+        signal_dir = root / market / mode
+        signal_dir.mkdir(parents=True, exist_ok=True)
+        signal_path = signal_dir / "signal.parquet"
+        merged.to_parquet(signal_path)
+        data = prepare_data(provider, [signal_path], market, FIRST_SIGNAL, end)
+        result = replay(data, candidate, engine_history_limit=120)
+        replay_mode = "FULL"
     series = build_website_series(
         market, result, calendar=calendar, source_sha=source_sha, provider_sha=asset["digest"].split(":")[1], fits=fits
     )
@@ -398,6 +743,8 @@ def build_market(job):
         "previous_completed_session": completed[-1],
         "provider_lag_sessions": len([d for d in completed if d > calendar[-1]]),
         "prefix_prediction_exact": mode == "smoke",
+        "replay_mode": replay_mode,
+        "incremental": incremental_evidence,
         "new_fits": new_fits,
         "series": series,
         "wall_seconds": time.monotonic() - started,
@@ -418,7 +765,8 @@ def build_market(job):
         )
     simulation.commit()
     print(
-        f"[website] {market} {payload['status']} days={len(series['points'])} return={series['cumulative_return']:.4%}",
+        f"[website] {market} {payload['status']} mode={replay_mode} days={len(series['points'])} "
+        f"return={series['cumulative_return']:.4%}",
         flush=True,
     )
     return payload
@@ -555,12 +903,22 @@ def daily(expected_source_sha256: str):
             "asset_digest": asset["digest"],
             "budget": guard,
         }
-    build_market.remote(make_job(asset, source, "csi300", "smoke"))
-    results = list(
-        build_market.map(
-            [make_job(asset, source, m, "full") for m in ("csi300", "csi500", "csi1000")], order_outputs=False
-        )
-    )
+    markets = ("csi300", "csi500", "csi1000")
+    calendar = _provider_calendar(asset)
+    incremental = False
+    if calendar:
+        try:
+            incremental = all(
+                _incremental_prior(source["sha256"], asset, market, calendar[-1], calendar) is not None
+                for market in markets
+            )
+        except Exception as exc:  # noqa: BLE001 - fall back to the smoke/full path
+            print(f"[website] incremental prefix probe failed: {type(exc).__name__}: {exc}", flush=True)
+    if incremental:
+        print("[website] incremental prefix present for all markets; skipping smoke replay", flush=True)
+    else:
+        build_market.remote(make_job(asset, source, "csi300", "smoke"))
+    results = list(build_market.map([make_job(asset, source, m, "full") for m in markets], order_outputs=False))
     return publish_results(results, source, asset, token=os.environ["GITHUB_TOKEN"])
 
 

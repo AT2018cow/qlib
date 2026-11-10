@@ -112,10 +112,11 @@ class PaperPortfolio:
         tmp.replace(p)
 
     @classmethod
-    def load(cls, path: str | Path) -> "PaperPortfolio":
-        raw = json.loads(Path(path).read_text())
-        if raw.get("version") != STATE_VERSION:
+    def from_dict(cls, raw: dict) -> "PaperPortfolio":
+        if not isinstance(raw, dict) or raw.get("version") != STATE_VERSION:
             raise ValueError(f"unsupported paper portfolio state version: {raw.get('version')}")
+        if not isinstance(raw.get("config"), dict):
+            raise ValueError("paper portfolio state is missing its config")
         pp = cls(**raw["config"])
         pp.cash = float(raw["cash"])
         pp.positions = raw.get("positions", {})
@@ -123,6 +124,10 @@ class PaperPortfolio:
         pp.last_execution_date = raw.get("last_execution_date")
         pp.history = raw.get("history", [])
         return pp
+
+    @classmethod
+    def load(cls, path: str | Path) -> "PaperPortfolio":
+        return cls.from_dict(json.loads(Path(path).read_text()))
 
     # --------------------------------------------------------- Qlib selection
 

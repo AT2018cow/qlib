@@ -1,6 +1,7 @@
 """Independent contract checks for the limited prelive evaluation runner."""
 
 import importlib.util
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -102,3 +103,88 @@ def test_replay_log_compaction_preserves_every_nav_fill_and_fee():
     pd.testing.assert_frame_equal(full["report"], compact["report"], check_exact=True)
     assert full["sessions"] == compact["sessions"]
     assert full["orders"] == compact["orders"]
+
+
+def multi_day_data():
+    days = ["2026-01-05", "2026-01-06", "2026-01-07", "2026-01-08"]
+    scores = [0.3, 0.2, 0.1, 0.4]
+    names = ["SH600000", "SH600001"]
+    signal_rows = []
+    for day, score in zip(days, scores):
+        signal_rows.extend([(day, names[0], score), (day, names[1], score - 0.05)])
+    signal_frame = pd.DataFrame(
+        {"score": [row[2] for row in signal_rows]},
+        index=pd.MultiIndex.from_tuples(
+            [(pd.Timestamp(row[0]), row[1]) for row in signal_rows], names=["datetime", "instrument"]
+        ),
+    )
+    prices = {
+        "2026-01-06": (10.0, 10.5),
+        "2026-01-07": (10.2, 10.1),
+        "2026-01-08": (9.9, 10.6),
+    }
+    quotes = {
+        day: {
+            "$open": {name: values[0] + i * 0.01 for i, name in enumerate(names)},
+            "$close": {name: values[1] + i * 0.01 for i, name in enumerate(names)},
+            "$factor": {name: 1.0 for name in names},
+            "Ref($close,1)": {name: values[0] for name in names},
+            "$volume": {name: 100000.0 for name in names},
+        }
+        for day, values in prices.items()
+    }
+    return {
+        "days": days,
+        "calendar": days,
+        "signal": signal_frame["score"],
+        "quotes": quotes,
+        "bench": pd.Series([0.0, 0.01, -0.01], index=pd.to_datetime(days[1:])),
+        "listing": {},
+    }
+
+
+def test_incremental_replay_matches_full_replay_exactly():
+    data = multi_day_data()
+    candidate = {"id": "incremental", "topk": 1, "dropn": 1}
+    full = runner.replay(data, candidate, account=10000, progress_every=0, engine_history_limit=120)
+
+    prefix = {**data, "days": data["days"][:3]}
+    prefix["quotes"] = {d: data["quotes"][d] for d in data["days"][1:3]}
+    prefix["bench"] = data["bench"].iloc[:2]
+    earlier = runner.replay(prefix, candidate, account=10000, progress_every=0, engine_history_limit=120)
+
+    suffix = {**data, "days": data["days"][2:]}
+    suffix["quotes"] = {data["days"][3]: data["quotes"][data["days"][3]]}
+    suffix["bench"] = data["bench"].iloc[2:]
+    incremental = runner.replay(
+        suffix,
+        candidate,
+        account=10000,
+        progress_every=0,
+        engine_history_limit=120,
+        initial_state=earlier["final_state"],
+        prior=earlier,
+    )
+    pd.testing.assert_frame_equal(full["report"], incremental["report"], check_exact=True)
+    assert full["sessions"] == incremental["sessions"]
+    assert full["orders"] == incremental["orders"]
+    assert full["gaps"] == incremental["gaps"]
+    assert full["final_state"] == incremental["final_state"]
+    assert full["metrics"]["valuation_verified_sessions"] == incremental["metrics"]["valuation_verified_sessions"]
+    assert full["metrics"]["longest_underwater_sessions"] == incremental["metrics"]["longest_underwater_sessions"]
+
+
+def test_incremental_replay_rejects_state_from_another_account():
+    data = multi_day_data()
+    candidate = {"id": "incremental", "topk": 1, "dropn": 1}
+    prefix = {**data, "days": data["days"][:3]}
+    prefix["quotes"] = {d: data["quotes"][d] for d in data["days"][1:3]}
+    prefix["bench"] = data["bench"].iloc[:2]
+    earlier = runner.replay(prefix, candidate, account=10000, progress_every=0)
+    state = json.loads(json.dumps(earlier["final_state"]))
+    state["cash"] += 1
+    suffix = {**data, "days": data["days"][2:]}
+    suffix["quotes"] = {data["days"][3]: data["quotes"][data["days"][3]]}
+    suffix["bench"] = data["bench"].iloc[2:]
+    with pytest.raises(ValueError, match="checkpoint"):
+        runner.replay(suffix, candidate, account=10000, initial_state=state, prior=earlier)

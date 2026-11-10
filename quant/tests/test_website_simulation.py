@@ -277,3 +277,187 @@ def test_publication_recovers_lost_response_and_does_not_push_twice(tmp_path, mo
     assert len(pushes) == 1 and len(published) == 12
     assert len(list(tmp_path.rglob("publication.json"))) == 1
     assert all(json.loads(v)["schema_version"] == 3 for v in published.values())
+
+
+def test_incremental_prefix_requires_a_complete_ancestor_ledger(tmp_path, monkeypatch):
+    import hashlib
+    import importlib.util
+    from pathlib import Path
+
+    import pandas as pd
+
+    path = Path(__file__).resolve().parents[1] / "code/ops/website_simulation_modal.py"
+    spec = importlib.util.spec_from_file_location("website_simulation_prefix_test", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    simulation = tmp_path / "simulation"
+    overlays = tmp_path / "overlays"
+    source_sha = "a" * 64
+    prior_dir = overlays / "2026-10-09"
+    current_dir = overlays / "2026-10-12"
+    prior_dir.mkdir(parents=True)
+    current_dir.mkdir(parents=True)
+    (prior_dir / "manifest.json").write_text("{}")
+    prior_digest = hashlib.sha256((prior_dir / "manifest.json").read_bytes()).hexdigest()
+    (current_dir / "manifest.json").write_text(json.dumps({"base": {"archive_sha256": prior_digest}}))
+    current_digest = hashlib.sha256((current_dir / "manifest.json").read_bytes()).hexdigest()
+
+    series, sessions = example_series()
+    series["source_manifest_sha256"] = source_sha
+    series["provider_archive_sha256"] = prior_digest
+    fake_model = b"deterministic fake model"
+    model_sha = hashlib.sha256(fake_model).hexdigest()
+    series["fit_receipts"][0]["model_sha256"] = model_sha
+    for point in series["points"]:
+        point["model_sha256"] = model_sha
+
+    result_dir = simulation / source_sha / prior_digest / "csi300" / "full"
+    result_dir.mkdir(parents=True)
+    signal = pd.DataFrame(
+        {"score": [0.1, 0.2, 0.3]},
+        index=pd.MultiIndex.from_product(
+            [pd.to_datetime(["2026-09-30", "2026-10-08", "2026-10-09"]), ["SH600000"]],
+            names=["datetime", "instrument"],
+        ),
+    )
+    signal.to_parquet(result_dir / "signal.parquet")
+    state = PaperPortfolio(topk=10, nd=1).to_dict()
+    state["last_execution_date"] = "2026-10-09"
+    (result_dir / "final_state.json").write_text(json.dumps(state))
+    payload = {
+        "status": "COMPLETED",
+        "market": "csi300",
+        "source_sha256": source_sha,
+        "asset_digest": f"sha256:{prior_digest}",
+        "series": series,
+        "ledger_file_sha256": {
+            "signal.parquet": hashlib.sha256((result_dir / "signal.parquet").read_bytes()).hexdigest(),
+            "final_state.json": hashlib.sha256((result_dir / "final_state.json").read_bytes()).hexdigest(),
+        },
+    }
+    (result_dir / "result.json").write_text(json.dumps(payload))
+    model_dir = simulation / "model_cache" / "csi300" / "cached"
+    model_dir.mkdir(parents=True)
+    (model_dir / "model.pkl").write_bytes(fake_model)
+    (model_dir / "receipt.json").write_text(
+        json.dumps(
+            {
+                "identity": {
+                    "source_sha256": source_sha,
+                    "market": "csi300",
+                    "profile": series["account_identity"]["profile"],
+                    "fit_asof": "2026-09-30",
+                },
+                "model_sha256": model_sha,
+            }
+        )
+    )
+
+    real_path = Path
+
+    def redirected(value):
+        text = str(value)
+        if text == "/simulation" or text.startswith("/simulation/"):
+            return simulation / text[len("/simulation/") :]
+        if text == "/data/cn_data_overlay" or text.startswith("/data/cn_data_overlay/"):
+            return overlays / text[len("/data/cn_data_overlay/") :]
+        return real_path(value)
+
+    monkeypatch.setattr(module, "Path", redirected)
+    calendar = ["2026-09-18", "2026-09-30", "2026-10-08", "2026-10-09", "2026-10-12"]
+    asset = {"local_path": str(current_dir), "digest": f"sha256:{current_digest}"}
+    prefix = module._incremental_prior(source_sha, asset, "csi300", "2026-10-12", calendar)
+    assert prefix is not None
+    assert prefix["previous"] == "2026-10-09"
+    assert prefix["result_dir"] == result_dir
+
+    (result_dir / "signal.parquet").unlink()
+    signal.iloc[:-1].to_parquet(result_dir / "signal.parquet")
+    payload["ledger_file_sha256"]["signal.parquet"] = hashlib.sha256(
+        (result_dir / "signal.parquet").read_bytes()
+    ).hexdigest()
+    (result_dir / "result.json").write_text(json.dumps(payload))
+    assert module._incremental_prior(source_sha, asset, "csi300", "2026-10-12", calendar) is None
+
+
+def test_incremental_prediction_uses_an_equivalent_bounded_window(tmp_path):
+    """Alpha158 is causal: a 130-session inference window must equal full history."""
+    import importlib.util
+    import struct
+    from pathlib import Path
+
+    import numpy as np
+    import pandas as pd
+    import qlib
+    from qlib.data.dataset import DatasetH
+
+    path = Path(__file__).resolve().parents[1] / "code/ops/website_simulation_modal.py"
+    spec = importlib.util.spec_from_file_location("website_simulation_window_test", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    days = [d.strftime("%Y-%m-%d") for d in pd.bdate_range("2024-01-01", periods=320)]
+    (tmp_path / "calendars").mkdir()
+    (tmp_path / "instruments").mkdir()
+    (tmp_path / "features").mkdir()
+    (tmp_path / "calendars" / "day.txt").write_text("\n".join(days) + "\n")
+    rng = np.random.default_rng(13)
+    for index in range(4):
+        name = f"SH60{index:04d}"
+        ret = rng.normal(0.0002, 0.012, len(days))
+        close = 10 * np.exp(np.cumsum(ret))
+        open_ = close * (1 + rng.normal(0, 0.003, len(days)))
+        high = np.maximum(open_, close) * (1 + np.abs(rng.normal(0, 0.003, len(days))))
+        low = np.minimum(open_, close) * (1 - np.abs(rng.normal(0, 0.003, len(days))))
+        volume = rng.integers(1_000_000, 4_000_000, len(days)).astype(float)
+        vwap = (open_ + high + low + close) / 4
+        feature_dir = tmp_path / "features" / name.lower()
+        feature_dir.mkdir()
+        for field, values in [
+            ("open", open_),
+            ("high", high),
+            ("low", low),
+            ("close", close),
+            ("volume", volume),
+            ("vwap", vwap),
+            ("factor", np.ones(len(days))),
+        ]:
+            (feature_dir / f"{field}.day.bin").write_bytes(
+                struct.pack("<f", 0.0) + np.asarray(values, dtype="<f4").tobytes()
+            )
+        for instrument_file in ("all.txt", "csi300.txt"):
+            with (tmp_path / "instruments" / instrument_file).open("a") as stream:
+                stream.write(f"{name}\t{days[0]}\t{days[-1]}\n")
+
+    qlib.init(provider_uri=str(tmp_path), region="cn", kernels=1)
+    previous, target = days[-2], days[-1]
+    handler = {
+        "class": "Alpha158",
+        "module_path": "qlib.contrib.data.handler",
+        "kwargs": {
+            "instruments": "csi300",
+            "start_time": days[0],
+            "end_time": target,
+            "fit_start_time": days[0],
+            "fit_end_time": target,
+        },
+    }
+    cfg = {
+        "task": {
+            "dataset": {
+                "class": "DatasetH",
+                "module_path": "qlib.data.dataset",
+                "kwargs": {"handler": handler, "segments": {"test": [previous, target]}},
+            }
+        }
+    }
+
+    class SumModel:
+        def predict(self, dataset, segment="test"):
+            frame = dataset.prepare(segment, col_set="feature", data_key="infer")
+            return pd.Series(np.asarray(frame.sum(axis=1), dtype=float), index=frame.index)
+
+    bounded = module._predict_days(SumModel(), cfg, tmp_path, days, [previous, target])
+    full = SumModel().predict(DatasetH(handler=handler, segments={"test": [previous, target]}), segment="test")
+    pd.testing.assert_series_equal(bounded, full, check_exact=True, check_names=False)
