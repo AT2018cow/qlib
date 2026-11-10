@@ -392,3 +392,12 @@ def test_select_overlay_provider_refuses_missing_snapshot(tmp_path, monkeypatch)
     (tmp_path / "empty").mkdir()
     with pytest.raises(RuntimeError, match="requested provider missing"):
         production._select_overlay_provider("2026-11-10")
+
+
+def test_asset_digest_normalizes_bare_and_prefixed_forms():
+    import modal_qlib_cn_a10g as production
+
+    bare = "a" * 64
+    assert production._asset_digest(bare) == "sha256:" + bare
+    assert production._asset_digest("sha256:" + bare) == "sha256:" + bare
+    assert production._asset_digest(None) == "sha256:"

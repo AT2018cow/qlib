@@ -4688,6 +4688,12 @@ def ensure_chenditc_provider(asof: str):
     return {**descriptor, "status": "READY"}
 
 
+def _asset_digest(value) -> str:
+    """Normalize a provider digest to the website receipt's ``sha256:`` form."""
+    text = str(value or "")
+    return text if text.startswith("sha256:") else f"sha256:{text}"
+
+
 def _preopen_marker_valid(marker, signal_date: str, data_asof: str) -> tuple[bool, str]:
     """Verify a completion marker against the real provider/journal/receipt.
 
@@ -4742,7 +4748,8 @@ def _preopen_marker_valid(marker, signal_date: str, data_asof: str) -> tuple[boo
         return True, "website intentionally skipped by budget"
     try:
         status_fn = modal.Function.from_name(WEBSITE_APP_NAME, "status")
-        result = status_fn.remote(_code_source_sha(), provider.get("digest"))
+        asset_digest = _asset_digest(provider.get("digest"))
+        result = status_fn.remote(_code_source_sha(), asset_digest)
     except Exception as exc:  # noqa: BLE001 - cross-app receipt boundary
         return False, f"website receipt check failed: {type(exc).__name__}: {exc}"
     if not isinstance(result, dict) or result.get("status") not in (
@@ -4751,7 +4758,7 @@ def _preopen_marker_valid(marker, signal_date: str, data_asof: str) -> tuple[boo
         "RECOVERED_AFTER_PUBLICATION",
     ):
         return False, f"website receipt is not published: {result!r}"
-    if result.get("asset_digest") != provider.get("digest") or result.get("source_sha256") != _code_source_sha():
+    if result.get("asset_digest") != asset_digest or result.get("source_sha256") != _code_source_sha():
         return False, "website receipt identity differs"
     return True, "receipts verified"
 
@@ -5042,7 +5049,9 @@ def daily_readonly_check():
         if marker.get("code_source_sha256") != _code_source_sha():
             problems.append("marker code source identity differs from the deployed code")
         try:
-            result = modal.Function.from_name(WEBSITE_APP_NAME, "status").remote(_code_source_sha(), snapshot.digest)
+            result = modal.Function.from_name(WEBSITE_APP_NAME, "status").remote(
+                _code_source_sha(), _asset_digest(snapshot.digest)
+            )
         except Exception as exc:  # noqa: BLE001 - cross-app receipt boundary
             result = {"status": "ERROR", "error": f"{type(exc).__name__}: {exc}"}
         if not isinstance(result, dict) or result.get("status") not in (
