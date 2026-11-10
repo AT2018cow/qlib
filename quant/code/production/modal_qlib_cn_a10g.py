@@ -4686,7 +4686,7 @@ def _run_preopen_cycle(allow_lag: bool = False):
                 "signal_date": today,
                 "data_asof": data_asof,
                 "provider_status": provider.get("status"),
-                "stages": result.get("stages", {}),
+                "stages": {name: stage.get("status") for name, stage in (result.get("stages") or {}).items()},
             },
             indent=2,
             sort_keys=True,
