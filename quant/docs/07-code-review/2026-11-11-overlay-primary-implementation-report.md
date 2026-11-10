@@ -179,8 +179,8 @@
 pytest -q quant/tests
 black . -l 120 --check --diff --exclude qlib/_version.py
 # 生产 selector 必须显式：
-QLIB_DEPLOY_PROFILE=infi-prod modal deploy quant/code/production/modal_qlib_cn_a10g.py
-QLIB_DEPLOY_PROFILE=infi-prod modal deploy quant/code/ops/website_simulation_modal.py
+QLIB_DEPLOY_PROFILE=<production-selector> modal deploy quant/code/production/modal_qlib_cn_a10g.py
+QLIB_DEPLOY_PROFILE=<production-selector> modal deploy quant/code/ops/website_simulation_modal.py
 ```
 部署后：
 ```bash
