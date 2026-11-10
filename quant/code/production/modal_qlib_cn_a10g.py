@@ -4640,6 +4640,7 @@ def ensure_chenditc_provider(asof: str):
 
 def _run_preopen_cycle(allow_lag: bool = False):
     """06:00 pre-open publication: chenditc primary, overlay fallback."""
+    import json
     from datetime import datetime
     from zoneinfo import ZoneInfo
 
@@ -4652,6 +4653,15 @@ def _run_preopen_cycle(allow_lag: bool = False):
     data_asof = _previous_trading_day(today)
     if data_asof is None:
         return {"status": "SKIPPED_NO_PREVIOUS_SESSION", "signal_date": today}
+    status_path = VOL_ROOT / "preopen_status" / f"{today}.json"
+    vol.reload()
+    if status_path.is_file():
+        try:
+            prior = json.loads(status_path.read_text())
+        except Exception:
+            prior = None
+        if prior is not None and prior.get("status") == "COMPLETED":
+            return {"status": "ALREADY_COMPLETED", "signal_date": today, "prior": prior}
     try:
         provider = ensure_chenditc_provider.remote(data_asof)
         print(f"[cron] chenditc provider: {provider.get('status')} asof={data_asof}", flush=True)
@@ -4660,7 +4670,7 @@ def _run_preopen_cycle(allow_lag: bool = False):
         print(f"[cron] chenditc provider failed: {provider['error']}", flush=True)
     if provider.get("status") != "READY":
         _ensure_overlay_for(data_asof)
-    return run_daily_pipeline(
+    result = run_daily_pipeline(
         lambda: _run_daily_signal_cycle(
             allow_lag,
             signal_date_override=today,
@@ -4668,6 +4678,23 @@ def _run_preopen_cycle(allow_lag: bool = False):
         ),
         lambda: _update_website_returns(expected_provider_end=data_asof),
     )
+    status_path.parent.mkdir(parents=True, exist_ok=True)
+    status_path.write_text(
+        json.dumps(
+            {
+                "status": "COMPLETED",
+                "signal_date": today,
+                "data_asof": data_asof,
+                "provider_status": provider.get("status"),
+                "stages": result.get("stages", {}),
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n"
+    )
+    vol.commit()
+    return result
 
 
 def _run_evening_cycle():
@@ -4727,7 +4754,22 @@ def daily_cron(allow_lag: bool = False):
     retries=0,
 )
 def daily_preopen_retry():
-    """07:30 idempotent retry; queues behind the 06:00 run via daily_cron."""
+    """07:30 idempotent retry; skips when the 06:00 run already completed."""
+    import json
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
+    status_path = VOL_ROOT / "preopen_status" / f"{today}.json"
+    vol.reload()
+    if status_path.is_file():
+        try:
+            prior = json.loads(status_path.read_text())
+        except Exception:
+            prior = None
+        if prior is not None and prior.get("status") == "COMPLETED":
+            print(f"[cron] preopen already completed for {today}; retry skipped", flush=True)
+            return {"status": "ALREADY_COMPLETED", "signal_date": today, "prior": prior}
     return daily_cron.remote()
 
 

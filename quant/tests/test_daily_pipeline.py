@@ -56,10 +56,12 @@ def test_failed_stage_does_not_hide_or_undo_other_publication(failed_stage):
 @pytest.mark.parametrize(
     "signal_status", ["ALREADY_PUBLISHED", "RECOVERED", "SKIPPED_STALE_DATA", "SKIPPED_NON_TRADING_DAY"]
 )
-def test_actual_cron_checks_website_after_signal_fast_path(monkeypatch, signal_status):
+def test_actual_cron_checks_website_after_signal_fast_path(tmp_path, monkeypatch, signal_status):
     import modal_qlib_cn_a10g as production
 
     seen = []
+    monkeypatch.setattr(production, "VOL_ROOT", tmp_path)
+    monkeypatch.setattr(production, "vol", SimpleNamespace(reload=lambda: None, commit=lambda: None))
 
     def signals(allow_lag, **kwargs):
         assert allow_lag is False
@@ -95,10 +97,12 @@ def test_actual_cron_checks_website_after_signal_fast_path(monkeypatch, signal_s
     assert result["stages"]["website"]["result"]["status"] == "ALREADY_PUBLISHED"
 
 
-def test_preopen_cycle_skips_overlay_when_chenditc_ready(monkeypatch):
+def test_preopen_cycle_skips_overlay_when_chenditc_ready(tmp_path, monkeypatch):
     import modal_qlib_cn_a10g as production
 
     seen = []
+    monkeypatch.setattr(production, "VOL_ROOT", tmp_path)
+    monkeypatch.setattr(production, "vol", SimpleNamespace(reload=lambda: None, commit=lambda: None))
     monkeypatch.setattr(
         production,
         "ensure_chenditc_provider",
@@ -128,6 +132,26 @@ def test_preopen_cycle_skips_overlay_when_chenditc_ready(monkeypatch):
     assert seen[0][1] is False
     assert seen[0][2]["data_asof_override"] == "2026-11-09"
     assert seen[1] == ("website", "2026-11-09")
+
+
+def test_preopen_retry_skips_after_completed_marker(tmp_path, monkeypatch):
+    import modal_qlib_cn_a10g as production
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
+    marker = tmp_path / "preopen_status" / f"{today}.json"
+    marker.parent.mkdir(parents=True)
+    marker.write_text('{"status": "COMPLETED", "signal_date": "%s"}' % today)
+    monkeypatch.setattr(production, "VOL_ROOT", tmp_path)
+    monkeypatch.setattr(production, "vol", SimpleNamespace(reload=lambda: None, commit=lambda: None))
+    monkeypatch.setattr(
+        production,
+        "daily_cron",
+        SimpleNamespace(remote=lambda: pytest.fail("completed preopen must not be retried")),
+    )
+    result = production.daily_preopen_retry.local()
+    assert result["status"] == "ALREADY_COMPLETED"
 
 
 def test_backup_returns_the_same_pipeline_receipt(monkeypatch):
