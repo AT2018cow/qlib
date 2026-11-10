@@ -300,7 +300,9 @@ def test_incremental_prefix_requires_a_complete_ancestor_ledger(tmp_path, monkey
     current_dir.mkdir(parents=True)
     (prior_dir / "manifest.json").write_text("{}")
     prior_digest = hashlib.sha256((prior_dir / "manifest.json").read_bytes()).hexdigest()
-    (current_dir / "manifest.json").write_text(json.dumps({"base": {"archive_sha256": prior_digest}}))
+    (current_dir / "manifest.json").write_text(
+        json.dumps({"base": {"path": str(prior_dir), "calendar_end": "2026-10-09"}})
+    )
     current_digest = hashlib.sha256((current_dir / "manifest.json").read_bytes()).hexdigest()
 
     series, sessions = example_series()

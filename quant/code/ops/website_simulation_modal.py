@@ -176,36 +176,24 @@ def _provider_calendar(asset):
     return [line.strip() for line in path.read_text().splitlines() if line.strip()]
 
 
-def _overlay_ancestor_digests(asset):
-    """DIGESTs of PASS overlay manifests strictly older than the current asset."""
+def _overlay_base(asset):
+    """Return the immediate base path/date recorded by the current overlay."""
     import json
 
-    root = Path("/data/cn_data_overlay")
-    if not asset.get("local_path") or not root.is_dir():
-        return set()
-    manifests = {}
-    for path in root.iterdir():
-        manifest = path / "manifest.json"
-        if manifest.is_file():
-            manifests[_sha256_path(manifest)] = manifest
-    ancestors = set()
-    current = Path(asset["local_path"]) / "manifest.json"
-    seen = set()
-    while current.is_file():
-        digest = _sha256_path(current)
-        if digest in seen:
-            break
-        seen.add(digest)
-        try:
-            payload = json.loads(current.read_text())
-        except Exception:
-            break
-        parent = (payload.get("base") or {}).get("archive_sha256")
-        if not parent or parent not in manifests:
-            break
-        ancestors.add(parent)
-        current = manifests[parent]
-    return ancestors
+    if not asset.get("local_path"):
+        return None
+    manifest = Path(asset["local_path"]) / "manifest.json"
+    if not manifest.is_file():
+        return None
+    try:
+        payload = json.loads(manifest.read_text())
+    except Exception:
+        return None
+    base = payload.get("base") or {}
+    return {
+        "path": str(base.get("path") or ""),
+        "calendar_end": str(base.get("calendar_end") or "")[:10],
+    }
 
 
 def _cached_model(source_sha, market, profile, fit_asof, expected_sha, *, load=True):
@@ -269,7 +257,9 @@ def _incremental_prior(source_sha, asset, market, end, calendar):
     if not source_root.is_dir():
         return None
     current_digest = asset["digest"].split(":")[1]
-    ancestors = _overlay_ancestor_digests(asset)
+    base = _overlay_base(asset)
+    if base is None or base["calendar_end"] != previous or Path(base["path"]).name[:10] != previous:
+        return None
     blocks = fit_blocks(calendar, FIRST_EXECUTION, end)
     block = next((item for item in blocks if item["fit_asof"] <= end <= item["signal_end"]), None)
     if block is None:
@@ -304,7 +294,6 @@ def _incremental_prior(source_sha, asset, market, end, calendar):
                 identity.get("profile") != CANONICAL_PROFILES_BY_MARKET[market]
                 or identity.get("topk") != CANONICAL_TOPK_BY_MARKET[market]
                 or identity.get("nd") != CANONICAL_ND_BY_MARKET[market]
-                or asset_dir.name not in ancestors
             ):
                 continue
             state = json.loads(final_path.read_text())
