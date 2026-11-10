@@ -62,23 +62,33 @@ def _latest_overlay_asset():
     return None
 
 
-def latest_asset():
+def latest_asset(expected_end: str | None = None):
+    """Prefer the cached chenditc provider; fall back to a gate-passed overlay."""
+    from provider_cache import CACHE_DIRNAME, provider_asset, select_cached_provider
+
+    cached = select_cached_provider(expected_end, Path("/data") / CACHE_DIRNAME)
+    if cached is not None:
+        return provider_asset(cached)
     overlay = _latest_overlay_asset()
     if overlay is not None:
-        return overlay
-    import requests
+        if expected_end is None:
+            return overlay
+        calendar = _provider_calendar(overlay) or []
+        if calendar and calendar[-1] == expected_end:
+            return overlay
+        raise ValueError(
+            f"no current chenditc/overlay provider for {expected_end}; overlay ends {calendar[-1] if calendar else 'unknown'}"
+        )
+    if expected_end:
+        raise ValueError(f"no current chenditc/overlay provider for {expected_end}")
+    from provider_cache import latest_release
 
-    response = requests.get("https://api.github.com/repos/chenditc/investment_data/releases/latest", timeout=30)
-    response.raise_for_status()
-    release = response.json()
-    asset = next(a for a in release["assets"] if a["name"] == "qlib_bin.tar.gz")
-    if not asset.get("digest", "").startswith("sha256:"):
-        raise ValueError("upstream release must declare an immutable SHA256")
+    release = latest_release()
     return {
-        "url": asset["browser_download_url"],
-        "digest": asset["digest"],
-        "size": asset["size"],
-        "release": release["tag_name"],
+        "url": release["url"],
+        "digest": release["digest"],
+        "size": release["size"],
+        "release": release["tag"],
         "published_at": release["published_at"],
     }
 
@@ -864,14 +874,15 @@ def publish_results(results, source, asset, *, token):
     max_containers=1,
     retries=0,
 )
-def daily(expected_source_sha256: str):
+def daily(expected_source_sha256: str, expected_provider_end: str = ""):
     import os
     from research_identity import source_manifest
 
     source = source_manifest("training")
     if expected_source_sha256 != source["sha256"]:
         raise ValueError("signal/website deployments have different source identities")
-    asset = latest_asset()
+    data_volume.reload()
+    asset = latest_asset(expected_provider_end or None)
     simulation.reload()
     receipt = already_published("/simulation", source["sha256"], asset["digest"])
     if receipt is not None:

@@ -46,9 +46,8 @@ def test_cron_schedule_registered():
                                 {kw.arg: ast.literal_eval(kw.value) for kw in keyword.value.keywords},
                             )
     assert schedules == {
-        "daily_cron": ("0 7 * * 1-5", {"timezone": "Asia/Shanghai"}),
-        "daily_evening": ("0 18 * * 1-5", {"timezone": "Asia/Shanghai"}),
-        "daily_evening_retry": ("0 19 * * 1-5", {"timezone": "Asia/Shanghai"}),
+        "daily_cron": ("0 6 * * 1-5", {"timezone": "Asia/Shanghai"}),
+        "daily_preopen_retry": ("30 7 * * 1-5", {"timezone": "Asia/Shanghai"}),
     }, "production cron schedule missing, moved to another function or changed"
     assert "nonpreemptible=True" in src
     assert 'modal.Secret.from_name(_GH_SECRET_NAME := "github-push")' in src
@@ -197,6 +196,9 @@ def test_modal_image_bundles_mvp_contract_runtime_module():
         and command.rstrip().endswith("/root/")
         for command in copies
     ), "Modal runtime missing csi1000_mvp_contract.py: daily_standalone cannot import gate"
+    assert any(
+        "/root/qlib/quant/code/production/provider_cache.py" in command.split() for command in copies
+    ), "Modal runtime missing provider_cache.py: provider selection cannot import cache"
 
 
 def _modal_helper_from_source(name, namespace=None):

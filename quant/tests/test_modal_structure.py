@@ -52,6 +52,8 @@ EXPECTED_FUNCTIONS = [
     "batch_b",
     "daily_standalone",
     "daily_cron",
+    "daily_preopen_retry",
+    "ensure_chenditc_provider",
     "daily_repair_manual",
     "daily_cron_manual",
     "ensure_overlay",
@@ -95,7 +97,7 @@ def test_all_functions_defined():
 
 def test_daily_cron_decorator_complete():
     params = _decorator_block("daily_cron")
-    assert 'schedule=modal.Cron("07**1-5",timezone="Asia/Shanghai")' in re.sub(
+    assert 'schedule=modal.Cron("06**1-5",timezone="Asia/Shanghai")' in re.sub(
         r"\s+", "", params
     ), "cron schedule line missing — next morning's run would silently never fire!"
     assert 'modal.Secret.from_name(_GH_SECRET_NAME := "github-push")' in params

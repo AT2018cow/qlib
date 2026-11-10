@@ -61,17 +61,22 @@ def test_actual_cron_checks_website_after_signal_fast_path(monkeypatch, signal_s
 
     seen = []
 
-    def signals(allow_lag):
+    def signals(allow_lag, **kwargs):
         assert allow_lag is False
         seen.append("signals")
         return {"status": signal_status}
 
-    def website():
+    def website(expected_provider_end=None):
         seen.append("website")
         return {"status": "ALREADY_PUBLISHED"}
 
     monkeypatch.setattr(production, "_run_daily_signal_cycle", signals)
     monkeypatch.setattr(production, "_update_website_returns", website)
+    monkeypatch.setattr(production, "_previous_trading_day", lambda _today: "2026-01-01")
+    monkeypatch.setattr(
+        production, "ensure_chenditc_provider", SimpleNamespace(remote=lambda _asof: {"status": "STALE"})
+    )
+    monkeypatch.setattr(production, "_ensure_overlay_for", lambda _asof: None)
     # Keep the wrapper test independent of the live akshare/Sina calendar.
     from datetime import datetime
     from zoneinfo import ZoneInfo
@@ -90,6 +95,41 @@ def test_actual_cron_checks_website_after_signal_fast_path(monkeypatch, signal_s
     assert result["stages"]["website"]["result"]["status"] == "ALREADY_PUBLISHED"
 
 
+def test_preopen_cycle_skips_overlay_when_chenditc_ready(monkeypatch):
+    import modal_qlib_cn_a10g as production
+
+    seen = []
+    monkeypatch.setattr(
+        production,
+        "ensure_chenditc_provider",
+        SimpleNamespace(remote=lambda _asof: {"status": "READY", "calendar_end": _asof}),
+    )
+    monkeypatch.setattr(
+        production,
+        "_ensure_overlay_for",
+        lambda _asof: pytest.fail("READY chenditc must not build the overlay"),
+    )
+
+    def signals(allow_lag, **kwargs):
+        seen.append(("signals", allow_lag, kwargs))
+        return {"status": "ALREADY_PUBLISHED"}
+
+    def website(expected_provider_end=None):
+        seen.append(("website", expected_provider_end))
+        return {"status": "ALREADY_PUBLISHED"}
+
+    monkeypatch.setattr(production, "_run_daily_signal_cycle", signals)
+    monkeypatch.setattr(production, "_update_website_returns", website)
+    monkeypatch.setattr(production, "_trading_days", lambda: ["2026-11-10"])
+    monkeypatch.setattr(production, "_previous_trading_day", lambda _today: "2026-11-09")
+    result = production.daily_cron.local()
+    assert result["status"] == "COMPLETED"
+    assert seen[0][0] == "signals"
+    assert seen[0][1] is False
+    assert seen[0][2]["data_asof_override"] == "2026-11-09"
+    assert seen[1] == ("website", "2026-11-09")
+
+
 def test_backup_returns_the_same_pipeline_receipt(monkeypatch):
     import modal_qlib_cn_a10g as production
 
@@ -106,7 +146,7 @@ def test_orchestrator_rejects_missing_or_mismatched_website_receipt(monkeypatch,
     monkeypatch.setattr(research_identity, "source_manifest", lambda kind: {"sha256": "a" * 64})
 
     def remote(**kwargs):
-        assert kwargs == {"expected_source_sha256": "a" * 64}
+        assert kwargs == {"expected_source_sha256": "a" * 64, "expected_provider_end": ""}
         return receipt
 
     def from_name(app, name):
@@ -150,9 +190,8 @@ def test_only_main_and_eight_oclock_backup_are_scheduled():
                                     )
                                 )
     assert schedules == [
-        ("daily_cron", "0 7 * * 1-5", {"timezone": "Asia/Shanghai"}),
-        ("daily_evening", "0 18 * * 1-5", {"timezone": "Asia/Shanghai"}),
-        ("daily_evening_retry", "0 19 * * 1-5", {"timezone": "Asia/Shanghai"}),
+        ("daily_cron", "0 6 * * 1-5", {"timezone": "Asia/Shanghai"}),
+        ("daily_preopen_retry", "30 7 * * 1-5", {"timezone": "Asia/Shanghai"}),
     ]
 
 

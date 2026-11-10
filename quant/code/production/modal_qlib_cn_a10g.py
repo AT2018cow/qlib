@@ -207,7 +207,7 @@ image = (
         "/root/qlib/quant/code/production/portfolio_diagnostics.py "
         "/root/qlib/quant/code/execution/st_history.py /root/qlib/quant/code/execution/liquidity_contract.py "
         "/root/qlib/quant/code/production/name_map_sync.py "
-        "/root/qlib/quant/code/production/daily_pipeline.py /root/"
+        "/root/qlib/quant/code/production/daily_pipeline.py /root/qlib/quant/code/production/provider_cache.py /root/"
     )
 )
 
@@ -362,18 +362,29 @@ def _prepare_truncated_overlay(source: Path, asof: str) -> Path:
 
 
 def _select_overlay_provider(asof: str | None = None):
-    """Prefer a gate-passed production overlay over the stale chenditc release.
+    """Prefer a current cached chenditc provider, then a gate-passed overlay.
 
-    The overlay is built by ``quant/code/data_ingest`` and promoted into
-    ``/vol/cn_data_overlay/<asof>``.  A missing/stale/non-PASS overlay falls
-    back to the legacy chenditc download, whose own publication gate remains
-    responsible for rejecting stale data.  An explicit ``asof`` is a backfill
-    request and must exist and be PASS.
+    The 06:00 job caches one chenditc release under ``/vol/chenditc_cache``.
+    When that cache ends at the requested session, every signal worker reads the
+    same local provider.  A stale/missing cache falls back to the gate-passed
+    overlay; the overlay remains the audited backup source.
     """
     import json
     import shutil
 
     from csi1000_mvp_contract import sha256_file
+    from provider_cache import CACHE_DIRNAME, provider_identity, select_cached_provider
+
+    if asof:
+        vol.reload()
+        cached = select_cached_provider(asof, VOL_ROOT / CACHE_DIRNAME)
+        if cached is not None:
+            print(
+                f"[daily] 使用 chenditc 缓存 {cached['calendar_end']} "
+                f"release={cached.get('release')} digest={str(cached.get('digest'))[:19]}",
+                flush=True,
+            )
+            return Path(cached["local_path"]), provider_identity(cached)
 
     root = OVERLAY_PROVIDER_ROOT
     if not root.is_dir():
@@ -4535,6 +4546,130 @@ def ensure_overlay(trade_date: str):
     }
 
 
+@app.function(
+    volumes={str(VOL_ROOT): vol},
+    cpu=4,
+    memory=8192,
+    timeout=1800,
+    max_containers=1,
+    retries=0,
+)
+def ensure_chenditc_provider(asof: str):
+    """Download one chenditc release and cache it for all daily consumers.
+
+    Returns ``READY`` only when the extracted provider's calendar ends exactly
+    at ``asof``.  A stale/late release is reported as ``STALE``; the caller then
+    uses the gate-passed overlay path instead.
+    """
+    import hashlib
+    import shutil
+    from pathlib import Path
+
+    import requests
+
+    from provider_archive import safe_extract_provider_archive
+    from provider_cache import (
+        CACHE_DIRNAME,
+        calendar_end,
+        install_provider,
+        latest_release,
+        select_cached_provider,
+    )
+
+    vol.reload()
+    asof = str(asof)[:10]
+    root = VOL_ROOT / CACHE_DIRNAME
+    cached = select_cached_provider(asof, root)
+    if cached is not None:
+        return {"status": "READY", **cached}
+
+    release = latest_release()
+    if str(release.get("tag", ""))[:10] < asof:
+        return {
+            "status": "STALE",
+            "asof": asof,
+            "calendar_end": str(release.get("tag", ""))[:10],
+            "release": release.get("tag"),
+            "published_at": release.get("published_at"),
+            "reason": "release_tag_older_than_asof",
+        }
+    digest = release["digest"]
+    digest_hex = release["digest_hex"]
+    archive = Path("/tmp") / f"chenditc-{digest_hex[:16]}.tar.gz"
+    extract = Path("/tmp") / f"chenditc-{digest_hex[:16]}"
+    if extract.exists():
+        shutil.rmtree(extract)
+    written = 0
+    actual = hashlib.sha256()
+    with requests.get(release["url"], stream=True, timeout=(30, 180)) as response:
+        response.raise_for_status()
+        with archive.open("wb") as stream:
+            for chunk in response.iter_content(8 * 1024 * 1024):
+                actual.update(chunk)
+                stream.write(chunk)
+                written += len(chunk)
+    if written != release["size"] or "sha256:" + actual.hexdigest() != digest:
+        raise ValueError("chenditc release size/SHA256 mismatch")
+    provider = Path(safe_extract_provider_archive(archive, extract))
+    end = calendar_end(provider)
+    if end != asof:
+        return {
+            "status": "STALE",
+            "asof": asof,
+            "calendar_end": end,
+            "release": release["tag"],
+            "published_at": release.get("published_at"),
+        }
+    descriptor = install_provider(
+        provider,
+        root,
+        digest=digest,
+        release=release["tag"],
+        published_at=release.get("published_at"),
+        source_url=release["url"],
+        size=release["size"],
+    )
+    vol.commit()
+    print(
+        f"[provider] chenditc {asof} cached release={release['tag']} "
+        f"digest={digest_hex[:16]} size={written // 1024**2}MiB",
+        flush=True,
+    )
+    return {"status": "READY", **descriptor}
+
+
+def _run_preopen_cycle(allow_lag: bool = False):
+    """06:00 pre-open publication: chenditc primary, overlay fallback."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    from daily_pipeline import run_daily_pipeline
+
+    today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
+    calendar = _trading_days()
+    if today not in calendar:
+        return {"status": "SKIPPED_NON_TRADING_DAY", "signal_date": today}
+    data_asof = _previous_trading_day(today)
+    if data_asof is None:
+        return {"status": "SKIPPED_NO_PREVIOUS_SESSION", "signal_date": today}
+    try:
+        provider = ensure_chenditc_provider.remote(data_asof)
+        print(f"[cron] chenditc provider: {provider.get('status')} asof={data_asof}", flush=True)
+    except Exception as exc:  # noqa: BLE001 - provider boundary
+        provider = {"status": "ERROR", "error": f"{type(exc).__name__}: {exc}"}
+        print(f"[cron] chenditc provider failed: {provider['error']}", flush=True)
+    if provider.get("status") != "READY":
+        _ensure_overlay_for(data_asof)
+    return run_daily_pipeline(
+        lambda: _run_daily_signal_cycle(
+            allow_lag,
+            signal_date_override=today,
+            data_asof_override=data_asof,
+        ),
+        lambda: _update_website_returns(expected_provider_end=data_asof),
+    )
+
+
 def _run_evening_cycle():
     """T-close signal + T NAV publication for the next trading session."""
     from datetime import datetime
@@ -4563,36 +4698,40 @@ def _run_evening_cycle():
 @app.function(
     volumes={str(VOL_ROOT): vol},
     schedule=modal.Cron(
-        "0 7 * * 1-5", timezone="Asia/Shanghai"
-    ),  # 周一~周五 07:00（周一算上周五数据，周二~周五算前一交易日）
+        "0 6 * * 1-5", timezone="Asia/Shanghai"
+    ),  # 周一~周五 06:00：chenditc T-1 数据已发布，留出 overlay fallback 时间
     # ⚠️ 此 schedule 行曾被重构编辑意外吞掉（2026-09-28 gate 上线时），导致 09-29 静默无调度——
     #    任何触碰此装饰器的编辑后必须运行 tests/test_cron_gate.py 的守护测试。
     secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
     # Research placeholders cannot authorize publication; production needs GITHUB_TOKEN.
     timeout=MAIN_TIMEOUT_SECONDS,
     nonpreemptible=True,  # 调度入口：被抢占则当天任务丢失；自身运行时间短，3x 成本增量极小
-    # ⚠️ R02 序列化契约：max_containers=1 使 Modal 平台串行执行 daily_cron——08:00 补跑转发
+    # ⚠️ R02 序列化契约：max_containers=1 使 Modal 平台串行执行 daily_cron——07:30 补跑转发
     #    的调用必须排队等待当前运行结束，两个容器永不重叠。严禁提高此值：Volume 没有原子
     #    CAS，跨容器互斥只能由平台单执行保证；若必须并发，先引入外部锁服务并暂停自动发布。
     max_containers=1,
-    retries=0,  # 08:00 入口负责恢复；不对最长 10.5h 的整条流水线叠加自动重试。
+    retries=0,  # 07:30 入口负责恢复；不对最长 10.5h 的整条流水线叠加自动重试。
 )
 def daily_cron(allow_lag: bool = False):
-    """Pre-open idempotent check and last-resort repair for the evening run."""
-    from datetime import datetime
-    from zoneinfo import ZoneInfo
-
-    from daily_pipeline import run_daily_pipeline
-
-    today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
-    if today in _trading_days():
-        previous = _previous_trading_day(today)
-        if previous:
-            _ensure_overlay_for(previous)
-    return run_daily_pipeline(lambda: _run_daily_signal_cycle(allow_lag), _update_website_returns)
+    """06:00 primary publication: chenditc first, overlay fallback."""
+    return _run_preopen_cycle(allow_lag)
 
 
-def _update_website_returns():
+@app.function(
+    volumes={str(VOL_ROOT): vol},
+    secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
+    schedule=modal.Cron("30 7 * * 1-5", timezone="Asia/Shanghai"),
+    timeout=MAIN_TIMEOUT_SECONDS,
+    nonpreemptible=True,
+    max_containers=1,
+    retries=0,
+)
+def daily_preopen_retry():
+    """07:30 idempotent retry; queues behind the 06:00 run via daily_cron."""
+    return daily_cron.remote()
+
+
+def _update_website_returns(expected_provider_end: str | None = None):
     """Call the deployed website worker only when both code identities agree."""
     import sys
 
@@ -4606,7 +4745,10 @@ def _update_website_returns():
 
     expected_source = source_manifest("training")["sha256"]
     worker = modal.Function.from_name(WEBSITE_APP_NAME, "daily")
-    result = worker.remote(expected_source_sha256=expected_source)
+    result = worker.remote(
+        expected_source_sha256=expected_source,
+        expected_provider_end=expected_provider_end or "",
+    )
     if (
         not isinstance(result, dict)
         or result.get("status") not in ("PUBLISHED", "ALREADY_PUBLISHED", "SKIPPED_BUDGET")
@@ -5196,7 +5338,6 @@ def attest_paper_state_bootstrap(note: str = "", approve: bool = False):
 @app.function(
     volumes={str(VOL_ROOT): vol},
     secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
-    schedule=modal.Cron("0 18 * * 1-5", timezone="Asia/Shanghai"),
     cpu=2,
     memory=4096,
     timeout=MAIN_TIMEOUT_SECONDS,
@@ -5205,14 +5346,13 @@ def attest_paper_state_bootstrap(note: str = "", approve: bool = False):
     retries=0,
 )
 def daily_evening():
-    """Primary T-close publication: T+1 signal, T NAV, T+1 paper plan."""
+    """Manual evening publication; scheduled production runs at 06:00."""
     return _run_evening_cycle()
 
 
 @app.function(
     volumes={str(VOL_ROOT): vol},
     secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
-    schedule=modal.Cron("0 19 * * 1-5", timezone="Asia/Shanghai"),
     cpu=2,
     memory=4096,
     timeout=MAIN_TIMEOUT_SECONDS,
@@ -5221,7 +5361,7 @@ def daily_evening():
     retries=0,
 )
 def daily_evening_retry():
-    """19:00 retry; idempotent and cheap when 18:00 already committed."""
+    """Manual evening retry; scheduled production retry runs at 07:30."""
     return _run_evening_cycle()
 
 

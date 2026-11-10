@@ -300,8 +300,16 @@ def test_incremental_prefix_requires_a_complete_ancestor_ledger(tmp_path, monkey
     current_dir.mkdir(parents=True)
     (prior_dir / "manifest.json").write_text("{}")
     prior_digest = hashlib.sha256((prior_dir / "manifest.json").read_bytes()).hexdigest()
+    # The website incremental prefix protocol reads the same base fields from a
+    # cached chenditc provider manifest as it does from an overlay manifest.
     (current_dir / "manifest.json").write_text(
-        json.dumps({"base": {"path": str(prior_dir), "calendar_end": "2026-10-09"}})
+        json.dumps(
+            {
+                "status": "PASS",
+                "source": "chenditc",
+                "base": {"path": "provider:chenditc/2026-10-09", "calendar_end": "2026-10-09"},
+            }
+        )
     )
     current_digest = hashlib.sha256((current_dir / "manifest.json").read_bytes()).hexdigest()
 
@@ -381,6 +389,47 @@ def test_incremental_prefix_requires_a_complete_ancestor_ledger(tmp_path, monkey
     ).hexdigest()
     (result_dir / "result.json").write_text(json.dumps(payload))
     assert module._incremental_prior(source_sha, asset, "csi300", "2026-10-12", calendar) is None
+
+
+def test_latest_asset_prefers_cached_chenditc_provider(tmp_path, monkeypatch):
+    import importlib.util
+    from pathlib import Path
+
+    from provider_cache import install_provider
+
+    path = Path(__file__).resolve().parents[1] / "code/ops/website_simulation_modal.py"
+    spec = importlib.util.spec_from_file_location("website_simulation_asset_test", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    data = tmp_path / "data"
+    provider = tmp_path / "extracted"
+    (provider / "calendars").mkdir(parents=True)
+    (provider / "calendars" / "day.txt").write_text("2026-11-06\n2026-11-09\n")
+    digest = "c" * 64
+    install_provider(
+        provider,
+        data / "chenditc_cache",
+        digest=f"sha256:{digest}",
+        release="2026-11-09",
+        published_at="2026-11-09T12:16:03Z",
+        source_url="https://example.invalid/qlib_bin.tar.gz",
+    )
+    real_path = Path
+
+    def redirected(value):
+        text = str(value)
+        if text == "/data" or text.startswith("/data/"):
+            return data / text[len("/data/") :]
+        return real_path(value)
+
+    monkeypatch.setattr(module, "Path", redirected)
+    asset = module.latest_asset(expected_end="2026-11-09")
+    assert asset["source"] == "chenditc"
+    assert asset["digest"] == f"sha256:{digest}"
+    assert asset["local_path"].endswith(digest)
+    with pytest.raises(ValueError, match="no current"):
+        module.latest_asset(expected_end="2026-11-10")
 
 
 def test_incremental_prediction_uses_an_equivalent_bounded_window(tmp_path):
