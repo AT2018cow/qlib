@@ -16,8 +16,8 @@
     "nd": 1,
     "horizon": 20
   },
-  "latest_date": "2026-11-10",
-  "cumulative_return": -0.17653034,
+  "latest_date": "2026-11-11",
+  "cumulative_return": -0.13704417000000002,
   "points": [
     {
       "date": "2026-10-08",
@@ -49,7 +49,7 @@
       },
       "signal_date": "2026-09-30",
       "fit_asof": "2026-09-30",
-      "model_sha256": "433348090bcf4de1a5a78bbe0ba1ffd2ebc44973381eccf30d941cbbc564e79d"
+      "model_sha256": "7bd1ec27698ba42eb56dc64cd036997069bcf2ff2dc0c22c578e219b8ae64458"
     },
     {
       "date": "2026-10-09",
@@ -92,7 +92,7 @@
       },
       "signal_date": "2026-10-08",
       "fit_asof": "2026-09-30",
-      "model_sha256": "433348090bcf4de1a5a78bbe0ba1ffd2ebc44973381eccf30d941cbbc564e79d"
+      "model_sha256": "7bd1ec27698ba42eb56dc64cd036997069bcf2ff2dc0c22c578e219b8ae64458"
     },
     {
       "date": "2026-10-12",
@@ -135,7 +135,7 @@
       },
       "signal_date": "2026-10-09",
       "fit_asof": "2026-09-30",
-      "model_sha256": "433348090bcf4de1a5a78bbe0ba1ffd2ebc44973381eccf30d941cbbc564e79d"
+      "model_sha256": "7bd1ec27698ba42eb56dc64cd036997069bcf2ff2dc0c22c578e219b8ae64458"
     },
     {
       "date": "2026-10-13",
@@ -178,7 +178,7 @@
       },
       "signal_date": "2026-10-12",
       "fit_asof": "2026-09-30",
-      "model_sha256": "433348090bcf4de1a5a78bbe0ba1ffd2ebc44973381eccf30d941cbbc564e79d"
+      "model_sha256": "7bd1ec27698ba42eb56dc64cd036997069bcf2ff2dc0c22c578e219b8ae64458"
     },
     {
       "date": "2026-10-14",
@@ -221,7 +221,7 @@
       },
       "signal_date": "2026-10-13",
       "fit_asof": "2026-09-30",
-      "model_sha256": "433348090bcf4de1a5a78bbe0ba1ffd2ebc44973381eccf30d941cbbc564e79d"
+      "model_sha256": "7bd1ec27698ba42eb56dc64cd036997069bcf2ff2dc0c22c578e219b8ae64458"
     },
     {
       "date": "2026-10-15",
@@ -264,7 +264,7 @@
       },
       "signal_date": "2026-10-14",
       "fit_asof": "2026-09-30",
-      "model_sha256": "433348090bcf4de1a5a78bbe0ba1ffd2ebc44973381eccf30d941cbbc564e79d"
+      "model_sha256": "7bd1ec27698ba42eb56dc64cd036997069bcf2ff2dc0c22c578e219b8ae64458"
     },
     {
       "date": "2026-10-16",
@@ -307,7 +307,7 @@
       },
       "signal_date": "2026-10-15",
       "fit_asof": "2026-09-30",
-      "model_sha256": "433348090bcf4de1a5a78bbe0ba1ffd2ebc44973381eccf30d941cbbc564e79d"
+      "model_sha256": "7bd1ec27698ba42eb56dc64cd036997069bcf2ff2dc0c22c578e219b8ae64458"
     },
     {
       "date": "2026-10-19",
@@ -350,7 +350,7 @@
       },
       "signal_date": "2026-10-16",
       "fit_asof": "2026-09-30",
-      "model_sha256": "433348090bcf4de1a5a78bbe0ba1ffd2ebc44973381eccf30d941cbbc564e79d"
+      "model_sha256": "7bd1ec27698ba42eb56dc64cd036997069bcf2ff2dc0c22c578e219b8ae64458"
     },
     {
       "date": "2026-10-20",
@@ -393,7 +393,7 @@
       },
       "signal_date": "2026-10-19",
       "fit_asof": "2026-09-30",
-      "model_sha256": "433348090bcf4de1a5a78bbe0ba1ffd2ebc44973381eccf30d941cbbc564e79d"
+      "model_sha256": "7bd1ec27698ba42eb56dc64cd036997069bcf2ff2dc0c22c578e219b8ae64458"
     },
     {
       "date": "2026-10-21",
@@ -436,7 +436,7 @@
       },
       "signal_date": "2026-10-20",
       "fit_asof": "2026-09-30",
-      "model_sha256": "433348090bcf4de1a5a78bbe0ba1ffd2ebc44973381eccf30d941cbbc564e79d"
+      "model_sha256": "7bd1ec27698ba42eb56dc64cd036997069bcf2ff2dc0c22c578e219b8ae64458"
     },
     {
       "date": "2026-10-22",
@@ -479,7 +479,7 @@
       },
       "signal_date": "2026-10-21",
       "fit_asof": "2026-09-30",
-      "model_sha256": "433348090bcf4de1a5a78bbe0ba1ffd2ebc44973381eccf30d941cbbc564e79d"
+      "model_sha256": "7bd1ec27698ba42eb56dc64cd036997069bcf2ff2dc0c22c578e219b8ae64458"
     },
     {
       "date": "2026-10-23",
@@ -522,7 +522,7 @@
       },
       "signal_date": "2026-10-22",
       "fit_asof": "2026-09-30",
-      "model_sha256": "433348090bcf4de1a5a78bbe0ba1ffd2ebc44973381eccf30d941cbbc564e79d"
+      "model_sha256": "7bd1ec27698ba42eb56dc64cd036997069bcf2ff2dc0c22c578e219b8ae64458"
     },
     {
       "date": "2026-10-26",
@@ -565,7 +565,7 @@
       },
       "signal_date": "2026-10-23",
       "fit_asof": "2026-09-30",
-      "model_sha256": "433348090bcf4de1a5a78bbe0ba1ffd2ebc44973381eccf30d941cbbc564e79d"
+      "model_sha256": "7bd1ec27698ba42eb56dc64cd036997069bcf2ff2dc0c22c578e219b8ae64458"
     },
     {
       "date": "2026-10-27",
@@ -1039,6 +1039,49 @@
       "signal_date": "2026-11-09",
       "fit_asof": "2026-10-26",
       "model_sha256": "bd0e4b1a5a645319285333da8f66d1e3c36ff33ace4cbc6bd3538ee75cb7b3f3"
+    },
+    {
+      "date": "2026-11-11",
+      "nav": 0.86295583,
+      "daily_return": 0.04795097125982739,
+      "cumulative_return": -0.13704417000000002,
+      "portfolio_value_close": 862955.83,
+      "cash": 4651.52,
+      "cost": 176.68,
+      "data_mode": "CAUSAL_SIMULATION",
+      "opening_state": {
+        "cash": 5389.91,
+        "shares": {
+          "SZ300870": 29391.529634716142,
+          "SZ002484": 12022.389719624025,
+          "SH688362": 64369.21840805779,
+          "SH688147": 43384.95318508362,
+          "SH605376": 14494.129854833669,
+          "SH603516": 16121.818726166177,
+          "SH688449": 81201.83311903059,
+          "SZ300131": 24844.232726650363,
+          "SH688182": 85204.60936295216,
+          "SH600353": 8356.621061984062
+        }
+      },
+      "closing_state": {
+        "cash": 4651.52,
+        "shares": {
+          "SZ300870": 29391.529634716142,
+          "SZ002484": 12022.389719624025,
+          "SH688147": 43384.95318508362,
+          "SH605376": 14494.129854833669,
+          "SH603516": 16121.818726166177,
+          "SH688449": 81201.83311903059,
+          "SZ300131": 24844.232726650363,
+          "SH688182": 85204.60936295216,
+          "SH600353": 8356.621061984062,
+          "SH688167": 80936.61379854448
+        }
+      },
+      "signal_date": "2026-11-10",
+      "fit_asof": "2026-10-26",
+      "model_sha256": "bd0e4b1a5a645319285333da8f66d1e3c36ff33ace4cbc6bd3538ee75cb7b3f3"
     }
   ],
   "trading_dates": [
@@ -1065,20 +1108,25 @@
     "2026-11-05",
     "2026-11-06",
     "2026-11-09",
-    "2026-11-10"
+    "2026-11-10",
+    "2026-11-11"
   ],
   "execution_st_policy": "ST_HISTORY_UNVERIFIED_REFERENCE_ONLY",
   "auction_liquidity_verified": false,
   "official_reference_price_verified": false,
   "return_interpretation": "CAUSAL_HISTORICAL_SIMULATION_REFERENCE_ONLY",
-  "source_manifest_sha256": "515568f924e6da8ed729cce2f7eb458e38e334600d30685c5a8eb45712c90680",
-  "provider_archive_sha256": "658555ec103915ccac5caa7521b218f273abc5c0c862eb10c76ed48fea22ddda",
+  "source_manifest_sha256": "e011eab4320a10877921f2d6167f8fc66511eebe6801f3b60817293510f200b3",
+  "release_source_sha256": "e011eab4320a10877921f2d6167f8fc66511eebe6801f3b60817293510f200b3",
+  "website_semantic_sha256": "b4b8b90bdca424b47cd4b1ca1f30def82a14d35f8412bfdc9f4042414b4c4a33",
+  "account_contract_sha256": "fd4ca78d2072ed18b726c53d3b0679952d6a68c88e3e0944485d6266f09a3197",
+  "identity_schema_version": 2,
+  "provider_archive_sha256": "1f0fc68efb017277aa245a1dd218c197711fe72a956ae0eb0ad0119b6cbe02ac",
   "fit_receipts": [
     {
       "fit_asof": "2026-09-30",
       "signal_end": "2026-10-23",
       "profile": "c98856b4_top10_drop1",
-      "model_sha256": "433348090bcf4de1a5a78bbe0ba1ffd2ebc44973381eccf30d941cbbc564e79d",
+      "model_sha256": "7bd1ec27698ba42eb56dc64cd036997069bcf2ff2dc0c22c578e219b8ae64458",
       "training_contract": {
         "asof": "2026-09-30",
         "train_end": "2025-07-18",
@@ -1090,7 +1138,7 @@
     },
     {
       "fit_asof": "2026-10-26",
-      "signal_end": "2026-11-10",
+      "signal_end": "2026-11-11",
       "profile": "c98856b4_top10_drop1",
       "model_sha256": "bd0e4b1a5a645319285333da8f66d1e3c36ff33ace4cbc6bd3538ee75cb7b3f3",
       "training_contract": {
@@ -1104,7 +1152,7 @@
     }
   ],
   "fit_receipt_version": 2,
-  "total_fees": 4578.86,
+  "total_fees": 4755.54,
   "broker_fills_certified": false,
   "live_trading_approved": false
 }
