@@ -4315,6 +4315,8 @@ def ensure_overlay(trade_date: str, refresh_memberships: bool = False):
         refresh_memberships=refresh_memberships,
         require_qlib_smoke=True,
         failure_record_fn=_provider_failure_record,
+        journal_root=VOL_ROOT,
+        simulation_root=Path("/simulation"),
     )
 
 
@@ -4485,7 +4487,7 @@ def _postclose_marker_valid(marker, session_date: str, usage_date: str, *, verif
         return False, f"journal verification failed: {type(exc).__name__}: {exc}"
     try:
         status_fn = modal.Function.from_name(WEBSITE_APP_NAME, "status")
-        result = status_fn.remote(current_release, snapshot_digest)
+        result = status_fn.remote(current_release, snapshot_digest, session_date)
     except Exception as exc:  # noqa: BLE001 - cross-app receipt boundary
         return False, f"website receipt check failed: {type(exc).__name__}: {exc}"
     if not isinstance(result, dict) or result.get("status") not in (
@@ -4498,6 +4500,12 @@ def _postclose_marker_valid(marker, session_date: str, usage_date: str, *, verif
         return False, "website receipt asset differs"
     if result.get("source_sha256") != current_release:
         return False, "website receipt release identity differs"
+    if result.get("website_semantic_sha256") != marker.get("website_semantic_sha256"):
+        return False, "website receipt semantic identity differs from marker"
+    if result.get("account_contract_sha256") != marker.get("account_contract_sha256"):
+        return False, "website receipt account contracts differ from marker"
+    if result.get("latest_date") != session_date:
+        return False, "website receipt latest date is not the session date"
     return True, "receipts verified"
 
 
@@ -4780,7 +4788,7 @@ def daily_postclose_check():
     volumes={str(VOL_ROOT): vol_readonly},
     cpu=1,
     memory=1024,
-    timeout=10 * 60,
+    timeout=BACKUP_TIMEOUT_SECONDS,
     schedule=modal.Cron("15 23 * * 1-5", timezone="Asia/Shanghai"),
     max_containers=1,
     retries=0,

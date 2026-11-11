@@ -38,8 +38,30 @@ def _relative_file(root, name):
     return path
 
 
-WEBSITE_SEMANTIC_DEPENDENCIES = (
-    "examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158.yaml",
+def production_model_config_paths():
+    """Return the repo-relative YAML files actually referenced by MODEL_CFG.
+
+    ``qlib_runtime.MODEL_CFG`` is the single production source of truth.  Its
+    values use the Modal container root (``/root/qlib``); convert them back to
+    repository-relative paths instead of copying a possibly stale filename.
+    """
+    from qlib_runtime import MODEL_CFG
+
+    prefix = "/root/qlib/"
+    paths = set()
+    for value in MODEL_CFG.values():
+        text = str(value)
+        if text.startswith(prefix):
+            text = text[len(prefix) :]
+        elif Path(text).is_absolute():
+            raise ValueError(f"MODEL_CFG path is outside the audited repository root: {text}")
+        paths.add(text)
+    if not paths:
+        raise ValueError("MODEL_CFG contains no auditable configuration paths")
+    return tuple(sorted(paths))
+
+
+_WEBSITE_CODE_DEPENDENCIES = (
     "quant/code/quant_bootstrap.py",
     "quant/code/execution/board_execution.py",
     "quant/code/execution/board_rules.py",
@@ -51,6 +73,7 @@ WEBSITE_SEMANTIC_DEPENDENCIES = (
     "quant/code/execution/qlib_live_retrain.py",
     "quant/code/execution/research_identity.py",
     "quant/code/execution/st_history.py",
+    "quant/code/ops/website_budget.py",
     "quant/code/production/account_boundary.py",
     "quant/code/production/artifact_io.py",
     "quant/code/production/csi1000_production_config.py",
@@ -67,6 +90,7 @@ WEBSITE_SEMANTIC_DEPENDENCIES = (
     "quant/code/research/regime_reselection/prelive_revalidation.py",
     "quant/code/research/stage_ab/csi1000_tuner_core.py",
 )
+WEBSITE_SEMANTIC_DEPENDENCIES = tuple(sorted(set(_WEBSITE_CODE_DEPENDENCIES) | set(production_model_config_paths())))
 
 
 def _manifest_body(kind, root, paths, version=SOURCE_IDENTITY_VERSION):
@@ -78,24 +102,12 @@ def _manifest_body(kind, root, paths, version=SOURCE_IDENTITY_VERSION):
     return {**body, "sha256": content_sha(body)}
 
 
-def release_manifest(*, repo_root=None):
-    """Bind the complete extension source for deployment/receipt audit."""
-    root = Path(repo_root) if repo_root is not None else REPO_ROOT
-    paths = sorted((root / "quant/code").rglob("*.py"))
-    if not paths:
-        raise ValueError("missing extension implementation tree")
-    yaml = root / "examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158.yaml"
-    if not yaml.is_file():
-        raise ValueError("missing training configuration")
-    paths.append(yaml)
-    return _manifest_body("release", root, paths, version=WEBSITE_IDENTITY_VERSION)
-
-
 def website_semantic_manifest(*, repo_root=None, dependencies=None):
     """Bind only the business closure that can change website results.
 
     Resource decorators, schedules, documentation and unrelated tools are
-    deliberately excluded; ``release_manifest`` still records every change.
+    deliberately excluded; ``source_manifest("training")`` records every
+    executable change for deployment and receipt audit.
     """
     root = Path(repo_root) if repo_root is not None else REPO_ROOT
     names = WEBSITE_SEMANTIC_DEPENDENCIES if dependencies is None else tuple(dependencies)
@@ -191,10 +203,11 @@ def source_manifest(kind, *, repo_root=None):
     if not paths:
         raise ValueError("missing extension implementation tree")
     if kind == "training":
-        yaml = root / "examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158.yaml"
-        if not yaml.is_file():
-            raise ValueError("missing training configuration")
-        paths.append(yaml)
+        for name in production_model_config_paths():
+            yaml = root / name
+            if not yaml.is_file():
+                raise ValueError(f"missing training configuration: {name}")
+            paths.append(yaml)
     body = {
         "schema_version": SOURCE_IDENTITY_VERSION,
         "kind": kind,

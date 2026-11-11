@@ -1,11 +1,11 @@
 # `quant/docs/` — 研发与生产文档总索引
 
-> **当前状态（2026-11-11，本地实现 / 未部署）**
+> **当前状态（2026-11-11，本地整改完成 / 未部署）**
 >
 > - 生产 App 仍为 `qlib-prod-daily` / `qlib-prod-website` v20（部署 commit `3568be937`）；生产信号与网站使用唯一自建 overlay archive，研究默认数据仍为独立的 chenditc lineage。
 > - **已部署**调度仍是 06:00 `daily_cron`、07:30 `daily_preopen_retry`、09:00 `daily_readonly_check`。**本地源码候选尚未部署**：18:00 `daily_cron`、23:00 `daily_postclose_check`、23:15 `daily_evening_retry`、次日 07:00 `daily_readonly_check`。
 > - 本地源码候选（基于 `9b5aa359c` 资源检查点）保留 Provider 2 CPU / 8 GiB、独立 Website incremental 4 CPU / 12 GiB；full/smoke/retrain 8/16、Signal 8/16。生产仍为 Provider 4/8、统一 Website 8/16。
-> - PC01–PC08 本地实现与测试证据见 [`postclose implementation report`](07-code-review/2026-11-11-postclose-implementation-report.md)。状态只能写 `LOCAL IMPLEMENTED / NOT DEPLOYED`，不得写成已部署或自然调度验收通过。
+> - PC01–PC08 本地实现及 PR01–PR06 整改见 [`postclose implementation report`](07-code-review/2026-11-11-postclose-implementation-report.md)；独立验收问题清单见 [`postclose independent review remediation`](07-code-review/2026-11-11-postclose-independent-review-remediation.md)。当前状态为 `LOCAL REMEDIATED / NOT DEPLOYED`，仍不能部署或推送，等待 Codex 独立复验。
 > - 安全加固：见 [`2026-11-10-security-hardening.md`](07-code-review/2026-11-10-security-hardening.md)。
 > - 下文旧条目保留为历史记录；其中 v37/v12、07:00/08:00、11/06 数据、USD budget guard 等描述不再代表当前生产或本地候选。
 
@@ -14,6 +14,8 @@
 **历史记录（截至 2026-11-06）— 数据源故障转移评估**：[`2026-11-07 评估`](09-data-source/01-data-source-failover-evaluation-20261107.md)记录 chenditc 缺数时的免费源验证与接入实现：Sina raw+hfq 与 11/04 快照 1799/1800 在 float32 精度内一致，完整历史 overlay 在生产镜像中逐位复现 11/04 已发布 Top10；`data_ingest`、manifest、fail-closed gate 与合成测试已实现；因 chenditc 持续缺数、网站瘫痪，已完成生产切换：主应用 v37 overlay-first、网站 v12，11/06 网站数据已发布（CSI300 -24.4058%、CSI500 -11.0430%、CSI1000 -20.2963%，commit `40b57e1e`）。GitHub Actions 恢复后，Cloudflare 公网 `qliba158.pages.dev` 已更新到 11/06（workflow `42366583880`）。（该记录截至 11/06；后续 11/09、11/10 信号与 paper 已按 T 收盘调度推进，见上方当前状态。）canary 应用已停止、Volume 已删除；当时生产为 `qlib-cn-daily-a10g` v37 与 `qlib-website-nav` v12，现已迁移到 `qlib-prod-*` v8。网站 App 已加发布收据幂等短路和预算保护（日上限 $2、月度保留 $2）。（当时）研究/回填/dry run 不在旧生产 workspace 执行；2026-11-09 迁移后生产与实验共用同一 Modal workspace，隔离风险见安全加固文档第 7 节。
 
 **收盘后统一生产（本地实现 / 未部署）**：[`2026-11-11 实施交接`](07-code-review/2026-11-11-postclose-production-remediation-handoff.md)规定 18:00 用 T 数据更新 T NAV、重训并发布下一交易日榜单，23:00 当晚只读预警，23:15 通过同一入口恢复，次日 07:00 最终只读核验；同时拆分网站语义 identity、取消程序内 USD 阻断并统一公开榜单与账户排名。实现、测试和剩余外部门见 [`postclose implementation report`](07-code-review/2026-11-11-postclose-implementation-report.md)。
+
+**收盘后实现独立验收整改（本地完成 / 未部署）**：[`2026-11-11 整改清单`](07-code-review/2026-11-11-postclose-independent-review-remediation.md)记录 PR01–PR06：真实 replay core 参数错误、实际训练 YAML 漏哈希、坏 receipt 可误 PASS、23:15 timeout 不足、retention 未绑定真实 reachability，以及测试/证据缺口。本地修复与先失败后通过证据见实施报告；Codex 复验通过前禁止部署或推送该候选。
 
 **历史记录（已被 2026-11-11 的 06:00 overlay 调度取代）— T 日收盘后发布**：[`2026-11-09 调度`](07-code-review/2026-11-09-evening-publication-schedule.md)记录当时的 18:00 主发、19:00 重试和 07:00 盘前补发。其业务日期合同仍是新方案的重要依据，但当时 App、provider 和 schedule 不代表当前部署。
 

@@ -223,6 +223,8 @@ def test_publication_recovers_lost_response_and_does_not_push_twice(tmp_path, mo
     monkeypatch.setattr(module, "Path", lambda value: tmp_path if value == "/simulation" else Path(value))
     monkeypatch.setattr("research_identity.verify_source_manifest", lambda *_args: "a" * 64)
     monkeypatch.setattr(module.simulation, "commit", lambda: None)
+    import hashlib
+
     results = []
     for market, profile in CANONICAL_PROFILES_BY_MARKET.items():
         raw, _ = example_series(market)
@@ -237,19 +239,26 @@ def test_publication_recovers_lost_response_and_does_not_push_twice(tmp_path, mo
         )
         raw["fit_receipts"][0]["profile"] = profile
         raw["fit_receipts"][0]["training_contract"]["horizon"] = identity["horizon"]
-        results.append(
-            {
-                "status": "COMPLETED",
-                "market": market,
-                "source_sha256": "a" * 64,
-                "website_semantic_sha256": raw["website_semantic_sha256"],
-                "account_contract_sha256": raw["account_contract_sha256"],
-                "semantic_manifest": website_semantic_manifest(),
-                "account_contract": account_contract_manifest(account_contract_for_market(market)),
-                "asset_digest": "sha256:" + "b" * 64,
-                "series": raw,
-            }
-        )
+        cache_sha = hashlib.sha256(("cache-" + market).encode()).hexdigest()
+        result_dir = tmp_path / cache_sha / ("b" * 64) / market / "full"
+        result_dir.mkdir(parents=True)
+        final_state = b'{"state": "fixed"}\n'
+        (result_dir / "final_state.json").write_bytes(final_state)
+        result = {
+            "status": "COMPLETED",
+            "market": market,
+            "source_sha256": "a" * 64,
+            "website_semantic_sha256": raw["website_semantic_sha256"],
+            "account_contract_sha256": raw["account_contract_sha256"],
+            "semantic_manifest": website_semantic_manifest(),
+            "account_contract": account_contract_manifest(account_contract_for_market(market)),
+            "asset_digest": "sha256:" + "b" * 64,
+            "cache_sha256": cache_sha,
+            "ledger_file_sha256": {"final_state.json": hashlib.sha256(final_state).hexdigest()},
+            "series": raw,
+        }
+        (result_dir / "result.json").write_text(json.dumps(result, indent=2, allow_nan=False) + "\n")
+        results.append(result)
     published = {
         f"quant/data/signals/{market}_website_performance.json": json.dumps({"latest_date": previous_date})
         for market in CANONICAL_PROFILES_BY_MARKET
@@ -888,7 +897,7 @@ def test_archive_asset_skips_smoke_and_reaches_workers_without_local_path(monkey
     monkeypatch.setattr(module, "data_volume_readonly", types.SimpleNamespace(reload=lambda: None))
     monkeypatch.setattr(module, "simulation", types.SimpleNamespace(reload=lambda: None))
     monkeypatch.setattr(module, "latest_asset", lambda expected_end=None: archive_asset)
-    monkeypatch.setattr(module, "already_published", lambda *args: None)
+    monkeypatch.setattr(module, "checked_publication_receipt", lambda **kwargs: None)
     monkeypatch.setattr(module, "_incremental_prior", lambda *args, **kwargs: {"previous": "2026-11-09"})
     monkeypatch.setattr(
         module,
@@ -954,7 +963,7 @@ def test_missing_incremental_prefix_uses_smoke_and_full_workers(monkeypatch):
     monkeypatch.setattr(module, "data_volume_readonly", types.SimpleNamespace(reload=lambda: None))
     monkeypatch.setattr(module, "simulation", types.SimpleNamespace(reload=lambda: None))
     monkeypatch.setattr(module, "latest_asset", lambda expected_end=None: asset)
-    monkeypatch.setattr(module, "already_published", lambda *args: None)
+    monkeypatch.setattr(module, "checked_publication_receipt", lambda **kwargs: None)
     monkeypatch.setattr(module, "_incremental_prior", lambda *args, **kwargs: None)
     full_calls = {"remote": [], "map": []}
 
@@ -1028,3 +1037,213 @@ def test_legacy_website_series_remains_readable_but_cannot_seed_incremental():
     raw["identity_schema_version"] = 2
     with pytest.raises(ValueError, match="identity missing"):
         validate_website_series(raw, market="csi300")
+
+
+def _core_job(tmp_path, monkeypatch, *, required_replay_mode=None):
+    import sys
+
+    regime = Path(__file__).resolve().parents[1] / "code/research/regime_reselection"
+    if str(regime) not in sys.path:
+        sys.path.insert(0, str(regime))
+    import october_backfill_plan
+    import provider_asset
+    import qlib_runtime
+    import website_replay_core as core
+    from research_identity import source_manifest, website_cache_key
+
+    provider = tmp_path / "provider"
+    (provider / "calendars").mkdir(parents=True)
+    calendar = ["2026-09-30", "2026-11-06"]
+    (provider / "calendars/day.txt").write_text("\n".join(calendar) + "\n")
+    monkeypatch.setattr(provider_asset, "download_provider", lambda asset: provider)
+    monkeypatch.setattr(qlib_runtime, "cn_trading_calendar", lambda: calendar)
+    monkeypatch.setattr(
+        october_backfill_plan,
+        "fit_blocks",
+        lambda calendar, start, end: [{"fit_asof": "2026-09-30", "signal_end": "2026-11-06"}],
+    )
+    semantic = website_semantic_manifest()
+    account = account_contract_manifest(account_contract_for_market("csi300"))
+    cache_sha = website_cache_key(semantic["sha256"], account["sha256"])
+    asset = {"digest": "sha256:" + "b" * 64, "source": "overlay", "calendar_end": "2026-11-06"}
+    job = {
+        "asset": asset,
+        "source_manifest": source_manifest("training"),
+        "semantic_manifest": semantic,
+        "account_contract": account,
+        "market": "csi300",
+        "mode": "full",
+    }
+    if required_replay_mode is not None:
+        job["required_replay_mode"] = required_replay_mode
+    root = tmp_path / cache_sha / asset["digest"].split(":")[1]
+    root.mkdir(parents=True)
+    (root / "smoke.json").write_text(
+        json.dumps(
+            {
+                "status": "SMOKE_PASS",
+                "website_semantic_sha256": semantic["sha256"],
+                "account_contract_sha256": account["sha256"],
+                "asset_digest": asset["digest"],
+                "prefix_prediction_exact": True,
+            }
+        )
+    )
+    return core, job, cache_sha, semantic["sha256"], account["sha256"], root
+
+
+def test_build_market_impl_passes_cache_identity_to_the_real_incremental_probe(tmp_path, monkeypatch):
+    core, job, cache_sha, semantic_sha, account_sha, _root = _core_job(tmp_path, monkeypatch)
+    captured = {}
+
+    def fake_prior(cache, asset, market, end, calendar, *, semantic_sha, account_sha, simulation_root):
+        captured.update(
+            cache=cache,
+            asset=asset,
+            market=market,
+            end=end,
+            semantic_sha=semantic_sha,
+            account_sha=account_sha,
+            simulation_root=simulation_root,
+        )
+        raise RuntimeError("STOP_PR01")
+
+    monkeypatch.setattr(core, "_incremental_prior", fake_prior)
+    with pytest.raises(RuntimeError, match="STOP_PR01"):
+        core._build_market_impl(job, simulation_root=tmp_path)
+    assert captured["cache"] == cache_sha
+    assert captured["semantic_sha"] == semantic_sha
+    assert captured["account_sha"] == account_sha
+    assert captured["market"] == "csi300"
+    assert captured["end"] == "2026-11-06"
+    assert captured["simulation_root"] == tmp_path
+
+
+def test_build_market_impl_reaches_full_branch_when_no_ancestor(tmp_path, monkeypatch):
+    core, job, cache_sha, semantic_sha, account_sha, _root = _core_job(tmp_path, monkeypatch)
+    captured = {}
+
+    def fake_prior(cache, asset, market, end, calendar, *, semantic_sha, account_sha, simulation_root):
+        captured.update(cache=cache, semantic_sha=semantic_sha, account_sha=account_sha)
+        return None
+
+    import qlib
+
+    monkeypatch.setattr(core, "_incremental_prior", fake_prior)
+    monkeypatch.setattr(qlib, "init", lambda **kwargs: (_ for _ in ()).throw(RuntimeError("FULL_REACHED")))
+    with pytest.raises(RuntimeError, match="FULL_REACHED"):
+        core._build_market_impl(job, simulation_root=tmp_path)
+    assert captured == {"cache": cache_sha, "semantic_sha": semantic_sha, "account_sha": account_sha}
+
+
+def test_build_market_impl_reaches_incremental_branch_when_ancestor_exists(tmp_path, monkeypatch):
+    core, job, cache_sha, semantic_sha, account_sha, _root = _core_job(tmp_path, monkeypatch)
+
+    def fake_prior(cache, asset, market, end, calendar, *, semantic_sha, account_sha, simulation_root):
+        return {
+            "previous": "2026-11-05",
+            "signal_path": tmp_path / "prior.parquet",
+            "payload": {"series": {"fit_receipts": []}},
+            "asset_digest": "sha256:" + "c" * 64,
+            "final_state": {},
+            "result_dir": tmp_path,
+            "new_fit_required": False,
+            "fit_asof": "2026-09-30",
+        }
+
+    import pandas as pd
+
+    monkeypatch.setattr(core, "_incremental_prior", fake_prior)
+    monkeypatch.setattr(
+        pd,
+        "read_parquet",
+        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("INCREMENTAL_REACHED")),
+    )
+    with pytest.raises(RuntimeError, match="INCREMENTAL_REACHED"):
+        core._build_market_impl(job, simulation_root=tmp_path)
+
+
+def test_incremental_worker_without_ancestor_fails_closed_at_real_call_site(tmp_path, monkeypatch):
+    core, job, *_ = _core_job(tmp_path, monkeypatch, required_replay_mode="INCREMENTAL")
+
+    def fake_prior(cache, asset, market, end, calendar, *, semantic_sha, account_sha, simulation_root):
+        return None
+
+    monkeypatch.setattr(core, "_incremental_prior", fake_prior)
+    with pytest.raises(ValueError, match="incremental worker requires"):
+        core._build_market_impl(job, simulation_root=tmp_path)
+
+
+def test_daily_short_circuit_rejects_invalid_receipt_before_replay(monkeypatch):
+    import types
+
+    module = _website_module()
+    source = __import__("research_identity").source_manifest("training")["sha256"]
+    asset = {
+        "digest": "sha256:" + "b" * 64,
+        "calendar": ["2026-11-09", "2026-11-10"],
+        "calendar_end": "2026-11-10",
+    }
+    monkeypatch.setattr(module, "data_volume_readonly", types.SimpleNamespace(reload=lambda: None))
+    monkeypatch.setattr(module, "simulation", types.SimpleNamespace(reload=lambda: None))
+    monkeypatch.setattr(module, "latest_asset", lambda expected_end=None: asset)
+    monkeypatch.setattr(
+        module,
+        "checked_publication_receipt",
+        lambda **kwargs: (_ for _ in ()).throw(ValueError("forged receipt")),
+    )
+    with pytest.raises(ValueError, match="forged receipt"):
+        module.daily.local(expected_source_sha256=source, expected_provider_end="2026-11-10")
+
+
+def test_status_reports_invalid_receipt_instead_of_published(monkeypatch):
+    import types
+
+    module = _website_module()
+    monkeypatch.setattr(module, "simulation", types.SimpleNamespace(reload=lambda: None))
+    monkeypatch.setattr(
+        module,
+        "checked_publication_receipt",
+        lambda **kwargs: (_ for _ in ()).throw(ValueError("forged receipt")),
+    )
+    result = module.status.local("a" * 64, "sha256:" + "b" * 64, "2026-11-10")
+    assert result["status"] == "INVALID"
+    assert "forged receipt" in result["reason"]
+
+
+def test_fixed_fixture_old_filtered_and_new_raw_selection_keep_account_path_exact():
+    import hashlib
+
+    ranking_full = [("SH600000", 0.9), ("SH600001", 0.8), ("SH600002", 0.7)]
+    old_public = [row for row in ranking_full if row[0] != "SH600000"][:2]
+    new_public = ranking_full[:2]
+    assert [row[0] for row in old_public] != [row[0] for row in new_public]
+
+    def run():
+        portfolio = PaperPortfolio(topk=2, nd=1)
+        portfolio.plan_signal("2026-09-30", "2026-10-08", ranking_full)
+        report = portfolio.execute_pending(
+            "2026-10-08",
+            {"SH600000": 10.0, "SH600001": 20.0, "SH600002": 30.0},
+            factors={"SH600000": 1.0, "SH600001": 1.0, "SH600002": 1.0},
+            close_prices={"SH600000": 10.5, "SH600001": 20.5, "SH600002": 30.5},
+            strict_valuation=True,
+        )
+        state = portfolio.to_dict()
+        return {
+            "ranking_sha256": hashlib.sha256(json.dumps(ranking_full).encode()).hexdigest(),
+            "trades": report["executed_buy"],
+            "fees": report["cost"],
+            "holdings": report["position_marks"],
+            "cash": report["cash"],
+            "nav": report["portfolio_value_close"],
+            "state": state,
+        }
+
+    old_account = run()
+    new_account = run()
+    assert old_account == new_account
+    assert old_account["trades"] and old_account["fees"] > 0
+    assert old_account["cash"] >= 0 and old_account["nav"] > 0
+    assert [row[0] for row in new_public] == ["SH600000", "SH600001"]
+    assert [row[0] for row in old_public] == ["SH600001", "SH600002"]

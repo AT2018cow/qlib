@@ -26,6 +26,7 @@ from data_ingest.store import (
     latest_snapshot,
     load_snapshot,
     materialize,
+    collect_retention_references,
     prune_archives,
     publish_archive,
     seal_directory_snapshot,
@@ -98,6 +99,8 @@ def build_provider_archive(
     max_baostock_symbols: int = 300,
     failure_record_fn: Callable[[str, Exception, dict, dict], None] | None = None,
     sampler=None,
+    journal_root: str | Path | None = None,
+    simulation_root: str | Path | None = None,
 ) -> dict:
     """Publish the PASS archive for ``trade_date`` or return an existing one.
 
@@ -243,7 +246,12 @@ def build_provider_archive(
             local_calendar=calendar_path,
             commit_fn=commit_fn,
         )
-        prune = prune_archives(root, keep=30, dry_run=True)
+        references = collect_retention_references(
+            root,
+            journal_root=journal_root,
+            simulation_root=simulation_root,
+        )
+        prune = prune_archives(root, keep=30, dry_run=True, references=references)
         print(
             f"[overlay] {trade_date} PASS archive={receipt['archive']['sha256'][:16]} "
             f"size={receipt['archive']['size'] // 1024**2}MiB rows={manifest['overlay']['row_symbols']} "

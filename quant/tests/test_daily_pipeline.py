@@ -77,12 +77,14 @@ def _committed_journal(tmp_path: Path, signal_date: str) -> None:
 
 def _fixed_postclose(monkeypatch, session_date="2026-11-10", usage_date="2026-11-11"):
     import daily_pipeline
+    import modal_qlib_cn_a10g as production
 
     monkeypatch.setattr(
         daily_pipeline,
         "resolve_postclose_dates",
         lambda *args, **kwargs: (session_date, usage_date),
     )
+    monkeypatch.setattr(production, "_trading_days", lambda: [session_date, usage_date])
     return session_date, usage_date
 
 
@@ -286,6 +288,7 @@ def test_next_morning_check_uses_the_same_readonly_verifier(tmp_path, monkeypatc
         "resolve_check_dates",
         lambda *args, **kwargs: ("2026-11-10", "2026-11-11"),
     )
+    monkeypatch.setattr(production, "_trading_days", lambda: ["2026-11-10", "2026-11-11"])
     marker = tmp_path / "postclose_status" / "2026-11-11.json"
     marker.parent.mkdir(parents=True)
     marker.write_text(json.dumps({"schema_version": 2, "status": "COMPLETED"}))
@@ -536,3 +539,100 @@ def test_asset_digest_normalizes_bare_and_prefixed_forms():
     assert production._asset_digest(bare) == "sha256:" + bare
     assert production._asset_digest("sha256:" + bare) == "sha256:" + bare
     assert production._asset_digest(None) == "sha256:"
+
+
+def test_postclose_marker_rejects_semantic_account_or_latest_mismatch(tmp_path, monkeypatch):
+    import modal_qlib_cn_a10g as production
+    import data_ingest.store as store
+
+    session_date, usage_date = "2026-11-10", "2026-11-11"
+    _committed_journal(tmp_path, usage_date)
+    monkeypatch.setattr(production, "VOL_ROOT", tmp_path)
+    monkeypatch.setattr(production, "vol", SimpleNamespace(reload=lambda: None, commit=lambda: None))
+    snapshot = SimpleNamespace(digest="a" * 64, calendar_end=session_date)
+    monkeypatch.setattr(store, "load_snapshot", lambda root, date: snapshot)
+    monkeypatch.setattr(production, "_code_source_sha", lambda: "c" * 64)
+    accounts = {market: "f" * 64 for market in ("csi300", "csi500", "csi1000")}
+    marker = {
+        "schema_version": 2,
+        "status": "COMPLETED",
+        "session_date": session_date,
+        "usage_date": usage_date,
+        "provider_calendar_end": session_date,
+        "website_latest_date": session_date,
+        "journal_signal_date": usage_date,
+        "provider": {"digest": "a" * 64, "calendar_end": session_date},
+        "release_source_sha256": "c" * 64,
+        "code_source_sha256": "c" * 64,
+        "website_semantic_sha256": "e" * 64,
+        "account_contract_sha256": accounts,
+    }
+    import json
+    from data_ingest.manifest import canonical_json, sha256_text
+
+    record = (
+        __import__("publication_journal")
+        .PublicationJournal(__import__("publication_journal").FilesystemStorage(tmp_path))
+        .load(usage_date)
+    )
+    marker["signal"] = {"record_sha256": sha256_text(canonical_json(record))}
+
+    status_result = {
+        "status": "PUBLISHED",
+        "source_sha256": "c" * 64,
+        "website_semantic_sha256": "e" * 64,
+        "account_contract_sha256": accounts,
+        "asset_digest": "sha256:" + "a" * 64,
+        "latest_date": session_date,
+    }
+
+    def from_name(_app, name):
+        assert name == "status"
+        return SimpleNamespace(remote=lambda *args: dict(status_result))
+
+    monkeypatch.setattr(production, "modal", SimpleNamespace(Function=SimpleNamespace(from_name=from_name)))
+    valid, reason = production._postclose_marker_valid(marker, session_date, usage_date, verify_github=False)
+    assert valid, reason
+    for field, value in (
+        ("website_semantic_sha256", "9" * 64),
+        ("account_contract_sha256", {**accounts, "csi300": "9" * 64}),
+        ("latest_date", "2026-11-09"),
+    ):
+        changed = dict(status_result)
+        changed[field] = value
+        monkeypatch.setattr(
+            production,
+            "modal",
+            SimpleNamespace(
+                Function=SimpleNamespace(
+                    from_name=lambda _app, _name, changed=changed: SimpleNamespace(remote=lambda *args: dict(changed))
+                )
+            ),
+        )
+        valid, reason = production._postclose_marker_valid(marker, session_date, usage_date, verify_github=False)
+        assert not valid, field
+        expected = {
+            "website_semantic_sha256": "semantic",
+            "account_contract_sha256": "account",
+            "latest_date": "latest",
+        }[field]
+        assert expected in reason
+
+
+def test_evening_retry_timeout_covers_queueing_plus_one_full_recovery():
+    from daily_pipeline import BACKUP_TIMEOUT_SECONDS, MAIN_TIMEOUT_SECONDS
+
+    tree = ast.parse((ROOT / "quant/code/production/modal_qlib_cn_a10g.py").read_text())
+    node = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "daily_evening_retry")
+    decorator = next(
+        d
+        for d in node.decorator_list
+        if isinstance(d, ast.Call) and isinstance(d.func, ast.Attribute) and d.func.attr == "function"
+    )
+    timeout = next(kw.value for kw in decorator.keywords if kw.arg == "timeout")
+    value = eval(
+        compile(ast.Expression(timeout), str(ROOT), "eval"),
+        {"BACKUP_TIMEOUT_SECONDS": BACKUP_TIMEOUT_SECONDS},
+    )
+    assert value == BACKUP_TIMEOUT_SECONDS
+    assert BACKUP_TIMEOUT_SECONDS >= MAIN_TIMEOUT_SECONDS + 30 * 60

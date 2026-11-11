@@ -462,7 +462,16 @@ def _build_market_impl(
         _validate_required_replay_mode(job, cached.get("replay_mode"), cached=True)
         return cached
     incremental = (
-        _incremental_prior(source_sha, asset, market, end, calendar, simulation_root=simulation_root)
+        _incremental_prior(
+            cache_sha,
+            asset,
+            market,
+            end,
+            calendar,
+            semantic_sha=semantic_sha,
+            account_sha=account_sha,
+            simulation_root=simulation_root,
+        )
         if mode == "full"
         else None
     )
@@ -779,6 +788,7 @@ def _build_market_impl(
 
 
 def publish_results(results, source, asset, *, token, simulation_root=Path("/simulation"), commit_fn=None):
+    import hashlib
     import json
     import requests
     from research_identity import (
@@ -804,6 +814,7 @@ def publish_results(results, source, asset, *, token, simulation_root=Path("/sim
     if len({r["series"]["latest_date"] for r in results}) != 1:
         raise ValueError("website markets have different data dates")
     files = {}
+    market_bindings = {}
     for r in results:
         if r["status"] != "COMPLETED" or r["source_sha256"] != source_sha or r["asset_digest"] != asset["digest"]:
             raise ValueError("website publication source/provider mismatch")
@@ -831,6 +842,20 @@ def publish_results(results, source, asset, *, token, simulation_root=Path("/sim
         files[f"quant/data/website_simulation/{source_sha}/{asset['digest'].split(':')[1]}/{r['market']}.json"] = (
             content
         )
+        result_dir = Path(simulation_root) / r["cache_sha256"] / asset["digest"].split(":")[1] / r["market"] / "full"
+        result_path = result_dir / "result.json"
+        ledger = r.get("ledger_file_sha256")
+        if not result_path.is_file() or not isinstance(ledger, dict) or not ledger:
+            raise ValueError("website immutable result/ledger is missing before receipt creation")
+        result_bytes = result_path.read_bytes()
+        series_bytes = content.encode()
+        market_bindings[r["market"]] = {
+            "cache_sha256": r["cache_sha256"],
+            "series_sha256": hashlib.sha256(series_bytes).hexdigest(),
+            "result_sha256": hashlib.sha256(result_bytes).hexdigest(),
+            "ledger_file_sha256": dict(ledger),
+            "final_state_sha256": ledger.get("final_state.json"),
+        }
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
     missing = {}
     for path, content in files.items():
@@ -863,22 +888,33 @@ def publish_results(results, source, asset, *, token, simulation_root=Path("/sim
                     raise ValueError("refusing to replace newer website data with an older run")
                 missing[path] = content
     receipt_path = Path(simulation_root) / source_sha / asset["digest"].split(":")[1] / "publication.json"
+    receipt_body = {
+        "schema_version": 2,
+        "status": "PUBLISHED",
+        "source_sha256": source_sha,
+        "website_semantic_sha256": semantic_sha,
+        "account_contract_sha256": account_shas,
+        "asset_digest": asset["digest"],
+        "latest_date": results[0]["series"]["latest_date"],
+        "files": len(files),
+        "markets": market_bindings,
+    }
     if not missing:
-        if not receipt_path.exists():
+        if receipt_path.exists():
+            from website_budget import checked_publication_receipt
+
+            checked_publication_receipt(
+                simulation_root=simulation_root,
+                expected_source_sha256=source_sha,
+                expected_semantic_sha256=semantic_sha,
+                expected_accounts=account_shas,
+                expected_asset_digest=asset["digest"],
+                expected_latest_date=results[0]["series"]["latest_date"],
+            )
+        else:
             write_immutable(
                 receipt_path,
-                json.dumps(
-                    {
-                        "status": "RECOVERED_AFTER_PUBLICATION",
-                        "source_sha256": source_sha,
-                        "website_semantic_sha256": semantic_sha,
-                        "account_contract_sha256": account_shas,
-                        "asset_digest": asset["digest"],
-                        "latest_date": results[0]["series"]["latest_date"],
-                        "files": len(files),
-                    },
-                    indent=2,
-                ),
+                json.dumps({**receipt_body, "status": "RECOVERED_AFTER_PUBLICATION"}, indent=2) + "\n",
             )
             commit_fn()
         return {"status": "ALREADY_PUBLISHED", "source_sha256": source_sha, "files": len(files)}
@@ -889,16 +925,7 @@ def publish_results(results, source, asset, *, token, simulation_root=Path("/sim
         missing,
         f"chore(nav): update three October 8 simulated accounts through {results[0]['series']['latest_date']}",
     )
-    receipt = {
-        "status": "PUBLISHED",
-        "commit": commit,
-        "source_sha256": source_sha,
-        "website_semantic_sha256": semantic_sha,
-        "account_contract_sha256": account_shas,
-        "asset_digest": asset["digest"],
-        "latest_date": results[0]["series"]["latest_date"],
-        "files": len(files),
-    }
+    receipt = {**receipt_body, "commit": commit}
     write_immutable(receipt_path, json.dumps(receipt, indent=2) + "\n")
     commit_fn()
     return receipt

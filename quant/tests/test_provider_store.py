@@ -390,3 +390,157 @@ def test_production_code_identity_never_falls_back_to_unavailable(monkeypatch):
     with pytest.raises(ValueError, match="manifest file missing"):
         production._code_source_sha()
     assert production._CODE_SOURCE_SHA is None
+
+
+def _copy_archive(tmp_path, root, day):
+    provider = make_provider(tmp_path / f"p-{day}", date=day)
+    publish(tmp_path / day, provider, date=day)
+    shutil.copytree(tmp_path / day / "vol" / "archives" / day, root / "archives" / day)
+
+
+def test_retention_plan_collects_real_anchor_journal_marker_website_and_recovery_refs(tmp_path):
+    from data_ingest.store import collect_retention_references, retention_plan
+
+    root = tmp_path / "overlay"
+    root.mkdir()
+    days = (
+        "2026-09-30",
+        "2026-10-08",
+        "2026-10-09",
+        "2026-10-12",
+        "2026-10-13",
+        "2026-10-30",
+        "2026-10-31",
+        "2026-11-09",
+        "2026-12-31",
+    )
+    for day in days:
+        _copy_archive(tmp_path, root, day)
+    # Frozen legacy directory anchor.
+    anchor = root / "2026-09-30"
+    anchor.mkdir(exist_ok=True)
+    (anchor / "manifest.json").write_text(json.dumps({"status": "PASS"}))
+
+    def archive_digest(day):
+        return json.loads((root / "archives" / day / "receipt.json").read_text())["archive"]["sha256"]
+
+    volume = tmp_path / "volume"
+    journal_dir = volume / "publication_journal" / "2026-10-12"
+    journal_dir.mkdir(parents=True)
+    (journal_dir / "record.json").write_text(
+        json.dumps(
+            {
+                "signal_date": "2026-10-12",
+                "stage": "GITHUB_PUBLISHED",
+                "publication_context": {"signal_data_date": "2026-10-09"},
+            }
+        )
+    )
+    marker_dir = volume / "postclose_status"
+    marker_dir.mkdir(parents=True)
+    (marker_dir / "2026-10-12.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "status": "FAILED",
+                "session_date": "2026-10-09",
+                "usage_date": "2026-10-12",
+                "provider": {"digest": archive_digest("2026-10-09")},
+            }
+        )
+    )
+    (marker_dir / "2026-10-13.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "status": "COMPLETED",
+                "session_date": "2026-10-08",
+                "usage_date": "2026-10-13",
+            }
+        )
+    )
+
+    simulation = tmp_path / "simulation"
+    result_dir = simulation / "cache" / ("b" * 64) / "csi300" / "full"
+    result_dir.mkdir(parents=True)
+    (result_dir / "result.json").write_text(
+        json.dumps(
+            {
+                "status": "COMPLETED",
+                "provider_calendar_end": "2026-10-08",
+                "asset_digest": "sha256:" + archive_digest("2026-10-08"),
+            }
+        )
+    )
+    recovery = simulation / "source" / ("b" * 64)
+    recovery.mkdir(parents=True)
+    (recovery / "publication.json").write_text(
+        json.dumps(
+            {
+                "status": "RECOVERED_AFTER_PUBLICATION",
+                "latest_date": "2026-10-12",
+                "asset_digest": "sha256:" + archive_digest("2026-10-12"),
+            }
+        )
+    )
+
+    references = collect_retention_references(root, journal_root=volume, simulation_root=simulation)
+    plan = retention_plan(root, keep=2, references=references, generated_at="2026-11-11T00:00:00Z")
+    assert plan["unresolved"] == [], plan["unresolved"]
+    reasons = {item["date"]: item["reason"] for item in plan["keep"]}
+    assert reasons["2026-09-30"] == "frozen_anchor"
+    assert reasons["2026-10-08"] == "referenced_by_journal_website_or_recovery"
+    assert reasons["2026-10-09"] == "incomplete_publication"
+    assert reasons["2026-10-12"] == "referenced_by_journal_website_or_recovery"
+    assert reasons["2026-10-31"] == "month_end_checkpoint"
+    assert reasons["2026-12-31"] == "latest_pass"
+    assert {item["date"] for item in plan["remove"]} == {"2026-10-30", "2026-10-13"}
+    assert plan["unresolved"] == []
+    assert (root / "archives" / "2026-10-30" / "receipt.json").is_file()
+
+
+def test_retention_plan_keeps_everything_when_a_reference_is_corrupt(tmp_path):
+    from data_ingest.store import collect_retention_references, retention_plan
+
+    root = tmp_path / "overlay"
+    root.mkdir()
+    for day in ("2026-10-08", "2026-10-09", "2026-10-31"):
+        _copy_archive(tmp_path, root, day)
+    volume = tmp_path / "volume"
+    marker_dir = volume / "postclose_status"
+    marker_dir.mkdir(parents=True)
+    (marker_dir / "2026-10-09.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "status": "FAILED",
+                "session_date": "2026-10-09",
+                "usage_date": "2026-10-10",
+                "provider": {"digest": "f" * 64},
+            }
+        )
+    )
+    references = collect_retention_references(root, journal_root=volume)
+    plan = retention_plan(root, keep=1, references=references)
+    assert plan["unresolved"]
+    assert plan["remove"] == []
+    assert plan["counts"]["remove"] == 0
+
+
+def test_provider_build_natural_dry_run_uses_collected_reachability():
+    import inspect
+    import provider_build
+
+    source = inspect.getsource(provider_build.build_provider_archive)
+    assert "collect_retention_references(" in source
+    assert "references=references" in source
+    assert "prune_archives(root, keep=30, dry_run=True, references=references)" in source
+    import ast
+
+    modal_path = Path(__file__).resolve().parents[1] / "code/production/modal_qlib_cn_a10g.py"
+    modal_source = modal_path.read_text()
+    tree = ast.parse(modal_source)
+    node = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "ensure_overlay")
+    overlay = ast.get_source_segment(modal_source, node)
+    assert "journal_root=VOL_ROOT" in overlay
+    assert 'simulation_root=Path("/simulation")' in overlay

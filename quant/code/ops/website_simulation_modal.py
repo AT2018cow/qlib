@@ -38,7 +38,7 @@ from website_replay_core import (
     publish_results as _core_publish_results,
 )
 from daily_pipeline import WEBSITE_STAGE_TIMEOUT_SECONDS, WEBSITE_WORKER_TIMEOUT_SECONDS
-from website_budget import already_published, billing_observation
+from website_budget import billing_observation, checked_publication_receipt
 
 app = modal.App(WEBSITE_APP_NAME, image=image)
 simulation = modal.Volume.from_name(WEBSITE_SIM_VOLUME, create_if_missing=True)
@@ -228,9 +228,10 @@ def billing_status():
     max_containers=1,
     retries=0,
 )
-def status(expected_source_sha256: str, asset_digest: str = ""):
-    """Read-only publication receipt lookup for the daily coordinator."""
-    from website_budget import already_published
+def status(expected_source_sha256: str, asset_digest: str = "", expected_latest_date: str = ""):
+    """Read-only validated publication receipt lookup for the daily coordinator."""
+    from research_identity import account_contract_manifest, website_semantic_manifest
+    from website_simulation import account_contract_for_market
 
     simulation.reload()
     if not asset_digest:
@@ -240,7 +241,27 @@ def status(expected_source_sha256: str, asset_digest: str = ""):
             "asset_digest": asset_digest,
             "reason": "no asset digest supplied",
         }
-    receipt = already_published("/simulation", expected_source_sha256, asset_digest)
+    semantic = website_semantic_manifest()
+    accounts = {
+        market: account_contract_manifest(account_contract_for_market(market))["sha256"]
+        for market in ("csi300", "csi500", "csi1000")
+    }
+    try:
+        receipt = checked_publication_receipt(
+            simulation_root="/simulation",
+            expected_source_sha256=expected_source_sha256,
+            expected_semantic_sha256=semantic["sha256"],
+            expected_accounts=accounts,
+            expected_asset_digest=asset_digest,
+            expected_latest_date=expected_latest_date or None,
+        )
+    except ValueError as exc:
+        return {
+            "status": "INVALID",
+            "source_sha256": expected_source_sha256,
+            "asset_digest": asset_digest,
+            "reason": str(exc),
+        }
     if receipt is None:
         return {
             "status": "MISSING",
@@ -250,9 +271,13 @@ def status(expected_source_sha256: str, asset_digest: str = ""):
     return {
         "status": receipt.get("status"),
         "source_sha256": receipt.get("source_sha256"),
+        "website_semantic_sha256": receipt.get("website_semantic_sha256"),
+        "account_contract_sha256": receipt.get("account_contract_sha256"),
         "asset_digest": receipt.get("asset_digest"),
+        "latest_date": receipt.get("latest_date"),
         "commit": receipt.get("commit"),
         "files": receipt.get("files"),
+        "markets": receipt.get("markets"),
     }
 
 
@@ -363,8 +388,18 @@ def daily(expected_source_sha256: str, expected_provider_end: str = ""):
     cache_keys = {market: website_cache_key(semantic["sha256"], accounts[market]["sha256"]) for market in accounts}
     data_volume_readonly.reload()
     asset = latest_asset(expected_provider_end or None)
+    markets = ("csi300", "csi500", "csi1000")
+    calendar = _provider_calendar(asset)
+    expected_latest = calendar[-1] if calendar else asset.get("calendar_end")
     simulation.reload()
-    receipt = already_published("/simulation", source["sha256"], asset["digest"])
+    receipt = checked_publication_receipt(
+        simulation_root="/simulation",
+        expected_source_sha256=source["sha256"],
+        expected_semantic_sha256=semantic["sha256"],
+        expected_accounts={market: accounts[market]["sha256"] for market in markets},
+        expected_asset_digest=asset["digest"],
+        expected_latest_date=expected_latest,
+    )
     if receipt is not None:
         print(f"[website] idempotent short-circuit: {source['sha256'][:12]}/{asset['digest'][:19]}", flush=True)
         return {
@@ -374,8 +409,6 @@ def daily(expected_source_sha256: str, expected_provider_end: str = ""):
             "files": receipt.get("files", 12),
             "idempotent_short_circuit": True,
         }
-    markets = ("csi300", "csi500", "csi1000")
-    calendar = _provider_calendar(asset)
     incremental = False
     if calendar:
         try:

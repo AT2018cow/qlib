@@ -39,6 +39,7 @@ import shutil
 import tarfile
 import time
 import uuid
+from datetime import date
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Iterable
@@ -644,6 +645,159 @@ def seal_directory_snapshot(
     )
 
 
+def _day(value):
+    text = str(value or "")[:10]
+    try:
+        return date.fromisoformat(text).isoformat()
+    except ValueError:
+        return None
+
+
+def _digest_hex(value):
+    text = str(value or "")
+    return text.split(":", 1)[1] if text.startswith("sha256:") else text
+
+
+def collect_retention_references(provider_root, *, journal_root=None, simulation_root=None) -> dict:
+    """Collect reachability facts from real provider/journal/marker/website files.
+
+    The collector is read-only.  Corrupt or unknown references are recorded in
+    ``unresolved`` so the planner can keep every archive instead of guessing.
+    """
+    provider_root = Path(provider_root)
+    references = {"frozen_anchor_dates": [], "referenced": [], "incomplete": [], "unresolved": []}
+    seen = set()
+
+    def add(bucket, day, digest=None, source=""):
+        normalized = _day(day)
+        if normalized is None:
+            references["unresolved"].append({"source": source, "date": day, "reason": "invalid_date"})
+            return
+        key = (bucket, normalized, _digest_hex(digest))
+        if key in seen:
+            return
+        seen.add(key)
+        if bucket == "frozen_anchor_dates":
+            references[bucket].append(normalized)
+        else:
+            references[bucket].append({"date": normalized, "digest": _digest_hex(digest) or None, "source": source})
+
+    # Frozen legacy directory anchors.
+    if provider_root.is_dir():
+        for path in sorted(provider_root.iterdir()):
+            if not path.is_dir() or _day(path.name) != path.name:
+                continue
+            manifest = _read_json(path / "manifest.json")
+            if manifest is not None and manifest.get("status") == "PASS":
+                add("frozen_anchor_dates", path.name, source="legacy_directory_anchor")
+
+    # Archive lineage references.
+    archive_root = provider_root / ARCHIVE_DIRNAME
+    if archive_root.is_dir():
+        for directory in sorted(archive_root.iterdir()):
+            if not directory.is_dir() or _day(directory.name) != directory.name:
+                continue
+            receipt = _read_json(directory / RECEIPT_NAME)
+            if receipt is None:
+                references["unresolved"].append(
+                    {"source": "archive_receipt", "date": directory.name, "reason": "unreadable_receipt"}
+                )
+                continue
+            if receipt.get("status") != "PASS":
+                continue
+            base = receipt.get("base") or {}
+            for key in ("date", "calendar_end"):
+                if base.get(key):
+                    add("referenced", base.get(key), base.get("digest") or base.get("archive_sha256"), "archive_base")
+                    break
+            source_directory = receipt.get("source_directory") or {}
+            if source_directory.get("date"):
+                add(
+                    "referenced",
+                    source_directory["date"],
+                    source_directory.get("manifest_sha256"),
+                    "sealed_source_directory",
+                )
+
+    volume = Path(journal_root) if journal_root is not None else None
+    committed = []
+    if volume is not None:
+        journal_base = volume / "publication_journal"
+        if journal_base.is_dir():
+            for record_path in sorted(journal_base.glob("*/record.json")):
+                record = _read_json(record_path)
+                if record is None:
+                    references["unresolved"].append(
+                        {"source": "publication_journal", "date": record_path.parent.name, "reason": "unreadable"}
+                    )
+                    continue
+                context = record.get("publication_context") or {}
+                session = context.get("signal_data_date")
+                usage = record.get("signal_date") or record_path.parent.name
+                if record.get("stage") != "VOLUME_COMMITTED":
+                    add("incomplete", session, source="incomplete_journal")
+                else:
+                    committed.append((str(usage), session))
+        if committed:
+            committed.sort()
+            add("referenced", committed[-1][1], source="latest_committed_journal")
+        for marker_name in ("postclose_status", "preopen_status"):
+            marker_base = volume / marker_name
+            if not marker_base.is_dir():
+                continue
+            completed = []
+            for marker_path in sorted(marker_base.glob("*.json")):
+                marker = _read_json(marker_path)
+                if marker is None:
+                    references["unresolved"].append(
+                        {"source": marker_name, "date": marker_path.stem, "reason": "unreadable_marker"}
+                    )
+                    continue
+                session = marker.get("session_date") or marker.get("data_asof")
+                digest = (marker.get("provider") or {}).get("digest")
+                usage = marker.get("usage_date") or marker.get("signal_date") or marker_path.stem
+                if marker.get("status") == "COMPLETED":
+                    completed.append((str(usage), session, digest))
+                else:
+                    add("incomplete", session, digest, marker_name)
+            if completed:
+                completed.sort()
+                add("referenced", completed[-1][1], completed[-1][2], f"latest_{marker_name}")
+
+    simulation = Path(simulation_root) if simulation_root is not None else None
+    if simulation is not None and simulation.is_dir():
+        results = []
+        for result_path in sorted(simulation.glob("*/*/*/full/result.json")):
+            payload = _read_json(result_path)
+            if payload is None:
+                references["unresolved"].append(
+                    {"source": "website_result", "date": result_path.parents[2].name, "reason": "unreadable"}
+                )
+                continue
+            if payload.get("status") != "COMPLETED":
+                continue
+            session = payload.get("provider_calendar_end")
+            if _day(session) is None:
+                references["unresolved"].append(
+                    {"source": "website_result", "date": session, "reason": "invalid_session"}
+                )
+                continue
+            results.append((session, payload.get("asset_digest")))
+        if results:
+            results.sort()
+            add("referenced", results[-1][0], results[-1][1], "website_predecessor")
+        for receipt_path in sorted(simulation.glob("*/*/publication.json")):
+            payload = _read_json(receipt_path)
+            if payload is None:
+                references["unresolved"].append(
+                    {"source": "website_receipt", "date": receipt_path.parent.name, "reason": "unreadable"}
+                )
+                continue
+            if payload.get("status") == "RECOVERED_AFTER_PUBLICATION":
+                add("referenced", payload.get("latest_date"), payload.get("asset_digest"), "recovery_receipt")
+    return references
+
+
 def _month_end_checkpoint(day: str) -> bool:
     return day[5:] in (
         "01-31",
@@ -669,6 +823,7 @@ def retention_plan(
     frozen_anchor_dates: Iterable[str] = (),
     referenced_dates: Iterable[str] = (),
     incomplete_dates: Iterable[str] = (),
+    references: dict | None = None,
     generated_at: str | None = None,
 ) -> dict:
     """Build a reachability-aware archive retention plan; never delete.
@@ -684,6 +839,27 @@ def retention_plan(
     anchors = {str(day)[:10] for day in frozen_anchor_dates}
     referenced = {str(day)[:10] for day in referenced_dates}
     incomplete = {str(day)[:10] for day in incomplete_dates}
+    expected_digests = {}
+    unresolved = []
+    if references is not None:
+        if not isinstance(references, dict):
+            raise ValueError("retention references must be an object")
+        anchors.update(_day(day) for day in references.get("frozen_anchor_dates") or () if _day(day))
+        for bucket, target in (("referenced", referenced), ("incomplete", incomplete)):
+            for item in references.get(bucket) or ():
+                if not isinstance(item, dict):
+                    unresolved.append({"source": bucket, "reason": "invalid_reference"})
+                    continue
+                normalized = _day(item.get("date"))
+                if normalized is None:
+                    unresolved.append(
+                        {"source": item.get("source"), "date": item.get("date"), "reason": "invalid_date"}
+                    )
+                    continue
+                target.add(normalized)
+                if item.get("digest"):
+                    expected_digests[normalized] = _digest_hex(item["digest"])
+        unresolved.extend(references.get("unresolved") or [])
     if keep < 1:
         raise ValueError("retention keep must be positive")
     entries = []
@@ -707,6 +883,11 @@ def retention_plan(
                     "month_end": _month_end_checkpoint(path.name),
                 }
             )
+    entry_by_date = {item["date"]: item for item in entries}
+    for day, digest in expected_digests.items():
+        entry = entry_by_date.get(day)
+        if entry is None or entry.get("digest") != digest:
+            unresolved.append({"source": "reachability", "date": day, "reason": "missing_or_changed_archive"})
     entries.sort(key=lambda item: item["date"], reverse=True)
     latest = entries[0]["date"] if entries else None
     recent = {item["date"] for item in entries[:keep]}
@@ -714,7 +895,9 @@ def retention_plan(
     for item in entries:
         day = item["date"]
         reason = None
-        if day in anchors:
+        if unresolved:
+            reason = "unresolved_reference"
+        elif day in anchors:
             reason = "frozen_anchor"
         elif day == latest:
             reason = "latest_pass"
@@ -739,6 +922,7 @@ def retention_plan(
         "keep": keep_entries,
         "remove": remove_entries,
         "counts": {"keep": len(keep_entries), "remove": len(remove_entries)},
+        "unresolved": unresolved,
         "dry_run": True,
         "apply": "NOT_PERMITTED_WITHOUT_SEPARATE_OPERATOR_APPROVAL",
     }

@@ -104,9 +104,20 @@ def executable_tree(tmp_path):
     helper.write_text("def configure_asof(): return 'original'\n")
     driver = root / "quant/code/driver.py"
     driver.write_text("from execution.qlib_live_retrain import configure_asof\n")
-    yaml = root / "examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158.yaml"
-    yaml.parent.mkdir(parents=True)
-    yaml.write_text("model: fixed\n")
+    for relative in (
+        "examples/benchmarks/GRU/workflow_config_gru_Alpha158.yaml",
+        "examples/benchmarks/ALSTM/workflow_config_alstm_Alpha158.yaml",
+        "examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha360_csi500.yaml",
+        "examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158_csi500.yaml",
+    ):
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("model: fixed\n")
+    for name in identity.WEBSITE_SEMANTIC_DEPENDENCIES:
+        path = root / name
+        if not path.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("# semantic fixture\n")
     return root, helper, driver
 
 
@@ -151,7 +162,7 @@ def test_shared_helper_change_invalidates_source_smoke_and_fit_cache(executable_
 def test_training_yaml_and_new_dependency_invalidate_source(executable_tree):
     root, helper, driver = executable_tree
     original = identity.source_manifest("training", repo_root=root)
-    yaml = root / "examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158.yaml"
+    yaml = root / "examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158_csi500.yaml"
     yaml.write_text("model: changed\n")
     with pytest.raises(ValueError, match="source manifest"):
         identity.verify_source_manifest(original, "training", repo_root=root)
@@ -318,13 +329,13 @@ def test_release_identity_changes_for_resources_but_semantic_does_not(executable
         },
     )
     dependencies = ("quant/code/production/website_replay_core.py", "quant/code/production/website_simulation.py")
-    release = identity.release_manifest(repo_root=root)
+    release = identity.source_manifest("training", repo_root=root)
     semantic = identity.website_semantic_manifest(repo_root=root, dependencies=dependencies)
     account = identity.account_contract_manifest(
         {"market": "csi300", "profile": "p", "topk": 10, "dropn": 1, "open_cost": 0.0005, "close_cost": 0.0015}
     )
     (root / "quant/code/ops/website_simulation_modal.py").write_text("cpu = 4\nmemory = 12288\n")
-    assert identity.release_manifest(repo_root=root)["sha256"] != release["sha256"]
+    assert identity.source_manifest("training", repo_root=root)["sha256"] != release["sha256"]
     assert identity.website_semantic_manifest(repo_root=root, dependencies=dependencies)["sha256"] == semantic["sha256"]
     assert (
         identity.account_contract_manifest(
@@ -408,3 +419,50 @@ def test_website_semantic_dependency_table_covers_the_replay_closure():
     assert not missing, f"website semantic manifest is missing imports: {sorted(missing)}"
     for name in declared:
         assert (root / name).is_file(), name
+
+
+def test_actual_production_csi500_yaml_changes_release_and_semantic(executable_tree):
+    root, helper, driver = executable_tree
+    release = identity.source_manifest("training", repo_root=root)
+    semantic = identity.website_semantic_manifest(repo_root=root)
+    actual = root / "examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158_csi500.yaml"
+    actual.write_text("model: production-change\n")
+    assert identity.source_manifest("training", repo_root=root)["sha256"] != release["sha256"]
+    assert identity.website_semantic_manifest(repo_root=root)["sha256"] != semantic["sha256"]
+
+
+def test_production_code_identity_and_website_daily_use_the_tested_csi500_yaml(executable_tree, monkeypatch):
+    import importlib.util
+
+    root, helper, driver = executable_tree
+    monkeypatch.setattr(identity, "REPO_ROOT", root)
+    import modal_qlib_cn_a10g as production
+
+    monkeypatch.setattr(production, "_CODE_SOURCE_SHA", None)
+    source_before = production._code_source_sha()
+    assert source_before == identity.source_manifest("training", repo_root=root)["sha256"]
+    semantic_before = identity.website_semantic_manifest(repo_root=root)["sha256"]
+
+    path = Path(__file__).resolve().parents[1] / "code/ops/website_simulation_modal.py"
+    spec = importlib.util.spec_from_file_location("website_identity_negative_test", path)
+    worker = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(worker)
+    monkeypatch.setattr(worker, "data_volume_readonly", SimpleNamespace(reload=lambda: None))
+    monkeypatch.setattr(worker, "simulation", SimpleNamespace(reload=lambda: None))
+    monkeypatch.setattr(worker, "checked_publication_receipt", lambda **kwargs: None)
+    monkeypatch.setattr(
+        worker,
+        "latest_asset",
+        lambda expected_end=None: (_ for _ in ()).throw(RuntimeError("LATEST_ASSET_REACHED")),
+    )
+    with pytest.raises(RuntimeError, match="LATEST_ASSET_REACHED"):
+        worker.daily.local(expected_source_sha256=source_before)
+
+    actual = root / "examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158_csi500.yaml"
+    actual.write_text("model: production-change\n")
+    monkeypatch.setattr(production, "_CODE_SOURCE_SHA", None)
+    source_after = production._code_source_sha()
+    assert source_after != source_before
+    assert identity.website_semantic_manifest(repo_root=root)["sha256"] != semantic_before
+    with pytest.raises(ValueError, match="different source identities"):
+        worker.daily.local(expected_source_sha256=source_before)
