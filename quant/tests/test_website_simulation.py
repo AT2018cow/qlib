@@ -998,7 +998,8 @@ def test_missing_incremental_prefix_uses_smoke_and_full_workers(monkeypatch):
     result = module.daily.local(expected_source_sha256=source_sha, expected_provider_end="2026-11-10")
 
     assert result["status"] == "PUBLISHED"
-    assert [job["mode"] for job in full_calls["remote"]] == ["smoke"]
+    assert [job["mode"] for job in full_calls["remote"]] == ["smoke", "smoke", "smoke"]
+    assert [job["market"] for job in full_calls["remote"]] == ["csi300", "csi500", "csi1000"]
     assert len(full_calls["map"]) == 3
     assert all("required_replay_mode" not in job for job in full_calls["map"])
 

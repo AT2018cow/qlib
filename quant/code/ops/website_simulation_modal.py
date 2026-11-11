@@ -441,7 +441,10 @@ def daily(expected_source_sha256: str, expected_provider_end: str = ""):
         worker = build_market_incremental
         required_replay_mode = "INCREMENTAL"
     else:
-        build_market.remote(make_job(asset, source, "csi300", "smoke", semantic=semantic, account=accounts["csi300"]))
+        # The cache root is per market account contract, so a csi300-only
+        # smoke cannot authorize csi500/csi1000 full replays.
+        for market in markets:
+            build_market.remote(make_job(asset, source, market, "smoke", semantic=semantic, account=accounts[market]))
         worker = build_market
         required_replay_mode = None
     jobs = [
