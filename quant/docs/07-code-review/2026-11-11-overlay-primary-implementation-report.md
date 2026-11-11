@@ -398,14 +398,16 @@ R03 的历史前缀保护由 dated-anchor 续接进一步补强，R05 的坏 hfq
 - 11-12 06:00 才是首次“真实全市场新日期 provider + 信号（预计重训）+ 网站增量”调度验收；在它通过前不得宣布生产稳定。
 - 若部署，source identity 变化会触发一次 website full replay；必须先完成一次 11-11/11-10 部署后验收，使 11-12 的 website 能从新的 11-10 baseline 走增量。
 
-## 14. v19 集中部署与切换验收（2026-11-11 12:16）
+## 14. v19/v20 集中部署与切换验收（2026-11-11）
 
 ### 14.1 部署
 
 | App | 版本 | Commit | 时间（北京时间） |
 |---|---|---|---|
-| `qlib-prod-daily` | v19 | `a9c079eac` | 2026-11-11 12:16 |
-| `qlib-prod-website` | v19 | `a9c079eac` | 2026-11-11 12:16 |
+| `qlib-prod-daily` | v19 → **v20** | `a9c079eac` → **`3568be937`** | 12:16 → 12:28 |
+| `qlib-prod-website` | v19 → **v20** | `a9c079eac` → **`3568be937`** | 12:16 → 12:29 |
+
+v20 与 v19 的 Python 代码相同，仅多出验收文档；`_code_source_sha` 保持 `515568f9…`，切换验收写入的 marker 在 v20 部署后仍通过（`daily_preopen_retry` 返回 `ALREADY_COMPLETED`）。
 
 `modal app info qlib-prod-daily` 只有 06:00 `daily_cron`、07:30 `daily_preopen_retry`、09:00 `daily_readonly_check` 三个 cron；website App 无 cron。v19 包含上一轮 S01–S05、第三轮复权修复以及隔离验收发现的 seal-base digest 修复（`befe35bc8`）。
 
