@@ -314,13 +314,15 @@ R03 的历史前缀保护由 dated-anchor 续接进一步补强，R05 的坏 hfq
 
 ### 11.4 尚未完成和发布边界
 
-- **尚未提交/推送**：HEAD 仍是 `41b1c96bd`，本节代码、测试、第一轮修复和文档均在工作区。
+- **本节记录时尚未提交/推送**：当时 HEAD 仍是 `41b1c96bd`，本节代码、测试、第一轮修复和文档均在工作区；
+  后续提交状态见第 15.3 节。
 - **尚未部署**：第 10 节 v18 是整改前历史部署，不含当前 R/S 修复；未查询或改变当前 App 版本/活动任务。
 - **尚未云端/生产验收**：未验证真实全市场新日期构建、三市场信号、网站增量 receipt、09:00 只读检查和账单。
 - **资源结论未更新**：R09 的进程树 CPU 是观测下限，旧 0.68 core 样本仍不能支持进一步缩容。
 - 后续若获授权，只做生产输入只读、隔离输出、有界前台 attached 的集中验证；禁止 `modal run --detach`，不重复付费预热。
 
-因此当前准确状态是：**R01–R10 保留，S01–S05 已本地代码/回归关闭；整个工作区尚未提交、部署或生产验收。**
+因此截至本节记录时的准确状态是：**R01–R10 保留，S01–S05 已本地代码/回归关闭；当时整个工作区尚未提交、部署或生产验收。**
+当前提交状态以第 15.3 节为准。
 
 ## 12. 第三轮复权数值整改与最终本地验收（2026-11-11）
 
@@ -435,3 +437,55 @@ v20 与 v19 的 Python 代码相同，仅多出验收文档；`_code_source_sha`
 - 切换前 monthly metered $34.79 / $40，reserve $2；切换后 **$34.95**，headroom 约 **$3.05**。
 - 仍未发生：**11-12 06:00 首次全市场新日期 provider 构建 + 信号重训 + 网站 INCREMENTAL**。这是唯一未完成的生产门；通过前状态为“v19 切换验收通过，日常新日期构建待首次调度验收”。
 - 首次重训日 + 网站增量可能进一步消耗 headroom；若 website budget guard 触发，信号仍发布，网站会 `SKIPPED_BUDGET` 并由 09:00 告警。是否提高 monthly credit 由用户决定，本轮未修改预算策略。
+
+## 15. 资源规格调整（仅本地源码，尚未部署，2026-11-11）
+
+本节记录在干净 HEAD `a1931bad9ab5ab7ef6db7dc2ebb32308af09286c` 上开始的后续资源调整。只读查询了
+Modal function stats/calls/logs/billing 和生产 archive receipt；没有启动云端容器、运行实验、修改 Volume、部署 App
+或改变生产账户/发布状态。第 14 节 v20 仍是当前最后确认的部署。
+
+### 15.1 实测依据
+
+- Provider `ensure_overlay` 当前部署仍为 4 CPU / 8 GiB。近 7 日总体 CPU p90/p99 为 1.10/1.64 core，内存
+  p90/p99 为 0.45/0.54 GiB。
+- 一次明确的 1,800 股票全市场 PASS 构建耗时 2,934 s；其容器 CPU p90/p99 为 1.00/1.46 core，内存
+  p90/p99 为 0.50/0.58 GiB。另一次 3,600 s timeout 的 CPU p99 为 1.76 core、内存 p99 为 0.33 GiB，
+  日志显示主要停在外部行情/串行 fallback，而非 CPU 或内存耗尽。
+- 三个已确认 `INCREMENTAL` 的 website 容器分别为：CSI300 CPU/内存 p99 2.74 core/3.10 GiB，CSI500
+  3.78/3.18，CSI1000 4.27/3.30。全部 website 历史样本的内存 p99 为 10.67 GiB，不能把 full/retrain
+  worker 一并下调。
+- Modal stats 是 best-effort 时间采样分位数，不是绝对瞬时峰值；首次使用当前 archive builder 的真实新日期
+  全市场生产运行仍是后续验收门。
+- 本地 18 股票 mini build 曾记录 4.81 GiB 进程树 RSS；它与 Modal 容器采样口径、工作负载均不同，但已经
+  超过 4 GiB，因此 **2/4 没有安全余量，当前未部署候选保持 2/8**。部署后仍须用真实新日期构建验收 OOM
+  余量与 2-core wall time。
+
+### 15.2 本地实现
+
+| 路径 | 本地源码规格 | 路由/失败边界 |
+|---|---|---|
+| Provider `ensure_overlay` | **2 CPU / 8 GiB** | 只降低 CPU；timeout、单容器、可抢占和 gate 均不变 |
+| Website `build_market` | **8 CPU / 16 GiB** | 保留 smoke/full/retrain 及无完整 ancestor 时的回退路径 |
+| Website `build_market_incremental` | **4 CPU / 12 GiB** | 新增独立 worker；仅接受已复核的 `INCREMENTAL` job，worker 内先验失效即失败，禁止静默 full |
+| Signal `daily_standalone` | **8 CPU / 16 GiB** | 未修改线程、资源、timeout、非抢占或串行合同 |
+
+两个 Website worker 共用 `_run_market_worker()` 和 `_build_market_impl()`；模型、信号、账户、ledger、receipt 和发布
+实现没有复制。`daily()` 只有在三个市场的 ancestor prefix 均有效时才跳过 smoke 并路由轻量 worker；否则仍由
+8/16 worker 完成 smoke/full。轻量 worker 的实际新执行和二次先验检查都要求
+`replay_mode=INCREMENTAL`；若先前 8/16 full 已完成但发布响应丢失，它可以复用输入身份、series 和 ledger
+哈希均已重新校验的不可变 `FULL` 结果缓存。该恢复分支不在轻量容器内执行 full replay。
+
+### 15.3 本地回归与状态
+
+- 先加测试时：6 个定向场景中 **5 failed、1 passed**，分别命中旧 Provider CPU、缺少独立 worker、缺少
+  fail-closed 校验和旧 daily 路由。
+- 实现后定向场景：**6 passed**。
+- 工作区曾因误操作把 Provider 候选从 2/8 改为 2/4。恢复时先把合同改回 `memory=8192`，在 2/4 实现上
+  定向测试 **1 failed**；实现同步恢复 2/8 后 **1 passed**。4.81 GiB 本地峰值是拒绝 2/4 的直接回归依据。
+- Modal/website/daily/post-rollout/image 相关套件：**150 passed**。
+- `.venv/bin/pytest -q quant/tests`：**1106 passed、2 skipped、50 subtests passed**；16 个 Modal `.local()`
+  只读警告。
+
+当前准确状态：**源码和回归已完成，资源调整代码已提交为 `9b5aa359c`，但尚未部署；生产 v20 仍使用 Provider 4/8 与统一 Website 8/16。**
+后续部署前仍需检查 intended diff；部署后先核对 function info，再以真实新日期 receipt 验收 2/8 Provider 和
+4/12 incremental 的耗时、资源余量、三市场 exact output 与失败恢复。
