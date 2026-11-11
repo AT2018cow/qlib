@@ -460,6 +460,9 @@ def daily(expected_source_sha256: str, expected_provider_end: str = ""):
         for market in markets
     ]
     results = list(worker.map(jobs, order_outputs=False))
+    # Workers run in separate containers.  The coordinator must reload before
+    # hashing their immutable result/ledger files into the publication receipt.
+    simulation.reload()
     return publish_results(results, source, asset, token=os.environ["GITHUB_TOKEN"])
 
 
