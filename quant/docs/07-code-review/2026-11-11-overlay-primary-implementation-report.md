@@ -397,3 +397,39 @@ R03 的历史前缀保护由 dated-anchor 续接进一步补强，R05 的坏 hfq
 - 本次未部署；生产两 App 仍为 v18（`1fdc8a7`），不包含本轮 S01–S05 与第三轮复权修复。
 - 11-12 06:00 才是首次“真实全市场新日期 provider + 信号（预计重训）+ 网站增量”调度验收；在它通过前不得宣布生产稳定。
 - 若部署，source identity 变化会触发一次 website full replay；必须先完成一次 11-11/11-10 部署后验收，使 11-12 的 website 能从新的 11-10 baseline 走增量。
+
+## 14. v19 集中部署与切换验收（2026-11-11 12:16）
+
+### 14.1 部署
+
+| App | 版本 | Commit | 时间（北京时间） |
+|---|---|---|---|
+| `qlib-prod-daily` | v19 | `a9c079eac` | 2026-11-11 12:16 |
+| `qlib-prod-website` | v19 | `a9c079eac` | 2026-11-11 12:16 |
+
+`modal app info qlib-prod-daily` 只有 06:00 `daily_cron`、07:30 `daily_preopen_retry`、09:00 `daily_readonly_check` 三个 cron；website App 无 cron。v19 包含上一轮 S01–S05、第三轮复权修复以及隔离验收发现的 seal-base digest 修复（`befe35bc8`）。
+
+### 14.2 11-11/11-10 切换验收
+
+命令：部署后 `daily_cron.remote(signal_date_override="2026-11-11", data_asof_override="2026-11-10")`，前台 attached，**486.9 s**。
+
+- provider：`EXISTS` 11-10 archive `658555ec…`；
+- signals：`ALREADY_PUBLISHED`（56.3 s；journal `d2df363b…` 未变）；
+- website：`PUBLISHED`（404.1 s；source `515568f9…`，commit `3ec47293…`，12 files）；
+- marker：`code_source_sha256=515568f9…`，provider `658555ec…`。
+
+业务一致性：
+- csi1000 `signal.parquet` 24,998 行，score **完全相等（max diff 0.0）**；
+- website `csi1000_website_performance.json` 除 source/provider/model identity 外完全相等；最新 NAV **0.82346966**、累计 **-0.17653034** 不变。
+
+### 14.3 调度路径
+
+- `daily_preopen_retry` → `ALREADY_COMPLETED`；
+- `daily_cron` 无 override（06:00 路径）→ `ALREADY_COMPLETED`；
+- `daily_readonly_check` → `{"status":"OK","provider_digest":"658555ec…","journal_commit":"d2df363b…"}`。
+
+### 14.4 成本与剩余门
+
+- 切换前 monthly metered $34.79 / $40，reserve $2；切换后 **$34.95**，headroom 约 **$3.05**。
+- 仍未发生：**11-12 06:00 首次全市场新日期 provider 构建 + 信号重训 + 网站 INCREMENTAL**。这是唯一未完成的生产门；通过前状态为“v19 切换验收通过，日常新日期构建待首次调度验收”。
+- 首次重训日 + 网站增量可能进一步消耗 headroom；若 website budget guard 触发，信号仍发布，网站会 `SKIPPED_BUDGET` 并由 09:00 告警。是否提高 monthly credit 由用户决定，本轮未修改预算策略。
