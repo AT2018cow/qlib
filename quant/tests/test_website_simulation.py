@@ -1,6 +1,8 @@
 """Website NAV must include the first session and preserve actual inventory."""
 
+import ast
 import json
+from pathlib import Path
 
 import pytest
 
@@ -178,7 +180,8 @@ def test_audit_reads_new_continuous_account_and_rejects_stale_derived_output(tmp
         audit_website_series(tmp_path, "csi300")
 
 
-def test_cloud_worker_rejects_changed_source_before_accessing_volume():
+@pytest.mark.parametrize("worker_name", ["build_market", "build_market_incremental"])
+def test_cloud_worker_rejects_changed_source_before_accessing_volume(worker_name):
     import importlib.util
     from pathlib import Path
 
@@ -187,7 +190,7 @@ def test_cloud_worker_rejects_changed_source_before_accessing_volume():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     with pytest.raises(ValueError, match="source manifest changed"):
-        module.build_market.local({"source_manifest": {}})
+        getattr(module, worker_name).local({"source_manifest": {}})
 
 
 @pytest.mark.parametrize("previous_date", [None, "", "2026-10-08", "2026-10-10", "not-a-date"])
@@ -672,7 +675,8 @@ def _website_module():
     return module
 
 
-def test_website_worker_stops_sampler_on_success_and_cache_hit(monkeypatch):
+@pytest.mark.parametrize("worker_name", ["build_market", "build_market_incremental"])
+def test_website_worker_stops_sampler_on_success_and_cache_hit(monkeypatch, worker_name):
     import resource_sampler
 
     module = _website_module()
@@ -680,12 +684,13 @@ def test_website_worker_stops_sampler_on_success_and_cache_hit(monkeypatch):
     monkeypatch.setattr(resource_sampler, "ResourceSampler", _FakeSampler)
     for result in ({"status": "COMPLETED"}, {"status": "COMPLETED", "cached": True}):
         monkeypatch.setattr(module, "_build_market_impl", lambda job, sampler=None, result=result: result)
-        assert module.build_market.local({"market": "csi300"}) == result
+        assert getattr(module, worker_name).local({"market": "csi300"}) == result
     assert len(_FakeSampler.instances) == 2
     assert all(instance.started and instance.stopped for instance in _FakeSampler.instances)
 
 
-def test_website_worker_stops_sampler_on_failure(monkeypatch):
+@pytest.mark.parametrize("worker_name", ["build_market", "build_market_incremental"])
+def test_website_worker_stops_sampler_on_failure(monkeypatch, worker_name):
     import resource_sampler
 
     module = _website_module()
@@ -697,9 +702,49 @@ def test_website_worker_stops_sampler_on_failure(monkeypatch):
     monkeypatch.setattr(resource_sampler, "ResourceSampler", _FakeSampler)
     monkeypatch.setattr(module, "_build_market_impl", fail)
     with pytest.raises(RuntimeError, match="replay failed"):
-        module.build_market.local({"market": "csi300"})
+        getattr(module, worker_name).local({"market": "csi300"})
     assert len(_FakeSampler.instances) == 1
     assert _FakeSampler.instances[0].started and _FakeSampler.instances[0].stopped
+
+
+def _function_resources(function_name):
+    path = Path(__file__).resolve().parents[1] / "code/ops/website_simulation_modal.py"
+    tree = ast.parse(path.read_text())
+    function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == function_name)
+    decorator = next(
+        item
+        for item in function.decorator_list
+        if isinstance(item, ast.Call) and isinstance(item.func, ast.Attribute) and item.func.attr == "function"
+    )
+    return {
+        keyword.arg: keyword.value.value for keyword in decorator.keywords if isinstance(keyword.value, ast.Constant)
+    }
+
+
+def test_full_and_incremental_workers_have_separate_resource_contracts():
+    full = _function_resources("build_market")
+    incremental = _function_resources("build_market_incremental")
+    assert (full["cpu"], full["memory"], full["max_containers"], full["retries"]) == (8, 16384, 3, 0)
+    assert (
+        incremental["cpu"],
+        incremental["memory"],
+        incremental["max_containers"],
+        incremental["retries"],
+    ) == (4, 12288, 3, 0)
+
+
+def test_incremental_worker_fails_closed_instead_of_running_full():
+    module = _website_module()
+    job = {"market": "csi1000", "required_replay_mode": "INCREMENTAL"}
+    module._validate_required_replay_mode(job, "INCREMENTAL")
+    with pytest.raises(ValueError, match="incremental worker requires"):
+        module._validate_required_replay_mode(job, "FULL")
+
+
+def test_incremental_worker_can_reuse_a_validated_cached_full_result():
+    module = _website_module()
+    job = {"market": "csi1000", "required_replay_mode": "INCREMENTAL"}
+    module._validate_required_replay_mode(job, "FULL", cached=True)
 
 
 def test_archive_asset_skips_smoke_and_reaches_workers_without_local_path(monkeypatch):
@@ -728,8 +773,19 @@ def test_archive_asset_skips_smoke_and_reaches_workers_without_local_path(monkey
         "build_market",
         types.SimpleNamespace(
             remote=lambda job: pytest.fail("incremental path must skip the smoke replay"),
-            map=lambda jobs, **kwargs: [{"market": job["market"], "asset": job["asset"]} for job in jobs],
+            map=lambda jobs, **kwargs: pytest.fail("incremental path must not use the full worker"),
         ),
+    )
+    incremental_jobs = []
+
+    def incremental_map(jobs, **kwargs):
+        incremental_jobs.extend(jobs)
+        return [{"market": job["market"], "asset": job["asset"]} for job in jobs]
+
+    monkeypatch.setattr(
+        module,
+        "build_market_incremental",
+        types.SimpleNamespace(map=incremental_map),
     )
     published = {}
 
@@ -759,3 +815,59 @@ def test_archive_asset_skips_smoke_and_reaches_workers_without_local_path(monkey
     assert "local_path" not in published["asset"]
     assert {item["market"] for item in published["results"]} == {"csi300", "csi500", "csi1000"}
     assert all(item["asset"] is archive_asset for item in published["results"])
+    assert len(incremental_jobs) == 3
+    assert all(job["required_replay_mode"] == "INCREMENTAL" for job in incremental_jobs)
+
+
+def test_missing_incremental_prefix_uses_smoke_and_full_workers(monkeypatch):
+    import types
+
+    module = _website_module()
+    source_sha = "a" * 64
+    asset = {
+        "digest": "sha256:" + "b" * 64,
+        "calendar": ["2026-11-09", "2026-11-10"],
+        "calendar_end": "2026-11-10",
+    }
+    monkeypatch.setattr(module, "data_volume", types.SimpleNamespace(reload=lambda: None))
+    monkeypatch.setattr(module, "simulation", types.SimpleNamespace(reload=lambda: None))
+    monkeypatch.setattr(module, "latest_asset", lambda expected_end=None: asset)
+    monkeypatch.setattr(module, "already_published", lambda *args: None)
+    monkeypatch.setattr(module, "_budget_guard", lambda: {"allowed": True})
+    monkeypatch.setattr(module, "_incremental_prior", lambda *args: None)
+    full_calls = {"remote": [], "map": []}
+
+    def full_remote(job):
+        full_calls["remote"].append(job)
+        return {"status": "SMOKE_PASS"}
+
+    def full_map(jobs, **kwargs):
+        full_calls["map"].extend(jobs)
+        return [{"market": job["market"]} for job in jobs]
+
+    monkeypatch.setattr(
+        module,
+        "build_market",
+        types.SimpleNamespace(remote=full_remote, map=full_map),
+    )
+    monkeypatch.setattr(
+        module,
+        "build_market_incremental",
+        types.SimpleNamespace(map=lambda *args, **kwargs: pytest.fail("full path used incremental worker")),
+    )
+    monkeypatch.setattr(module, "publish_results", lambda results, source, asset, token: {"status": "PUBLISHED"})
+    import research_identity
+
+    monkeypatch.setattr(
+        research_identity,
+        "source_manifest",
+        lambda kind: {"sha256": source_sha, "schema_version": 2, "kind": kind, "files": {}},
+    )
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+
+    result = module.daily.local(expected_source_sha256=source_sha, expected_provider_end="2026-11-10")
+
+    assert result["status"] == "PUBLISHED"
+    assert [job["mode"] for job in full_calls["remote"]] == ["smoke"]
+    assert len(full_calls["map"]) == 3
+    assert all("required_replay_mode" not in job for job in full_calls["map"])

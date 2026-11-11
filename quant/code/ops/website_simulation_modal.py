@@ -228,8 +228,11 @@ def status(expected_source_sha256: str, asset_digest: str = ""):
     }
 
 
-def make_job(asset, source, market, mode):
-    return {"asset": asset, "source_manifest": source, "market": market, "mode": mode}
+def make_job(asset, source, market, mode, *, required_replay_mode=None):
+    job = {"asset": asset, "source_manifest": source, "market": market, "mode": mode}
+    if required_replay_mode is not None:
+        job["required_replay_mode"] = required_replay_mode
+    return job
 
 
 def fit_website_model(model, dataset):
@@ -503,17 +506,19 @@ def _predict_days(model, cfg, provider, calendar, days):
     return pred
 
 
-@app.function(
-    volumes={"/simulation": simulation, "/data": data_volume},
-    cpu=8,
-    memory=16384,
-    timeout=WEBSITE_WORKER_TIMEOUT_SECONDS,
-    max_containers=3,
-    retries=0,
-    scaledown_window=5,
-)
-def build_market(job):
-    """Run one market replay while capturing a process-tree resource receipt."""
+def _validate_required_replay_mode(job, actual, *, cached=False):
+    """Keep the lightweight worker from silently executing a full replay."""
+    required = (job or {}).get("required_replay_mode")
+    if required not in (None, "INCREMENTAL"):
+        raise ValueError(f"unknown required replay mode: {required}")
+    if actual not in ("FULL", "INCREMENTAL"):
+        raise ValueError(f"unknown actual replay mode: {actual}")
+    if required is not None and actual != required and not cached:
+        raise ValueError(f"incremental worker requires {required}, got {actual}")
+
+
+def _run_market_worker(job):
+    """Run either resource class through the same replay and receipt implementation."""
     import json
     import time
     import uuid
@@ -537,6 +542,7 @@ def build_market(job):
                     {
                         "status": "FAILED",
                         "market": market_name(job),
+                        "required_replay_mode": (job or {}).get("required_replay_mode"),
                         "error_type": type(exc).__name__,
                         "error": str(exc)[:2000],
                         "resources": resources,
@@ -557,6 +563,35 @@ def build_market(job):
         # finally is idempotent and protects early-return paths.
         sampler.stop()
     return result
+
+
+@app.function(
+    volumes={"/simulation": simulation, "/data": data_volume},
+    cpu=8,
+    memory=16384,
+    timeout=WEBSITE_WORKER_TIMEOUT_SECONDS,
+    max_containers=3,
+    retries=0,
+    scaledown_window=5,
+)
+def build_market(job):
+    """Run smoke/full/retrain work with the existing 8 CPU / 16 GiB envelope."""
+    return _run_market_worker(job)
+
+
+@app.function(
+    volumes={"/simulation": simulation, "/data": data_volume},
+    cpu=4,
+    memory=12288,
+    timeout=WEBSITE_WORKER_TIMEOUT_SECONDS,
+    max_containers=3,
+    retries=0,
+    scaledown_window=5,
+)
+def build_market_incremental(job):
+    """Run only a validated one-session incremental replay on the lighter worker."""
+    strict_job = {**(job or {}), "required_replay_mode": "INCREMENTAL"}
+    return _run_market_worker(strict_job)
 
 
 def market_name(job):
@@ -653,8 +688,13 @@ def _build_market_impl(job, sampler=None):
             ):
                 raise ValueError("cached website ledger file hash mismatch")
         verify_source_manifest(job["source_manifest"], "training")
+        # A lost publish response may leave a fully validated immutable FULL
+        # result behind. Reusing it is recovery, not a full replay on this
+        # lightweight worker.
+        _validate_required_replay_mode(job, cached.get("replay_mode"), cached=True)
         return cached
     incremental = _incremental_prior(source_sha, asset, market, end, calendar) if mode == "full" else None
+    _validate_required_replay_mode(job, "INCREMENTAL" if incremental is not None else "FULL")
     if mode == "full" and incremental is None:
         smoke = json.loads(smoke_path.read_text())
         if (
@@ -875,6 +915,7 @@ def _build_market_impl(job, sampler=None):
         data = prepare_data(provider, [signal_path], market, FIRST_SIGNAL, end)
         result = replay(data, candidate, engine_history_limit=120)
         replay_mode = "FULL"
+    _validate_required_replay_mode(job, replay_mode)
     series = build_website_series(
         market, result, calendar=calendar, source_sha=source_sha, provider_sha=asset["digest"].split(":")[1], fits=fits
     )
@@ -1075,9 +1116,14 @@ def daily(expected_source_sha256: str, expected_provider_end: str = ""):
             print(f"[website] incremental prefix probe failed: {type(exc).__name__}: {exc}", flush=True)
     if incremental:
         print("[website] incremental prefix present for all markets; skipping smoke replay", flush=True)
+        worker = build_market_incremental
+        required_replay_mode = "INCREMENTAL"
     else:
         build_market.remote(make_job(asset, source, "csi300", "smoke"))
-    results = list(build_market.map([make_job(asset, source, m, "full") for m in markets], order_outputs=False))
+        worker = build_market
+        required_replay_mode = None
+    jobs = [make_job(asset, source, market, "full", required_replay_mode=required_replay_mode) for market in markets]
+    results = list(worker.map(jobs, order_outputs=False))
     return publish_results(results, source, asset, token=os.environ["GITHUB_TOKEN"])
 
 

@@ -241,7 +241,7 @@ def test_parent_timeout_covers_all_serial_children_without_automatic_retry_multi
     assert budget.WEBSITE_STAGE_TIMEOUT_SECONDS > 4 * budget.WEBSITE_WORKER_TIMEOUT_SECONDS
     for relative, names in [
         ("production/modal_qlib_cn_a10g.py", {"daily_cron", "daily_repair_manual", "daily_standalone"}),
-        ("ops/website_simulation_modal.py", {"daily", "build_market"}),
+        ("ops/website_simulation_modal.py", {"daily", "build_market", "build_market_incremental"}),
     ]:
         tree = ast.parse((ROOT / "quant/code" / relative).read_text())
         for node in tree.body:

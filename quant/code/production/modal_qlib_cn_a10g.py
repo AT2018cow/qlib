@@ -4535,7 +4535,7 @@ def _provider_failure_record(trade_date: str, exc: Exception, resources: dict, c
 
 @app.function(
     volumes={str(VOL_ROOT): vol, "/simulation": website_simulation_readonly},
-    cpu=4,
+    cpu=2,
     memory=8192,
     timeout=90 * 60,
     max_containers=1,

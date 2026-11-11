@@ -140,6 +140,15 @@ def test_daily_standalone_resource_contract():
     assert "gpu=" not in params
 
 
+def test_provider_builder_resource_contract():
+    params = _decorator_block("ensure_overlay")
+    assert "cpu=2" in params
+    assert "memory=8192" in params
+    assert "timeout=90 * 60" in params
+    assert "max_containers=1" in params
+    assert "nonpreemptible=False" in params
+
+
 def test_partial_live_model_cache_self_heals_to_retrain():
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
