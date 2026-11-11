@@ -971,7 +971,7 @@ function pageShell(dates) {
         <div class="table-wrap">
           <table class="signal-table">
             <thead>
-              <tr><th>排名</th><th>代码</th><th>名称</th><th id="th-pred-horizon" title="模型原始回归评分，仅用于横截面排序；不是预期涨幅">${currentPool.horizonDays}日模型评分</th><th>排名变化</th><th>近60日</th></tr>
+              <tr><th>排名</th><th>代码</th><th>名称</th><th id="th-pred-horizon" title="模型原始回归评分，仅用于横截面排序；不是预期涨幅">${currentPool.horizonDays}日评分</th><th>排名变化</th><th>近60日</th></tr>
             </thead>
             <tbody id="signal-rows"></tbody>
           </table>
@@ -1241,7 +1241,7 @@ async function main() {
       rebalanceKicker.textContent = `Top ${nextPool.topk} · Drop${nextPool.nd}`;
     }
     const thPred = document.getElementById('th-pred-horizon');
-    if (thPred) thPred.textContent = `${nextPool.horizonDays}日模型评分`;
+    if (thPred) thPred.textContent = `${nextPool.horizonDays}日评分`;
 
     if (!indexCache.has(nextPool.key)) {
       indexCache.set(nextPool.key, loadAvailableDates(nextPool));
