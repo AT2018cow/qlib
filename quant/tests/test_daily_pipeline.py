@@ -75,60 +75,78 @@ def _committed_journal(tmp_path: Path, signal_date: str) -> None:
     journal.mark(record, "VOLUME_COMMITTED")
 
 
+def _fixed_postclose(monkeypatch, session_date="2026-11-10", usage_date="2026-11-11"):
+    import daily_pipeline
+
+    monkeypatch.setattr(
+        daily_pipeline,
+        "resolve_postclose_dates",
+        lambda *args, **kwargs: (session_date, usage_date),
+    )
+    return session_date, usage_date
+
+
 @pytest.mark.parametrize(
     "signal_status", ["ALREADY_PUBLISHED", "RECOVERED", "SKIPPED_STALE_DATA", "SKIPPED_NON_TRADING_DAY"]
 )
 def test_actual_cron_checks_website_after_signal_fast_path(tmp_path, monkeypatch, signal_status):
     import modal_qlib_cn_a10g as production
 
+    session_date, usage_date = _fixed_postclose(monkeypatch)
     seen = []
     monkeypatch.setattr(production, "VOL_ROOT", tmp_path)
     monkeypatch.setattr(production, "vol", SimpleNamespace(reload=lambda: None, commit=lambda: None))
 
     def signals(allow_lag, **kwargs):
         assert allow_lag is False
+        assert kwargs == {"signal_date_override": usage_date, "data_asof_override": session_date}
         seen.append("signals")
         return {"status": signal_status}
 
     def website(expected_provider_end=None):
+        assert expected_provider_end == session_date
         seen.append("website")
-        return {"status": "ALREADY_PUBLISHED"}
+        return {"status": "ALREADY_PUBLISHED", "latest_date": session_date}
 
     monkeypatch.setattr(production, "_run_daily_signal_cycle", signals)
     monkeypatch.setattr(production, "_update_website_returns", website)
-    monkeypatch.setattr(production, "_previous_trading_day", lambda _today: "2026-01-01")
     monkeypatch.setattr(
         production,
         "ensure_overlay",
         SimpleNamespace(remote=lambda asof, refresh_memberships=False: _provider_receipt(asof)),
     )
-    from datetime import datetime
-    from zoneinfo import ZoneInfo
-
-    today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
-    monkeypatch.setattr(production, "_trading_days", lambda: [today])
-    _committed_journal(tmp_path, today)
+    _committed_journal(tmp_path, usage_date)
+    marker_path = tmp_path / "postclose_status" / f"{usage_date}.json"
     if signal_status == "SKIPPED_STALE_DATA":
         with pytest.raises(DailyPipelineError) as caught:
             production.daily_cron.local()
         result = {"stages": caught.value.stages}
         assert result["stages"]["signals"]["status"] == "INCOMPLETE_STALE_DATA"
-        failed = json.loads((tmp_path / "preopen_status" / f"{today}.json").read_text())
+        failed = json.loads(marker_path.read_text())
         assert failed["status"] == "FAILED"
-        assert failed["signal_date"] == today
+        assert failed["schema_version"] == 2
+        assert failed["session_date"] == session_date
+        assert failed["usage_date"] == usage_date
     else:
         result = production.daily_cron.local()
         assert result["stages"]["signals"]["result"]["status"] == signal_status
         assert result["stages"]["website"]["result"]["status"] == "ALREADY_PUBLISHED"
-        marker = json.loads((tmp_path / "preopen_status" / f"{today}.json").read_text())
+        marker = json.loads(marker_path.read_text())
         assert marker["status"] == "COMPLETED"
+        assert marker["schema_version"] == 2
         assert marker["provider"]["digest"] == "a" * 64
+        assert marker["session_date"] == session_date
+        assert marker["usage_date"] == usage_date
+        assert marker["provider_calendar_end"] == session_date
+        assert marker["website_latest_date"] == session_date
+        assert marker["journal_signal_date"] == usage_date
     assert seen == ["signals", "website"]
 
 
-def test_preopen_cycle_uses_the_self_hosted_provider(tmp_path, monkeypatch):
+def test_postclose_cycle_uses_the_self_hosted_provider(tmp_path, monkeypatch):
     import modal_qlib_cn_a10g as production
 
+    session_date, usage_date = _fixed_postclose(monkeypatch)
     seen = []
     provider_calls = []
     monkeypatch.setattr(production, "VOL_ROOT", tmp_path)
@@ -146,54 +164,141 @@ def test_preopen_cycle_uses_the_self_hosted_provider(tmp_path, monkeypatch):
 
     def website(expected_provider_end=None):
         seen.append(("website", expected_provider_end))
-        return {"status": "ALREADY_PUBLISHED"}
+        return {"status": "ALREADY_PUBLISHED", "latest_date": session_date}
 
     monkeypatch.setattr(production, "_run_daily_signal_cycle", signals)
     monkeypatch.setattr(production, "_update_website_returns", website)
-    from datetime import datetime
-    from zoneinfo import ZoneInfo
-
-    today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
-    monkeypatch.setattr(production, "_trading_days", lambda: [today])
-    monkeypatch.setattr(production, "_previous_trading_day", lambda _today: "2026-11-09")
-    _committed_journal(tmp_path, today)
+    _committed_journal(tmp_path, usage_date)
     result = production.daily_cron.local()
     assert result["status"] == "COMPLETED"
-    assert provider_calls == [("2026-11-09", False)]
+    assert provider_calls == [(session_date, False)]
     assert seen[0][0] == "signals"
     assert seen[0][1] is False
-    assert seen[0][2]["data_asof_override"] == "2026-11-09"
-    assert seen[1] == ("website", "2026-11-09")
-    marker = json.loads((tmp_path / "preopen_status" / f"{today}.json").read_text())
+    assert seen[0][2]["data_asof_override"] == session_date
+    assert seen[1] == ("website", session_date)
+    marker = json.loads((tmp_path / "postclose_status" / f"{usage_date}.json").read_text())
     assert marker["status"] == "COMPLETED"
     assert marker["provider"]["digest"] == "a" * 64
-    assert marker["data_asof"] == "2026-11-09"
+    assert marker["session_date"] == session_date
+    assert marker["usage_date"] == usage_date
 
 
-def test_preopen_retry_skips_after_completed_marker(tmp_path, monkeypatch):
+def test_evening_retry_skips_after_completed_marker(tmp_path, monkeypatch):
     import modal_qlib_cn_a10g as production
-    from datetime import datetime
-    from zoneinfo import ZoneInfo
 
-    today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
-    marker = tmp_path / "preopen_status" / f"{today}.json"
+    session_date, usage_date = _fixed_postclose(monkeypatch)
+    marker = tmp_path / "postclose_status" / f"{usage_date}.json"
     marker.parent.mkdir(parents=True)
-    marker.write_text(json.dumps({"status": "COMPLETED", "signal_date": today, "data_asof": "2026-11-09"}))
+    marker.write_text(json.dumps({"schema_version": 2, "status": "COMPLETED"}))
     monkeypatch.setattr(production, "VOL_ROOT", tmp_path)
     monkeypatch.setattr(production, "vol", SimpleNamespace(reload=lambda: None, commit=lambda: None))
-    monkeypatch.setattr(production, "_trading_days", lambda: [today])
-    monkeypatch.setattr(production, "_previous_trading_day", lambda _today: "2026-11-09")
-    monkeypatch.setattr(production, "_preopen_marker_valid", lambda *args: (True, "test"))
+    monkeypatch.setattr(production, "_postclose_marker_valid", lambda *args, **kwargs: (True, "test"))
     monkeypatch.setattr(
         production,
         "daily_cron",
-        SimpleNamespace(remote=lambda **kwargs: pytest.fail("completed preopen must not be retried")),
+        SimpleNamespace(remote=lambda **kwargs: pytest.fail("completed postclose must not be retried")),
     )
-    result = production.daily_preopen_retry.local()
+    result = production.daily_evening_retry.local()
     assert result["status"] == "ALREADY_COMPLETED"
+    assert result["session_date"] == session_date
+    assert result["usage_date"] == usage_date
 
 
-def test_preopen_marker_rejects_unverified_receipts(tmp_path, monkeypatch):
+def test_evening_retry_forwards_only_the_single_coordinator(tmp_path, monkeypatch):
+    import modal_qlib_cn_a10g as production
+
+    session_date, usage_date = _fixed_postclose(monkeypatch)
+    monkeypatch.setattr(production, "VOL_ROOT", tmp_path)
+    monkeypatch.setattr(production, "vol", SimpleNamespace(reload=lambda: None, commit=lambda: None))
+    monkeypatch.setattr(production, "_postclose_marker_valid", lambda *args, **kwargs: (False, "missing"))
+    calls = {}
+
+    def remote(**kwargs):
+        calls.update(kwargs)
+        return {"status": "QUEUED"}
+
+    monkeypatch.setattr(production, "daily_cron", SimpleNamespace(remote=remote))
+    result = production.daily_evening_retry.local()
+    assert result == {"status": "QUEUED"}
+    assert calls == {
+        "allow_lag": False,
+        "signal_date_override": usage_date,
+        "data_asof_override": session_date,
+        "refresh_provider": True,
+    }
+
+
+def test_postclose_check_fails_closed_when_marker_is_missing(tmp_path, monkeypatch):
+    import modal_qlib_cn_a10g as production
+
+    session_date, usage_date = _fixed_postclose(monkeypatch)
+    monkeypatch.setattr(production, "VOL_ROOT", tmp_path)
+    monkeypatch.setattr(production, "vol", SimpleNamespace(reload=lambda: None, commit=lambda: None))
+    with pytest.raises(RuntimeError, match="marker .* is missing"):
+        production.daily_postclose_check.local()
+    marker = tmp_path / "postclose_status" / f"{usage_date}.json"
+    marker.parent.mkdir(parents=True)
+    marker.write_text(json.dumps({"schema_version": 2, "status": "RUNNING"}))
+    monkeypatch.setattr(
+        production, "_postclose_marker_valid", lambda *args, **kwargs: (False, "marker is not COMPLETED")
+    )
+    with pytest.raises(RuntimeError, match="incomplete"):
+        production.daily_postclose_check.local()
+
+
+def test_postclose_check_returns_ok_only_after_full_readonly_verification(tmp_path, monkeypatch):
+    import modal_qlib_cn_a10g as production
+
+    session_date, usage_date = _fixed_postclose(monkeypatch)
+    marker = tmp_path / "postclose_status" / f"{usage_date}.json"
+    marker.parent.mkdir(parents=True)
+    marker.write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "status": "COMPLETED",
+                "session_date": session_date,
+                "usage_date": usage_date,
+                "provider": {"digest": "sha256:" + "a" * 64},
+                "signal": {"github_commit": "c" * 40},
+                "release_source_sha256": "d" * 64,
+                "website_semantic_sha256": "e" * 64,
+                "account_contract_sha256": {"csi300": "f" * 64},
+            }
+        )
+    )
+    monkeypatch.setattr(production, "VOL_ROOT", tmp_path)
+    monkeypatch.setattr(production, "vol", SimpleNamespace(reload=lambda: None, commit=lambda: None))
+    monkeypatch.setattr(production, "_postclose_marker_valid", lambda *args, **kwargs: (True, "test"))
+    result = production.daily_postclose_check.local()
+    assert result["status"] == "OK"
+    assert result["session_date"] == session_date
+    assert result["usage_date"] == usage_date
+    assert result["journal_commit"] == "c" * 40
+
+
+def test_next_morning_check_uses_the_same_readonly_verifier(tmp_path, monkeypatch):
+    import modal_qlib_cn_a10g as production
+    import daily_pipeline
+
+    monkeypatch.setattr(
+        daily_pipeline,
+        "resolve_check_dates",
+        lambda *args, **kwargs: ("2026-11-10", "2026-11-11"),
+    )
+    marker = tmp_path / "postclose_status" / "2026-11-11.json"
+    marker.parent.mkdir(parents=True)
+    marker.write_text(json.dumps({"schema_version": 2, "status": "COMPLETED"}))
+    monkeypatch.setattr(production, "VOL_ROOT", tmp_path)
+    monkeypatch.setattr(production, "vol", SimpleNamespace(reload=lambda: None, commit=lambda: None))
+    monkeypatch.setattr(production, "_postclose_marker_valid", lambda *args, **kwargs: (True, "test"))
+    result = production.daily_readonly_check.local()
+    assert result["status"] == "OK"
+    assert result["session_date"] == "2026-11-10"
+    assert result["usage_date"] == "2026-11-11"
+
+
+def test_postclose_marker_rejects_unverified_receipts(tmp_path, monkeypatch):
     import modal_qlib_cn_a10g as production
     import data_ingest.store as store
 
@@ -203,20 +308,49 @@ def test_preopen_marker_rejects_unverified_receipts(tmp_path, monkeypatch):
     monkeypatch.setattr(store, "load_snapshot", lambda root, date: snapshot)
     monkeypatch.setattr(production, "_code_source_sha", lambda: "c" * 64)
     base = {
+        "schema_version": 2,
         "status": "COMPLETED",
-        "signal_date": "2026-11-11",
-        "data_asof": "2026-11-10",
+        "session_date": "2026-11-10",
+        "usage_date": "2026-11-11",
+        "provider_calendar_end": "2026-11-10",
+        "website_latest_date": "2026-11-10",
+        "journal_signal_date": "2026-11-11",
         "provider": {"digest": "a" * 64, "calendar_end": "2026-11-10"},
+        "release_source_sha256": "c" * 64,
         "code_source_sha256": "c" * 64,
     }
     # No journal record in an empty volume.
-    valid, reason = production._preopen_marker_valid(base, "2026-11-11", "2026-11-10")
+    valid, reason = production._postclose_marker_valid(base, "2026-11-10", "2026-11-11", verify_github=False)
     assert not valid
     assert "journal" in reason or "provider" in reason
     wrong = dict(base, provider={"digest": "d" * 64, "calendar_end": "2026-11-10"})
-    valid, reason = production._preopen_marker_valid(wrong, "2026-11-11", "2026-11-10")
+    valid, reason = production._postclose_marker_valid(wrong, "2026-11-10", "2026-11-11", verify_github=False)
     assert not valid
     assert "provider" in reason
+    legacy = {k: v for k, v in base.items() if k != "schema_version"}
+    valid, reason = production._postclose_marker_valid(legacy, "2026-11-10", "2026-11-11", verify_github=False)
+    assert not valid
+    assert "schema" in reason
+
+
+def test_checkers_are_read_only_and_have_no_publication_secret():
+    tree = ast.parse((ROOT / "quant/code/production/modal_qlib_cn_a10g.py").read_text())
+    for name in ("daily_postclose_check", "daily_evening_retry", "daily_readonly_check"):
+        node = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == name)
+        decorator = next(
+            d
+            for d in node.decorator_list
+            if isinstance(d, ast.Call) and isinstance(d.func, ast.Attribute) and d.func.attr == "function"
+        )
+        keywords = {kw.arg: kw.value for kw in decorator.keywords}
+        volumes = keywords["volumes"].values[0]
+        assert isinstance(volumes, ast.Name) and volumes.id == "vol_readonly", name
+        assert "secrets" not in keywords, name
+        source = ast.get_source_segment((ROOT / "quant/code/production/modal_qlib_cn_a10g.py").read_text(), node)
+        for forbidden in ("daily_standalone", "ensure_overlay", "build_market", ".remote("):
+            if name == "daily_evening_retry" and forbidden == ".remote(":
+                continue
+            assert forbidden not in source, f"{name} must not run heavy work: {forbidden}"
 
 
 def test_backup_returns_the_same_pipeline_receipt(monkeypatch):
@@ -279,9 +413,10 @@ def test_only_main_retry_and_readonly_checks_are_scheduled():
                                     )
                                 )
     assert schedules == [
-        ("daily_cron", "0 6 * * 1-5", {"timezone": "Asia/Shanghai"}),
-        ("daily_preopen_retry", "30 7 * * 1-5", {"timezone": "Asia/Shanghai"}),
-        ("daily_readonly_check", "0 9 * * 1-5", {"timezone": "Asia/Shanghai"}),
+        ("daily_cron", "0 18 * * 1-5", {"timezone": "Asia/Shanghai"}),
+        ("daily_postclose_check", "0 23 * * 1-5", {"timezone": "Asia/Shanghai"}),
+        ("daily_evening_retry", "15 23 * * 1-5", {"timezone": "Asia/Shanghai"}),
+        ("daily_readonly_check", "0 7 * * 1-5", {"timezone": "Asia/Shanghai"}),
     ]
 
 

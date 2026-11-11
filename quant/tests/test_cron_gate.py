@@ -10,6 +10,8 @@ Watched by .github/workflows/csi1000-tuner-core.yml (push to main).
 import os
 import sys
 
+import pytest
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from signal_publication_gate import (
@@ -46,14 +48,14 @@ def test_cron_schedule_registered():
                                 {kw.arg: ast.literal_eval(kw.value) for kw in keyword.value.keywords},
                             )
     assert schedules == {
-        "daily_cron": ("0 6 * * 1-5", {"timezone": "Asia/Shanghai"}),
-        "daily_preopen_retry": ("30 7 * * 1-5", {"timezone": "Asia/Shanghai"}),
-        "daily_readonly_check": ("0 9 * * 1-5", {"timezone": "Asia/Shanghai"}),
+        "daily_cron": ("0 18 * * 1-5", {"timezone": "Asia/Shanghai"}),
+        "daily_postclose_check": ("0 23 * * 1-5", {"timezone": "Asia/Shanghai"}),
+        "daily_evening_retry": ("15 23 * * 1-5", {"timezone": "Asia/Shanghai"}),
+        "daily_readonly_check": ("0 7 * * 1-5", {"timezone": "Asia/Shanghai"}),
     }, "production cron schedule missing, moved to another function or changed"
     # Legacy evening/manual entries must never carry an independent schedule.
     for legacy in ("daily_evening_manual", "daily_evening_retry_manual"):
         assert legacy not in schedules, f"{legacy} must not have its own cron"
-    assert "\ndef daily_evening_retry(" not in src
     assert "nonpreemptible=True" in src
     assert 'modal.Secret.from_name(_GH_SECRET_NAME := "github-push")' in src
 
@@ -564,3 +566,52 @@ def test_reference_execution_context_requires_explicit_mode_and_keeps_price_gate
     assert '"$open", "Ref($close,1)", "$close", "$factor"' in context
     assert '_current_st_risk_snapshot(res["display_top20"])' not in cron
     assert 'paper_proposals["csi1000"]["risk_st"]' in cron
+
+
+def _shanghai(y, m, d, hh, mm):
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    return datetime(y, m, d, hh, mm, tzinfo=ZoneInfo("Asia/Shanghai"))
+
+
+def test_postclose_date_contract_normal_friday_holiday_and_holiday_weekday():
+    from daily_pipeline import resolve_postclose_dates
+
+    cal = ["2026-09-30", "2026-10-08", "2026-10-09", "2026-10-12"]
+    assert resolve_postclose_dates(cal, now=_shanghai(2026, 10, 8, 18, 0)) == ("2026-10-08", "2026-10-09")
+    assert resolve_postclose_dates(cal, now=_shanghai(2026, 10, 9, 18, 0)) == ("2026-10-09", "2026-10-12")
+    assert resolve_postclose_dates(cal, now=_shanghai(2026, 9, 30, 18, 0)) == ("2026-09-30", "2026-10-08")
+    assert resolve_postclose_dates(cal, now=_shanghai(2026, 10, 1, 18, 0)) is None
+
+
+def test_postclose_rejects_before_close_and_nonadjacent_manual_dates():
+    from daily_pipeline import resolve_postclose_dates
+
+    cal = ["2026-10-08", "2026-10-09", "2026-10-12"]
+    with pytest.raises(ValueError, match="18:00"):
+        resolve_postclose_dates(cal, now=_shanghai(2026, 10, 9, 17, 59))
+    assert resolve_postclose_dates(cal, now=_shanghai(2026, 10, 9, 18, 0)) == ("2026-10-09", "2026-10-12")
+    assert resolve_postclose_dates(
+        cal,
+        now=_shanghai(2026, 10, 9, 23, 15),
+        session_override="2026-10-08",
+        usage_override="2026-10-09",
+    ) == ("2026-10-08", "2026-10-09")
+    with pytest.raises(ValueError, match="both"):
+        resolve_postclose_dates(cal, now=_shanghai(2026, 10, 9, 23, 15), session_override="2026-10-08")
+    with pytest.raises(ValueError, match="adjacent"):
+        resolve_postclose_dates(
+            cal,
+            now=_shanghai(2026, 10, 9, 23, 15),
+            session_override="2026-10-08",
+            usage_override="2026-10-12",
+        )
+
+
+def test_next_morning_check_uses_previous_real_session():
+    from daily_pipeline import resolve_check_dates
+
+    cal = ["2026-09-30", "2026-10-08", "2026-10-09"]
+    assert resolve_check_dates(cal, now=_shanghai(2026, 10, 8, 7, 0)) == ("2026-09-30", "2026-10-08")
+    assert resolve_check_dates(cal, now=_shanghai(2026, 10, 10, 7, 0)) is None

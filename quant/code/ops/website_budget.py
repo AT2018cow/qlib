@@ -1,7 +1,9 @@
-"""Idempotency and budget policy for the website simulation App.
+"""Idempotent website receipts and non-blocking billing telemetry.
 
-These helpers are import-clean so the guard can be tested without Qlib, Modal
-or network access.
+These helpers are import-clean so they can be tested without Qlib, Modal or
+network access.  Billing observations are audit data only: they never decide
+whether a replay may run, and an unavailable billing API is recorded as
+``unavailable`` rather than treated as success or failure.
 """
 
 from __future__ import annotations
@@ -10,9 +12,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-DEFAULT_DAILY_CAP_USD = 2.0
-DEFAULT_MONTHLY_CREDIT_USD = 0.0
-DEFAULT_RESERVE_USD = 2.0
 PUBLISHED_STATUSES = ("PUBLISHED", "ALREADY_PUBLISHED", "RECOVERED_AFTER_PUBLICATION")
 
 
@@ -44,54 +43,28 @@ def already_published(
     return None
 
 
-def read_budget_policy(simulation_root: str | Path) -> dict[str, float]:
-    """Read the optional budget policy file; malformed files fall back safely."""
-    policy = {
-        "daily_cap_usd": DEFAULT_DAILY_CAP_USD,
-        "monthly_credit_usd": DEFAULT_MONTHLY_CREDIT_USD,
-        "reserve_usd": DEFAULT_RESERVE_USD,
-    }
-    path = Path(simulation_root) / "budget_policy.json"
-    if not path.is_file():
-        return policy
+def billing_observation(*, report, summary) -> dict[str, Any]:
+    """Return cost telemetry without any business allow/block decision."""
+
+    def field(value, name):
+        if isinstance(value, dict):
+            return value[name]
+        return getattr(value, name)
+
     try:
-        raw = json.loads(path.read_text())
-    except Exception:
-        return policy
-    for key in policy:
-        value = raw.get(key)
-        if isinstance(value, (int, float)) and not isinstance(value, bool) and value >= 0:
-            policy[key] = float(value)
-    return policy
-
-
-def budget_decision(
-    *,
-    today_cost_usd: float,
-    monthly_metered_usd: float,
-    daily_cap_usd: float,
-    monthly_credit_usd: float,
-    reserve_usd: float,
-) -> dict[str, Any]:
-    """Fail-closed budget decision with a clear reason."""
-    if daily_cap_usd > 0 and today_cost_usd >= daily_cap_usd:
+        items = report()
+        today_cost = sum(float(field(item, "cost")) for item in items)
+        monthly_metered = float(field(summary(), "metered_cost"))
         return {
-            "allowed": False,
-            "reason": "daily_cap_reached",
-            "today_cost_usd": round(today_cost_usd, 6),
-            "daily_cap_usd": daily_cap_usd,
+            "status": "available",
+            "source": "workspace.billing",
+            "today_cost_usd": round(today_cost, 6),
+            "monthly_metered_usd": round(monthly_metered, 6),
         }
-    if monthly_credit_usd > 0 and monthly_credit_usd - monthly_metered_usd < reserve_usd:
+    except Exception as exc:  # noqa: BLE001 - telemetry boundary
         return {
-            "allowed": False,
-            "reason": "monthly_reserve_reached",
-            "monthly_metered_usd": round(monthly_metered_usd, 6),
-            "monthly_credit_usd": monthly_credit_usd,
-            "reserve_usd": reserve_usd,
+            "status": "unavailable",
+            "source": "workspace.billing",
+            "error_type": type(exc).__name__,
+            "error": str(exc)[:500],
         }
-    return {
-        "allowed": True,
-        "reason": "within_budget",
-        "today_cost_usd": round(today_cost_usd, 6),
-        "monthly_metered_usd": round(monthly_metered_usd, 6),
-    }

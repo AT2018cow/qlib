@@ -1,7 +1,7 @@
 # 网站交接文档（当前状态）
 
-> 2026-11-10 更新：网站已从 CSI1000-only 切换为 **CSI300 / CSI500 / CSI1000 三市场**；每市场独立 100 万账户，分市场 TopK/DropN。
-> 当前为 T 日收盘后发布（T 18:00）、19:00 幂等重试、T+1 07:00 盘前检查/补发；08:00 补跑已移除。公网为 Cloudflare Pages `https://qliba158.pages.dev`，GitHub Pages 暂停。
+> 2026-11-11 更新：网站已从 CSI1000-only 切换为 **CSI300 / CSI500 / CSI1000 三市场**；每市场独立 100 万账户，分市场 TopK/DropN。
+> 本地候选（**LOCAL IMPLEMENTED / NOT DEPLOYED**）为 T 日收盘后 18:00 主跑：用 T 数据更新 T NAV、到期重训并发布 U 榜单；23:00 只读预警、23:15 同一入口幂等恢复、U 日 07:00 最终只读核验。已部署生产仍为 06:00 / 07:30 / 09:00，详见 `quant/docs/07-code-review/2026-11-11-postclose-implementation-report.md`。公网为 Cloudflare Pages `https://qliba158.pages.dev`，GitHub Pages 暂停。
 > 旧的 `23-web-ui-handoff-20261008.md` 只作历史背景；当前以本文件、`AGENTS.md` 和 `quant/website/methodology.html` 为准。
 
 ## 当前公开页面
@@ -9,8 +9,10 @@
 - 同时展示沪深300、中证500、中证1000 三个股票池，默认沪深300；
 - 每个市场独立榜单、独立 1M 模拟账户、独立累计收益；
 - 榜单“N日模型评分”是模型原始回归输出，仅用于横截面排序；UI 不显示百分比，避免被误读为预期涨幅；
+- 公开榜单合同 v2：CSV 等于完整模型排名前 TopK（CSI300/1000 前 10、CSI500 前 20），不因 T 日收盘涨跌停删榜或补位；涨跌停仅作信息提示，U 日开盘能否成交由执行规则判定；历史 v1 文件不重写；
 - 当前生产规则：CSI300 10d Top10/Drop1、CSI500 20d Top20/Drop2、CSI1000 20d Top10/Drop1；
-- 账户口径：2026-09-30 起算，2026-10-08–2026-11-02 为 point-in-time 回补，2026-11-03 起真实前向 paper；
+- 账户口径：2026-09-30 起算，2026-10-08–2026-11-02 为 point-in-time 回补，2026-11-03 起真实前向 paper；网站收益是**因果纸面模拟**，不是券商成交认证；
+- 网站生产 `/data` 全部只读挂载；`/simulation` 可写。Provider archive 只物化到本地 scratch，不写回生产数据 Volume；
 - ChiNext 日更与公开入口继续暂停；历史 ChiNext artifacts 保留只读；
 - `quant/website/index.html` + `app.js` + `styles.css` 为纯静态前端；
 - `quant/website/methodology.html` 展示当前 1M 全周期表、2025–2026 扩展观察、执行规则与风险边界；

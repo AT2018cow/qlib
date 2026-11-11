@@ -1,16 +1,18 @@
-"""Tests for website idempotency and budget policy."""
+"""Website idempotency plus non-blocking billing telemetry.
+
+The former USD budget guard is intentionally gone: billing observations may be
+recorded, but they must never allow, block or change a replay.
+"""
 
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from website_budget import (
-    DEFAULT_DAILY_CAP_USD,
-    DEFAULT_MONTHLY_CREDIT_USD,
-    DEFAULT_RESERVE_USD,
+    PUBLISHED_STATUSES,
     already_published,
-    budget_decision,
-    read_budget_policy,
+    billing_observation,
     receipt_path,
 )
 
@@ -43,41 +45,38 @@ def test_receipt_rejects_non_published_or_wrong_identity(tmp_path):
     path.parent.mkdir(parents=True)
     path.write_text(json.dumps({"status": "FAILED", "source_sha256": source, "asset_digest": digest}))
     assert already_published(tmp_path, source, digest) is None
+    assert set(PUBLISHED_STATUSES) == {"PUBLISHED", "ALREADY_PUBLISHED", "RECOVERED_AFTER_PUBLICATION"}
 
 
-def test_budget_policy_defaults_and_override(tmp_path):
-    assert read_budget_policy(tmp_path) == {
-        "daily_cap_usd": DEFAULT_DAILY_CAP_USD,
-        "monthly_credit_usd": DEFAULT_MONTHLY_CREDIT_USD,
-        "reserve_usd": DEFAULT_RESERVE_USD,
-    }
-    (tmp_path / "budget_policy.json").write_text(
-        json.dumps({"daily_cap_usd": 1.5, "monthly_credit_usd": 30, "reserve_usd": 2})
-    )
-    assert read_budget_policy(tmp_path)["monthly_credit_usd"] == 30.0
+def test_billing_observation_never_returns_a_business_decision():
+    def report():
+        return [{"cost": 999.0}, {"cost": 1.0}]
+
+    def summary():
+        return {"metered_cost": 12345.0}
+
+    observation = billing_observation(report=report, summary=summary)
+    assert observation["status"] == "available"
+    assert observation["today_cost_usd"] == 1000.0
+    assert observation["monthly_metered_usd"] == 12345.0
+    assert "allowed" not in observation
+    assert "reason" not in observation
 
 
-def test_budget_decision_daily_and_monthly_guards():
-    assert budget_decision(
-        today_cost_usd=0.5,
-        monthly_metered_usd=10,
-        daily_cap_usd=2,
-        monthly_credit_usd=30,
-        reserve_usd=2,
-    )["allowed"]
-    daily = budget_decision(
-        today_cost_usd=2.1,
-        monthly_metered_usd=10,
-        daily_cap_usd=2,
-        monthly_credit_usd=30,
-        reserve_usd=2,
-    )
-    assert not daily["allowed"] and daily["reason"] == "daily_cap_reached"
-    monthly = budget_decision(
-        today_cost_usd=0.5,
-        monthly_metered_usd=28.5,
-        daily_cap_usd=2,
-        monthly_credit_usd=30,
-        reserve_usd=2,
-    )
-    assert not monthly["allowed"] and monthly["reason"] == "monthly_reserve_reached"
+def test_billing_failure_is_unavailable_and_non_blocking():
+    def broken():
+        raise RuntimeError("billing API down")
+
+    observation = billing_observation(report=broken, summary=broken)
+    assert observation["status"] == "unavailable"
+    assert observation["error_type"] == "RuntimeError"
+    assert "allowed" not in observation
+
+
+def test_no_budget_blocking_state_remains_in_website_code():
+    code = Path(__file__).resolve().parents[1] / "code"
+    text = "\n".join(path.read_text() for path in code.rglob("*.py") if "__pycache__" not in path.parts)
+    assert "SKIPPED_BUDGET" not in text
+    assert "budget_decision" not in text
+    assert "QLIB_DAILY_BUDGET_USD" not in text
+    assert "QLIB_BUDGET_STRICT" not in text

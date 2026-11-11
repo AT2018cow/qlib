@@ -156,3 +156,31 @@ test('actual November 6 legacy override is a frozen reference, including after s
       { key: market.key, expectedPitCount: market.pit }).ok, false);
   }
 });
+
+test('v2 metadata must publish exactly the CSV TopK and a selection hash', () => {
+  const date = '2026-11-06';
+  for (const market of MARKETS) {
+    const rows = readRows(path.join(signals, `${date}_top20_lgb158${market.suffix}.csv`), market.topk);
+    const paper = readJSON(path.join(signals, `${date}_paper_portfolio${market.suffix}.json`));
+    const base = readJSON(path.join(signals, `${date}_mvp_metadata${market.suffix}.json`));
+    const metadata = structuredClone(base);
+    metadata.signal_lineage = {
+      ...metadata.signal_lineage,
+      ranking_contract_version: 2,
+      published_selection_instruments: metadata.signal_lineage.display_top20_instruments,
+      published_selection_sha256: 'a'.repeat(64),
+    };
+    assert.equal(
+      evaluateMvpContract(metadata, paper, date, rows, { key: market.key, expectedPitCount: market.pit }).ok,
+      true
+    );
+    metadata.signal_lineage.published_selection_instruments = [
+      ...metadata.signal_lineage.published_selection_instruments.slice(1),
+      'SH600000',
+    ];
+    assert.equal(
+      evaluateMvpContract(metadata, paper, date, rows, { key: market.key, expectedPitCount: market.pit }).ok,
+      false
+    );
+  }
+});

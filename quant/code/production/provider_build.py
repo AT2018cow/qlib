@@ -37,12 +37,13 @@ class ProviderBuildError(RuntimeError):
 
 
 def _code_source_sha() -> str:
-    try:
-        from research_identity import source_manifest
+    """Fail closed: a provider archive must never claim an unknown code identity."""
+    from research_identity import source_manifest
 
-        return str(source_manifest("training")["sha256"])
-    except Exception:  # noqa: BLE001 - audit identity is not a build gate
-        return "unavailable"
+    value = str(source_manifest("training")["sha256"])
+    if len(value) != 64 or any(char not in "0123456789abcdef" for char in value):
+        raise RuntimeError("code source identity is not a lowercase SHA256")
+    return value
 
 
 def _build_with_membership_retry(
@@ -106,6 +107,7 @@ def build_provider_archive(
     """
     from resource_sampler import ResourceSampler
 
+    code_source_sha = _code_source_sha()
     root = Path(root)
     work = Path(work_root)
     work.mkdir(parents=True, exist_ok=True)
@@ -215,7 +217,7 @@ def build_provider_archive(
             provenance={
                 "builder": "overlay-pipeline",
                 "contract": archive_meta["contract"],
-                "code_source_sha256": _code_source_sha(),
+                "code_source_sha256": code_source_sha,
                 "sina": manifest.get("sources", {}).get("sina_stats"),
                 "membership_policy": manifest.get("membership_policy"),
                 "history_backfill": manifest.get("history_backfill", {}).get("symbols", []),

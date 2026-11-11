@@ -301,3 +301,92 @@ def test_seal_binds_the_resolved_prior_archive_digest(tmp_path):
     assert receipt["base"]["kind"] == "archive"
     assert receipt["base"]["digest"] == prior_receipt["archive"]["sha256"]
     assert receipt["base"]["calendar_end"] == "2026-11-09"
+
+
+def test_retention_plan_keeps_anchors_latest_recent_checkpoints_and_references(tmp_path):
+    from data_ingest.store import ProviderStoreError, retention_plan
+
+    root = tmp_path / "vol"
+    root.mkdir()
+    days = (
+        "2026-09-30",
+        "2026-10-08",
+        "2026-10-09",
+        "2026-10-12",
+        "2026-10-13",
+        "2026-10-30",
+        "2026-10-31",
+        "2026-11-30",
+        "2026-12-31",
+    )
+    for day in days:
+        provider = make_provider(tmp_path / f"p-{day}", date=day)
+        publish(tmp_path / day, provider, date=day)
+        shutil.copytree(tmp_path / day / "vol" / "archives" / day, root / "archives" / day)
+    plan = retention_plan(
+        root,
+        keep=2,
+        frozen_anchor_dates=["2026-09-30"],
+        referenced_dates=["2026-10-08"],
+        incomplete_dates=["2026-10-09"],
+        generated_at="2026-11-11T00:00:00Z",
+    )
+    reasons = {item["date"]: item["reason"] for item in plan["keep"]}
+    assert reasons["2026-09-30"] == "frozen_anchor"
+    assert reasons["2026-10-08"] == "referenced_by_journal_website_or_recovery"
+    assert reasons["2026-10-09"] == "incomplete_publication"
+    assert reasons["2026-12-31"] == "latest_pass"
+    assert reasons["2026-11-30"] == "month_end_checkpoint"
+    assert reasons["2026-10-31"] == "month_end_checkpoint"
+    assert [item["date"] for item in plan["remove"]] == ["2026-10-30", "2026-10-13", "2026-10-12"]
+    assert plan["remove"][0]["path"] == "archives/2026-10-30"
+    assert plan["remove"][0]["digest"]
+    assert plan["apply"] == "NOT_PERMITTED_WITHOUT_SEPARATE_OPERATOR_APPROVAL"
+    # Planning never deletes or rewrites any receipt.
+    assert (root / "archives" / "2026-10-30" / "receipt.json").is_file()
+    with pytest.raises(ProviderStoreError, match="apply is disabled"):
+        from data_ingest.store import prune_archives
+
+        prune_archives(root, keep=2, dry_run=False)
+    assert (root / "archives" / "2026-10-30" / "receipt.json").is_file()
+
+
+def test_retention_plan_keeps_a_directory_with_a_missing_archive(tmp_path):
+    from data_ingest.store import retention_plan
+
+    root = tmp_path / "vol"
+    root.mkdir()
+    day = "2026-10-09"
+    provider = make_provider(tmp_path / f"p-{day}", date=day)
+    publish(tmp_path / day, provider, date=day)
+    shutil.copytree(tmp_path / day / "vol" / "archives" / day, root / "archives" / day)
+    receipt = json.loads((root / "archives" / day / "receipt.json").read_text())
+    (root / receipt["archive"]["path"]).unlink()
+    latest = "2026-10-12"
+    provider = make_provider(tmp_path / f"p-{latest}", date=latest)
+    publish(tmp_path / latest, provider, date=latest)
+    shutil.copytree(tmp_path / latest / "vol" / "archives" / latest, root / "archives" / latest)
+    plan = retention_plan(root, keep=1, generated_at="2026-11-11T00:00:00Z")
+    assert plan["counts"]["remove"] == 0
+    reasons = {item["date"]: item["reason"] for item in plan["keep"]}
+    assert reasons[latest] == "latest_pass"
+    assert reasons[day] == "incomplete_archive_directory"
+
+
+def test_production_code_identity_never_falls_back_to_unavailable(monkeypatch):
+    import provider_build
+    import research_identity
+
+    def missing(kind):
+        raise ValueError("manifest file missing")
+
+    monkeypatch.setattr(research_identity, "source_manifest", missing)
+    with pytest.raises(ValueError, match="manifest file missing"):
+        provider_build._code_source_sha()
+
+    import modal_qlib_cn_a10g as production
+
+    monkeypatch.setattr(production, "_CODE_SOURCE_SHA", None)
+    with pytest.raises(ValueError, match="manifest file missing"):
+        production._code_source_sha()
+    assert production._CODE_SOURCE_SHA is None

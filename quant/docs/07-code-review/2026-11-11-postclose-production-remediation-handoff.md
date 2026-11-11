@@ -2,7 +2,9 @@
 
 > 日期：2026-11-11
 >
-> 状态：`APPROVED PLAN / IMPLEMENTATION NOT STARTED / NOT DEPLOYED`
+> 状态：`APPROVED PLAN / LOCAL IMPLEMENTED / NOT DEPLOYED`
+>
+> 本地实现与测试证据见 [`2026-11-11-postclose-implementation-report.md`](2026-11-11-postclose-implementation-report.md)。
 >
 > 实施者：DeepSeek
 >

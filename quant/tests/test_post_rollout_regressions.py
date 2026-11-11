@@ -292,7 +292,19 @@ def test_missing_held_quote_is_a_real_gap_and_cannot_reach_website():
     result = _quote_replay(True)
     assert {gap["field"] for gap in result["gaps"]} == {"open", "close"}
     with pytest.raises(ValueError, match="missing held quotes"):
-        build_website_series("csi300", result, calendar=[], source_sha="a" * 64, provider_sha="b" * 64, fits=[])
+        from research_identity import account_contract_manifest, website_semantic_manifest
+        from website_simulation import account_contract_for_market
+
+        build_website_series(
+            "csi300",
+            result,
+            calendar=[],
+            source_sha="a" * 64,
+            semantic_sha=website_semantic_manifest()["sha256"],
+            account_sha=account_contract_manifest(account_contract_for_market("csi300"))["sha256"],
+            provider_sha="b" * 64,
+            fits=[],
+        )
 
 
 @pytest.mark.parametrize("damage", [None, "fee", "cash", "inventory", "nav", "wrong_account"])

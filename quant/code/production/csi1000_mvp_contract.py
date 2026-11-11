@@ -481,6 +481,7 @@ def build_mvp_metadata(
     publication_detail: str,
     market: str = "csi1000",
     allow_legacy_winner: bool = False,
+    t_close_limit_annotations: dict | None = None,
 ) -> dict:
     """Build the immutable sidecar emitted with each canonical daily signal."""
     if market not in EXPECTED_POOL_COUNTS:
@@ -490,7 +491,12 @@ def build_mvp_metadata(
     if signal_data_date >= usage_date:
         raise ValueError("MVP signal data date must precede usage date")
 
-    top20 = parse_top20_csv(signal_csv, expected_rows=expected_lineage.get("topk"))
+    from csi1000_production_config import CANONICAL_TOPK_BY_MARKET
+
+    topk = expected_lineage.get("topk") or CANONICAL_TOPK_BY_MARKET.get(market)
+    if type(topk) is not int or topk <= 0:
+        raise ValueError("published selection size is missing")
+    top20 = parse_top20_csv(signal_csv, expected_rows=topk)
     if pit_universe.get("status") != "PASS" or pit_universe.get("asof") != signal_data_date:
         raise ValueError("PIT universe was not verified at the signal data date")
     members = set(pit_universe.get("active_members") or [])
@@ -529,6 +535,23 @@ def build_mvp_metadata(
         clean_ranking.append([symbol, score])
     if len({row[0] for row in clean_ranking}) != len(clean_ranking):
         raise ValueError("duplicate instrument in full ranking")
+    published_selection = clean_ranking[:topk]
+    csv_selection = [[row["instrument"], row["score"]] for row in top20]
+    if csv_selection != published_selection:
+        raise ValueError("Top20 CSV must equal the raw ranking TopK without limit filtering or backfill")
+    if t_close_limit_annotations is not None:
+        if (
+            not isinstance(t_close_limit_annotations, dict)
+            or t_close_limit_annotations.get("informational_only") is not True
+        ):
+            raise ValueError("T-close limit annotations must be informational_only")
+        annotated = t_close_limit_annotations.get("instruments")
+        if (
+            not isinstance(annotated, list)
+            or any(not isinstance(symbol, str) or not _SYMBOL.fullmatch(symbol) for symbol in annotated)
+            or len(set(annotated)) != len(annotated)
+        ):
+            raise ValueError("T-close limit annotations are malformed")
 
     if not isinstance(provider, dict):
         raise ValueError("provider identity missing")
@@ -612,12 +635,16 @@ def build_mvp_metadata(
         "label_maturity": dict(label_maturity),
         "production_lineage": lineage,
         "signal_lineage": {
+            "ranking_contract_version": 2,
             "display_top20_sha256": _sha256_bytes(signal_csv.encode("utf-8")),
             "display_top20_instruments": [r["instrument"] for r in top20],
+            "published_selection_instruments": [row[0] for row in published_selection],
+            "published_selection_sha256": stable_json_sha256(published_selection),
             "paper_ranking_full_sha256": stable_json_sha256(clean_ranking),
             "paper_ranking_count": len(clean_ranking),
-            "paper_planner_source": "pre_display_limit_filter_full_ranking",
-            "display_surface": "board_aware_close_limit_filtered_top20",
+            "paper_planner_source": "raw_ranking_full",
+            "display_surface": "raw_model_topk_no_close_limit_filter",
+            "t_close_limit_annotations": t_close_limit_annotations,
         },
         "paper": paper_summary,
         "risk": risk,

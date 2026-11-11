@@ -200,7 +200,7 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertIn('"reproducibility": manifest', src)
 
     def test_production_config_applies_shared_lgb_reproducibility(self):
-        src = function_source("quant/code/production/modal_qlib_cn_a10g.py", "_load_and_patch_cfg")
+        src = function_source("quant/code/production/qlib_runtime.py", "load_and_patch_cfg")
         self.assertIn("apply_lgb_reproducibility(cfg)", src)
 
     def test_paper_execution_uses_factor_and_no_high_open_overlay(self):

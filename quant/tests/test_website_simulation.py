@@ -7,10 +7,16 @@ from pathlib import Path
 import pytest
 
 from paper_portfolio import PaperPortfolio
-from website_simulation import build_website_series, validate_website_series, write_immutable
+from research_identity import account_contract_manifest, website_semantic_manifest
+from website_simulation import (
+    account_contract_for_market,
+    build_website_series,
+    validate_website_series,
+    write_immutable,
+)
 
 
-def example_series():
+def example_series(market="csi300"):
     pp = PaperPortfolio(topk=10, nd=1)
     sessions = []
     for signal, day, opening, close in [
@@ -48,6 +54,8 @@ def example_series():
             {"sessions": sessions, "gaps": []},
             calendar=["2026-09-30", "2026-10-08", "2026-10-09"],
             source_sha="a" * 64,
+            semantic_sha=website_semantic_manifest()["sha256"],
+            account_sha=account_contract_manifest(account_contract_for_market(market))["sha256"],
             provider_sha="b" * 64,
             fits=fits,
         ),
@@ -113,6 +121,8 @@ def test_quote_gaps_cannot_be_promoted_to_website_values():
             {"sessions": sessions, "gaps": [{}]},
             calendar=[],
             source_sha="a" * 64,
+            semantic_sha=website_semantic_manifest()["sha256"],
+            account_sha=account_contract_manifest(account_contract_for_market("csi300"))["sha256"],
             provider_sha="b" * 64,
             fits=[],
         )
@@ -215,7 +225,7 @@ def test_publication_recovers_lost_response_and_does_not_push_twice(tmp_path, mo
     monkeypatch.setattr(module.simulation, "commit", lambda: None)
     results = []
     for market, profile in CANONICAL_PROFILES_BY_MARKET.items():
-        raw, _ = example_series()
+        raw, _ = example_series(market)
         raw["market"] = raw["account_identity"]["market"] = market
         identity = raw["account_identity"]
         identity.update(
@@ -232,6 +242,10 @@ def test_publication_recovers_lost_response_and_does_not_push_twice(tmp_path, mo
                 "status": "COMPLETED",
                 "market": market,
                 "source_sha256": "a" * 64,
+                "website_semantic_sha256": raw["website_semantic_sha256"],
+                "account_contract_sha256": raw["account_contract_sha256"],
+                "semantic_manifest": website_semantic_manifest(),
+                "account_contract": account_contract_manifest(account_contract_for_market(market)),
                 "asset_digest": "sha256:" + "b" * 64,
                 "series": raw,
             }
@@ -320,8 +334,16 @@ def test_incremental_prefix_requires_a_complete_ancestor_ledger(tmp_path, monkey
     )
     current_digest = hashlib.sha256((current_dir / "manifest.json").read_bytes()).hexdigest()
 
+    from research_identity import website_cache_key
+
+    semantic_sha = series_semantic = website_semantic_manifest()["sha256"]
+    account_sha = account_contract_manifest(account_contract_for_market("csi300"))["sha256"]
+    cache_sha = website_cache_key(semantic_sha, account_sha)
     series, sessions = example_series()
     series["source_manifest_sha256"] = source_sha
+    series["release_source_sha256"] = source_sha
+    series["website_semantic_sha256"] = semantic_sha
+    series["account_contract_sha256"] = account_sha
     series["provider_archive_sha256"] = prior_digest
     fake_model = b"deterministic fake model"
     model_sha = hashlib.sha256(fake_model).hexdigest()
@@ -329,7 +351,7 @@ def test_incremental_prefix_requires_a_complete_ancestor_ledger(tmp_path, monkey
     for point in series["points"]:
         point["model_sha256"] = model_sha
 
-    result_dir = simulation / source_sha / prior_digest / "csi300" / "full"
+    result_dir = simulation / cache_sha / prior_digest / "csi300" / "full"
     result_dir.mkdir(parents=True)
     signal = pd.DataFrame(
         {"score": [0.1, 0.2, 0.3]},
@@ -346,6 +368,8 @@ def test_incremental_prefix_requires_a_complete_ancestor_ledger(tmp_path, monkey
         "status": "COMPLETED",
         "market": "csi300",
         "source_sha256": source_sha,
+        "website_semantic_sha256": semantic_sha,
+        "account_contract_sha256": account_sha,
         "asset_digest": f"sha256:{prior_digest}",
         "provider_source": "chenditc",
         "provider_calendar_end": "2026-10-09",
@@ -363,7 +387,7 @@ def test_incremental_prefix_requires_a_complete_ancestor_ledger(tmp_path, monkey
         json.dumps(
             {
                 "identity": {
-                    "source_sha256": source_sha,
+                    "cache_sha256": cache_sha,
                     "market": "csi300",
                     "profile": series["account_identity"]["profile"],
                     "fit_asof": "2026-09-30",
@@ -386,7 +410,15 @@ def test_incremental_prefix_requires_a_complete_ancestor_ledger(tmp_path, monkey
     monkeypatch.setattr(module, "Path", redirected)
     calendar = ["2026-09-18", "2026-09-30", "2026-10-08", "2026-10-09", "2026-10-12"]
     asset = {"local_path": str(current_dir), "digest": f"sha256:{current_digest}", "source": "chenditc"}
-    prefix = module._incremental_prior(source_sha, asset, "csi300", "2026-10-12", calendar)
+    prefix = module._incremental_prior(
+        cache_sha,
+        asset,
+        "csi300",
+        "2026-10-12",
+        calendar,
+        semantic_sha=semantic_sha,
+        account_sha=account_sha,
+    )
     assert prefix is not None
     assert prefix["previous"] == "2026-10-09"
     assert prefix["result_dir"] == result_dir
@@ -422,7 +454,15 @@ def test_incremental_prefix_requires_a_complete_ancestor_ledger(tmp_path, monkey
     assert archive_asset["base"]["digest"] == prior_digest
     payload["provider_source"] = "overlay"
     (result_dir / "result.json").write_text(json.dumps(payload))
-    archive_prefix = module._incremental_prior(source_sha, archive_asset, "csi300", "2026-10-12", calendar)
+    archive_prefix = module._incremental_prior(
+        cache_sha,
+        archive_asset,
+        "csi300",
+        "2026-10-12",
+        calendar,
+        semantic_sha=semantic_sha,
+        account_sha=account_sha,
+    )
     assert archive_prefix is not None
     assert archive_prefix["previous"] == "2026-10-09"
     payload["provider_source"] = "chenditc"
@@ -430,11 +470,83 @@ def test_incremental_prefix_requires_a_complete_ancestor_ledger(tmp_path, monkey
 
     # Plan A: both directions are lineage boundaries.
     overlay_asset = {**asset, "source": "overlay"}
-    assert module._incremental_prior(source_sha, overlay_asset, "csi300", "2026-10-12", calendar) is None
+    assert (
+        module._incremental_prior(
+            cache_sha,
+            overlay_asset,
+            "csi300",
+            "2026-10-12",
+            calendar,
+            semantic_sha=semantic_sha,
+            account_sha=account_sha,
+        )
+        is None
+    )
     payload["provider_source"] = "overlay"
     (result_dir / "result.json").write_text(json.dumps(payload))
-    assert module._incremental_prior(source_sha, overlay_asset, "csi300", "2026-10-12", calendar) is not None
+    assert (
+        module._incremental_prior(
+            cache_sha,
+            overlay_asset,
+            "csi300",
+            "2026-10-12",
+            calendar,
+            semantic_sha=semantic_sha,
+            account_sha=account_sha,
+        )
+        is not None
+    )
     payload["provider_source"] = "chenditc"
+    (result_dir / "result.json").write_text(json.dumps(payload))
+
+    # PC02: a release-only change (resource/schedule/orchestration) must keep
+    # the semantic ancestor; semantic/account changes must reject it.
+    payload["source_sha256"] = "9" * 64
+    series["source_manifest_sha256"] = "9" * 64
+    series["release_source_sha256"] = "9" * 64
+    (result_dir / "result.json").write_text(json.dumps(payload))
+    assert (
+        module._incremental_prior(
+            cache_sha,
+            asset,
+            "csi300",
+            "2026-10-12",
+            calendar,
+            semantic_sha=semantic_sha,
+            account_sha=account_sha,
+        )
+        is not None
+    )
+    payload["website_semantic_sha256"] = "8" * 64
+    (result_dir / "result.json").write_text(json.dumps(payload))
+    assert (
+        module._incremental_prior(
+            cache_sha,
+            asset,
+            "csi300",
+            "2026-10-12",
+            calendar,
+            semantic_sha=semantic_sha,
+            account_sha=account_sha,
+        )
+        is None
+    )
+    payload["website_semantic_sha256"] = semantic_sha
+    payload["account_contract_sha256"] = "7" * 64
+    (result_dir / "result.json").write_text(json.dumps(payload))
+    assert (
+        module._incremental_prior(
+            cache_sha,
+            asset,
+            "csi300",
+            "2026-10-12",
+            calendar,
+            semantic_sha=semantic_sha,
+            account_sha=account_sha,
+        )
+        is None
+    )
+    payload["account_contract_sha256"] = account_sha
     (result_dir / "result.json").write_text(json.dumps(payload))
 
     (result_dir / "signal.parquet").unlink()
@@ -443,7 +555,18 @@ def test_incremental_prefix_requires_a_complete_ancestor_ledger(tmp_path, monkey
         (result_dir / "signal.parquet").read_bytes()
     ).hexdigest()
     (result_dir / "result.json").write_text(json.dumps(payload))
-    assert module._incremental_prior(source_sha, asset, "csi300", "2026-10-12", calendar) is None
+    assert (
+        module._incremental_prior(
+            cache_sha,
+            asset,
+            "csi300",
+            "2026-10-12",
+            calendar,
+            semantic_sha=semantic_sha,
+            account_sha=account_sha,
+        )
+        is None
+    )
 
 
 def test_latest_asset_resolves_archive_then_directory(tmp_path, monkeypatch):
@@ -762,12 +885,11 @@ def test_archive_asset_skips_smoke_and_reaches_workers_without_local_path(monkey
         "calendar": ["2026-11-09", "2026-11-10"],
         "base": {"calendar_end": "2026-11-09", "digest": "c" * 64},
     }
-    monkeypatch.setattr(module, "data_volume", types.SimpleNamespace(reload=lambda: None))
+    monkeypatch.setattr(module, "data_volume_readonly", types.SimpleNamespace(reload=lambda: None))
     monkeypatch.setattr(module, "simulation", types.SimpleNamespace(reload=lambda: None))
     monkeypatch.setattr(module, "latest_asset", lambda expected_end=None: archive_asset)
     monkeypatch.setattr(module, "already_published", lambda *args: None)
-    monkeypatch.setattr(module, "_budget_guard", lambda: {"allowed": True})
-    monkeypatch.setattr(module, "_incremental_prior", lambda *args: {"previous": "2026-11-09"})
+    monkeypatch.setattr(module, "_incremental_prior", lambda *args, **kwargs: {"previous": "2026-11-09"})
     monkeypatch.setattr(
         module,
         "build_market",
@@ -829,12 +951,11 @@ def test_missing_incremental_prefix_uses_smoke_and_full_workers(monkeypatch):
         "calendar": ["2026-11-09", "2026-11-10"],
         "calendar_end": "2026-11-10",
     }
-    monkeypatch.setattr(module, "data_volume", types.SimpleNamespace(reload=lambda: None))
+    monkeypatch.setattr(module, "data_volume_readonly", types.SimpleNamespace(reload=lambda: None))
     monkeypatch.setattr(module, "simulation", types.SimpleNamespace(reload=lambda: None))
     monkeypatch.setattr(module, "latest_asset", lambda expected_end=None: asset)
     monkeypatch.setattr(module, "already_published", lambda *args: None)
-    monkeypatch.setattr(module, "_budget_guard", lambda: {"allowed": True})
-    monkeypatch.setattr(module, "_incremental_prior", lambda *args: None)
+    monkeypatch.setattr(module, "_incremental_prior", lambda *args, **kwargs: None)
     full_calls = {"remote": [], "map": []}
 
     def full_remote(job):
@@ -871,3 +992,39 @@ def test_missing_incremental_prefix_uses_smoke_and_full_workers(monkeypatch):
     assert [job["mode"] for job in full_calls["remote"]] == ["smoke"]
     assert len(full_calls["map"]) == 3
     assert all("required_replay_mode" not in job for job in full_calls["map"])
+
+
+def test_every_website_data_mount_is_read_only():
+    path = Path(__file__).resolve().parents[1] / "code/ops/website_simulation_modal.py"
+    tree = ast.parse(path.read_text())
+    mounted = []
+    for node in tree.body:
+        if not isinstance(node, ast.FunctionDef):
+            continue
+        for decorator in node.decorator_list:
+            if not isinstance(decorator, ast.Call):
+                continue
+            for keyword in decorator.keywords:
+                if keyword.arg != "volumes" or not isinstance(keyword.value, ast.Dict):
+                    continue
+                for key, value in zip(keyword.value.keys, keyword.value.values):
+                    if isinstance(key, ast.Constant) and key.value == "/data":
+                        mounted.append((node.name, getattr(value, "id", None)))
+    assert mounted, "website app must mount the production provider"
+    assert all(volume == "data_volume_readonly" for _, volume in mounted), mounted
+    assert "data_volume_readonly = data_volume.with_mount_options(read_only=True)" in path.read_text()
+
+
+def test_legacy_website_series_remains_readable_but_cannot_seed_incremental():
+    raw, _ = example_series()
+    for key in (
+        "release_source_sha256",
+        "website_semantic_sha256",
+        "account_contract_sha256",
+        "identity_schema_version",
+    ):
+        raw.pop(key)
+    validate_website_series(raw, market="csi300")
+    raw["identity_schema_version"] = 2
+    with pytest.raises(ValueError, match="identity missing"):
+        validate_website_series(raw, market="csi300")

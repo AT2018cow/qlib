@@ -20,16 +20,23 @@ mandatory so a slow free endpoint cannot pin a worker forever.
 from __future__ import annotations
 
 import ast
+import hashlib
+import random
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from email.utils import parsedate_to_datetime
 from typing import Iterable
+from urllib.parse import urlsplit
 
 from data_ingest.model import Bar, FetchBatch, SymbolSeries
 from data_ingest.symbols import SymbolError, normalize_code, to_sina_symbol
 
 AKSHARE_PINNED = "1.18.94"
 _UA = {"User-Agent": "Mozilla/5.0 (compatible; qlib-provider/1.0)"}
+MAX_RATE_PER_SECOND = 8.0
+MAX_RETRY_AFTER_SECONDS = 60.0
+RETRY_STATUSES = frozenset((429, 502, 503, 504))
 
 
 class SinaError(RuntimeError):
@@ -72,7 +79,207 @@ def _akshare_urls():
     return zh_sina_a_stock_hist_url, zh_sina_a_stock_hfq_url
 
 
-def _http_text(url: str, *, timeouts: tuple[int, int], retries: int, backoff: float) -> str:
+class NetworkMetrics:
+    """Thread-safe per-host request/retry/latency counters for one build."""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._hosts = {}
+
+    def record(self, host, status, latency, *, retry=False, sleep=0.0, success=False, error=False):
+        with self._lock:
+            row = self._hosts.setdefault(
+                host,
+                {
+                    "requests": 0,
+                    "status_codes": {},
+                    "rate_limited": 0,
+                    "retries": 0,
+                    "sleep_seconds": 0.0,
+                    "successes": 0,
+                    "errors": 0,
+                    "latencies_ms": [],
+                },
+            )
+            row["requests"] += 1
+            if status is not None:
+                key = str(status)
+                row["status_codes"][key] = row["status_codes"].get(key, 0) + 1
+                if status == 429:
+                    row["rate_limited"] += 1
+            if retry:
+                row["retries"] += 1
+                row["sleep_seconds"] += max(0.0, float(sleep))
+            if success:
+                row["successes"] += 1
+            if error:
+                row["errors"] += 1
+            if latency is not None and latency >= 0:
+                row["latencies_ms"].append(round(float(latency) * 1000.0, 3))
+
+    def summary(self):
+        with self._lock:
+            hosts = {}
+            for host, row in self._hosts.items():
+                latencies = sorted(row["latencies_ms"])
+
+                def percentile(fraction):
+                    if not latencies:
+                        return None
+                    index = min(len(latencies) - 1, max(0, int(round(fraction * (len(latencies) - 1)))))
+                    return latencies[index]
+
+                hosts[host] = {
+                    "requests": row["requests"],
+                    "status_codes": dict(sorted(row["status_codes"].items())),
+                    "rate_limited": row["rate_limited"],
+                    "retries": row["retries"],
+                    "sleep_seconds": round(row["sleep_seconds"], 3),
+                    "successes": row["successes"],
+                    "errors": row["errors"],
+                    "latency_ms_p50": percentile(0.50),
+                    "latency_ms_p95": percentile(0.95),
+                }
+            return {"hosts": hosts}
+
+
+class _TokenBucket:
+    """Single-host request limiter, capped at ``MAX_RATE_PER_SECOND``."""
+
+    def __init__(self, rate=MAX_RATE_PER_SECOND, *, now_fn=time.monotonic, sleep_fn=time.sleep):
+        rate = float(rate)
+        if not 0 < rate <= MAX_RATE_PER_SECOND:
+            raise ValueError(f"rate must be in (0, {MAX_RATE_PER_SECOND}]")
+        self.rate = rate
+        self.capacity = rate
+        self.tokens = rate
+        self.updated = now_fn()
+        self._now_fn = now_fn
+        self._sleep_fn = sleep_fn
+        self._lock = threading.Lock()
+
+    def acquire(self):
+        while True:
+            with self._lock:
+                now = self._now_fn()
+                elapsed = max(0.0, now - self.updated)
+                self.tokens = min(self.capacity, self.tokens + elapsed * self.rate)
+                self.updated = now
+                if self.tokens >= 1.0:
+                    self.tokens -= 1.0
+                    return
+                wait = (1.0 - self.tokens) / self.rate
+            self._sleep_fn(wait)
+
+
+def _parse_retry_after(value, *, now=None):
+    """Parse seconds or an HTTP date and clamp to the audited global ceiling."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        seconds = float(text)
+    except ValueError:
+        try:
+            parsed = parsedate_to_datetime(text)
+        except (TypeError, ValueError, OverflowError):
+            return None
+        if parsed is None:
+            return None
+        if parsed.tzinfo is None:
+            from datetime import timezone
+
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        current = now if now is not None else time.time()
+        seconds = parsed.timestamp() - float(current)
+    if seconds != seconds:
+        return None
+    return min(MAX_RETRY_AFTER_SECONDS, max(0.0, float(seconds)))
+
+
+def _thread_session(pool_size):
+    import requests
+
+    state = getattr(_thread_state, "session", None)
+    if state is None or state[0] != pool_size:
+        session = requests.Session()
+        adapter = requests.adapters.HTTPAdapter(pool_connections=pool_size, pool_maxsize=pool_size)
+        session.mount("https://", adapter)
+        session.mount("http://", adapter)
+        session.headers.update(_UA)
+        state = (pool_size, session)
+        _thread_state.session = state
+    return state[1]
+
+
+def _http_text(
+    url: str,
+    *,
+    timeouts: tuple[int, int],
+    retries: int,
+    backoff: float,
+    session=None,
+    bucket=None,
+    metrics=None,
+    sleep_fn=time.sleep,
+    jitter_fn=None,
+    now_fn=None,
+    max_retry_after=MAX_RETRY_AFTER_SECONDS,
+) -> str:
+    """Fetch text with connection reuse, bounded backoff and rate metrics."""
+    import requests
+
+    host = urlsplit(url).netloc or url
+    session = session or _thread_session(4)
+    jitter_fn = jitter_fn or random.uniform
+    now_fn = now_fn or time.time
+    last_error = None
+    for attempt in range(retries):
+        if bucket is not None:
+            bucket.acquire()
+        started = time.monotonic()
+        try:
+            response = session.get(url, timeout=timeouts, headers=_UA)
+            status = response.status_code
+            latency = time.monotonic() - started
+            if status in RETRY_STATUSES:
+                retry_after = None
+                if status in (429, 503):
+                    retry_after = _parse_retry_after(response.headers.get("Retry-After"), now=now_fn())
+                if retry_after is not None:
+                    delay = min(float(max_retry_after), retry_after)
+                else:
+                    base = min(float(max_retry_after), backoff * (2**attempt))
+                    delay = jitter_fn(0.0, base)
+                if metrics is not None:
+                    metrics.record(host, status, latency, retry=True, sleep=delay)
+                if attempt + 1 < retries:
+                    sleep_fn(delay)
+                    continue
+                last_error = SinaError(f"HTTP {status}")
+                break
+            response.raise_for_status()
+            if not response.text:
+                raise SinaError("empty response")
+            if metrics is not None:
+                metrics.record(host, status, latency, success=True)
+            return response.text
+        except Exception as exc:  # noqa: BLE001 - provider boundary
+            last_error = exc
+            if attempt + 1 < retries:
+                base = min(float(max_retry_after), backoff * (2**attempt))
+                delay = jitter_fn(0.0, base)
+                if metrics is not None:
+                    status = getattr(getattr(exc, "response", None), "status_code", None)
+                    metrics.record(host, status, None, retry=True, sleep=delay, error=True)
+                sleep_fn(delay)
+            elif metrics is not None:
+                status = getattr(getattr(exc, "response", None), "status_code", None)
+                metrics.record(host, status, None, error=True)
+    raise SinaError(f"{type(last_error).__name__}: {last_error}")
+
     import requests
 
     last_error: Exception | None = None
@@ -207,9 +414,12 @@ class SinaSource:
         request_retries: int = 2,
         batch_deadline: float = 45 * 60,
         prefer_fast: bool = True,
+        rate_limit_per_second: float = MAX_RATE_PER_SECOND,
     ):
         if workers < 1 or retries < 1 or request_retries < 1:
             raise ValueError("workers and retries must be positive")
+        if not 0 < float(rate_limit_per_second) <= MAX_RATE_PER_SECOND:
+            raise ValueError(f"rate_limit_per_second must be in (0, {MAX_RATE_PER_SECOND}]")
         self.workers = workers
         self.retries = retries
         self.retry_sleep = retry_sleep
@@ -217,23 +427,56 @@ class SinaSource:
         self.request_retries = request_retries
         self.batch_deadline = batch_deadline
         self.prefer_fast = prefer_fast
+        self.rate_limit_per_second = float(rate_limit_per_second)
+        self.metrics = NetworkMetrics()
+        self.bucket = _TokenBucket(self.rate_limit_per_second)
+        self._history_cache = {}
+        self._history_lock = threading.Lock()
+        self._history_cache_hits = 0
+
+    def _cached_history(self, symbol: str, url: str):
+        with self._history_lock:
+            cached = self._history_cache.get((symbol, url))
+            if cached is None:
+                return None
+            text, digest = cached
+            if hashlib.sha256(text.encode()).hexdigest() != digest:
+                self._history_cache.pop((symbol, url), None)
+                return None
+            self._history_cache_hits += 1
+            return text
+
+    def _cache_history(self, symbol: str, url: str, text: str) -> None:
+        digest = hashlib.sha256(text.encode()).hexdigest()
+        with self._history_lock:
+            self._history_cache[(symbol, url)] = (text, digest)
 
     def _fast_pair(self, symbol: str, start: str, end: str) -> tuple[dict[str, Bar], dict[str, Bar]]:
         if not _fast_available():
             raise ImportError(f"akshare is not pinned to {AKSHARE_PINNED}")
         hist_url, factor_url = _akshare_urls()
         sina_symbol = to_sina_symbol(symbol)
-        history_text = _http_text(
-            hist_url.format(sina_symbol),
-            timeouts=self.timeouts,
-            retries=self.request_retries,
-            backoff=self.retry_sleep,
-        )
+        history_url = hist_url.format(sina_symbol)
+        history_text = self._cached_history(symbol, history_url)
+        if history_text is None:
+            history_text = _http_text(
+                history_url,
+                timeouts=self.timeouts,
+                retries=self.request_retries,
+                backoff=self.retry_sleep,
+                session=_thread_session(self.workers),
+                bucket=self.bucket,
+                metrics=self.metrics,
+            )
+            self._cache_history(symbol, history_url, history_text)
         factor_text = _http_text(
             factor_url.format(sina_symbol),
             timeouts=self.timeouts,
             retries=self.request_retries,
             backoff=self.retry_sleep,
+            session=_thread_session(self.workers),
+            bucket=self.bucket,
+            metrics=self.metrics,
         )
         full = _history_frame(history_text)
         factor = _factor_series(factor_text)
@@ -421,5 +664,8 @@ class SinaSource:
             "request_retries": self.request_retries,
             "batch_deadline_seconds": self.batch_deadline,
             "fast_unavailable": getattr(_thread_state, "fast_unavailable", None),
+            "rate_limit_per_second": self.rate_limit_per_second,
+            "history_cache_hits": self._history_cache_hits,
+            "network": self.metrics.summary(),
         }
         return merged

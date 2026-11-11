@@ -52,7 +52,8 @@ EXPECTED_FUNCTIONS = [
     "batch_b",
     "daily_standalone",
     "daily_cron",
-    "daily_preopen_retry",
+    "daily_postclose_check",
+    "daily_evening_retry",
     "daily_readonly_check",
     "ensure_chenditc_provider",
     "daily_repair_manual",
@@ -98,9 +99,9 @@ def test_all_functions_defined():
 
 def test_daily_cron_decorator_complete():
     params = _decorator_block("daily_cron")
-    assert 'schedule=modal.Cron("06**1-5",timezone="Asia/Shanghai")' in re.sub(
+    assert 'schedule=modal.Cron("018**1-5",timezone="Asia/Shanghai")' in re.sub(
         r"\s+", "", params
-    ), "cron schedule line missing — next morning's run would silently never fire!"
+    ), "cron schedule line missing — evening's run would silently never fire!"
     assert 'modal.Secret.from_name(_GH_SECRET_NAME := "github-push")' in params
     assert "nonpreemptible=True" in params
     assert "timeout=MAIN_TIMEOUT_SECONDS" in params
@@ -195,8 +196,10 @@ def test_image_helper_modules_copied():
 
 
 def test_constants_intact():
-    assert 'GITHUB_REPO = "AT2018cow/qlib"' in src
-    assert 'SIGNAL_BRANCH = "main"' in src
+    assert "from github_config import GITHUB_REPO, SIGNAL_BRANCH" in src
+    github = (Path(ROOT) / "quant/code/production/github_config.py").read_text()
+    assert 'GITHUB_REPO = "AT2018cow/qlib"' in github
+    assert 'SIGNAL_BRANCH = "main"' in github
     assert 'DATA_DIR = VOL_ROOT / "cn_data"' in src
 
 

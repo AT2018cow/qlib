@@ -50,6 +50,12 @@ from quant_bootstrap import ensure_quant_import_paths
 ensure_quant_import_paths()
 
 from image_filters import should_exclude_from_image
+from qlib_runtime import (
+    MODEL_CFG,
+    cn_trading_calendar as _cn_trading_calendar,
+    latest_trading_day as _latest_trading_day,
+    load_and_patch_cfg as _runtime_load_and_patch_cfg,
+)
 from daily_pipeline import MAIN_TIMEOUT_SECONDS, BACKUP_TIMEOUT_SECONDS, SIGNAL_WORKER_TIMEOUT_SECONDS
 from qlib_audit_fixes import read_trading_calendar, purge_cfg_splits
 from qlib_live_retrain import (
@@ -93,6 +99,14 @@ VOL_ROOT = Path("/vol")
 DATA_DIR = VOL_ROOT / "cn_data"  # 对应 yaml 的 provider_uri
 OVERLAY_PROVIDER_ROOT = VOL_ROOT / "cn_data_overlay"
 MLRUNS_DIR = VOL_ROOT / "mlruns"
+
+
+def _load_and_patch_cfg(*args, **kwargs):
+    """Compatibility wrapper that keeps launcher paths for research callers."""
+    kwargs.setdefault("data_dir", str(DATA_DIR))
+    kwargs.setdefault("mlruns_dir", str(MLRUNS_DIR))
+    return _runtime_load_and_patch_cfg(*args, **kwargs)
+
 
 vol = modal.Volume.from_name(VOL_NAME, create_if_missing=True)
 # The 09:00 check must be able to verify receipts without any write capability.
@@ -200,19 +214,16 @@ image = (
         "/root/qlib/quant/code/production/portfolio_diagnostics.py "
         "/root/qlib/quant/code/execution/st_history.py /root/qlib/quant/code/execution/liquidity_contract.py "
         "/root/qlib/quant/code/production/name_map_sync.py "
-        "/root/qlib/quant/code/production/daily_pipeline.py /root/qlib/quant/code/production/provider_cache.py /root/"
+        "/root/qlib/quant/code/production/daily_pipeline.py /root/qlib/quant/code/production/provider_cache.py "
+        "/root/qlib/quant/code/production/qlib_runtime.py /root/qlib/quant/code/production/github_config.py "
+        "/root/qlib/quant/code/production/provider_asset.py /root/qlib/quant/code/production/website_replay_core.py "
+        "/root/qlib/quant/code/execution/research_identity.py /root/"
     )
 )
 
 app = modal.App(APP_NAME, image=image)
 
 CPU_COUNT = 8
-MODEL_CFG = {
-    "gru": "/root/qlib/examples/benchmarks/GRU/workflow_config_gru_Alpha158.yaml",
-    "alstm": "/root/qlib/examples/benchmarks/ALSTM/workflow_config_alstm_Alpha158.yaml",
-    "lgb360": "/root/qlib/examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha360_csi500.yaml",
-    "lgb158": "/root/qlib/examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158_csi500.yaml",
-}
 
 
 def _ensure_data(force: bool = False):
@@ -297,15 +308,7 @@ def _ensure_data(force: bool = False):
         print(f"[data] instruments: {sorted(p.name for p in inst.iterdir())}")
 
 
-def _latest_trading_day(data_dir=None) -> str:
-    """读取数据日历的最新交易日（YYYY-MM-DD）。data_dir=None 时用 Volume 路径；
-    standalone 模式必须传容器本地解压目录（否则读到不存在的 Volume → 兜底旧日期）。"""
-    cal_file = (data_dir or DATA_DIR) / "calendars" / "day.txt"
-    if cal_file.exists():
-        lines = cal_file.read_text().strip().splitlines()
-        if lines:
-            return lines[-1]
-    return "2026-09-11"  # 兜底（仅当数据目录不可读时）
+# 兜底（仅当数据目录不可读时）
 
 
 def _prepare_truncated_overlay(source: Path, asof: str) -> Path:
@@ -447,230 +450,6 @@ def _runtime_cache_lineage() -> dict:
         "live_retrain_source": _source_sha(_live_mod),
         "audit_source": _source_sha(_audit_mod),
     }
-
-
-def _load_and_patch_cfg(
-    yaml_path: str,
-    smoke: bool,
-    recent: bool = False,
-    enhanced: bool = False,
-    long_train: bool = False,
-    fund: bool = False,
-    label20: bool = False,
-    label40: bool = False,
-    label60: bool = False,
-    rolling: bool = False,
-    verify: bool = False,
-    topk: int = None,
-    market: str = None,
-    nd: int = None,
-    provider_dir: str = None,
-    csi1000_profile: str = None,
-) -> dict:
-    """读 bundled yaml，打上 Modal 路径补丁。不改仓库原文件。
-
-    recent=True 时把整套数据区间前移到 2026 年（训练 2021-2024 / 验证 2025 /
-    回测 2026-01~今），并降换手（n_drop 5→2）+ 固定 seed，用于"预测未来"场景。
-    enhanced=True 时：股票池 csi300→csi500（样本更多、QLib 评测 IC 普遍更高）、
-    早停放宽 early_stop 10→30（让模型真正训完），benchmark 换 SH000905。
-    long_train=True（需配合 recent）：训练区间延长到 2016-2024，覆盖完整牛熊周期。
-    fund=True：handler 换成 Alpha158Fund（Alpha158 + 基本面因子 $roe 等，
-    由 build_fund_factors 写入 bin），移除 FilterCol 以免过滤掉基本面字段。
-    label20=True：标签换成 20 日收益。
-    verify=True（需配合 recent）：walk-forward 验证模式——训练 2016-2023 /
-    验证 2024 / 回测 2025-01~最新交易日（约 1.7 年），验证信号稳健性。
-    topk：自定义策略持仓数（默认取 yaml 的 50）。
-    """
-    if sum(bool(x) for x in (label20, label40, label60)) > 1:
-        raise ValueError("Choose exactly one prediction horizon")
-    if (long_train or verify) and not recent:
-        raise ValueError("long_train and verify require recent=True")
-    from ruamel.yaml import YAML
-
-    yaml = YAML(typ="safe", pure=True)
-    with open(yaml_path) as f:
-        cfg = yaml.load(f)
-
-    # 1) 数据路径：默认 Volume；standalone 模式可传本地解压目录
-    cfg.setdefault("qlib_init", {})["provider_uri"] = str(provider_dir) if provider_dir else str(DATA_DIR)
-    cfg["qlib_init"]["region"] = "cn"
-    # 2) mlflow 落到 Volume，否则容器退出即丢
-    cfg["qlib_init"]["exp_manager"] = {
-        "class": "MLflowExpManager",
-        "module_path": "qlib.workflow.expm",
-        "kwargs": {"uri": f"file:{MLRUNS_DIR}", "default_exp_name": "qlib-cn-daily"},
-    }
-    # 3) LightGBM 统一使用 canonical num_threads，并启用共享的可复现训练策略。
-    try:
-        _model_kw = cfg["task"]["model"]["kwargs"]
-        if "num_threads" in _model_kw or cfg["task"]["model"].get("class") == "LGBModel":
-            _model_kw["num_threads"] = CPU_COUNT
-            _model_kw.pop("n_jobs", None)
-        apply_lgb_reproducibility(cfg)
-    except KeyError:
-        pass
-    # 4) 烟雾：只跑 2 个 epoch 验证 CUDA+数据链路
-    if smoke:
-        try:
-            cfg["task"]["model"]["kwargs"]["n_epochs"] = 2
-            cfg["task"]["model"]["kwargs"]["early_stop"] = 2
-        except KeyError:
-            pass
-    # 5) 近期模式：训练/验证/回测全部前移到最新交易日（配合 chenditc 每日更新数据）
-    if recent:
-        END = _latest_trading_day(Path(provider_dir) if provider_dir else None)
-        dh = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
-        train_start, fit_start = ("2016-01-01", "2016-01-01") if long_train else ("2021-01-01", "2021-01-01")
-        dh["start_time"] = "2015-01-01" if long_train else "2020-01-01"  # 提前一年保证 Alpha158 60日窗口
-        dh["end_time"] = END
-        dh["fit_start_time"] = fit_start
-        dh["fit_end_time"] = "2024-12-31"
-        segments = cfg["task"]["dataset"]["kwargs"]["segments"]
-        segments["train"] = [train_start, "2024-12-31"]
-        segments["valid"] = ["2025-01-01", "2025-12-31"]
-        segments["test"] = ["2026-01-01", END]
-        bt = cfg["port_analysis_config"]["backtest"]
-        bt["start_time"] = "2026-01-01"
-        bt["end_time"] = END
-        # n_drop=3：P0 网格与 vcheck(Alpha158) 双重确认最优（2/1 均显著更差）
-        cfg["port_analysis_config"]["strategy"]["kwargs"]["n_drop"] = 3
-        try:
-            cfg["task"]["model"]["kwargs"]["seed"] = 0
-        except KeyError:
-            pass
-        # 5b) walk-forward 验证模式：训练 2016-2023 / 验证 2024 / 回测 2025~最新（约 1.7 年）
-        if verify:
-            dh["start_time"] = "2015-01-01"
-            dh["end_time"] = END
-            dh["fit_start_time"] = "2016-01-01"
-            dh["fit_end_time"] = "2023-12-31"
-            segments["train"] = ["2016-01-01", "2023-12-31"]
-            segments["valid"] = ["2024-01-01", "2024-12-31"]
-            segments["test"] = ["2025-01-01", END]
-            bt["start_time"] = "2025-01-01"
-            bt["end_time"] = END
-    # 自定义持仓数 / 换手 / 股票池（终审候选 csi1000 需要覆盖 yaml 默认的 csi500）
-    if topk is not None:
-        cfg["port_analysis_config"]["strategy"]["kwargs"]["topk"] = topk
-    if nd is not None:
-        cfg["port_analysis_config"]["strategy"]["kwargs"]["n_drop"] = nd
-    if market is not None:
-        dh = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
-        dh["instruments"] = market
-        cfg["port_analysis_config"]["backtest"]["benchmark"] = "SH000852" if market == "csi1000" else "SH000905"
-    # 6) 增强模式：csi500 + 早停放宽
-    if enhanced:
-        dh = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
-        dh["instruments"] = "csi500"
-        cfg["market"] = "csi500"
-        cfg["benchmark"] = "SH000905"
-        cfg["port_analysis_config"]["backtest"]["benchmark"] = "SH000905"
-        try:
-            cfg["task"]["model"]["kwargs"]["early_stop"] = 30
-        except KeyError:
-            pass
-    # Explicit market selection must win over --enhanced and update both benchmarks.
-    if market is not None:
-        if market in EW_BENCH:
-            # 自定义池（star_chn 合并 / chinext / star 单板）：从 all.txt 前缀过滤生成 instruments 文件。
-            # 训练用池文件、基准与回测阈值全部 fail-closed（数据缺失显式报错而非静默退化）。
-            provider_root = Path(provider_dir) if provider_dir else DATA_DIR
-            all_txt = provider_root / "instruments" / "all.txt"
-            pool_txt = provider_root / "instruments" / f"{market}.txt"
-            stats = build_custom_instruments(all_txt, pool_txt, boards=POOL_BOARDS[market])
-            print(f"[cfg] 自定义池 {market} 已生成: {stats}")
-            _bench = EW_BENCH[market]
-            features_dir = provider_root / "features"
-            if not features_dir.is_dir():
-                raise FileNotFoundError(f"{market} 数据不完整：features 目录缺失 {features_dir}")
-            bench_bin = features_dir / _bench.lower() / "close.day.bin"
-            if not bench_bin.is_file():
-                raise FileNotFoundError(
-                    f"{market} 基准 {_bench} 无数据（找不到 {bench_bin}）；"
-                    "先跑 modal run modal_qlib_cn_a10g.py::build_star_chn_bench 构造等权合成基准"
-                )
-            dh = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
-            dh["instruments"] = market
-            cfg["market"] = market
-            cfg["benchmark"] = _bench
-            cfg["port_analysis_config"]["backtest"]["benchmark"] = _bench
-            # 池内全部为 ±20% 板块（见 board_rules），回测窗口必须不跨创业板改革日。
-            # 直接的回测执行统一走 board_execution.research_exchange()（逐股掩码 + T+1 开盘价），
-            # 此处不再设置标量 limit_threshold。
-            bt_start = cfg["port_analysis_config"]["backtest"]["start_time"]
-            star_chn_backtest_guard(bt_start)
-        else:
-            _indices = {"csi300": "SH000300", "csi500": "SH000905", "csi1000": "SH000852"}
-            if market not in _indices:
-                raise ValueError(f"Unsupported market: {market}")
-            cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]["instruments"] = market
-            cfg["market"] = market
-            cfg["benchmark"] = _indices[market]
-            cfg["port_analysis_config"]["backtest"]["benchmark"] = _indices[market]
-    # 7) 基本面因子模式：Alpha158 + $roe 等 6 字段
-    if fund:
-        handler_cfg = cfg["task"]["dataset"]["kwargs"]["handler"]
-        handler_cfg["class"] = "Alpha158Fund"
-        handler_cfg["module_path"] = "fund_handler"
-        import sys as _sys
-
-        _sys.path.append("/root/qlib")  # fund_handler.py 位于仓库根
-        dh = handler_cfg["kwargs"]
-        dh["infer_processors"] = [p for p in dh.get("infer_processors", []) if p.get("class") != "FilterCol"]
-    # 8) 20 日收益标签（与基本面因子的季度信息周期匹配）
-    if label20:
-        dh = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
-        dh["label"] = ["Ref($close, -20)/$close - 1"]
-    # 8b) 40 日收益标签（P0-5 实测 IC 峰值在 40 日：0.137 vs 20 日 0.108）
-    if label40:
-        dh = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
-        dh["label"] = ["Ref($close, -40)/$close - 1"]
-    # 8c) 60 日收益标签（更长期动量，用于多周期融合）
-    if label60:
-        dh = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"]
-        dh["label"] = ["Ref($close, -60)/$close - 1"]
-    # 9) 低频调仓：PeriodicTopkStrategy（每 rebalance_days 个交易日调仓），匹配 20 日标签
-    if rolling:
-        import sys as _sys
-
-        _sys.path.append("/root/qlib")  # rebalance_strategy.py 位于仓库根
-        cfg["port_analysis_config"]["strategy"] = {
-            "class": "PeriodicTopkStrategy",
-            "module_path": "rebalance_strategy",
-            "kwargs": {
-                "signal": "<PRED>",
-                "topk": topk if topk is not None else 50,
-                "n_drop": nd if nd is not None else 2,
-                "rebalance_days": 20,
-            },
-        }
-    # A sample's Ref(...,-h) label must mature before the NEXT stage starts.
-    # This also purges the validation tail used by LightGBM early stopping.
-    if recent:
-        _cal = read_trading_calendar(provider_dir or DATA_DIR)
-        purge_cfg_splits(cfg, _cal)
-    if smoke and enhanced:
-        _model_kw = cfg["task"]["model"]["kwargs"]
-        if "early_stop" in _model_kw:
-            _model_kw["early_stop"] = 2
-    # Wrapper execution protocol: use Qlib's supported exchange= config hook
-    # to instantiate BoardAwareExchange without modifying Qlib core.
-    if "port_analysis_config" in cfg:
-        _bt = cfg["port_analysis_config"]["backtest"]
-        _codes = cfg["task"]["dataset"]["kwargs"]["handler"]["kwargs"].get("instruments", "all")
-        _bt["exchange_kwargs"] = research_exchange(_bt["start_time"], _bt["end_time"], codes=_codes)
-        cfg["port_analysis_config"]["strategy"]["kwargs"]["forbid_all_trade_at_limit"] = False
-    # Apply production CSI1000 profiles last so generic research patches cannot
-    # silently overwrite frozen Stage-B model semantics.  Research callers that
-    # omit csi1000_profile retain their historical behavior.
-    if csi1000_profile is not None:
-        if market not in ("csi1000", "csi500", "csi300"):
-            raise ValueError("csi1000_profile is valid only for market in ('csi1000', 'csi500', 'csi300')")
-        from csi1000_production_config import apply_csi1000_model_profile
-
-        cfg["_csi1000_production_manifest"] = apply_csi1000_model_profile(cfg, csi1000_profile)
-
-    return cfg
 
 
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=1800)
@@ -4074,9 +3853,11 @@ def _daily_standalone_impl(
         lineage=paper_lineage,
     )
     print("[daily] ranking CSV + stateful paper-order context prepared")
+    # PC04 v2: the public CSV and the paper planner share the same raw model
+    # TopK.  T-close limit state is an informational annotation only; it must
+    # never remove a name or backfill from rank topk+1.
     top = day.reindex(ranking_order[:topk])
-
-    # ---- 3) 排名展示的保守涨跌停过滤（与真实成交 Exchange 分层；board_rules 维护板块/日期/上市豁免） ----
+    limit_annotations = None
     day_df = D.features(
         [str(x) for x in day.index],
         ["$close", "Ref($close,1)"],
@@ -4088,11 +3869,9 @@ def _daily_standalone_impl(
         day_ret = (day_df["$close"] / day_df["Ref($close,1)"] - 1).dropna()
         listing_dates = _board_listing_dates(data_dir, day.index)
         limited = board_aware_limited(day_ret, str(predict_date)[:10], listing_dates=listing_dates)
-        n_removed = len(day) - len(day.index[~day.index.isin(limited)])
-        day = day.loc[day.index[~day.index.isin(limited)]]
-        display_order = deterministic_score_order(day.items())
-        top = day.reindex(display_order[:topk])
-        print(f"[daily] 已剔除 {n_removed} 只涨/跌停股")
+        annotated = sorted(str(inst) for inst in day.index if inst in limited)
+        limit_annotations = {"informational_only": True, "instruments": annotated}
+        print(f"[daily] T 收盘涨跌停提示 {len(annotated)} 只（不删榜、不补位）")
 
     # ---- 4) 组装 CSV 内容返回 ----
     csv_content = "rank,instrument,score\n" + "\n".join(
@@ -4142,6 +3921,7 @@ def _daily_standalone_impl(
         "pit_universe": pit_universe,
         "provider_identity": provider_identity,
         "display_top20": [str(inst) for inst in top.index],
+        "t_close_limit_annotations": limit_annotations,
         "retrained_today": train_now,
         "production_lineage": production_lineage,
         "chart_json": chart_json,
@@ -4183,42 +3963,7 @@ def _load_latest_to_local():
 # 停止：  modal app stop <app名> 或 modal delete <app名>
 # 说明：  每个交易日早上 07:00（北京，周一~周五）云端自动：下载最新数据 → 训练终审候选
 #         → 生成 top20 信号 → 经 GitHub API 直接写入仓库（无需 git 二进制/本地机器）
-GITHUB_REPO = "AT2018cow/qlib"
-SIGNAL_BRANCH = "main"
-
-
-def _cn_trading_calendar():
-    """akshare 全年 A 股交易日历（含未来日期，到年末）。返回 {"YYYY-MM-DD"} 集合，失败抛异常。
-
-    数据自带的 day.txt 日历只含已发生的交易日，无法判断"今天是否交易日"；
-    本函数用 akshare 的 Sina 交易日历（含未来）补足。已对照 2026-09 实况验证：
-    09-25（中秋）不在、09-28/09-24 在、国庆 10-01~10-07 不在、10-08 复市。
-    重试 2 次（间隔 10 秒）：akshare/Sina 间歇断连常见，单次失败即降级太敏感——
-    降级会让 gate 前移失效（节假日也要全量跑）并进入 fail-open 发布口径。
-    """
-    import time
-
-    import akshare as ak
-
-    last_err = None
-    for attempt in (1, 2):
-        try:
-            cal_df = ak.tool_trade_date_hist_sina()
-            break
-        except Exception as e:  # pylint: disable=W0703
-            last_err = e
-            if attempt == 1:
-                print(f"[calendar] 拉取失败（第 1 次），10 秒后重试: {e}")
-                time.sleep(10)
-    else:
-        raise RuntimeError(f"交易日历两次拉取均失败: {last_err}") from last_err
-    cal = set()
-    for d in cal_df.iloc[:, 0]:
-        try:
-            cal.add(d.strftime("%Y-%m-%d"))
-        except AttributeError:
-            cal.add(str(d)[:10])
-    return cal
+from github_config import GITHUB_REPO, SIGNAL_BRANCH
 
 
 def _current_st_risk_snapshot(instruments: list[str]) -> dict:
@@ -4425,15 +4170,15 @@ _CODE_SOURCE_SHA: str | None = None
 
 
 def _code_source_sha() -> str:
-    """Executable extension identity for the provider receipt (best effort)."""
+    """Executable extension identity; construction failure blocks publication."""
     global _CODE_SOURCE_SHA
     if _CODE_SOURCE_SHA is None:
-        try:
-            from research_identity import source_manifest
+        from research_identity import source_manifest
 
-            _CODE_SOURCE_SHA = str(source_manifest("training")["sha256"])
-        except Exception:  # noqa: BLE001 - identity is audit evidence, not a build gate
-            _CODE_SOURCE_SHA = "unavailable"
+        value = str(source_manifest("training")["sha256"])
+        if len(value) != 64 or any(char not in "0123456789abcdef" for char in value):
+            raise RuntimeError("code source identity is not a lowercase SHA256")
+        _CODE_SOURCE_SHA = value
     return _CODE_SOURCE_SHA
 
 
@@ -4671,12 +4416,15 @@ def _asset_digest(value) -> str:
     return text if text.startswith("sha256:") else f"sha256:{text}"
 
 
-def _preopen_marker_valid(marker, signal_date: str, data_asof: str) -> tuple[bool, str]:
-    """Verify a completion marker against the real provider/journal/receipt.
+def _postclose_marker_valid(marker, session_date: str, usage_date: str, *, verify_github: bool = True):
+    """Verify a v2 postclose marker against provider/journal/website receipts.
 
-    ``preopen_status`` is only a convenience index.  A marker that was written
-    for a different provider, code identity, journal record or website receipt
-    must never suppress the 07:30 recovery.
+    ``verify_github`` requires a publication token and rechecks the immutable
+    GitHub payloads.  The scheduled 23:00/07:00 read-only checks pass
+    ``False``; they still verify the provider snapshot, journal hashes, local
+    post-states and the website receipt through the read-only status function.
+    A legacy ``preopen_status`` marker is historical evidence only and is never
+    accepted as completion for a v2 run.
     """
     import os
 
@@ -4685,21 +4433,35 @@ def _preopen_marker_valid(marker, signal_date: str, data_asof: str) -> tuple[boo
     from data_ingest.store import load_snapshot
     from publication_journal import FilesystemStorage, PublicationJournal
 
-    if not isinstance(marker, dict) or marker.get("status") != "COMPLETED":
+    if not isinstance(marker, dict) or marker.get("schema_version") != 2:
+        return False, "marker is not postclose schema v2"
+    if marker.get("status") != "COMPLETED":
         return False, "marker is not COMPLETED"
-    if marker.get("signal_date") != signal_date or marker.get("data_asof") != data_asof:
-        return False, "marker dates changed"
-    snapshot = load_snapshot(OVERLAY_PROVIDER_ROOT, data_asof)
+    if marker.get("session_date") != session_date or marker.get("usage_date") != usage_date:
+        return False, "marker T/U dates changed"
+    if marker.get("provider_calendar_end") != session_date:
+        return False, "marker provider calendar is not the session date"
+    if marker.get("journal_signal_date") != usage_date:
+        return False, "marker journal signal date is not the usage date"
+    if marker.get("website_latest_date") != session_date:
+        return False, "marker website latest date is not the session date"
+    snapshot = load_snapshot(OVERLAY_PROVIDER_ROOT, session_date)
     if snapshot is None:
         return False, "provider snapshot is missing"
     provider = marker.get("provider") or {}
-    if provider.get("digest") != snapshot.digest or provider.get("calendar_end") != snapshot.calendar_end:
-        return False, "provider identity changed"
-    if marker.get("code_source_sha256") != _code_source_sha():
+    snapshot_digest = _asset_digest(snapshot.digest)
+    if _asset_digest(provider.get("digest")) != snapshot_digest:
+        return False, "provider digest changed"
+    if provider.get("calendar_end") != snapshot.calendar_end:
+        return False, "provider calendar identity changed"
+    current_release = _code_source_sha()
+    if marker.get("release_source_sha256") != current_release:
+        return False, "release source identity changed"
+    if marker.get("code_source_sha256") != current_release:
         return False, "code source identity changed"
     storage = FilesystemStorage(VOL_ROOT, reload_fn=vol.reload, commit_fn=vol.commit)
     journal = PublicationJournal(storage)
-    record = journal.load(signal_date)
+    record = journal.load(usage_date)
     if record is None or record.get("stage") != "VOLUME_COMMITTED":
         return False, "signal journal is not VOLUME_COMMITTED"
     signal = marker.get("signal") or {}
@@ -4711,22 +4473,19 @@ def _preopen_marker_valid(marker, signal_date: str, data_asof: str) -> tuple[boo
             path = VOL_ROOT / entry["path"]
             if not path.is_file() or sha256_file(path) != entry["sha256"]:
                 return False, f"{market} paper state differs from journal post-state"
-        token = os.environ.get("GITHUB_TOKEN")
-        if not token:
-            return False, "GITHUB_TOKEN unavailable for artifact verification"
-        headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
-        missing = journal.plan_completion(record, _github_existing_files(list(files), headers))
-        if missing:
-            return False, f"{len(missing)} published artifacts are missing"
+        if verify_github:
+            token = os.environ.get("GITHUB_TOKEN")
+            if not token:
+                return False, "GITHUB_TOKEN unavailable for artifact verification"
+            headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
+            missing = journal.plan_completion(record, _github_existing_files(list(files), headers))
+            if missing:
+                return False, f"{len(missing)} published artifacts are missing"
     except Exception as exc:  # noqa: BLE001 - marker verification boundary
         return False, f"journal verification failed: {type(exc).__name__}: {exc}"
-    if (marker.get("website") or {}).get("status") == "SKIPPED_BUDGET":
-        print("[cron] ⚠️ prior completion recorded a budget-skipped website replay", flush=True)
-        return True, "website intentionally skipped by budget"
     try:
         status_fn = modal.Function.from_name(WEBSITE_APP_NAME, "status")
-        asset_digest = _asset_digest(provider.get("digest"))
-        result = status_fn.remote(_code_source_sha(), asset_digest)
+        result = status_fn.remote(current_release, snapshot_digest)
     except Exception as exc:  # noqa: BLE001 - cross-app receipt boundary
         return False, f"website receipt check failed: {type(exc).__name__}: {exc}"
     if not isinstance(result, dict) or result.get("status") not in (
@@ -4735,8 +4494,10 @@ def _preopen_marker_valid(marker, signal_date: str, data_asof: str) -> tuple[boo
         "RECOVERED_AFTER_PUBLICATION",
     ):
         return False, f"website receipt is not published: {result!r}"
-    if result.get("asset_digest") != asset_digest or result.get("source_sha256") != _code_source_sha():
-        return False, "website receipt identity differs"
+    if _asset_digest(result.get("asset_digest")) != snapshot_digest:
+        return False, "website receipt asset differs"
+    if result.get("source_sha256") != current_release:
+        return False, "website receipt release identity differs"
     return True, "receipts verified"
 
 
@@ -4753,12 +4514,12 @@ def _run_preopen_cycle(
     data_asof_override: str = "",
     refresh_provider: bool = False,
 ):
-    """Single serialized publication coordinator.
+    """Single serialized T-close -> U-open publication coordinator.
 
-    The 06:00 schedule and every manual recovery entry reach this function
-    through ``daily_cron`` (max_containers=1).  Provider, signal and website
-    stages are independently idempotent; the marker is written only after all
-    three produced verifiable receipts.
+    The 18:00 schedule and every manual/23:15 recovery entry reach this
+    function through ``daily_cron`` (max_containers=1).  Provider, signal and
+    website stages are independently idempotent; the v2 marker is written only
+    after all three produced verifiable receipts.
     """
     import json
     import time
@@ -4766,39 +4527,45 @@ def _run_preopen_cycle(
     from datetime import datetime
     from zoneinfo import ZoneInfo
 
-    from daily_pipeline import run_daily_pipeline
+    from daily_pipeline import resolve_postclose_dates, run_daily_pipeline
     from publication_journal import FilesystemStorage, PublicationJournal
     from resource_sampler import ResourceSampler
 
-    today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
+    now = datetime.now(ZoneInfo("Asia/Shanghai"))
     calendar = _trading_days()
-    if signal_date_override:
-        signal_date = str(signal_date_override)[:10]
-    else:
-        if today not in calendar:
-            return {"status": "SKIPPED_NON_TRADING_DAY", "signal_date": today}
-        signal_date = today
-    data_asof = str(data_asof_override)[:10] if data_asof_override else _previous_trading_day(signal_date)
-    if not data_asof:
-        return {"status": "SKIPPED_NO_PREVIOUS_SESSION", "signal_date": signal_date}
-    status_path = VOL_ROOT / "preopen_status" / f"{signal_date}.json"
+    dates = resolve_postclose_dates(
+        calendar,
+        now=now,
+        session_override=data_asof_override,
+        usage_override=signal_date_override,
+    )
+    if dates is None:
+        return {"status": "SKIPPED_NON_TRADING_DAY", "session_date": now.date().isoformat()}
+    session_date, usage_date = dates
+    release_sha = _code_source_sha()
+    status_path = VOL_ROOT / "postclose_status" / f"{usage_date}.json"
     vol.reload()
     if status_path.is_file():
         try:
             prior = json.loads(status_path.read_text())
         except Exception:
             prior = None
-        valid, reason = _preopen_marker_valid(prior, signal_date, data_asof)
+        valid, reason = _postclose_marker_valid(prior, session_date, usage_date)
         if valid:
-            print(f"[cron] marker verified ({reason}); retry skipped", flush=True)
-            return {"status": "ALREADY_COMPLETED", "signal_date": signal_date, "prior": prior}
-        print(f"[cron] marker not sufficient ({reason}); continuing recovery", flush=True)
+            print(f"[cron] postclose marker verified ({reason}); retry skipped", flush=True)
+            return {
+                "status": "ALREADY_COMPLETED",
+                "session_date": session_date,
+                "usage_date": usage_date,
+                "prior": prior,
+            }
+        print(f"[cron] postclose marker not sufficient ({reason}); continuing recovery", flush=True)
 
-    provider = ensure_overlay.remote(data_asof, refresh_memberships=refresh_provider)
+    provider = ensure_overlay.remote(session_date, refresh_memberships=refresh_provider)
     if provider.get("status") not in ("PUBLISHED", "EXISTS", "SEALED"):
         raise RuntimeError(f"provider stage returned no PASS receipt: {provider}")
     print(
-        f"[cron] provider {provider['status']} {data_asof} digest={str(provider.get('digest'))[:16]}",
+        f"[cron] provider {provider['status']} {session_date} digest={str(provider.get('digest'))[:16]}",
         flush=True,
     )
 
@@ -4808,10 +4575,10 @@ def _run_preopen_cycle(
         result = run_daily_pipeline(
             lambda: _run_daily_signal_cycle(
                 allow_lag,
-                signal_date_override=signal_date,
-                data_asof_override=data_asof,
+                signal_date_override=usage_date,
+                data_asof_override=session_date,
             ),
-            lambda: _update_website_returns(expected_provider_end=data_asof),
+            lambda: _update_website_returns(expected_provider_end=session_date),
             sampler=sampler,
         )
     except Exception as exc:
@@ -4819,9 +4586,12 @@ def _run_preopen_cycle(
         _write_preopen_marker(
             status_path,
             {
+                "schema_version": 2,
                 "status": "FAILED",
-                "signal_date": signal_date,
-                "data_asof": data_asof,
+                "session_date": session_date,
+                "usage_date": usage_date,
+                "provider_calendar_end": session_date,
+                "journal_signal_date": usage_date,
                 "provider": provider,
                 "error_type": type(exc).__name__,
                 "error": str(exc)[:2000],
@@ -4834,17 +4604,35 @@ def _run_preopen_cycle(
 
     storage = FilesystemStorage(VOL_ROOT, reload_fn=vol.reload, commit_fn=vol.commit)
     journal = PublicationJournal(storage)
-    record = journal.load(signal_date)
+    record = journal.load(usage_date)
     if record is None or record.get("stage") != "VOLUME_COMMITTED":
         raise RuntimeError("signals completed without a VOLUME_COMMITTED journal record")
     website_stage = (result.get("stages") or {}).get("website") or {}
     website_result = website_stage.get("result") or {}
     from data_ingest.manifest import canonical_json, sha256_text, write_json
+    from research_identity import (
+        account_contract_manifest,
+        website_semantic_manifest,
+    )
+    from website_simulation import account_contract_for_market
 
+    semantic_sha = website_result.get("website_semantic_sha256") or website_semantic_manifest()["sha256"]
+    account_shas = website_result.get("account_contract_sha256") or {
+        market: account_contract_manifest(account_contract_for_market(market))["sha256"]
+        for market in ("csi300", "csi500", "csi1000")
+    }
     marker = {
+        "schema_version": 2,
         "status": "COMPLETED",
-        "signal_date": signal_date,
-        "data_asof": data_asof,
+        "session_date": session_date,
+        "usage_date": usage_date,
+        "provider_calendar_end": provider.get("calendar_end"),
+        "website_latest_date": website_result.get("latest_date") or session_date,
+        "journal_signal_date": usage_date,
+        # Legacy aliases remain readable; the canonical names above are used
+        # by every new check and by the implementation report.
+        "signal_date": usage_date,
+        "data_asof": session_date,
         "provider": {
             "status": provider.get("status"),
             "digest": provider.get("digest"),
@@ -4858,58 +4646,58 @@ def _run_preopen_cycle(
         },
         "website": {
             "status": website_result.get("status"),
-            "source_sha256": website_result.get("source_sha256") or _code_source_sha(),
+            "source_sha256": website_result.get("source_sha256") or release_sha,
             "asset_digest": website_result.get("asset_digest") or provider.get("digest"),
         },
-        "code_source_sha256": _code_source_sha(),
+        "release_source_sha256": release_sha,
+        "code_source_sha256": release_sha,
+        "website_semantic_sha256": semantic_sha,
+        "account_contract_sha256": account_shas,
         "stages": {name: stage.get("status") for name, stage in (result.get("stages") or {}).items()},
         "resources": resources,
         "completed_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
-    metrics_path = VOL_ROOT / "metrics" / signal_date / f"{int(time.time())}-{uuid.uuid4().hex[:8]}.json"
+    metrics_path = VOL_ROOT / "metrics" / usage_date / f"{int(time.time())}-{uuid.uuid4().hex[:8]}.json"
     write_json(
         metrics_path,
         {
-            "signal_date": signal_date,
-            "data_asof": data_asof,
+            "session_date": session_date,
+            "usage_date": usage_date,
             "provider": provider,
             "resources": resources,
             "stages": result.get("stages") or {},
         },
     )
     _write_preopen_marker(status_path, marker)
-    print(f"[cron] ✅ {signal_date} publication receipts verified and marker written", flush=True)
+    print(f"[cron] ✅ {usage_date} publication receipts verified and postclose marker written", flush=True)
     return {**result, "marker": marker, "provider": provider}
 
 
-def _evening_overrides() -> tuple[str, str] | None:
-    """Signal/as-of dates for an explicit evening recovery, through daily_cron."""
+def _evening_overrides(now=None):
+    """Single T-close -> U-open resolver for manual/retry entries."""
     from datetime import datetime
     from zoneinfo import ZoneInfo
 
-    today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
-    if today not in _trading_days():
-        return None
-    signal_date = _next_trading_day(today)
-    if signal_date is None:
-        return None
-    return signal_date, today
+    from daily_pipeline import resolve_postclose_dates
+
+    now = now or datetime.now(ZoneInfo("Asia/Shanghai"))
+    return resolve_postclose_dates(_trading_days(), now=now)
 
 
 @app.function(
     volumes={str(VOL_ROOT): vol},
-    schedule=modal.Cron("0 6 * * 1-5", timezone="Asia/Shanghai"),  # 周一~周五 06:00：自建数据管道使用上一交易日收盘数据
+    schedule=modal.Cron("0 18 * * 1-5", timezone="Asia/Shanghai"),  # T 收盘后：T 数据 -> T NAV -> U 榜单
     # ⚠️ 此 schedule 行曾被重构编辑意外吞掉（2026-09-28 gate 上线时），导致 09-29 静默无调度——
     #    任何触碰此装饰器的编辑后必须运行 tests/test_cron_gate.py 的守护测试。
     secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
     # Research placeholders cannot authorize publication; production needs GITHUB_TOKEN.
     timeout=MAIN_TIMEOUT_SECONDS,
     nonpreemptible=True,  # 调度入口：被抢占则当天任务丢失；自身运行时间短，3x 成本增量极小
-    # ⚠️ R02 序列化契约：max_containers=1 使 Modal 平台串行执行 daily_cron——07:30 补跑转发
+    # ⚠️ R02 序列化契约：max_containers=1 使 Modal 平台串行执行 daily_cron——23:15 补跑转发
     #    的调用必须排队等待当前运行结束，两个容器永不重叠。严禁提高此值：Volume 没有原子
     #    CAS，跨容器互斥只能由平台单执行保证；若必须并发，先引入外部锁服务并暂停自动发布。
     max_containers=1,
-    retries=0,  # 07:30 入口负责恢复；不对最长 10.5h 的整条流水线叠加自动重试。
+    retries=0,  # 23:15 入口负责恢复；不对最长 10.5h 的整条流水线叠加自动重试。
 )
 def daily_cron(
     allow_lag: bool = False,
@@ -4917,7 +4705,7 @@ def daily_cron(
     data_asof_override: str = "",
     refresh_provider: bool = False,
 ):
-    """06:00 primary publication (single self-hosted provider)."""
+    """18:00 T-close primary publication (single self-hosted provider)."""
     return _run_preopen_cycle(
         allow_lag,
         signal_date_override=signal_date_override,
@@ -4926,38 +4714,37 @@ def daily_cron(
     )
 
 
-@app.function(
-    volumes={str(VOL_ROOT): vol},
-    secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
-    schedule=modal.Cron("30 7 * * 1-5", timezone="Asia/Shanghai"),
-    timeout=BACKUP_TIMEOUT_SECONDS,
-    nonpreemptible=True,
-    max_containers=1,
-    retries=0,
-)
-def daily_preopen_retry():
-    """07:30 serialized recovery; skips only after real receipts verify."""
+def _readonly_verify(session_date: str, usage_date: str):
+    """Shared no-secret/no-write verification for 23:00 and next-day 07:00."""
     import json
-    from datetime import datetime
-    from zoneinfo import ZoneInfo
 
-    today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
-    if today not in _trading_days():
-        return {"status": "SKIPPED_NON_TRADING_DAY", "signal_date": today}
-    data_asof = _previous_trading_day(today)
-    status_path = VOL_ROOT / "preopen_status" / f"{today}.json"
+    marker_path = VOL_ROOT / "postclose_status" / f"{usage_date}.json"
     vol.reload()
-    if status_path.is_file():
-        try:
-            prior = json.loads(status_path.read_text())
-        except Exception:
-            prior = None
-        valid, reason = _preopen_marker_valid(prior, today, data_asof)
-        if valid:
-            print(f"[cron] preopen already completed for {today} ({reason}); retry skipped", flush=True)
-            return {"status": "ALREADY_COMPLETED", "signal_date": today, "prior": prior}
-        print(f"[cron] preopen marker not sufficient ({reason}); queueing recovery", flush=True)
-    return daily_cron.remote(refresh_provider=True)
+    if not marker_path.is_file():
+        raise RuntimeError(
+            f"[alert] postclose marker {usage_date} is missing "
+            f"(session_date={session_date}, usage_date={usage_date})"
+        )
+    try:
+        marker = json.loads(marker_path.read_text())
+    except Exception as exc:
+        raise RuntimeError(f"[alert] postclose marker {usage_date} is unreadable: {exc}") from exc
+    valid, reason = _postclose_marker_valid(marker, session_date, usage_date, verify_github=False)
+    if not valid:
+        raise RuntimeError(
+            f"[alert] postclose publication incomplete for usage_date={usage_date} "
+            f"session_date={session_date}: {reason}"
+        )
+    return {
+        "status": "OK",
+        "session_date": session_date,
+        "usage_date": usage_date,
+        "provider_digest": _asset_digest((marker.get("provider") or {}).get("digest")),
+        "journal_commit": (marker.get("signal") or {}).get("github_commit"),
+        "release_source_sha256": marker.get("release_source_sha256"),
+        "website_semantic_sha256": marker.get("website_semantic_sha256"),
+        "account_contract_sha256": marker.get("account_contract_sha256"),
+    }
 
 
 @app.function(
@@ -4965,90 +4752,107 @@ def daily_preopen_retry():
     cpu=1,
     memory=1024,
     timeout=5 * 60,
-    schedule=modal.Cron("0 9 * * 1-5", timezone="Asia/Shanghai"),
+    schedule=modal.Cron("0 23 * * 1-5", timezone="Asia/Shanghai"),
     max_containers=1,
     retries=0,
 )
-def daily_readonly_check():
-    """09:00 read-only verification: dates, state, receipts, no third run.
+def daily_postclose_check():
+    """23:00 read-only alert: fail if the evening T/U receipts are incomplete.
 
-    This function has no publication secret and mounts the production Volume
-    read-only.  It raises on any missing/mismatched receipt so Modal marks the
-    scheduled run failed and the operator sees an explicit stale/aborted state.
+    No publication secret, no write, no provider/training/signal/website
+    worker.  A failure raises so the configured Modal email notifies the
+    operator while there is still time for the 23:15 queued recovery.
+    """
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    from daily_pipeline import resolve_postclose_dates
+
+    now = datetime.now(ZoneInfo("Asia/Shanghai"))
+    dates = resolve_postclose_dates(_trading_days(), now=now)
+    if dates is None:
+        return {"status": "SKIPPED_NON_TRADING_DAY", "session_date": now.date().isoformat()}
+    session_date, usage_date = dates
+    return _readonly_verify(session_date, usage_date)
+
+
+@app.function(
+    volumes={str(VOL_ROOT): vol_readonly},
+    cpu=1,
+    memory=1024,
+    timeout=10 * 60,
+    schedule=modal.Cron("15 23 * * 1-5", timezone="Asia/Shanghai"),
+    max_containers=1,
+    retries=0,
+)
+def daily_evening_retry():
+    """23:15 idempotent recovery, queued on the same single daily_cron entry.
+
+    Read-only mount and no publication secret: this function can only inspect
+    markers and forward to the coordinator.  It never runs a heavy stage.
     """
     import json
     from datetime import datetime
     from zoneinfo import ZoneInfo
 
-    from csi1000_mvp_contract import sha256_file
-    from data_ingest.store import load_snapshot
-    from publication_journal import FilesystemStorage, PublicationJournal
+    from daily_pipeline import resolve_postclose_dates
 
-    today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
-    if today not in _trading_days():
-        return {"status": "SKIPPED_NON_TRADING_DAY", "signal_date": today}
-    data_asof = _previous_trading_day(today)
-    problems = []
-    snapshot = load_snapshot(OVERLAY_PROVIDER_ROOT, data_asof)
-    if snapshot is None:
-        problems.append(f"provider snapshot {data_asof} is missing or not PASS")
-    storage = FilesystemStorage(VOL_ROOT, reload_fn=vol.reload, commit_fn=None)
-    journal = PublicationJournal(storage)
-    record = journal.load(today)
-    if record is None:
-        problems.append(f"signal journal {today} is missing")
-    elif record.get("stage") != "VOLUME_COMMITTED":
-        problems.append(f"signal journal {today} stage={record.get('stage')}")
-    else:
-        try:
-            journal.read_payloads(record)
-            for market, entry in record["states"].items():
-                path = VOL_ROOT / entry["path"]
-                if not path.is_file() or sha256_file(path) != entry["sha256"]:
-                    problems.append(f"{market} paper state differs from journal post-state")
-        except Exception as exc:  # noqa: BLE001 - read-only receipt boundary
-            problems.append(f"signal journal verification failed: {type(exc).__name__}: {exc}")
-    marker_path = VOL_ROOT / "preopen_status" / f"{today}.json"
-    marker = None
+    now = datetime.now(ZoneInfo("Asia/Shanghai"))
+    dates = resolve_postclose_dates(_trading_days(), now=now)
+    if dates is None:
+        return {"status": "SKIPPED_NON_TRADING_DAY", "session_date": now.date().isoformat()}
+    session_date, usage_date = dates
+    marker_path = VOL_ROOT / "postclose_status" / f"{usage_date}.json"
     if marker_path.is_file():
         try:
             marker = json.loads(marker_path.read_text())
         except Exception:
             marker = None
-    if marker is None or marker.get("status") != "COMPLETED":
-        problems.append(f"preopen marker {today} is not COMPLETED")
-    elif snapshot is not None:
-        provider = marker.get("provider") or {}
-        if provider.get("digest") != snapshot.digest:
-            problems.append("marker provider digest differs from the published snapshot")
-        if provider.get("calendar_end") != snapshot.calendar_end:
-            problems.append("marker provider calendar differs from the published snapshot")
-        if marker.get("code_source_sha256") != _code_source_sha():
-            problems.append("marker code source identity differs from the deployed code")
-        try:
-            result = modal.Function.from_name(WEBSITE_APP_NAME, "status").remote(
-                _code_source_sha(), _asset_digest(snapshot.digest)
-            )
-        except Exception as exc:  # noqa: BLE001 - cross-app receipt boundary
-            result = {"status": "ERROR", "error": f"{type(exc).__name__}: {exc}"}
-        if not isinstance(result, dict) or result.get("status") not in (
-            "PUBLISHED",
-            "ALREADY_PUBLISHED",
-            "RECOVERED_AFTER_PUBLICATION",
-            "SKIPPED_BUDGET",
-        ):
-            problems.append(f"website receipt missing: {result!r}")
-        elif result.get("status") == "SKIPPED_BUDGET":
-            problems.append("website replay was skipped by the budget guard")
-    if problems:
-        raise RuntimeError("[alert] daily publication incomplete: " + "; ".join(problems))
-    return {
-        "status": "OK",
-        "signal_date": today,
-        "data_asof": data_asof,
-        "provider_digest": snapshot.digest,
-        "journal_commit": record.get("github_commit"),
-    }
+        valid, reason = _postclose_marker_valid(marker, session_date, usage_date, verify_github=False)
+        if valid:
+            print(f"[cron] postclose already complete for {usage_date} ({reason}); retry skipped", flush=True)
+            return {
+                "status": "ALREADY_COMPLETED",
+                "session_date": session_date,
+                "usage_date": usage_date,
+            }
+        print(f"[cron] postclose marker not sufficient ({reason}); queueing recovery", flush=True)
+    return daily_cron.remote(
+        allow_lag=False,
+        signal_date_override=usage_date,
+        data_asof_override=session_date,
+        refresh_provider=True,
+    )
+
+
+@app.function(
+    volumes={str(VOL_ROOT): vol_readonly},
+    cpu=1,
+    memory=1024,
+    timeout=5 * 60,
+    schedule=modal.Cron("0 7 * * 1-5", timezone="Asia/Shanghai"),
+    max_containers=1,
+    retries=0,
+)
+def daily_readonly_check():
+    """07:00 next-morning final read-only verification of U/T receipts.
+
+    This function has no publication secret and mounts the production Volume
+    read-only.  It raises on any missing/mismatched receipt so Modal marks the
+    scheduled run failed and the operator sees an explicit stale/aborted state
+    2.5 hours before the open.  It never starts another heavy path.
+    """
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    from daily_pipeline import resolve_check_dates
+
+    now = datetime.now(ZoneInfo("Asia/Shanghai"))
+    dates = resolve_check_dates(_trading_days(), now=now)
+    if dates is None:
+        return {"status": "SKIPPED_NON_TRADING_DAY", "usage_date": now.date().isoformat()}
+    session_date, usage_date = dates
+    return _readonly_verify(session_date, usage_date)
 
 
 def _update_website_returns(expected_provider_end: str | None = None):
@@ -5071,12 +4875,10 @@ def _update_website_returns(expected_provider_end: str | None = None):
     )
     if (
         not isinstance(result, dict)
-        or result.get("status") not in ("PUBLISHED", "ALREADY_PUBLISHED", "SKIPPED_BUDGET")
+        or result.get("status") not in ("PUBLISHED", "ALREADY_PUBLISHED", "RECOVERED_AFTER_PUBLICATION")
         or result.get("source_sha256") != expected_source
     ):
         raise RuntimeError("website publication did not return a matching successful receipt")
-    if result.get("status") == "SKIPPED_BUDGET":
-        print(f"[cron] ⚠️ website replay skipped by budget guard: {result.get('budget')}")
     return result
 
 
@@ -5343,6 +5145,7 @@ def _run_daily_signal_cycle(
             risk=risk,
             publication_detail=csi_detail,
             market="csi1000",
+            t_close_limit_annotations=res.get("t_close_limit_annotations"),
         )
         files[f"quant/data/signals/{signal_date}_mvp_metadata.json"] = dumps_metadata(mvp_metadata)
 
@@ -5381,6 +5184,7 @@ def _run_daily_signal_cycle(
                 risk=extra_risk,
                 publication_detail=multi_detail,
                 market=extra_mkt,
+                t_close_limit_annotations=extra_res.get("t_close_limit_annotations"),
             )
             files[f"quant/data/signals/{signal_date}_mvp_metadata_{extra_mkt}.json"] = dumps_metadata(extra_meta)
 
@@ -5595,7 +5399,7 @@ def _update_code_name_map(headers):
 def daily_repair_manual():
     """Manual legacy repair entrypoint (no schedule).
 
-    The primary publication moved to 18:00 with a 19:00 retry; this function is
+    The primary publication moved to 18:00 with a 23:15 queued retry; this function is
     retained only for explicit operator recovery.
     """
     return daily_cron.remote()
@@ -5656,12 +5460,10 @@ def attest_paper_state_bootstrap(note: str = "", approve: bool = False):
 
 
 @app.function(
-    volumes={str(VOL_ROOT): vol},
-    secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
-    cpu=2,
-    memory=4096,
+    volumes={str(VOL_ROOT): vol_readonly},
+    cpu=1,
+    memory=1024,
     timeout=BACKUP_TIMEOUT_SECONDS,
-    nonpreemptible=True,
     max_containers=1,
     retries=0,
 )
@@ -5670,21 +5472,20 @@ def daily_evening_manual():
     overrides = _evening_overrides()
     if overrides is None:
         return {"status": "SKIPPED_NON_TRADING_DAY"}
-    signal_date, data_asof = overrides
+    session_date, usage_date = overrides
     return daily_cron.remote(
-        signal_date_override=signal_date,
-        data_asof_override=data_asof,
+        allow_lag=False,
+        signal_date_override=usage_date,
+        data_asof_override=session_date,
         refresh_provider=True,
     )
 
 
 @app.function(
-    volumes={str(VOL_ROOT): vol},
-    secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
-    cpu=2,
-    memory=4096,
+    volumes={str(VOL_ROOT): vol_readonly},
+    cpu=1,
+    memory=1024,
     timeout=BACKUP_TIMEOUT_SECONDS,
-    nonpreemptible=True,
     max_containers=1,
     retries=0,
 )
@@ -5694,21 +5495,22 @@ def daily_evening_retry_manual():
 
 
 @app.function(
-    volumes={str(VOL_ROOT): vol},
-    secrets=[modal.Secret.from_name(_GH_SECRET_NAME := "github-push")],
+    volumes={str(VOL_ROOT): vol_readonly},
+    cpu=1,
+    memory=1024,
     timeout=BACKUP_TIMEOUT_SECONDS,
-    nonpreemptible=True,
     max_containers=1,
     retries=0,
 )
-def daily_cron_manual(signal_date_override: str, data_asof_override: str = ""):
+def daily_cron_manual(signal_date_override: str, data_asof_override: str):
     """Controlled operator backfill, serialized on daily_cron.
 
-    ``signal_date_override`` is the usage date, ``data_asof_override`` is the
-    provider calendar end used for the signal.  Example for the missed
-    2026-11-06 morning run: signal_date=2026-11-06, data_asof=2026-11-05.
+    ``signal_date_override`` is the usage date and ``data_asof_override`` is
+    the provider session date.  Both are mandatory and must be adjacent real
+    trading sessions; the coordinator validates them before any work.
     """
     return daily_cron.remote(
+        allow_lag=False,
         signal_date_override=signal_date_override,
         data_asof_override=data_asof_override,
         refresh_provider=True,

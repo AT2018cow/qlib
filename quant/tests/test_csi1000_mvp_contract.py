@@ -40,12 +40,12 @@ def _write_universe(tmp_path, cal):
     return path
 
 
-def _top20(symbols):
+def _csv_rows(rows):
     buf = io.StringIO()
     writer = csv.writer(buf, lineterminator="\n")
     writer.writerow(["rank", "instrument", "score"])
-    for rank, symbol in enumerate(symbols[:20], 1):
-        writer.writerow([rank, symbol, 1.0 - rank / 100])
+    for rank, (symbol, score) in enumerate(rows, 1):
+        writer.writerow([rank, symbol, score])
     return buf.getvalue()
 
 
@@ -77,7 +77,9 @@ def _fixture(tmp_path):
     }
     maturity = validate_label_maturity(cal, training, data_date)
     symbols = _symbols()
+    ranking = [[s, 1.0 - i / 10000] for i, s in enumerate(symbols)]
     lineage = _lineage()
+    lineage["topk"] = 20
     paper = {
         "market": "csi1000",
         "paper_lineage": "stage_b_winner_canonical",
@@ -106,8 +108,8 @@ def _fixture(tmp_path):
         "tradeability_certified": False,
     }
     kwargs = dict(
-        signal_csv=_top20(symbols),
-        ranking_full=[[s, 1.0 - i / 10000] for i, s in enumerate(symbols)],
+        signal_csv=_csv_rows([tuple(row) for row in ranking[:20]]),
+        ranking_full=ranking,
         signal_data_date=data_date,
         usage_date=usage_date,
         provider=provider,
@@ -131,6 +133,7 @@ def test_mvp_contract_happy_path(tmp_path):
     assert meta["label_maturity"]["horizon_sessions"] == 20
     assert len(meta["signal_lineage"]["display_top20_instruments"]) == 20
     assert meta["signal_lineage"]["paper_ranking_count"] == 1000
+    assert meta["signal_lineage"]["ranking_contract_version"] == 2
     assert meta["paper"]["real_fill_execution"] == "NOT_CERTIFIED_PAPER_ONLY"
     assert meta["risk"]["tradeability_certified"] is False
 
@@ -405,6 +408,55 @@ def test_verified_st_snapshot_accepts_tclose_backup_source_window():
             validate_verified_st_snapshot(broken, "2026-10-13")
 
 
+def test_v2_published_selection_equals_raw_ranking_topk_without_backfill(tmp_path):
+    kw = _fixture(tmp_path)
+    ranking = kw["ranking_full"]
+    # Pretend the first and third raw Top20 names hit T-close limits.  v2 must
+    # publish them unchanged and must not backfill from ranks 21+.
+    annotations = {"informational_only": True, "instruments": [ranking[0][0], ranking[2][0]]}
+    meta = build_mvp_metadata(**kw, t_close_limit_annotations=annotations)
+    expected = ranking[:20]
+    assert meta["signal_lineage"]["published_selection_instruments"] == [row[0] for row in expected]
+    assert meta["signal_lineage"]["published_selection_sha256"] == __import__(
+        "csi1000_mvp_contract"
+    ).stable_json_sha256(expected)
+    assert meta["signal_lineage"]["t_close_limit_annotations"] == annotations
+    assert meta["signal_lineage"]["display_surface"] == "raw_model_topk_no_close_limit_filter"
+
+
+def test_v2_csv_must_match_raw_ranking_instruments_and_scores(tmp_path):
+    kw = _fixture(tmp_path)
+    rows = kw["signal_csv"].splitlines()
+    # Replacing a limited name with rank 21 is the old v1 backfill behavior;
+    # v2 must reject it even though the CSV remains well formed.
+    rows[1] = f"1,{kw['ranking_full'][20][0]},{kw['ranking_full'][20][1]}"
+    kw["signal_csv"] = "\n".join(rows) + "\n"
+    with pytest.raises(ValueError, match="raw ranking"):
+        build_mvp_metadata(**kw)
+
+    kw = _fixture(tmp_path)
+    rows = kw["signal_csv"].splitlines()
+    rows[1] = rows[1].rsplit(",", 1)[0] + ",0.123"
+    kw["signal_csv"] = "\n".join(rows) + "\n"
+    with pytest.raises(ValueError, match="raw ranking"):
+        build_mvp_metadata(**kw)
+
+
+def test_v2_rejects_annotations_that_could_change_selection(tmp_path):
+    kw = _fixture(tmp_path)
+    with pytest.raises(ValueError, match="informational_only"):
+        build_mvp_metadata(**kw, t_close_limit_annotations={"instruments": ["SH600000"]})
+
+
+def test_historical_v1_top20_csv_is_still_readable():
+    from csi1000_mvp_contract import parse_top20_csv
+
+    symbols = _symbols()
+    parsed = parse_top20_csv(_csv_rows([(s, 1.0 - i / 100) for i, s in enumerate(symbols[:20])]))
+    assert len(parsed) == 20
+    assert parsed[0]["instrument"] == symbols[0]
+
+
 def test_mvp_contract_top10_champion_happy_path(tmp_path):
     from csi1000_production_config import (
         CANONICAL_PAPER_LINEAGE,
@@ -414,12 +466,7 @@ def test_mvp_contract_top10_champion_happy_path(tmp_path):
 
     kw = _fixture(tmp_path)
     symbols = _symbols()
-    buf = io.StringIO()
-    writer = csv.writer(buf, lineterminator="\n")
-    writer.writerow(["rank", "instrument", "score"])
-    for rank, symbol in enumerate(symbols[:10], 1):
-        writer.writerow([rank, symbol, 1.0 - rank / 100])
-    kw["signal_csv"] = buf.getvalue()
+    kw["signal_csv"] = _csv_rows([tuple(row) for row in kw["ranking_full"][:10]])
     manifest = profile_manifest(CANONICAL_PROFILE)
     kw["production_lineage"] = manifest
     kw["expected_lineage"] = dict(manifest)
@@ -448,3 +495,17 @@ def test_all_current_market_profiles_are_frozen_canonical_profiles():
     unknown["profile"] = "not_a_frozen_profile"
     with pytest.raises(ValueError, match="frozen canonical profile"):
         validate_production_lineage(unknown, unknown)
+
+
+def test_daily_standalone_does_not_filter_or_backfill_the_public_topk():
+    from pathlib import Path
+    import ast
+
+    path = Path(__file__).resolve().parents[1] / "code/production/modal_qlib_cn_a10g.py"
+    tree = ast.parse(path.read_text())
+    node = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "_daily_standalone_impl")
+    source = ast.get_source_segment(path.read_text(), node)
+    assert "top = day.reindex(ranking_order[:topk])" in source
+    assert "day = day.loc[day.index[~day.index.isin(limited)]]" not in source
+    assert "ranking_full = [[str(inst), float(day.loc[inst])] for inst in ranking_order]" in source
+    assert '"t_close_limit_annotations": limit_annotations' in source

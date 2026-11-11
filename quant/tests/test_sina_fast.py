@@ -210,3 +210,170 @@ def test_fast_and_public_paths_use_the_same_factor_alignment(monkeypatch):
     assert {date: bar.close for date, bar in raw_fast.items()} == {date: bar.close for date, bar in raw_public.items()}
     assert {date: bar.close for date, bar in hfq_fast.items()} == {date: bar.close for date, bar in hfq_public.items()}
     assert hfq_fast["2026-11-05"].close == 10.0
+
+
+def test_retry_after_seconds_and_http_date_are_clamped():
+    from datetime import datetime, timezone
+    from data_ingest.sina import MAX_RETRY_AFTER_SECONDS, _parse_retry_after
+
+    assert _parse_retry_after("2") == 2.0
+    assert _parse_retry_after("9999") == MAX_RETRY_AFTER_SECONDS
+    assert _parse_retry_after("-4") == 0.0
+    assert _parse_retry_after("not-a-date") is None
+    now = datetime(2026, 11, 11, 12, 0, 0, tzinfo=timezone.utc).timestamp()
+    assert _parse_retry_after("Wed, 11 Nov 2026 12:00:03 GMT", now=now) == 3.0
+    assert _parse_retry_after("Wed, 11 Nov 2026 11:00:00 GMT", now=now) == 0.0
+
+
+def test_http_text_reuses_a_thread_session(monkeypatch):
+    import requests
+
+    import data_ingest.sina as sina
+
+    monkeypatch.setattr(sina._thread_state, "session", None, raising=False)
+    created = []
+    original = requests.Session
+
+    def factory():
+        session = original()
+        created.append(session)
+        return session
+
+    monkeypatch.setattr(requests, "Session", factory)
+    first = sina._thread_session(8)
+    second = sina._thread_session(8)
+    assert first is second
+    assert len(created) == 1
+
+
+def _response(status, text="ok", headers=None):
+    class Response:
+        status_code = status
+        text = "ok"
+        headers = {}
+
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                import requests
+
+                raise requests.HTTPError(f"status {self.status_code}", response=self)
+
+    response = Response()
+    response.status_code = status
+    response.text = text
+    response.headers = headers or {}
+    return response
+
+
+def test_http_text_honors_retry_after_and_records_metrics():
+    from data_ingest.sina import NetworkMetrics, _http_text
+
+    class Session:
+        def __init__(self):
+            self.calls = 0
+
+        def get(self, url, **kwargs):
+            self.calls += 1
+            if self.calls == 1:
+                return _response(429, headers={"Retry-After": "2"})
+            return _response(200, text="payload")
+
+    sleeps = []
+    metrics = NetworkMetrics()
+    text = _http_text(
+        "https://example.test/history",
+        timeouts=(1, 2),
+        retries=2,
+        backoff=1.0,
+        session=Session(),
+        metrics=metrics,
+        sleep_fn=sleeps.append,
+        jitter_fn=lambda low, high: pytest.fail("Retry-After must not be jittered"),
+    )
+    assert text == "payload"
+    assert sleeps == [2.0]
+    host = metrics.summary()["hosts"]["example.test"]
+    assert host["requests"] == 2
+    assert host["status_codes"] == {"200": 1, "429": 1}
+    assert host["rate_limited"] == 1
+    assert host["retries"] == 1
+    assert host["sleep_seconds"] == 2.0
+    assert host["successes"] == 1
+
+
+def test_http_text_uses_full_jitter_within_bounded_backoff():
+    from data_ingest.sina import NetworkMetrics, _http_text
+
+    class Session:
+        def get(self, url, **kwargs):
+            return _response(503)
+
+    sleeps = []
+    metrics = NetworkMetrics()
+    with pytest.raises(Exception, match="503"):
+        _http_text(
+            "https://example.test/factor",
+            timeouts=(1, 2),
+            retries=2,
+            backoff=1.0,
+            session=Session(),
+            metrics=metrics,
+            sleep_fn=sleeps.append,
+            jitter_fn=lambda low, high: high,
+        )
+    assert sleeps == [1.0]
+    host = metrics.summary()["hosts"]["example.test"]
+    assert host["status_codes"] == {"503": 2}
+    assert host["retries"] == 2
+
+
+def test_token_bucket_is_capped_at_eight_per_second_and_waits():
+    from data_ingest.sina import MAX_RATE_PER_SECOND, _TokenBucket
+
+    clock = [0.0]
+    sleeps = []
+
+    def now():
+        return clock[0]
+
+    def sleep(seconds):
+        sleeps.append(seconds)
+        clock[0] += seconds
+
+    with pytest.raises(ValueError, match="rate"):
+        _TokenBucket(MAX_RATE_PER_SECOND + 0.1)
+    bucket = _TokenBucket(8, now_fn=now, sleep_fn=sleep)
+    for _ in range(8):
+        bucket.acquire()
+    assert sleeps == []
+    bucket.acquire()
+    assert sleeps == [pytest.approx(0.125)]
+
+
+def test_factor_retry_reuses_the_successful_history_payload(monkeypatch):
+    import data_ingest.sina as sina
+
+    monkeypatch.setattr(sina, "_fast_available", lambda: True)
+    monkeypatch.setattr(sina, "_akshare_urls", lambda: ("hist-{}", "factor-{}"))
+    monkeypatch.setattr(sina, "_history_frame", lambda text: _full_frame())
+    monkeypatch.setattr(sina, "_factor_series", lambda text: pd.Series({pd.Timestamp("2026-11-04").date(): 2.0}))
+    calls = {"hist": 0, "factor": 0}
+
+    def fake_http(url, **kwargs):
+        if url.startswith("hist-"):
+            calls["hist"] += 1
+            return "history-payload"
+        calls["factor"] += 1
+        if calls["factor"] == 1:
+            raise sina.SinaError("factor temporarily unavailable")
+        return "factor-payload"
+
+    monkeypatch.setattr(sina, "_http_text", fake_http)
+    source = SinaSource(workers=1, retries=2, prefer_fast=True)
+    raw, hfq = source._fetch_pair_one("SH600000", "2026-11-03", "2026-11-05")
+    assert raw and hfq
+    assert calls == {"hist": 1, "factor": 2}
+    assert source._history_cache_hits == 1
+    batch = source.fetch_pair(["SH600000"], "2026-11-03", "2026-11-05")
+    assert batch.stats["rate_limit_per_second"] == 8.0
+    assert "network" in batch.stats

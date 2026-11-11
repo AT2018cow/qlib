@@ -9,6 +9,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SOURCE_IDENTITY_VERSION = 2
+WEBSITE_IDENTITY_VERSION = 3
 
 
 def file_sha(path):
@@ -35,6 +36,145 @@ def _relative_file(root, name):
     if not path.is_file():
         raise ValueError(f"missing identity file: {name}")
     return path
+
+
+WEBSITE_SEMANTIC_DEPENDENCIES = (
+    "examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158.yaml",
+    "quant/code/quant_bootstrap.py",
+    "quant/code/execution/board_execution.py",
+    "quant/code/execution/board_rules.py",
+    "quant/code/execution/execution_limits.py",
+    "quant/code/execution/liquidity_contract.py",
+    "quant/code/execution/order_quantity.py",
+    "quant/code/execution/portfolio_performance.py",
+    "quant/code/execution/qlib_audit_fixes.py",
+    "quant/code/execution/qlib_live_retrain.py",
+    "quant/code/execution/research_identity.py",
+    "quant/code/execution/st_history.py",
+    "quant/code/production/account_boundary.py",
+    "quant/code/production/artifact_io.py",
+    "quant/code/production/csi1000_production_config.py",
+    "quant/code/production/github_commit.py",
+    "quant/code/production/github_config.py",
+    "quant/code/production/paper_accounting.py",
+    "quant/code/production/paper_portfolio.py",
+    "quant/code/production/provider_archive.py",
+    "quant/code/production/provider_asset.py",
+    "quant/code/production/qlib_runtime.py",
+    "quant/code/production/website_replay_core.py",
+    "quant/code/production/website_simulation.py",
+    "quant/code/research/regime_reselection/october_backfill_plan.py",
+    "quant/code/research/regime_reselection/prelive_revalidation.py",
+    "quant/code/research/stage_ab/csi1000_tuner_core.py",
+)
+
+
+def _manifest_body(kind, root, paths, version=SOURCE_IDENTITY_VERSION):
+    body = {
+        "schema_version": version,
+        "kind": kind,
+        "files": {str(path.relative_to(root)): file_sha(path) for path in sorted(paths)},
+    }
+    return {**body, "sha256": content_sha(body)}
+
+
+def release_manifest(*, repo_root=None):
+    """Bind the complete extension source for deployment/receipt audit."""
+    root = Path(repo_root) if repo_root is not None else REPO_ROOT
+    paths = sorted((root / "quant/code").rglob("*.py"))
+    if not paths:
+        raise ValueError("missing extension implementation tree")
+    yaml = root / "examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158.yaml"
+    if not yaml.is_file():
+        raise ValueError("missing training configuration")
+    paths.append(yaml)
+    return _manifest_body("release", root, paths, version=WEBSITE_IDENTITY_VERSION)
+
+
+def website_semantic_manifest(*, repo_root=None, dependencies=None):
+    """Bind only the business closure that can change website results.
+
+    Resource decorators, schedules, documentation and unrelated tools are
+    deliberately excluded; ``release_manifest`` still records every change.
+    """
+    root = Path(repo_root) if repo_root is not None else REPO_ROOT
+    names = WEBSITE_SEMANTIC_DEPENDENCIES if dependencies is None else tuple(dependencies)
+    if not names or len(set(names)) != len(names):
+        raise ValueError("website semantic dependency list is empty or duplicated")
+    paths = [_relative_file(root, name) for name in names]
+    return _manifest_body("website-semantic", root, paths, version=WEBSITE_IDENTITY_VERSION)
+
+
+def verify_website_semantic_manifest(expected, *, repo_root=None, dependencies=None):
+    if not isinstance(expected, dict) or expected != website_semantic_manifest(
+        repo_root=repo_root, dependencies=dependencies
+    ):
+        raise ValueError("website semantic manifest changed or is missing")
+    return expected["sha256"]
+
+
+def account_contract_manifest(contract):
+    """Hash the business contract that must not drift under a semantic reuse."""
+    if not isinstance(contract, dict):
+        raise ValueError("missing account contract")
+    fees = contract.get("fees") if isinstance(contract.get("fees"), dict) else {}
+    normalized = dict(contract)
+    for key in ("open_cost", "close_cost"):
+        if normalized.get(key) is None:
+            normalized[key] = fees.get(key)
+    required = ("market", "profile", "topk", "dropn", "open_cost", "close_cost")
+    missing = [key for key in required if normalized.get(key) is None]
+    if missing:
+        raise ValueError(f"missing account contract fields: {missing}")
+    body = {
+        "schema_version": WEBSITE_IDENTITY_VERSION,
+        "kind": "account-contract",
+        "contract": normalized,
+    }
+    return {**body, "sha256": content_sha(body)}
+
+
+def verify_account_contract(expected, current):
+    if not isinstance(expected, dict) or expected != account_contract_manifest(current):
+        raise ValueError("website account contract changed or is missing")
+    return expected["sha256"]
+
+
+def website_cache_key(semantic_sha256, account_contract_sha256):
+    for label, value in (
+        ("website semantic", semantic_sha256),
+        ("account contract", account_contract_sha256),
+    ):
+        if not isinstance(value, str) or len(value) != 64 or any(c not in "0123456789abcdef" for c in value):
+            raise ValueError(f"{label} identity must be a lowercase SHA256")
+    return content_sha(
+        {
+            "website_semantic_sha256": semantic_sha256,
+            "account_contract_sha256": account_contract_sha256,
+        }
+    )
+
+
+def verify_loaded_semantic_closure(loaded_paths, *, repo_root=None, dependencies=None):
+    """Fail closed when the worker imported an undeclared business module.
+
+    Only files under ``quant/code`` are checked; the Qlib package and the
+    Python standard library are not part of the website semantic closure.
+    """
+    root = (Path(repo_root) if repo_root is not None else REPO_ROOT).resolve()
+    allowed = set(WEBSITE_SEMANTIC_DEPENDENCIES if dependencies is None else dependencies)
+    code_root = root / "quant/code"
+    for path in loaded_paths:
+        candidate = Path(path).resolve()
+        try:
+            relative = candidate.relative_to(code_root)
+        except ValueError:
+            raise ValueError(f"unregistered website semantic dependency: {candidate}") from None
+        if candidate.suffix == ".py":
+            name = str((Path("quant/code") / relative).as_posix())
+            if name not in allowed:
+                raise ValueError(f"unregistered website semantic dependency: {name}")
+    return True
 
 
 def source_manifest(kind, *, repo_root=None):

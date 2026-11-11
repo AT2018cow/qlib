@@ -23,8 +23,57 @@ FIRST_EXECUTION = "2026-10-08"
 FIRST_SIGNAL = "2026-09-30"
 INITIAL_CASH = 1_000_000
 FIT_RECEIPT_VERSION = 2
+ACCOUNT_CONTRACT_VERSION = 1
 MODE = "CAUSAL_SIMULATION"
 ST_POLICY = "ST_HISTORY_UNVERIFIED_REFERENCE_ONLY"
+
+
+def account_contract_document():
+    """Describe every business input that can change website account results.
+
+    Values come from the executable defaults/constants rather than a copied
+    table, so changing a fee or TopK changes the account identity.
+    """
+    from inspect import signature
+
+    from order_quantity import EXECUTION_RULE_VERSION
+    from paper_portfolio import PaperPortfolio
+    from qlib_live_retrain import RETRAIN_EVERY_SESSIONS
+
+    defaults = {
+        name: parameter.default
+        for name, parameter in signature(PaperPortfolio.__init__).parameters.items()
+        if name not in ("self", "topk", "nd", "initial_cash")
+    }
+    markets = {}
+    for market in sorted(CANONICAL_PROFILES_BY_MARKET):
+        profile = CANONICAL_PROFILES_BY_MARKET[market]
+        markets[market] = {
+            "profile": profile,
+            "horizon": profile_manifest(profile)["label_horizon"],
+            "topk": CANONICAL_TOPK_BY_MARKET[market],
+            "dropn": CANONICAL_ND_BY_MARKET[market],
+            "initial_cash": INITIAL_CASH,
+            "start_date": FIRST_EXECUTION,
+            "retrain_every_sessions": RETRAIN_EVERY_SESSIONS,
+            "execution_rule_version": EXECUTION_RULE_VERSION,
+            "fees": {
+                "open_cost": defaults["open_cost"],
+                "close_cost": defaults["close_cost"],
+                "min_cost": defaults["min_cost"],
+            },
+            "risk_degree": defaults["risk_degree"],
+            "hold_thresh": defaults["hold_thresh"],
+            "trade_unit": defaults["trade_unit"],
+            "high_open_block": defaults["high_open_block"],
+        }
+    return {"schema_version": ACCOUNT_CONTRACT_VERSION, "markets": markets}
+
+
+def account_contract_for_market(market):
+    if market not in CANONICAL_PROFILES_BY_MARKET:
+        raise ValueError(f"unknown website market: {market!r}")
+    return {"market": market, **account_contract_document()["markets"][market]}
 
 
 def training_prefix_fingerprint(provider, market, cutoff):
@@ -85,7 +134,7 @@ def fit_bindings(fits, *, profile, horizon, dates):
     return bindings
 
 
-def build_website_series(market, result, *, calendar, source_sha, provider_sha, fits):
+def build_website_series(market, result, *, calendar, source_sha, semantic_sha, account_sha, provider_sha, fits):
     """Derive close-to-initial-capital returns from verified session ledgers."""
     if result["gaps"]:
         raise ValueError("website simulation cannot publish missing held quotes")
@@ -144,6 +193,10 @@ def build_website_series(market, result, *, calendar, source_sha, provider_sha, 
         "official_reference_price_verified": False,
         "return_interpretation": "CAUSAL_HISTORICAL_SIMULATION_REFERENCE_ONLY",
         "source_manifest_sha256": source_sha,
+        "release_source_sha256": source_sha,
+        "website_semantic_sha256": semantic_sha,
+        "account_contract_sha256": account_sha,
+        "identity_schema_version": 2,
         "provider_archive_sha256": provider_sha,
         "fit_receipts": fits,
         "fit_receipt_version": FIT_RECEIPT_VERSION,
@@ -187,10 +240,22 @@ def validate_website_series(raw, *, market=None):
     }
     if raw.get("account_identity") != expected_identity:
         raise ValueError("website profile/account mismatch")
-    for key in ("source_manifest_sha256", "provider_archive_sha256"):
+    identity_schema = raw.get("identity_schema_version", 1)
+    required_identity = ["source_manifest_sha256", "provider_archive_sha256"]
+    if identity_schema == 2:
+        required_identity += [
+            "release_source_sha256",
+            "website_semantic_sha256",
+            "account_contract_sha256",
+        ]
+    elif identity_schema != 1:
+        raise ValueError("website identity schema is unsupported")
+    for key in required_identity:
         digest = raw.get(key)
         if not isinstance(digest, str) or len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
             raise ValueError("website source/data identity missing")
+    if identity_schema == 2 and raw["release_source_sha256"] != raw["source_manifest_sha256"]:
+        raise ValueError("website release identity aliases disagree")
     points, dates = raw.get("points"), raw.get("trading_dates")
     if (
         not isinstance(points, list)

@@ -41,7 +41,7 @@ import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Iterable
 
 from data_ingest.manifest import canonical_json, sha256_file, sha256_text, tree_sha256, write_json
 
@@ -644,56 +644,130 @@ def seal_directory_snapshot(
     )
 
 
+def _month_end_checkpoint(day: str) -> bool:
+    return day[5:] in (
+        "01-31",
+        "02-28",
+        "02-29",
+        "03-31",
+        "04-30",
+        "05-31",
+        "06-30",
+        "07-31",
+        "08-31",
+        "09-30",
+        "10-31",
+        "11-30",
+        "12-31",
+    )
+
+
+def retention_plan(
+    root: str | Path,
+    *,
+    keep: int = 30,
+    frozen_anchor_dates: Iterable[str] = (),
+    referenced_dates: Iterable[str] = (),
+    incomplete_dates: Iterable[str] = (),
+    generated_at: str | None = None,
+) -> dict:
+    """Build a reachability-aware archive retention plan; never delete.
+
+    Keep rules: frozen anchors, the latest PASS, the most recent ``keep``
+    PASS archives, month-end checkpoints, and every date referenced by an
+    incomplete journal/marker, current website predecessor or recovery receipt.
+    A remove entry is a complete ``archives/<date>`` directory candidate whose
+    receipt, manifest, calendar and archive are handled as one unit.
+    """
+    root = Path(root)
+    archive_root = root / ARCHIVE_DIRNAME
+    anchors = {str(day)[:10] for day in frozen_anchor_dates}
+    referenced = {str(day)[:10] for day in referenced_dates}
+    incomplete = {str(day)[:10] for day in incomplete_dates}
+    if keep < 1:
+        raise ValueError("retention keep must be positive")
+    entries = []
+    if archive_root.is_dir():
+        for path in sorted(archive_root.iterdir()):
+            if not path.is_dir() or len(path.name) != 10:
+                continue
+            receipt = _read_json(path / RECEIPT_NAME)
+            if receipt is None or receipt.get("status") != "PASS":
+                continue
+            archive = receipt.get("archive") or {}
+            archive_path = root / str(archive.get("path") or "")
+            entries.append(
+                {
+                    "date": path.name,
+                    "path": str(path.relative_to(root)),
+                    "digest": archive.get("sha256"),
+                    "size": int(archive.get("size") or 0),
+                    "receipt_sha256": receipt.get("receipt_sha256"),
+                    "archive_present": archive_path.is_file(),
+                    "month_end": _month_end_checkpoint(path.name),
+                }
+            )
+    entries.sort(key=lambda item: item["date"], reverse=True)
+    latest = entries[0]["date"] if entries else None
+    recent = {item["date"] for item in entries[:keep]}
+    keep_entries, remove_entries = [], []
+    for item in entries:
+        day = item["date"]
+        reason = None
+        if day in anchors:
+            reason = "frozen_anchor"
+        elif day == latest:
+            reason = "latest_pass"
+        elif day in incomplete:
+            reason = "incomplete_publication"
+        elif day in referenced:
+            reason = "referenced_by_journal_website_or_recovery"
+        elif item["month_end"]:
+            reason = "month_end_checkpoint"
+        elif day in recent:
+            reason = "recent_pass"
+        if reason is not None:
+            keep_entries.append({**item, "keep": True, "reason": reason})
+        elif not item["archive_present"]:
+            keep_entries.append({**item, "keep": True, "reason": "incomplete_archive_directory"})
+        else:
+            remove_entries.append({**item, "keep": False, "reason": "retention_candidate"})
+    return {
+        "schema_version": 1,
+        "generated_at_utc": generated_at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "root": str(root),
+        "keep": keep_entries,
+        "remove": remove_entries,
+        "counts": {"keep": len(keep_entries), "remove": len(remove_entries)},
+        "dry_run": True,
+        "apply": "NOT_PERMITTED_WITHOUT_SEPARATE_OPERATOR_APPROVAL",
+    }
+
+
 def prune_archives(
     root: str | Path,
     *,
     keep: int = 30,
     dry_run: bool = True,
     commit_fn: Callable[[], None] | None = None,
+    **plan_kwargs,
 ) -> dict:
-    """Delete only archive receipts/archives, never frozen directory anchors.
+    """Dry-run compatibility wrapper around :func:`retention_plan`.
 
-    Month-end snapshots are treated as checkpoints and retained.  The first
-    production rounds run with ``dry_run=True``; deletion is an explicit
-    operator decision after rebuild tests pass.
+    Destructive application is intentionally unavailable in this repository
+    round.  The first production apply requires Codex acceptance, a fixed
+    fixture and explicit operator approval of the exact remove list.
     """
-    root = Path(root)
-    archive_root = root / ARCHIVE_DIRNAME
-    if not archive_root.is_dir():
-        return {"dry_run": dry_run, "kept": 0, "removed": [], "checkpoints": []}
-    entries = []
-    for path in sorted(archive_root.iterdir()):
-        if path.is_dir() and len(path.name) == 10:
-            receipt = _read_json(path / RECEIPT_NAME)
-            if receipt is not None and receipt.get("status") == "PASS":
-                entries.append((path.name, path))
-    entries.sort(reverse=True)
-    removed, checkpoints, kept = [], [], 0
-    for date, path in entries:
-        is_checkpoint = date[5:] in (
-            "01-31",
-            "02-28",
-            "02-29",
-            "03-31",
-            "04-30",
-            "05-31",
-            "06-30",
-            "07-31",
-            "08-31",
-            "09-30",
-            "10-31",
-            "11-30",
-            "12-31",
+    if not dry_run:
+        raise ProviderStoreError(
+            "archive retention apply is disabled; review retention_plan output and obtain separate approval"
         )
-        if is_checkpoint:
-            checkpoints.append(date)
-            continue
-        kept += 1
-        if kept <= keep:
-            continue
-        removed.append(date)
-        if not dry_run:
-            shutil.rmtree(path, ignore_errors=False)
-    if removed and not dry_run and commit_fn is not None:
-        commit_fn()
-    return {"dry_run": dry_run, "kept": len(entries) - len(removed), "removed": removed, "checkpoints": checkpoints}
+    plan = retention_plan(root, keep=keep, **plan_kwargs)
+    checkpoints = [item["date"] for item in plan["keep"] if item["reason"] == "month_end_checkpoint"]
+    return {
+        "dry_run": True,
+        "kept": plan["counts"]["keep"],
+        "removed": [item["date"] for item in plan["remove"]],
+        "checkpoints": checkpoints,
+        "plan": plan,
+    }

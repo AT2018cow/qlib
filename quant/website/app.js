@@ -639,6 +639,15 @@ function evaluateMvpContract(metadata, paper, date, rows, pool = currentPool) {
       metaTop20.some((symbol, i) => symbol !== top20[i])) {
     errors.push('display Top20 lineage mismatch');
   }
+  if (metadata.signal_lineage?.ranking_contract_version === 2) {
+    const published = metadata.signal_lineage?.published_selection_instruments;
+    const publishedSha = metadata.signal_lineage?.published_selection_sha256;
+    if (!Array.isArray(published) || published.length !== expectedCount ||
+        published.some((symbol, i) => symbol !== top20[i]) ||
+        !/^[0-9a-f]{64}$/.test(publishedSha || '')) {
+      errors.push('published selection v2 mismatch');
+    }
+  }
   if (!risk || risk.tradeability_certified !== false ||
       !risk.st || !risk.usage_day_suspension) {
     errors.push('risk boundary missing');
@@ -976,7 +985,7 @@ function pageShell(dates) {
             <tbody id="signal-rows"></tbody>
           </table>
         </div>
-        <p class="muted ranking-score-note">模型评分为原始回归输出，仅用于横截面排序，不代表预期涨幅或校准收益率。</p>
+        <p class="muted ranking-score-note">榜单与模拟账户使用同一套模型原始排名（合同 v2）：公开榜单等于完整排名前 TopK，不因 T 日收盘涨跌停删榜或补位；涨跌停仅作状态提示，U 日开盘能否成交由执行规则判定。模型评分为原始回归输出，仅用于横截面排序，不代表预期涨幅或校准收益率。</p>
         <div id="mobile-cards" class="mobile-cards"></div>
         <div id="rebalance" class="rebalance-block" hidden>
           <div class="rebalance-head">

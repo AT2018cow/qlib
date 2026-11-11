@@ -1,6 +1,12 @@
 # T 日收盘后发布与 T+1 执行调度（2026-11-09）
 
-状态：`IMPLEMENTED / DEPLOYED / VERIFIED / MONITORING`
+状态：`HISTORICAL / SUPERSEDED BY 2026-11-11 POSTCLOSE REMEDIATION`
+
+> **历史版本说明（2026-11-11）**：本文记录当时已部署的 18:00 / 19:00 / T+1 07:00 调度，仅作为历史证据保留。
+> 当前本地候选已改为 18:00 主跑、23:00 只读预警、23:15 同一入口幂等恢复、U 日 07:00 最终只读核验；
+> 入口名称、日期合同和检查器权限均以
+> [`2026-11-11 postclose implementation report`](2026-11-11-postclose-implementation-report.md) 为准。
+> 本文不再代表当前生产或本地候选。
 
 ## 目标
 

@@ -117,7 +117,7 @@ def test_shared_helper_change_invalidates_source_smoke_and_fit_cache(executable_
     job = {"source_manifest": implementation, "asset": {"digest": "sha256:fixture"}, "first_execution": "2026-10-08"}
     smoke = {
         "status": "SMOKE_PASS",
-        "source_identity_version": 2,
+        "source_identity_version": identity.SOURCE_IDENTITY_VERSION,
         "source_sha256": implementation["sha256"],
         "source_manifest": implementation,
         "asset_digest": job["asset"]["digest"],
@@ -126,7 +126,7 @@ def test_shared_helper_change_invalidates_source_smoke_and_fit_cache(executable_
     block = {"fit_asof": "2026-09-30", "signal_end": "2026-10-23"}
     receipt = {
         "status": "PASS",
-        "source_identity_version": 2,
+        "source_identity_version": identity.SOURCE_IDENTITY_VERSION,
         "source_manifest_sha256": implementation["sha256"],
         "asset_digest": job["asset"]["digest"],
         **block,
@@ -257,7 +257,11 @@ def test_real_modal_worker_rejects_stale_sources_before_provider_access(monkeypa
 
 
 def test_replay_smoke_cannot_cross_provider_or_implementation_versions():
-    implementation = {"sha256": "source", "schema_version": 2, "files": {"helper.py": "digest"}}
+    implementation = {
+        "sha256": "source",
+        "schema_version": identity.SOURCE_IDENTITY_VERSION,
+        "files": {"helper.py": "digest"},
+    }
     job = {
         "source_manifest": implementation,
         "engine_sha256": "source",
@@ -266,7 +270,7 @@ def test_replay_smoke_cannot_cross_provider_or_implementation_versions():
     }
     row = {
         "status": "COMPLETED",
-        "source_identity_version": 2,
+        "source_identity_version": identity.SOURCE_IDENTITY_VERSION,
         "source_manifest": implementation,
         "engine_sha256": "source",
         "provider_contract_sha256": "provider",
@@ -294,3 +298,113 @@ def test_replay_smoke_cannot_cross_provider_or_implementation_versions():
         modified = copy.deepcopy(smoke)
         modified["results"][0][field] = changed
         assert not prelive_local.matching_replay_smoke(modified, job)
+
+
+def _write_identity_tree(root, files):
+    for name, text in files.items():
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+
+
+def test_release_identity_changes_for_resources_but_semantic_does_not(executable_tree):
+    root, helper, driver = executable_tree
+    _write_identity_tree(
+        root,
+        {
+            "quant/code/production/website_replay_core.py": "def replay(): return 1\n",
+            "quant/code/production/website_simulation.py": "def series(): return 1\n",
+            "quant/code/ops/website_simulation_modal.py": "cpu = 8\n",
+        },
+    )
+    dependencies = ("quant/code/production/website_replay_core.py", "quant/code/production/website_simulation.py")
+    release = identity.release_manifest(repo_root=root)
+    semantic = identity.website_semantic_manifest(repo_root=root, dependencies=dependencies)
+    account = identity.account_contract_manifest(
+        {"market": "csi300", "profile": "p", "topk": 10, "dropn": 1, "open_cost": 0.0005, "close_cost": 0.0015}
+    )
+    (root / "quant/code/ops/website_simulation_modal.py").write_text("cpu = 4\nmemory = 12288\n")
+    assert identity.release_manifest(repo_root=root)["sha256"] != release["sha256"]
+    assert identity.website_semantic_manifest(repo_root=root, dependencies=dependencies)["sha256"] == semantic["sha256"]
+    assert (
+        identity.account_contract_manifest(
+            {"market": "csi300", "profile": "p", "topk": 10, "dropn": 1, "open_cost": 0.0005, "close_cost": 0.0015}
+        )
+        == account
+    )
+    (root / "quant/code/production/website_replay_core.py").write_text("def replay(): return 2\n")
+    assert identity.website_semantic_manifest(repo_root=root, dependencies=dependencies)["sha256"] != semantic["sha256"]
+
+
+def test_account_contract_changes_on_fee_or_topk(executable_tree):
+    root, helper, driver = executable_tree
+    base = {"market": "csi300", "profile": "p", "topk": 10, "dropn": 1, "open_cost": 0.0005, "close_cost": 0.0015}
+    original = identity.account_contract_manifest(base)
+    assert identity.account_contract_manifest(dict(base)) == original
+    for key, value in (("topk", 20), ("open_cost", 0.001), ("close_cost", 0.002)):
+        changed = identity.account_contract_manifest({**base, key: value})
+        assert changed["sha256"] != original["sha256"], key
+    with pytest.raises(ValueError, match="missing account contract"):
+        identity.account_contract_manifest({"market": "csi300"})
+
+
+def test_loaded_semantic_closure_rejects_unregistered_business_module(executable_tree):
+    root, helper, driver = executable_tree
+    dependencies = ("quant/code/driver.py", "quant/code/execution/qlib_live_retrain.py")
+    identity.verify_loaded_semantic_closure(
+        [root / "quant/code/driver.py", root / "quant/code/execution/qlib_live_retrain.py"],
+        repo_root=root,
+        dependencies=dependencies,
+    )
+    with pytest.raises(ValueError, match="unregistered website semantic dependency"):
+        identity.verify_loaded_semantic_closure(
+            [root / "quant/code/new_business.py"],
+            repo_root=root,
+            dependencies=dependencies,
+        )
+    with pytest.raises(ValueError, match="unregistered website semantic dependency"):
+        identity.verify_loaded_semantic_closure(
+            ["/etc/passwd"],
+            repo_root=root,
+            dependencies=dependencies,
+        )
+
+
+def test_website_semantic_dependency_table_covers_the_replay_closure():
+    import ast
+
+    root = Path(__file__).resolve().parents[2]
+    code_root = root / "quant/code"
+    declared = set(identity.WEBSITE_SEMANTIC_DEPENDENCIES)
+    by_module = {}
+    for path in code_root.rglob("*.py"):
+        by_module[path.stem] = path.relative_to(root).as_posix()
+    pending = [
+        "quant/code/production/website_replay_core.py",
+        "quant/code/production/website_simulation.py",
+        "quant/code/production/qlib_runtime.py",
+    ]
+    seen = set()
+    missing = []
+    while pending:
+        name = pending.pop()
+        if name in seen:
+            continue
+        seen.add(name)
+        if name not in declared:
+            missing.append(name)
+        tree = ast.parse((root / name).read_text())
+        for node in ast.walk(tree):
+            module = None
+            if isinstance(node, ast.ImportFrom) and node.level == 0:
+                module = node.module
+            elif isinstance(node, ast.Import):
+                module = node.names[0].name
+            if not module:
+                continue
+            target = by_module.get(module.split(".")[0])
+            if target and target not in seen:
+                pending.append(target)
+    assert not missing, f"website semantic manifest is missing imports: {sorted(missing)}"
+    for name in declared:
+        assert (root / name).is_file(), name

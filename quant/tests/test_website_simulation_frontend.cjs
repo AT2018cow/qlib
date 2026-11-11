@@ -61,3 +61,25 @@ test('fit receipts require valid hashes, coverage and explicit version 2 point b
     assert.equal(normalizeForwardPerformance(raw, 'csi300').status, 'invalid');
   }
 });
+
+test('new website identity fields are display-compatible and do not change NAV', () => {
+  const withIdentities = series();
+  Object.assign(withIdentities, {
+    identity_schema_version: 2,
+    release_source_sha256: 'e'.repeat(64),
+    website_semantic_sha256: 'f'.repeat(64),
+    account_contract_sha256: '0'.repeat(64),
+  });
+  const normalized = normalizeForwardPerformance(withIdentities, 'csi300');
+  assert.equal(normalized.status, 'active');
+  assert.equal(normalized.cumulative_return, -0.01);
+});
+
+test('methodology and ranking UI disclose v2 raw TopK and postclose schedule', () => {
+  const methodology = fs.readFileSync(path.join(__dirname, '../website/methodology.html'), 'utf8');
+  for (const text of ['18:00', '23:00', '23:15', '07:00', '公开榜单合同 v2', '不因 T 日收盘涨跌停删除股票']) {
+    assert.ok(methodology.includes(text), `methodology missing ${text}`);
+  }
+  assert.ok(!methodology.includes('19:00 幂等重试'), 'historical 19:00 retry must not remain current');
+  assert.ok(source.includes('榜单与模拟账户使用同一套模型原始排名（合同 v2）'));
+});
