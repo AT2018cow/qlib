@@ -79,6 +79,11 @@ def validate_publication_receipt(
     if receipt.get("asset_digest") != expected_asset_digest:
         raise ValueError("publication receipt provider digest changed")
     provider_hex = _asset_hex(receipt.get("asset_digest"))
+    release_map = receipt.get("market_release_sha256") or {market: source for market in MARKETS}
+    if not isinstance(release_map, dict) or set(release_map) != set(MARKETS):
+        raise ValueError("publication receipt must bind exactly three market releases")
+    for market in MARKETS:
+        _digest(release_map.get(market), f"{market} release")
     accounts = receipt.get("account_contract_sha256")
     if not isinstance(accounts, dict) or set(accounts) != set(MARKETS):
         raise ValueError("publication receipt must bind exactly three account contracts")
@@ -124,7 +129,7 @@ def validate_publication_receipt(
         if (
             result.get("status") != "COMPLETED"
             or result.get("market") != market
-            or result.get("source_sha256") != source
+            or result.get("source_sha256") != release_map[market]
             or result.get("website_semantic_sha256") != semantic
             or result.get("account_contract_sha256") != accounts[market]
             or result.get("asset_digest") != expected_asset_digest

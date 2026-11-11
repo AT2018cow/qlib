@@ -815,9 +815,17 @@ def publish_results(results, source, asset, *, token, simulation_root=Path("/sim
         raise ValueError("website markets have different data dates")
     files = {}
     market_bindings = {}
+    market_release_sha256 = {}
     for r in results:
-        if r["status"] != "COMPLETED" or r["source_sha256"] != source_sha or r["asset_digest"] != asset["digest"]:
+        result_release = r.get("source_sha256")
+        if (
+            r["status"] != "COMPLETED"
+            or not isinstance(result_release, str)
+            or len(result_release) != 64
+            or r["asset_digest"] != asset["digest"]
+        ):
             raise ValueError("website publication source/provider mismatch")
+        market_release_sha256[r["market"]] = result_release
         if r.get("website_semantic_sha256") != semantic_sha:
             raise ValueError("website publication semantic identity mismatch")
         account_sha = verify_account_contract(
@@ -829,7 +837,7 @@ def publish_results(results, source, asset, *, token, simulation_root=Path("/sim
         account_shas[r["market"]] = account_sha
         s = validate_website_series(r["series"], market=r["market"])
         if (
-            s["source_manifest_sha256"] != source_sha
+            s["source_manifest_sha256"] != result_release
             or s["website_semantic_sha256"] != semantic_sha
             or s["account_contract_sha256"] != account_sha
             or s["provider_archive_sha256"] != asset["digest"].split(":")[1]
@@ -892,6 +900,7 @@ def publish_results(results, source, asset, *, token, simulation_root=Path("/sim
         "schema_version": 2,
         "status": "PUBLISHED",
         "source_sha256": source_sha,
+        "market_release_sha256": market_release_sha256,
         "website_semantic_sha256": semantic_sha,
         "account_contract_sha256": account_shas,
         "asset_digest": asset["digest"],
