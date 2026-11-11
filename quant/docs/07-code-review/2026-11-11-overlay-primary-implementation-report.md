@@ -352,3 +352,48 @@ R03 的历史前缀保护由 dated-anchor 续接进一步补强，R05 的坏 hfq
 本地验收覆盖此前 R01–R10、S01–S05 和本节两项复权边界；交接文档中“未提交”等表述保留其历史时间点，不代表最终 Git 状态。
 真实全市场新日期 archive 构建、三市场信号/网站增量、09:00 只读检查和普通/重训日账单仍需单独的有界云端及生产验收。
 生产 v18 的历史记录不能被解释为已经部署本次修复；不因本地测试通过继续下调资源，也不回写既有不可变快照或账户记录。
+
+## 13. 第二轮复审后的隔离实测（2026-11-11，未部署）
+
+本节记录在 `ad707424d` + `befe35bc8` 本地代码上的隔离实测。生产 Volume 只读或无挂载，输出写入独立 probe Volume；未修改生产 provider、journal、账户或部署。
+
+### 13.1 真实 archive 父快照与新日期构建（CSIndex 滞后分支）
+
+- 在 probe Volume 封存 11-09：**88.3 s**，digest `76900cb0…`；随后重封 11-10：**528.6 s**，digest `658555ec…`。
+- 发现并修复：封存 receipt 原先复制旧 manifest 的 base，而不是实际 11-09 archive digest；导致网站父 digest 校验拒绝合法 prefix。修复后 11-10 receipt 明确记录 `base.kind=archive`、`base.digest=76900cb0…`（提交 `befe35bc8`）。
+- `mini_build(stale_membership=True)` 使用 11-10 archive 中的 18 只真实股票、11-09 截断 base、真实 Sina/BaoStock，模拟官方成分日期滞后一天：
+  - 第一次 build 抛出 `constituent date 2026-11-09 != asof 2026-11-10`；
+  - builder 在未创建 staging 的情况下合法重试，`membership_policy=BASE_PIT_LAG`、`equality_verified=true`、gate **PASS**、archive/receipt 发布；
+  - 与旧 frozen 11-10 比较：52 个字段差异，全部是 `change` 近零相对误差或 **price/factor ≤ 2.76e-4** 的差异，来自第三轮“精确 BaoStock preclose 优先”的调整证据口径；不是历史前缀改写，也不作为旧快照逐字节 oracle。新代码自身 full/incremental 账户路径已在 13.2 精确一致。
+  - 资源：wall 23 s；process CPU lower bound 13.83 s、avg 0.469 core；RSS max 992 MiB；cgroup/PSS 不可读，明确标记 `cpu_seconds_is_lower_bound=true`，不据此缩容。
+
+### 13.2 真实 archive 的网站 INCREMENTAL
+
+用 11-09/11-10 真实 archive、csi300、隔离 simulation Volume 执行：
+
+1. 11-10 smoke + full（baseline）；
+2. 11-09 smoke + full（prior）；
+3. 移走 11-10 baseline，重跑 11-10，命中 11-09 prior。
+
+结果：
+
+| 项目 | 结果 |
+|---|---|
+| 11-10 replay_mode | **INCREMENTAL** |
+| prefix prediction exact | **true** |
+| new_fit | **false** |
+| previous asset digest | `sha256:76900cb0…` |
+| points（24 日） | 完全相等 |
+| final_state | 完全相等 |
+| ledger/report.parquet | 完全相等 |
+| ledger/orders.parquet | 完全相等 |
+| sessions.jsonl / metrics.json | 完全相等 |
+| 总耗时 | 260.6 s（含两次 full + smoke） |
+
+这验证了 R02 的“真实 archive asset 无 local_path”增量入口和 S04 的报价集合路径；本次真实 csi300 样本没有出现退指仍持有的股票，blocked-sell/退指持仓的精确 full-vs-incremental 证据仍由 `test_prelive_revalidation.py` 的本地回归覆盖。
+
+### 13.3 未完成边界
+
+- 本次未部署；生产两 App 仍为 v18（`1fdc8a7`），不包含本轮 S01–S05 与第三轮复权修复。
+- 11-12 06:00 才是首次“真实全市场新日期 provider + 信号（预计重训）+ 网站增量”调度验收；在它通过前不得宣布生产稳定。
+- 若部署，source identity 变化会触发一次 website full replay；必须先完成一次 11-11/11-10 部署后验收，使 11-12 的 website 能从新的 11-10 baseline 走增量。
