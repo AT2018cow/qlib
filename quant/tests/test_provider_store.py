@@ -499,6 +499,36 @@ def test_retention_plan_collects_real_anchor_journal_marker_website_and_recovery
     assert (root / "archives" / "2026-10-30" / "receipt.json").is_file()
 
 
+def test_archive_base_lineage_does_not_keep_every_full_archive_forever(tmp_path):
+    from data_ingest.store import collect_retention_references, receipt_sha256, retention_plan
+
+    root = tmp_path / "overlay"
+    root.mkdir()
+    days = ("2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06")
+    prior = None
+    for day in days:
+        _copy_archive(tmp_path, root, day)
+        receipt_path = root / "archives" / day / "receipt.json"
+        receipt = json.loads(receipt_path.read_text())
+        if prior is not None:
+            receipt["base"] = {
+                "kind": "archive",
+                "date": prior["date"],
+                "calendar_end": prior["date"],
+                "digest": prior["digest"],
+                "archive_sha256": prior["digest"],
+            }
+            receipt["receipt_sha256"] = receipt_sha256(receipt)
+            receipt_path.write_text(json.dumps(receipt, indent=2) + "\n")
+        prior = {"date": day, "digest": receipt["archive"]["sha256"]}
+
+    references = collect_retention_references(root)
+    assert not [item for item in references["referenced"] if item["source"] == "archive_base"]
+    plan = retention_plan(root, keep=1, references=references, generated_at="2026-11-11T00:00:00Z")
+    assert {item["date"] for item in plan["remove"]} == set(days[:-1])
+    assert {item["date"] for item in plan["keep"]} == {days[-1]}
+
+
 def test_retention_plan_keeps_everything_when_a_reference_is_corrupt(tmp_path):
     from data_ingest.store import collect_retention_references, retention_plan
 

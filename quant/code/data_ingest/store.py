@@ -691,7 +691,11 @@ def collect_retention_references(provider_root, *, journal_root=None, simulation
             if manifest is not None and manifest.get("status") == "PASS":
                 add("frozen_anchor_dates", path.name, source="legacy_directory_anchor")
 
-    # Archive lineage references.
+    # A PASS archive is a complete, standalone provider package.  Its ``base``
+    # and ``source_directory`` fields record provenance, not materialization
+    # dependencies, so treating every historical base as a retention root
+    # would make a normal daily chain impossible to prune.  Still inspect each
+    # receipt so unreadable archive metadata forces the conservative plan.
     archive_root = provider_root / ARCHIVE_DIRNAME
     if archive_root.is_dir():
         for directory in sorted(archive_root.iterdir()):
@@ -705,19 +709,6 @@ def collect_retention_references(provider_root, *, journal_root=None, simulation
                 continue
             if receipt.get("status") != "PASS":
                 continue
-            base = receipt.get("base") or {}
-            for key in ("date", "calendar_end"):
-                if base.get(key):
-                    add("referenced", base.get(key), base.get("digest") or base.get("archive_sha256"), "archive_base")
-                    break
-            source_directory = receipt.get("source_directory") or {}
-            if source_directory.get("date"):
-                add(
-                    "referenced",
-                    source_directory["date"],
-                    source_directory.get("manifest_sha256"),
-                    "sealed_source_directory",
-                )
 
     volume = Path(journal_root) if journal_root is not None else None
     committed = []

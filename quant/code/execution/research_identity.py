@@ -38,18 +38,13 @@ def _relative_file(root, name):
     return path
 
 
-def production_model_config_paths():
-    """Return the repo-relative YAML files actually referenced by MODEL_CFG.
-
-    ``qlib_runtime.MODEL_CFG`` is the single production source of truth.  Its
-    values use the Modal container root (``/root/qlib``); convert them back to
-    repository-relative paths instead of copying a possibly stale filename.
-    """
+def _model_config_paths(keys=None):
     from qlib_runtime import MODEL_CFG
 
+    selected = MODEL_CFG if keys is None else {key: MODEL_CFG[key] for key in keys}
     prefix = "/root/qlib/"
     paths = set()
-    for value in MODEL_CFG.values():
+    for value in selected.values():
         text = str(value)
         if text.startswith(prefix):
             text = text[len(prefix) :]
@@ -59,6 +54,16 @@ def production_model_config_paths():
     if not paths:
         raise ValueError("MODEL_CFG contains no auditable configuration paths")
     return tuple(sorted(paths))
+
+
+def production_model_config_paths():
+    """Return every repo-relative YAML referenced by production ``MODEL_CFG``."""
+    return _model_config_paths()
+
+
+def website_model_config_paths():
+    """Return only the production YAML that can change website replay results."""
+    return _model_config_paths(("lgb158",))
 
 
 _WEBSITE_CODE_DEPENDENCIES = (
@@ -90,7 +95,7 @@ _WEBSITE_CODE_DEPENDENCIES = (
     "quant/code/research/regime_reselection/prelive_revalidation.py",
     "quant/code/research/stage_ab/csi1000_tuner_core.py",
 )
-WEBSITE_SEMANTIC_DEPENDENCIES = tuple(sorted(set(_WEBSITE_CODE_DEPENDENCIES) | set(production_model_config_paths())))
+WEBSITE_SEMANTIC_DEPENDENCIES = tuple(sorted(set(_WEBSITE_CODE_DEPENDENCIES) | set(website_model_config_paths())))
 
 
 def _manifest_body(kind, root, paths, version=SOURCE_IDENTITY_VERSION):

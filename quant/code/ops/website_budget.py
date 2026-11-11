@@ -120,6 +120,7 @@ def validate_publication_receipt(
         if not result_path.is_file() or _sha256(result_path.read_bytes()) != result_sha:
             raise ValueError(f"publication receipt {market} immutable result hash mismatch")
         result = _read_json(result_path)
+        series = result.get("series")
         if (
             result.get("status") != "COMPLETED"
             or result.get("market") != market
@@ -128,9 +129,11 @@ def validate_publication_receipt(
             or result.get("account_contract_sha256") != accounts[market]
             or result.get("asset_digest") != expected_asset_digest
             or result.get("cache_sha256") != cache
+            or not isinstance(series, dict)
+            or series.get("latest_date") != latest
         ):
             raise ValueError(f"publication receipt {market} immutable result identity mismatch")
-        series_bytes = (json.dumps(result.get("series"), indent=2, ensure_ascii=False, allow_nan=False) + "\n").encode()
+        series_bytes = (json.dumps(series, indent=2, ensure_ascii=False, allow_nan=False) + "\n").encode()
         if _sha256(series_bytes) != series_sha:
             raise ValueError(f"publication receipt {market} immutable series hash mismatch")
         if result.get("ledger_file_sha256") != ledger:

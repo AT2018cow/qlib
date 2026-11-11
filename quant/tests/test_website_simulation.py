@@ -1199,16 +1199,38 @@ def test_daily_short_circuit_rejects_invalid_receipt_before_replay(monkeypatch):
 def test_status_reports_invalid_receipt_instead_of_published(monkeypatch):
     import types
 
+    import research_identity
+
     module = _website_module()
+    expected_source = "a" * 64
     monkeypatch.setattr(module, "simulation", types.SimpleNamespace(reload=lambda: None))
+    monkeypatch.setattr(research_identity, "source_manifest", lambda kind: {"sha256": expected_source})
     monkeypatch.setattr(
         module,
         "checked_publication_receipt",
         lambda **kwargs: (_ for _ in ()).throw(ValueError("forged receipt")),
     )
-    result = module.status.local("a" * 64, "sha256:" + "b" * 64, "2026-11-10")
+    result = module.status.local(expected_source, "sha256:" + "b" * 64, "2026-11-10")
     assert result["status"] == "INVALID"
     assert "forged receipt" in result["reason"]
+
+
+def test_status_rejects_a_different_deployed_website_release(monkeypatch):
+    import types
+
+    import research_identity
+
+    module = _website_module()
+    monkeypatch.setattr(module, "simulation", types.SimpleNamespace(reload=lambda: None))
+    monkeypatch.setattr(research_identity, "source_manifest", lambda kind: {"sha256": "b" * 64})
+    monkeypatch.setattr(
+        module,
+        "checked_publication_receipt",
+        lambda **kwargs: pytest.fail("a release mismatch must be rejected before reading a receipt"),
+    )
+    result = module.status.local("a" * 64, "sha256:" + "c" * 64, "2026-11-10")
+    assert result["status"] == "INVALID"
+    assert "different source identities" in result["reason"]
 
 
 def test_fixed_fixture_old_filtered_and_new_raw_selection_keep_account_path_exact():

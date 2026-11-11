@@ -2,7 +2,7 @@
 
 > 日期：2026-11-11
 >
-> 状态：`LOCAL REMEDIATED / NOT DEPLOYED / NOT SCHEDULED-VERIFIED`
+> 状态：`LOCAL REMEDIATED / LOCAL RE-VERIFIED / NOT DEPLOYED / NOT SCHEDULED-VERIFIED`
 >
 > 性质：本地实现与测试报告，不是部署批准、生产 PASS、收益认证或自然调度验收。
 >
@@ -14,8 +14,8 @@
 
 ## 1. 结论摘要
 
-PC01–PC08 已在本地实现，并完成独立验收 PR01–PR06 整改。当前状态为
-`LOCAL REMEDIATED / NOT DEPLOYED`，保留以下既有合同：
+PC01–PC08 已在本地实现，并完成 PR01–PR06 及其后续五项复验残余整改。当前状态为
+`LOCAL REMEDIATED / LOCAL RE-VERIFIED / NOT DEPLOYED`，保留以下既有合同：
 
 - 唯一自建 overlay provider；日常路径不回退 chenditc，不恢复主备双源。
 - `qlib-prod-daily` / `qlib-prod-website` 两个生产 App；未合并容器、未做镜像瘦身、未增加多容器抓取。
@@ -44,11 +44,21 @@ PC01–PC08 已在本地实现，并完成独立验收 PR01–PR06 整改。当�
 | ID | 本地状态 | 修复 |
 |---|---|---|
 | PR01 | 已修复 | `_build_market_impl` 未缓存 full 路径改用 `cache_sha` 并显式传 `semantic_sha`/`account_sha`；新增真实调用点测试覆盖 FULL、INCREMENTAL、4/12 无祖先 fail-closed |
-| PR02 | 已修复 | `source_manifest("training")` 与 website semantic 从 `qlib_runtime.MODEL_CFG` 派生实际生产 YAML，包含 `workflow_config_lightgbm_Alpha158_csi500.yaml`；删除未使用的 `release_manifest` 重复抽象；负控证明 `_code_source_sha()` 与 website `daily()` 使用同一实现 |
-| PR03 | 已修复 | 新增唯一 `validate_publication_receipt()` / `checked_publication_receipt()`；receipt 绑定 schema、release、semantic、三市场 account、provider、latest、12 文件及三市场 result/series/ledger/final-state 哈希；`daily()`、`status()`、postclose marker 共用 |
+| PR02 | 已修复 | `source_manifest("training")` 从完整 `MODEL_CFG` 派生 release YAML；website semantic 仅绑定回放真实使用的 `MODEL_CFG["lgb158"]`，包含 `workflow_config_lightgbm_Alpha158_csi500.yaml`；负控证明未使用的 GRU YAML 只改变 release |
+| PR03 | 已修复 | 唯一 `validate_publication_receipt()` / `checked_publication_receipt()` 绑定 schema、release、semantic、三市场 account、provider、latest、12 文件及三市场 result/series/ledger/final-state 哈希；逐市场实际 `series.latest_date` 必须等于 receipt/session；`status()` 还独立校验当前 Website App release |
 | PR04 | 已修复 | 23:15 `daily_evening_retry` timeout 改为 `BACKUP_TIMEOUT_SECONDS`，覆盖排队 + 一次完整恢复；仍只 `.remote()` 同一 `daily_cron(max_containers=1)` |
-| PR05 | 已修复 | 新增只读 `collect_retention_references()`，从 legacy anchor、archive base lineage、journal、postclose/preopen marker、website predecessor/recovery receipt 收集 reachability；生产 dry-run 自然调用 collector；损坏/未知引用全部 keep，仍禁止 apply |
+| PR05 | 已修复 | 只读 `collect_retention_references()` 从 legacy anchor、journal、postclose/preopen marker、website predecessor/recovery receipt 收集 reachability；完整 archive 的 base 仅作 provenance，不再让整条历史链永久可达；生产仍只执行 dry-run，损坏/未知引用全部 keep，禁止 apply |
 | PR06 | 已修复 | 调度测试注入固定 `_trading_days()`，禁网全量套件通过；前端报告改为逐文件循环；新增固定 old/new fixture 证明公开 CSV 允许差异而账户 trades/fees/holdings/cash/NAV 精确一致 |
+
+### 2.2 后续五项复验残余关闭状态
+
+| ID | 本地状态 | 修复与回归 |
+|---|---|---|
+| CR01 | 已修复 | receipt 校验逐市场读取 immutable result，并要求实际 `series.latest_date == receipt.latest_date == expected session`；自洽重哈希的 T-1 series 也必须失败 |
+| CR02 | 已修复 | 只读 `status()` 先计算当前 Website App `source_manifest("training")`；与 Signal App 传入 release 不同即 `INVALID`，不读取旧 receipt |
+| CR03 | 已修复 | retention 不再把每份完整 archive 的 `base`/`source_directory` 当成保留根；四日链、`keep=1` 时前三份能成为 dry-run 候选 |
+| CR04 | 已修复 | release 继续包含完整 `MODEL_CFG`；website semantic 仅包含实际回放使用的 Alpha158 CSI500 YAML，修改 GRU 只改变 release |
+| CR05 | 已修复 | 修正第 7 节重复标题 |
 
 ## 3. 目标调度与日期合同
 
@@ -70,14 +80,14 @@ U 07:00  daily_readonly_check  只读 / 无 secret / 最终核验同一 U/T
 | 身份 | 计算 | 用途 |
 |---|---|---|
 | `release_source_sha256` | 完整 `quant/code/**/*.py` + `qlib_runtime.MODEL_CFG` 实际引用的全部训练 YAML（含 `_Alpha158_csi500.yaml`；沿用 research `source_manifest("training")` v2 文件集） | 部署一致性、审计、receipt |
-| `website_semantic_sha256` | `WEBSITE_SEMANTIC_DEPENDENCIES` 显式闭包（website identity schema v3） | model/result cache、incremental ancestor |
+| `website_semantic_sha256` | `WEBSITE_SEMANTIC_DEPENDENCIES` 显式代码闭包 + 网站实际使用的 `MODEL_CFG["lgb158"]` YAML（website identity schema v3） | model/result cache、incremental ancestor |
 | `account_contract_sha256` | market/profile/horizon/TopK/DropN/费用/本金/起点/重训/执行规则（website identity schema v3） | 防止语义 hash 漏绑业务合同 |
 
 `SOURCE_IDENTITY_VERSION` 保持 2，避免让既有研究 receipt 因本轮网站整改而失效；新增网站 semantic/account 文档使用 `WEBSITE_IDENTITY_VERSION=3`。生产 `_code_source_sha()`、website `daily()` 和测试负控使用同一个 `source_manifest("training")`，不再保留未使用的 `release_manifest` 重复实现。
 
 关键行为：
 
-- 只改 Modal `cpu`/`memory`/`schedule`/launcher 或文档：release 改变，semantic/account 不变，增量祖先可复用。
+- 只改 Modal `cpu`/`memory`/`schedule`/launcher、未被网站使用的 GRU/ALSTM/Alpha360 YAML 或文档：至多改变 release，semantic/account 不变，增量祖先可复用。
 - 改模型、特征、费用、replay、board/execution、账户合同：semantic 或 account 改变，旧祖先拒绝并进入受控 full。
 - worker 在 import 后校验本次新增的仓库内业务模块属于声明闭包；未登记 import fail-closed。
 - `publish_results` 同时校验 release、semantic、account、provider 和 series；receipt 记录三类身份。
@@ -107,7 +117,7 @@ PR01–PR06 均先写失败回归并在 `95b55855e` 上复现：
 ```text
 HTTP_PROXY=http://127.0.0.1:9 HTTPS_PROXY=http://127.0.0.1:9 NO_PROXY= \
   .venv/bin/pytest -q quant/tests
-1161 passed, 2 skipped, 23 warnings, 50 subtests passed
+1165 passed, 2 skipped, 24 warnings, 50 subtests passed
 
 for test_file in quant/tests/test_*.cjs; do
   node "$test_file" || exit 1
@@ -130,7 +140,11 @@ passed
 - PR05：`test_provider_store.py` 真实目录 fixture 收集 anchor、journal、FAILED marker、website predecessor、recovery receipt；损坏引用全部 keep；`dry_run=False` 仍拒绝。
 - PR06：`test_website_simulation.py` 固定 old/new fixture：公开 CSV 从旧过滤/补位变为 raw TopK，账户 trades/fees/holdings/cash/NAV 与完整 ranking 哈希精确一致；禁网全量套件通过。
 
-## 7. 首次部署迁移说明## 7. 首次部署迁移说明
+后续五项残余均先在 `001cada22` 上形成失败回归：receipt 的重哈希旧 series、Website App release mismatch、未使用 GRU
+误改 semantic、四日 archive base 链无法淘汰共得到 `4 failed`。修复后定向为 `24 passed`，相关五个完整测试文件为
+`127 passed`；最终禁网全量结果如上。
+
+## 7. 首次部署迁移说明
 
 - 新 identity schema 首次部署预期触发一次有界 8/16 smoke + full replay；这不是回归失败。
 - 首轮 full 需用同一 frozen provider 逐日比较旧/新 score、排名、成交、费用、持仓、cash、NAV；除新增身份字段外要求精确一致。本轮已用固定 fixture 证明公开 CSV 之外的账户路径不变，真实 provider 的逐日比较仍是部署外部门。
@@ -151,7 +165,7 @@ passed
 ## 9. 交付状态
 
 ```text
-LOCAL REMEDIATED / NOT DEPLOYED
+LOCAL REMEDIATED / LOCAL RE-VERIFIED / NOT DEPLOYED
 ```
 
 Codex 验收通过且用户另行授权前，不得写成已部署、生产 PASS 或自然调度验收通过。

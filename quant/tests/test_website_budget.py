@@ -128,6 +128,7 @@ def test_minimal_receipt_is_never_treated_as_published(tmp_path):
         "market_missing",
         "provider",
         "files",
+        "series_latest",
         "result_content",
         "ledger_content",
     ],
@@ -154,6 +155,16 @@ def test_tampered_receipt_or_immutable_payload_is_rejected(tmp_path, damage):
         receipt["asset_digest"] = "sha256:" + "f" * 64
     elif damage == "files":
         receipt["files"] = 9
+    elif damage == "series_latest":
+        binding = receipt["markets"]["csi300"]
+        result_path = tmp_path / binding["cache_sha256"] / ("c" * 64) / "csi300" / "full" / "result.json"
+        result = json.loads(result_path.read_text())
+        result["series"]["latest_date"] = "2026-11-09"
+        result_bytes = (json.dumps(result, indent=2, allow_nan=False) + "\n").encode()
+        result_path.write_bytes(result_bytes)
+        series_bytes = (json.dumps(result["series"], indent=2, ensure_ascii=False, allow_nan=False) + "\n").encode()
+        binding["result_sha256"] = _sha(result_bytes)
+        binding["series_sha256"] = _sha(series_bytes)
     elif damage == "result_content":
         result = (
             tmp_path / receipt["markets"]["csi300"]["cache_sha256"] / ("c" * 64) / "csi300" / "full" / "result.json"

@@ -431,6 +431,16 @@ def test_actual_production_csi500_yaml_changes_release_and_semantic(executable_t
     assert identity.website_semantic_manifest(repo_root=root)["sha256"] != semantic["sha256"]
 
 
+def test_non_website_model_yaml_changes_release_but_not_website_semantic(executable_tree):
+    root, helper, driver = executable_tree
+    release = identity.source_manifest("training", repo_root=root)
+    semantic = identity.website_semantic_manifest(repo_root=root)
+    unused_by_website = root / "examples/benchmarks/GRU/workflow_config_gru_Alpha158.yaml"
+    unused_by_website.write_text("model: release-only-change\n")
+    assert identity.source_manifest("training", repo_root=root)["sha256"] != release["sha256"]
+    assert identity.website_semantic_manifest(repo_root=root)["sha256"] == semantic["sha256"]
+
+
 def test_production_code_identity_and_website_daily_use_the_tested_csi500_yaml(executable_tree, monkeypatch):
     import importlib.util
 

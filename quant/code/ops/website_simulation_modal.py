@@ -230,9 +230,18 @@ def billing_status():
 )
 def status(expected_source_sha256: str, asset_digest: str = "", expected_latest_date: str = ""):
     """Read-only validated publication receipt lookup for the daily coordinator."""
-    from research_identity import account_contract_manifest, website_semantic_manifest
+    from research_identity import account_contract_manifest, source_manifest, website_semantic_manifest
     from website_simulation import account_contract_for_market
 
+    source = source_manifest("training")
+    if expected_source_sha256 != source["sha256"]:
+        return {
+            "status": "INVALID",
+            "source_sha256": expected_source_sha256,
+            "deployed_source_sha256": source["sha256"],
+            "asset_digest": asset_digest,
+            "reason": "signal/website deployments have different source identities",
+        }
     simulation.reload()
     if not asset_digest:
         return {
@@ -249,7 +258,7 @@ def status(expected_source_sha256: str, asset_digest: str = "", expected_latest_
     try:
         receipt = checked_publication_receipt(
             simulation_root="/simulation",
-            expected_source_sha256=expected_source_sha256,
+            expected_source_sha256=source["sha256"],
             expected_semantic_sha256=semantic["sha256"],
             expected_accounts=accounts,
             expected_asset_digest=asset_digest,

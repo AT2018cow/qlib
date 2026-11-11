@@ -5,7 +5,7 @@
 > - 生产 App 仍为 `qlib-prod-daily` / `qlib-prod-website` v20（部署 commit `3568be937`）；生产信号与网站使用唯一自建 overlay archive，研究默认数据仍为独立的 chenditc lineage。
 > - **已部署**调度仍是 06:00 `daily_cron`、07:30 `daily_preopen_retry`、09:00 `daily_readonly_check`。**本地源码候选尚未部署**：18:00 `daily_cron`、23:00 `daily_postclose_check`、23:15 `daily_evening_retry`、次日 07:00 `daily_readonly_check`。
 > - 本地源码候选（基于 `9b5aa359c` 资源检查点）保留 Provider 2 CPU / 8 GiB、独立 Website incremental 4 CPU / 12 GiB；full/smoke/retrain 8/16、Signal 8/16。生产仍为 Provider 4/8、统一 Website 8/16。
-> - PC01–PC08 本地实现及 PR01–PR06 整改见 [`postclose implementation report`](07-code-review/2026-11-11-postclose-implementation-report.md)；独立验收问题清单见 [`postclose independent review remediation`](07-code-review/2026-11-11-postclose-independent-review-remediation.md)。当前状态为 `LOCAL REMEDIATED / NOT DEPLOYED`，仍不能部署或推送，等待 Codex 独立复验。
+> - PC01–PC08、PR01–PR06 及第二次复验五项残余的本地整改见 [`postclose implementation report`](07-code-review/2026-11-11-postclose-implementation-report.md)；问题与关闭证据见 [`postclose independent review remediation`](07-code-review/2026-11-11-postclose-independent-review-remediation.md)。当前状态为 `LOCAL REMEDIATED / LOCAL RE-VERIFIED / NOT DEPLOYED`；未获用户另行授权前不得部署或推送。
 > - 安全加固：见 [`2026-11-10-security-hardening.md`](07-code-review/2026-11-10-security-hardening.md)。
 > - 下文旧条目保留为历史记录；其中 v37/v12、07:00/08:00、11/06 数据、USD budget guard 等描述不再代表当前生产或本地候选。
 
@@ -15,7 +15,7 @@
 
 **收盘后统一生产（本地实现 / 未部署）**：[`2026-11-11 实施交接`](07-code-review/2026-11-11-postclose-production-remediation-handoff.md)规定 18:00 用 T 数据更新 T NAV、重训并发布下一交易日榜单，23:00 当晚只读预警，23:15 通过同一入口恢复，次日 07:00 最终只读核验；同时拆分网站语义 identity、取消程序内 USD 阻断并统一公开榜单与账户排名。实现、测试和剩余外部门见 [`postclose implementation report`](07-code-review/2026-11-11-postclose-implementation-report.md)。
 
-**收盘后实现独立验收整改（本地完成 / 未部署）**：[`2026-11-11 整改清单`](07-code-review/2026-11-11-postclose-independent-review-remediation.md)记录 PR01–PR06：真实 replay core 参数错误、实际训练 YAML 漏哈希、坏 receipt 可误 PASS、23:15 timeout 不足、retention 未绑定真实 reachability，以及测试/证据缺口。本地修复与先失败后通过证据见实施报告；Codex 复验通过前禁止部署或推送该候选。
+**收盘后实现独立验收整改（本地复验通过 / 未部署）**：[`2026-11-11 整改清单`](07-code-review/2026-11-11-postclose-independent-review-remediation.md)记录 PR01–PR06 及第二次复验 CR01–CR05：真实 replay core、模型 YAML identity、receipt/date/release、23:15 timeout、retention reachability 和测试证据边界。本地修复与先失败后通过证据见实施报告；当前仍未提交、未部署，生产外部门尚未验收。
 
 **历史记录（已被 2026-11-11 的 06:00 overlay 调度取代）— T 日收盘后发布**：[`2026-11-09 调度`](07-code-review/2026-11-09-evening-publication-schedule.md)记录当时的 18:00 主发、19:00 重试和 07:00 盘前补发。其业务日期合同仍是新方案的重要依据，但当时 App、provider 和 schedule 不代表当前部署。
 

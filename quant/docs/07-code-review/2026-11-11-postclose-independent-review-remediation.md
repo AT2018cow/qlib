@@ -11,6 +11,8 @@
 > 独立复验：Codex
 >
 > 性质：针对 PC01–PC08 本地实现的整改交接；不是部署批准、生产 PASS、收益认证或自然调度验收。
+>
+> 后续状态：PR01–PR06 已由 `001cada22` 整改；第二次复验发现的五项残余已在未提交工作区修复并完成本地禁网复验，见第 12 节。
 
 ## 1. 验收结论
 
@@ -402,3 +404,34 @@ Provider 2/8、Website incremental 4/12、R01–R10、S01–S05 和复权修复�
 本轮只做本地修复和验证。不要部署、push、运行付费 Modal、写生产 Volume、发布 GitHub 信号或执行归档删除。
 完成后更新实施报告为 LOCAL REMEDIATED / NOT DEPLOYED，并列出测试先失败后通过的证据，交回 Codex 独立复验。
 ```
+
+## 12. 第二次复验残余与 Codex 本地修复
+
+第二次复验没有重新打开已经有效的 PR01、PR04、PR06，而是在 identity、receipt 和 retention 边界发现五项残余。Codex
+按“先失败回归、再修实现”处理，当前仍是未提交、未部署状态：
+
+| ID | 级别 | 修复结果 |
+|---|---|---|
+| CR01 | P1 | `validate_publication_receipt()` 现在校验每个 immutable result 的实际 `series.latest_date` 等于 receipt/session；receipt 与 result 自洽重哈希也不能掩盖 T-1 序列 |
+| CR02 | P1 | `status()` 现在独立计算当前 Website App release；Signal/Website App release 不同立即返回 `INVALID`，不会利用 Volume 中的旧 receipt 误 PASS |
+| CR03 | P2 | 完整 archive 的 base/source-directory 仅作 provenance，不再成为全历史保留根；真实 journal、marker、网站 predecessor、recovery receipt 继续控制 reachability |
+| CR04 | P2 | 完整 release 仍哈希全部生产 YAML；website semantic 只哈希网站回放实际使用的 Alpha158 CSI500 YAML，未使用的 GRU/ALSTM/Alpha360 不再强制 full replay |
+| CR05 | P3 | 实施报告第 7 节重复标题已修正 |
+
+先失败证据：
+
+```text
+4 failed, 17 passed
+```
+
+失败项分别是重哈希旧 series 被接受、Website App release mismatch 未拒绝、GRU 误改 semantic、archive base 链无删除候选。
+修复后：
+
+```text
+定向新增/相关回归：24 passed
+五个相关完整测试文件：127 passed
+禁网全量 quant：1165 passed, 2 skipped, 24 warnings, 50 subtests passed
+```
+
+边界不变：未 `modal deploy`、未运行 `modal run`、未 push、未写生产 Volume、未发布生产信号、未执行 archive 删除。
+本地复验通过不等于生产验收；首次 identity full、下一交易日 4/12 incremental、Provider 2/8 新日期、自然调度和邮件到达仍是部署后外部门。
