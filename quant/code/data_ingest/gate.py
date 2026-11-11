@@ -169,9 +169,14 @@ def run_gate(
                 bad_history.append(f"{symbol}/{field}: bin start mismatch")
                 continue
             start = int(left[0])
-            count = baseline.index(base_end) - start + 1
+            # A suspended/untraded symbol may legitimately have no frozen row
+            # on base_end.  Protect every available frozen row without
+            # requiring a synthetic bar on a non-trading session.
+            frozen_last = start + left.size - 2
+            end = min(baseline.index(base_end), frozen_last)
+            count = end - start + 1
             if count <= 0 or count + 1 > left.size or count + 1 > right.size:
-                bad_history.append(f"{symbol}/{field}: frozen prefix shorter than base date")
+                bad_history.append(f"{symbol}/{field}: frozen prefix shorter than available history")
                 continue
             if not np.array_equal(left[1 : count + 1], right[1 : count + 1], equal_nan=True):
                 bad_history.append(f"{symbol}/{field}: frozen prefix changed")

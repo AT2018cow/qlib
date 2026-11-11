@@ -282,6 +282,28 @@ def test_corporate_action_gate_reads_materialized_factor(tmp_path, monkeypatch):
     assert any("corporate_actions" in failure for failure in report.failures)
 
 
+def test_protected_history_allows_suspended_symbol_without_base_end_bar(tmp_path, monkeypatch):
+    base, overlay, _, _ = _build(tmp_path, monkeypatch)
+    symbol = "SH600000"
+    for path in (base / "features" / symbol.lower()).glob("*.day.bin"):
+        payload = np.fromfile(path, dtype="<f")
+        payload[:2].astype("<f").tofile(path)
+    rows = json.loads((overlay / "new_rows.json").read_text())
+    report = run_gate(
+        base,
+        overlay,
+        base_end=BASE_DATES[-1],
+        asof=TARGET_DATES[-1],
+        dates=list(TARGET_DATES),
+        memberships=_memberships(),
+        rows=rows,
+        protected_history=[symbol],
+        require_crosscheck=False,
+        membership_history={day: _memberships(asof=day) for day in TARGET_DATES},
+    )
+    assert report.status == "PASS", report.failures
+
+
 def test_build_rows_normal_day_and_ex_date():
     base = {"SH600000": {"close": 10.0, "adjclose": 10.0, "factor": 1.0}}
     normal = Bar("2026-11-05", 10.0, 10.5, 9.5, 10.0, 1000.0, 10000.0)
