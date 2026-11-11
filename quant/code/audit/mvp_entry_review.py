@@ -49,9 +49,14 @@ def evaluate_paper_artifact(paper, calendar=None):
     for key, value in expected.items():
         if paper.get(key) != value:
             errors.append(f"{key}_MISMATCH")
-    for key in ("candidate_id", "profile", "model_config_sha256", "stage_b_snapshot_token", "contract_version"):
+    for key in ("candidate_id", "profile", "model_config_sha256", "stage_b_snapshot_token"):
         if lineage.get(key) != manifest.get(key):
             errors.append(f"production_lineage_{key}_MISMATCH")
+    if lineage.get("contract_version") not in {
+        manifest.get("contract_version"),
+        manifest.get("research_lineage_version"),
+    }:
+        errors.append("production_lineage_contract_version_MISMATCH")
 
     data_date = paper.get("signal_data_date")
     use_date = paper.get("usage_date")

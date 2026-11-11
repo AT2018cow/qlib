@@ -81,6 +81,7 @@ def current_window_backtest(job: dict):
 
     from board_execution import research_exchange
     from csi1000_production_config import profile_manifest
+    from current_window_net import performance_from_report
     from qlib_audit_fixes import (
         last_matured_sample,
         purge_cfg_splits,
@@ -191,12 +192,11 @@ def current_window_backtest(job: dict):
         exchange_kwargs=research_exchange(eval_start, eval_end, codes=market),
     )
     report = pm["1day"][0]
-    raw_ret = report["return"].dropna()
-    ret = raw_ret.iloc[1:]
-    bench_ret = report["bench"].reindex(raw_ret.index).fillna(0.0).iloc[1:]
-    cost = report["cost"].reindex(raw_ret.index).fillna(0.0).iloc[1:]
-    cumulative = float((1.0 + ret).prod() - 1.0)
-    benchmark_cumulative = float((1.0 + bench_ret).prod() - 1.0)
+    performance = performance_from_report(
+        report,
+        initial_cash=100_000_000,
+        backtest_start=eval_start,
+    )
     return {
         "market": market,
         "profile": profile,
@@ -207,14 +207,8 @@ def current_window_backtest(job: dict):
         "train_end": train_end,
         "eval_start": eval_start,
         "eval_end": eval_end,
-        "n_days": int(len(ret)),
-        "cumulative_return": cumulative,
-        "benchmark_cumulative_return": benchmark_cumulative,
-        "excess_cumulative_return": cumulative - benchmark_cumulative,
-        "total_cost": float(cost.sum()),
-        "final_account": float(report["account"].iloc[-1]),
-        "daily_return": [round(float(x), 8) for x in ret.tolist()],
-        "daily_benchmark": [round(float(x), 8) for x in bench_ret.tolist()],
+        "n_days": len(performance["dates"]),
+        **performance,
     }
 
 
@@ -285,6 +279,7 @@ def current_window_driver(
 def bear_block(job: dict):
     """One 20-session rolling-retrain block for the 2021-2024 bear stress test."""
     from bisect import bisect_left
+    import hashlib
 
     import qlib
     from qlib.backtest import backtest as normal_backtest
@@ -294,7 +289,9 @@ def bear_block(job: dict):
 
     from board_execution import research_exchange
     from csi1000_production_config import profile_manifest
+    from current_window_net import bear_block_payload, bear_research_identity
     from qlib_audit_fixes import last_matured_sample, purge_cfg_splits, read_trading_calendar
+    from qlib_live_retrain import provider_training_fingerprint
 
     market = job["market"]
     profile = job["profile"]
@@ -388,10 +385,26 @@ def bear_block(job: dict):
         exchange_kwargs=research_exchange(retrain_asof, eval_end, codes=market),
     )
     report = pm["1day"][0]
-    raw = report["return"].dropna()
-    ret = raw.iloc[1:]
-    bench = report["bench"].reindex(raw.index).fillna(0.0).iloc[1:]
-    dates = [str(x)[:10] for x in ret.index]
+    performance = bear_block_payload(
+        report,
+        identity=bear_research_identity(
+            market=market,
+            profile=profile,
+            candidate_id=manifest["candidate_id"],
+            model_config_sha256=manifest["model_config_sha256"],
+            label_horizon=horizon,
+            topk=topk,
+            dropn=nd,
+            provider_fingerprint=provider_training_fingerprint(data_dir, market, job["run_end"]),
+            calendar_sha256=hashlib.sha256("\n".join(cal).encode()).hexdigest(),
+            account_start=job["account_start"],
+        ),
+        expected_dates=cal[asof_i + 1 : end_i + 1],
+        retrain_asof=retrain_asof,
+        eval_end=eval_end,
+        initial_cash=100_000_000,
+        backtest_start=retrain_asof,
+    )
     return {
         "market": market,
         "profile": profile,
@@ -400,9 +413,7 @@ def bear_block(job: dict):
         "horizon": horizon,
         "retrain_asof": retrain_asof,
         "eval_end": eval_end,
-        "dates": dates,
-        "daily_return": [round(float(x), 8) for x in ret.tolist()],
-        "daily_benchmark": [round(float(x), 8) for x in bench.tolist()],
+        **performance,
     }
 
 
@@ -415,12 +426,13 @@ def bear_market_driver(
 ):
     """Rolling 20-session retrain over the 2021-2024 CSI bear market."""
     from bisect import bisect_left
+    import hashlib
     import json as _json
 
-    import numpy as np
-    import pandas as pd
-
     from qlib_audit_fixes import read_trading_calendar
+    from qlib_live_retrain import provider_training_fingerprint
+    from current_window_net import bear_research_identity
+    from csi1000_production_config import profile_manifest
 
     data_dir = Path("/tmp/cn_data")
     if not (data_dir / "calendars" / "day.txt").is_file():
@@ -453,6 +465,8 @@ def bear_market_driver(
                     "nd": nd,
                     "retrain_asof": cal[i],
                     "eval_end": cal[block_end_i],
+                    "run_end": end,
+                    "account_start": start,
                 }
             )
             i = block_end_i
@@ -466,42 +480,60 @@ def bear_market_driver(
     for market, profile, topk, nd in specs:
         rows = [b for b in blocks if b["market"] == market and b["profile"] == profile]
         rows.sort(key=lambda x: x["dates"][0])
-        dates, ret, bench = [], [], []
-        for b in rows:
-            dates.extend(b["dates"])
-            ret.extend(b["daily_return"])
-            bench.extend(b["daily_benchmark"])
-        if not ret:
+        if not rows:
             continue
-        # deduplicate dates defensively while keeping order
-        seen = set()
-        keep = [i for i, d in enumerate(dates) if not (d in seen or seen.add(d))]
-        dates = [dates[i] for i in keep]
-        ret = [ret[i] for i in keep]
-        bench = [bench[i] for i in keep]
+        from current_window_net import combine_bear_blocks
 
-        def metrics(values):
-            nav = np.cumprod(1.0 + np.array(values, dtype=float))
-            peak = np.maximum.accumulate(np.r_[1.0, nav])[1:]
-            dd = nav / peak - 1.0
-            trough_i = int(np.argmin(dd))
-            peak_i = int(np.argmax(nav[: trough_i + 1])) if trough_i >= 0 else 0
-            return {
-                "cumulative_return": float(nav[-1] - 1.0),
-                "max_drawdown": float(dd[trough_i]),
-                "peak_date": dates[peak_i],
-                "trough_date": dates[trough_i],
-                "n_days": len(values),
-            }
-
+        expected = cal[start_i + 1 : end_i + 1]
+        manifest = profile_manifest(profile)
+        expected_identity = bear_research_identity(
+            market=market,
+            profile=profile,
+            candidate_id=manifest["candidate_id"],
+            model_config_sha256=manifest["model_config_sha256"],
+            label_horizon=manifest.get("label_horizon", 20),
+            topk=topk,
+            dropn=nd,
+            provider_fingerprint=provider_training_fingerprint(data_dir, market, end),
+            calendar_sha256=hashlib.sha256("\n".join(cal).encode()).hexdigest(),
+            account_start=start,
+        )
+        combined = combine_bear_blocks(
+            rows,
+            expected_dates=expected,
+            expected_identity=expected_identity,
+            initial_cash=100_000_000,
+        )
         summary[f"{market}|{profile}"] = {
             "market": market,
             "profile": profile,
             "topk": topk,
             "nd": nd,
-            "strategy": metrics(ret),
-            "benchmark": metrics(bench),
-            "daily": list(zip(dates, [round(float(x), 8) for x in ret], [round(float(x), 8) for x in bench])),
+            "strategy": {
+                "cumulative_return": combined["strategy_total_return_net"],
+                "strategy_total_return_net": combined["strategy_total_return_net"],
+                "max_drawdown": combined["strategy_max_drawdown"],
+                "n_days": len(combined["dates"]),
+            },
+            "benchmark": {
+                "cumulative_return": combined["benchmark_cumulative_return"],
+                "max_drawdown": combined["benchmark_max_drawdown"],
+            },
+            "total_cost": combined["total_cost"],
+            "final_account": combined["final_account"],
+            "account_return_max_error": combined["account_return_max_error"],
+            "metric_schema_version": combined["metric_schema_version"],
+            "daily": list(zip(combined["dates"], combined["daily_net_return"], combined["daily_benchmark"])),
+            "blocks": [
+                {
+                    "retrain_asof": b["retrain_asof"],
+                    "eval_end": b["eval_end"],
+                    "final_account": b["final_account"],
+                    "total_cost": b["total_cost"],
+                    "verified_net": b["verified_net"],
+                }
+                for b in rows
+            ],
         }
     compact = {
         k: {

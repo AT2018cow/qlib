@@ -26,10 +26,14 @@
 | 训练/预测 | 在 `2026-10-15` 收盘训练；标签按配置 horizon 成熟；`2026-10-15` 为信号锚点，`2026-10-16` 起为实际交易日 |
 | 回测 | Qlib `TopkDropoutStrategy` + `BoardAwareExchange`，开盘成交，5bp 买入 / 15bp 卖出，最低 ¥5/单 |
 | 账户 | 每单元独立 1 亿元人民币 |
-| 成本 | 已计入；10 日累计成本约 0.23%～0.25% |
-| 收益 | 净收益，非实盘成交；不是生产 paper NAV 的逐字节复现 |
+| 成本 | 旧 artifact 只保存毛收益和最终账户；旧“净收益”列不再作为认证口径。RR02 更正清单见 `quant/data/current_window_backtest/2026-10-16_2026-10-29_correction_inventory.json`。 |
+| 收益 | 旧 artifact 为 `GROSS_ONLY` 历史值；成本后净收益必须使用 `final_account / 100_000_000 - 1` 或 canonical `portfolio_performance()`。不是实盘成交，也不是生产 paper NAV 的逐字节复现。 |
 
 **数据/执行对齐说明：** Qlib 在锚点 bar 产生一个 0 收益，报告已将该锚点 bar 与同 bar 的 benchmark 一并剔除，保留的 10 天为 `2026-10-16`～`2026-10-29`。外部指数同期（10-16 开盘 → 10-29 收盘）为：CSI1000 **-5.88%**、CSI300 **-3.52%**、CSI500 **-5.97%**。
+
+## RR02 状态
+
+> **2026-11-11 更正：** 本文件保留为历史证据，旧结果 JSON 原字节不改。旧 `cumulative_return` 由 Qlib `return` 连乘得到，未扣 `cost`；已记录的 13 个单元高估约 0.1958–0.2284pp，排序未变。成本后净值、差异和原文件 SHA 见 `quant/data/current_window_backtest/2026-10-16_2026-10-29_correction_inventory.json`。新的 current-window runner 使用 `current_window_net.performance_from_report()`。
 
 ## 2. 运行方式与成本
 

@@ -48,9 +48,14 @@ def account_contract_document():
     markets = {}
     for market in sorted(CANONICAL_PROFILES_BY_MARKET):
         profile = CANONICAL_PROFILES_BY_MARKET[market]
+        manifest = profile_manifest(profile)
         markets[market] = {
             "profile": profile,
-            "horizon": profile_manifest(profile)["label_horizon"],
+            "horizon": manifest["label_horizon"],
+            "release_id": manifest.get("release_id"),
+            "release_status": manifest.get("release_status"),
+            "release_manifest_sha256": manifest.get("release_manifest_sha256"),
+            "strategy_contract_sha256": manifest.get("strategy_contract_sha256"),
             "topk": CANONICAL_TOPK_BY_MARKET[market],
             "dropn": CANONICAL_ND_BY_MARKET[market],
             "initial_cash": INITIAL_CASH,

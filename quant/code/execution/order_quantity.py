@@ -11,6 +11,26 @@ from dataclasses import dataclass
 import math
 
 EXECUTION_RULE_VERSION = "cn_equity_execution_v2_20261106"
+LOT_RULE_VERSION = "cn_equity_board_lot_v1"
+
+
+def quantity_rule_contract() -> dict:
+    """Canonical executable physical-share sizing parameters."""
+    return {
+        "lot_rule_version": LOT_RULE_VERSION,
+        "execution_rule_version": EXECUTION_RULE_VERSION,
+        "default": {"minimum": 100, "step": 100, "maximum": 1_000_000},
+        "star": {
+            "prefixes": ["SH688", "SH689"],
+            "effective_from": "2019-07-22",
+            "minimum": 200,
+            "step": 1,
+            "maximum": 100_000,
+        },
+        "bse": {"prefix": "BJ", "minimum": 100, "step": 1, "maximum": 1_000_000},
+        "odd_lot_liquidation": "full_remaining_holding_only",
+        "adjusted_share_formula": "physical_shares_divided_by_factor",
+    }
 
 
 @dataclass(frozen=True)

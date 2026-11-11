@@ -1,7 +1,10 @@
 """Gate-0 diagnostics tests (stdlib only; runs in the core CI group)."""
 
 import array
+import ast
 import sys
+
+import pytest
 import tempfile
 import unittest
 from pathlib import Path
@@ -47,6 +50,13 @@ except ImportError:  # pragma: no cover - path bootstrap for direct execution
         HOLDOUT,
         KNOWN_EVENT_STRESS,
     )
+
+
+def test_finite_json_rejects_nan_tokens():
+    from finite_values import finite_json_dumps
+
+    with pytest.raises(ValueError):
+        finite_json_dumps({"nav": float("nan")})
 
 
 def write_bin(path: Path, start: int, values):
@@ -129,6 +139,130 @@ class Gate0DiagnosticsTests(unittest.TestCase):
         ]
         with self.assertRaises(ValueError):
             reconstruct_paper_series(artifacts)
+
+    def test_nonfinite_bool_and_nonpositive_nav_fail_closed(self):
+        base = {"date": "2026-10-19", "portfolio_value_pre_trade_open": 100.0}
+        for value in (float("nan"), float("inf"), float("-inf"), True, 0.0, -1.0):
+            artifacts = [{"execution_report": {**base, "portfolio_value_close": value}}]
+            with self.assertRaises(ValueError):
+                reconstruct_paper_series(artifacts)
+
+    def test_duplicate_or_unsorted_dates_fail_closed(self):
+        for days in (["2026-10-20", "2026-10-19"], ["2026-10-19", "2026-10-19"]):
+            artifacts = [
+                {
+                    "execution_report": {
+                        "date": day,
+                        "portfolio_value_pre_trade_open": 100.0,
+                        "portfolio_value_close": 101.0,
+                    }
+                }
+                for day in days
+            ]
+            with self.assertRaises(ValueError):
+                reconstruct_paper_series(artifacts)
+
+    def test_expected_sessions_missing_extra_and_incomplete(self):
+        artifacts = [
+            {
+                "execution_report": {
+                    "date": day,
+                    "portfolio_value_pre_trade_open": 100.0 + i,
+                    "portfolio_value_close": 101.0 + i,
+                }
+            }
+            for i, day in enumerate(["2026-10-19", "2026-10-21"])
+        ]
+        expected = ["2026-10-19", "2026-10-20", "2026-10-21"]
+        with self.assertRaises(ValueError):
+            reconstruct_paper_series(artifacts, expected_dates=expected)
+        incomplete = reconstruct_paper_series(artifacts, expected_dates=expected, allow_incomplete=True)
+        self.assertEqual(incomplete["status"], "INCOMPLETE")
+        self.assertEqual(incomplete["missing_dates"], ["2026-10-20"])
+        with self.assertRaises(ValueError):
+            reconstruct_paper_series(artifacts, expected_dates=["2026-10-19"])
+        complete = [
+            {
+                "execution_report": {
+                    "date": day,
+                    "portfolio_value_pre_trade_open": pre,
+                    "portfolio_value_close": close,
+                }
+            }
+            for day, pre, close in (
+                ("2026-10-19", 100.0, 101.0),
+                ("2026-10-20", 99.0, 102.0),
+                ("2026-10-21", 103.0, 104.0),
+            )
+        ]
+        result = reconstruct_paper_series(complete, expected_dates=expected)
+        self.assertEqual(result["status"], "PASS")
+
+    def test_real_gate0_cli_passes_calendar_derived_expected_sessions(self):
+        """AR08: helper coverage is insufficient unless the real CLI supplies expected dates."""
+        import gate0_diagnostics
+
+        tree = ast.parse(Path(gate0_diagnostics.__file__).read_text())
+        calls = [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "reconstruct_paper_series"
+        ]
+        self.assertTrue(calls)
+        self.assertTrue(all(any(keyword.arg == "expected_dates" for keyword in call.keywords) for call in calls))
+
+    def test_gate0_main_fails_closed_on_a_missing_market_session(self):
+        import json
+        from unittest.mock import patch
+
+        import gate0_diagnostics
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            provider = root / "provider"
+            signals = root / "signals"
+            output = root / "gate0.json"
+            (provider / "calendars").mkdir(parents=True)
+            (provider / "calendars/day.txt").write_text("2026-10-19\n2026-10-20\n")
+            (provider / "instruments").mkdir()
+            (provider / "features").mkdir()
+            signals.mkdir()
+            for suffix in ("", "_csi500", "_csi300"):
+                for usage_day, execution_day, nav in (
+                    ("2026-10-20", "2026-10-19", 101.0),
+                    ("2026-10-21", "2026-10-20", 102.0),
+                ):
+                    payload = {
+                        "usage_date": usage_day,
+                        "positions": {},
+                        "execution_report": {
+                            "date": execution_day,
+                            "portfolio_value_pre_trade_open": 100.0,
+                            "portfolio_value_close": nav,
+                        },
+                    }
+                    (signals / f"{usage_day}_paper_portfolio{suffix}.json").write_text(json.dumps(payload))
+            argv = [
+                "gate0_diagnostics.py",
+                "--signals",
+                str(signals),
+                "--provider",
+                str(provider),
+                "--start",
+                "2026-10-19",
+                "--end",
+                "2026-10-20",
+                "--output",
+                str(output),
+            ]
+            with patch.object(sys, "argv", argv):
+                gate0_diagnostics.main()
+            self.assertEqual(json.loads(output.read_text())["csi500"]["status"], "PASS")
+            (signals / "2026-10-21_paper_portfolio_csi500.json").unlink()
+            with patch.object(sys, "argv", argv), self.assertRaisesRegex(ValueError, "missing paper sessions"):
+                gate0_diagnostics.main()
 
     def test_max_drawdown_and_vol(self):
         self.assertAlmostEqual(max_drawdown([100, 120, 90, 110]), -0.25)

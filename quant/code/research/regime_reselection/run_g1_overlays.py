@@ -9,6 +9,7 @@ monthly equal-weight or inverse-vol rebalancing.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -30,6 +31,7 @@ S01_BEST = {"csi300": ("B", "S01"), "csi500": ("B", "S01"), "csi1000": ("A", "S0
 S02_BEST = {"csi300": ("A", "S02"), "csi500": ("A", "S02"), "csi1000": ("A", "S02")}
 CURRENT = {"csi300": ("A", "S01"), "csi500": ("A", "S01"), "csi1000": ("A", "S01")}
 POLICY_BASES = {"best": BEST, "s01": S01_BEST, "s02": S02_BEST, "current": CURRENT}
+INITIAL_CASH = 100_000_000.0
 
 
 def _args() -> argparse.Namespace:
@@ -88,6 +90,8 @@ def main() -> None:
             raise ValueError(f"unknown market {market}")
 
     from portfolio_performance import portfolio_performance
+    from research_bundle import build_evaluation_bundle, verify_bundle
+    from research_governance import digest
     from stage0_p0_core import apply_cost_stress
 
     root = Path(args.baseline_root)
@@ -95,7 +99,7 @@ def main() -> None:
     out_root.mkdir(parents=True, exist_ok=True)
     rows = []
 
-    def save(name: str, report, metrics: dict):
+    def save(name: str, report, metrics: dict, *, source_bundle=None, selection_group=None):
         metrics.update(
             {
                 "evaluation_mode": "ARITHMETIC_DIAGNOSTIC",
@@ -106,7 +110,46 @@ def main() -> None:
         d = out_root / name
         d.mkdir(parents=True, exist_ok=True)
         report.to_parquet(d / "report.parquet")
-        (d / "metrics.json").write_text(json.dumps(metrics, indent=2, ensure_ascii=False) + "\n")
+        (d / "metrics.json").write_text(json.dumps(metrics, indent=2, ensure_ascii=False, allow_nan=False) + "\n")
+        if source_bundle is not None:
+            source = verify_bundle(source_bundle)
+            execution_contract = {
+                "schema_version": 1,
+                "kind": "g1_overlay_evaluation",
+                "market": metrics["market"],
+                "overlay": metrics["overlay"],
+                "base": metrics["base"],
+                "policy_base": metrics.get("policy_base"),
+                "window": [args.start, args.end],
+                "rebalance_every": args.rebalance_every,
+                "roundtrip_bps": args.roundtrip_bps,
+                "initial_cash": INITIAL_CASH,
+                "source_bundle_manifest_sha256": source["manifest_sha256"],
+                "overlay_source_sha256": hashlib.sha256(
+                    (REPO_ROOT / "quant/code/execution/portfolio_overlays.py").read_bytes()
+                ).hexdigest(),
+            }
+            execution_sha = digest(execution_contract)
+            selection_inputs = {"baseline": [], "overlay_s01": [], "overlay_best": [], "periodic": []}
+            if selection_group is not None:
+                selection_inputs[selection_group].append(
+                    json.loads(json.dumps(metrics, sort_keys=True, allow_nan=False))
+                )
+            build_evaluation_bundle(
+                d / "evidence_bundle",
+                g1_bundle_root=source_bundle,
+                report_payload={
+                    "dates": [str(value.date()) for value in report.index],
+                    "gross_return": [float(value) for value in report["return"]],
+                    "cost": [float(value) for value in report["cost"]],
+                    "benchmark_return": [float(value) for value in report["bench"]],
+                    "account": [float(value) for value in report["account"]],
+                    "turnover": [float(value) for value in report["turnover"]],
+                },
+                ledger_payload={"initial_cash": INITIAL_CASH},
+                execution_contract_sha256=execution_sha,
+                selection_inputs=selection_inputs,
+            )
         rows.append(metrics)
         print(
             f"[overlay] {name} CAGR={metrics['strategy_cagr']:.2%} "
@@ -117,7 +160,11 @@ def main() -> None:
 
     def add_stress(metrics: dict, report) -> None:
         for bps in (10.0, 20.0):
-            stressed = portfolio_performance(apply_cost_stress(report, bps), backtest_start=args.start)
+            stressed = portfolio_performance(
+                apply_cost_stress(report, bps, initial_cash=INITIAL_CASH),
+                initial_cash=INITIAL_CASH,
+                backtest_start=args.start,
+            )
             metrics[f"cagr_cost_plus_{int(bps)}bp"] = stressed["strategy_cagr"]
             metrics[f"maxdd_cost_plus_{int(bps)}bp"] = stressed["strategy_max_drawdown"]
             metrics[f"sharpe_cost_plus_{int(bps)}bp"] = stressed["sharpe"]
@@ -135,9 +182,12 @@ def main() -> None:
 
     for market in markets:
         report = reports_policy[market]
+        policy_spine, policy_cell = POLICY_BASES[args.policy_base][market]
+        source_bundle = root / market / policy_spine / policy_cell / "evidence_bundle"
+        selection_group = {"s01": "overlay_s01", "best": "overlay_best"}.get(args.policy_base)
         close = _benchmark_close(args.provider, BENCH[market], args.bench_start, args.end)
         trend, weight = apply_trend_gate(report, close)
-        metrics = portfolio_performance(trend, backtest_start=args.start)
+        metrics = portfolio_performance(trend, initial_cash=INITIAL_CASH, backtest_start=args.start)
         metrics.update(
             {
                 "overlay": "S16_trend_gate",
@@ -150,10 +200,16 @@ def main() -> None:
             }
         )
         add_stress(metrics, trend)
-        save(f"S16/{market}", trend, metrics)
+        save(
+            f"S16/{market}",
+            trend,
+            metrics,
+            source_bundle=source_bundle,
+            selection_group=selection_group,
+        )
 
         breaker, weight = apply_drawdown_breaker(report)
-        metrics = portfolio_performance(breaker, backtest_start=args.start)
+        metrics = portfolio_performance(breaker, initial_cash=INITIAL_CASH, backtest_start=args.start)
         metrics.update(
             {
                 "overlay": "S18_drawdown_breaker",
@@ -166,12 +222,18 @@ def main() -> None:
             }
         )
         add_stress(metrics, breaker)
-        save(f"S18/{market}", breaker, metrics)
+        save(
+            f"S18/{market}",
+            breaker,
+            metrics,
+            source_bundle=source_bundle,
+            selection_group=selection_group,
+        )
 
     for label, sleeves in (("best", reports_best), ("current", reports_current)):
         for kind in ("equal", "riskparity"):
             combo = combine_sleeves(sleeves, kind, args.rebalance_every, args.roundtrip_bps)
-            metrics = portfolio_performance(combo, backtest_start=args.start)
+            metrics = portfolio_performance(combo, initial_cash=INITIAL_CASH, backtest_start=args.start)
             metrics.update(
                 {
                     "overlay": f"S17_{label}_{kind}",
@@ -190,7 +252,7 @@ def main() -> None:
     # Account-level breaker on the best equal-weight portfolio.
     best_equal = combine_sleeves(reports_best, "equal", args.rebalance_every, args.roundtrip_bps)
     breaker, weight = apply_drawdown_breaker(best_equal)
-    metrics = portfolio_performance(breaker, backtest_start=args.start)
+    metrics = portfolio_performance(breaker, initial_cash=INITIAL_CASH, backtest_start=args.start)
     metrics.update(
         {
             "overlay": "S18_on_S17_best_equal",
@@ -204,7 +266,7 @@ def main() -> None:
     add_stress(metrics, breaker)
     save("S18/S17_best_equal", breaker, metrics)
 
-    (out_root / "summary.json").write_text(json.dumps(rows, indent=2, ensure_ascii=False) + "\n")
+    (out_root / "summary.json").write_text(json.dumps(rows, indent=2, ensure_ascii=False, allow_nan=False) + "\n")
     print(f"[overlay] wrote {len(rows)} overlays to {out_root}", flush=True)
 
 

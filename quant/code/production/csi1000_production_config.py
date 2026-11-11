@@ -186,6 +186,10 @@ def stable_json_sha256(obj) -> str:
     ).hexdigest()
 
 
+STAGE_B_PROFILES = frozenset((BASELINE_PROFILE, WINNER_PROFILE, TOP10_CHAMPION_PROFILE))
+PROFILE_MARKET = {profile: market for market, profile in CANONICAL_PROFILES_BY_MARKET.items()}
+
+
 def profile_manifest(profile: str) -> dict:
     if profile not in _MODEL_PROFILES:
         raise ValueError(f"unknown CSI1000 production profile: {profile}")
@@ -193,13 +197,42 @@ def profile_manifest(profile: str) -> dict:
     row.update(
         {
             "profile": profile,
-            "contract_version": PRODUCTION_CONTRACT_VERSION,
-            "stage_b_result_commit": STAGE_B_RESULT_COMMIT,
-            "stage_b_snapshot_token": STAGE_B_SNAPSHOT_TOKEN,
-            "stage_b_result_path": STAGE_B_RESULT_PATH,
+            "contract_version": "cn_equity_strategy_contract_v1",
             "lightgbm_num_threads": MODEL_NUM_THREADS,
         }
     )
+    if profile in STAGE_B_PROFILES:
+        row.update(
+            {
+                "stage_b_result_commit": STAGE_B_RESULT_COMMIT,
+                "stage_b_snapshot_token": STAGE_B_SNAPSHOT_TOKEN,
+                "stage_b_result_path": STAGE_B_RESULT_PATH,
+                "research_lineage_version": PRODUCTION_CONTRACT_VERSION,
+            }
+        )
+    market = PROFILE_MARKET.get(profile)
+    if market is not None:
+        from strategy_release import release_for
+
+        release = release_for(market, profile)
+        if release["model_config_sha256"] != row["model_config_sha256"]:
+            raise ValueError(f"release model hash differs for {market}/{profile}")
+        if row.get("label_horizon") != release.get("label_horizon"):
+            raise ValueError(f"release label_horizon differs for {market}/{profile}")
+        if row.get("topk") != release.get("topk") or row.get("nd") != release.get("dropn"):
+            raise ValueError(f"release topk/dropn differs for {market}/{profile}")
+        if release.get("universe") != market:
+            raise ValueError(f"release universe differs for {market}/{profile}")
+        row.update(
+            {
+                "market": market,
+                "release_id": release["release_id"],
+                "release_status": release["status"],
+                "release_manifest_path": f"quant/data/strategy_releases/{market}.json",
+                "release_manifest_sha256": release["manifest_sha256"],
+                "strategy_contract_sha256": release["strategy_contract_sha256"],
+            }
+        )
     return row
 
 

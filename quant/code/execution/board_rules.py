@@ -32,6 +32,8 @@ CHINEXT_REFORM = "2020-08-24"  # first session trading at ±20% on ChiNext
 MAIN_REGISTRATION_FIRST_LISTING = "2023-04-10"
 MAIN_ST_10_START = "2026-07-06"
 NEW_LISTING_SESSIONS = 5
+BOARD_LIMIT_RULE_VERSION = "cn_equity_board_date_aware_v2"
+LISTING_EXEMPTION_RULE_VERSION = "board_listing_date_rules"
 
 TH_10 = 0.095
 TH_20 = 0.195
@@ -48,6 +50,29 @@ POOL_BOARDS = {"star_chn": ("star", "chinext"), "chinext": ("chinext",), "star":
 EW_BENCH = {"star_chn": "SZ399999", "chinext": "SZ399998", "star": "SZ399997"}
 DEFAULT_BENCH = EW_BENCH[POOL_NAME]
 BENCH_CANDIDATES = ("SZ399999", "SZ399998", "SZ399997", "SZ399006", "SH000688", "SZ399102", "SH000852")
+
+
+def board_rule_contract() -> dict:
+    """Canonical executable board/date limit and listing-exemption parameters."""
+    return {
+        "board_limit_version": BOARD_LIMIT_RULE_VERSION,
+        "listing_exemption_version": LISTING_EXEMPTION_RULE_VERSION,
+        "dates": {
+            "star_launch": STAR_LAUNCH,
+            "chinext_reform": CHINEXT_REFORM,
+            "main_registration_first_listing": MAIN_REGISTRATION_FIRST_LISTING,
+            "main_st_10_start": MAIN_ST_10_START,
+        },
+        "new_listing_sessions": NEW_LISTING_SESSIONS,
+        "thresholds": {"5pct": TH_5, "10pct": TH_10, "20pct": TH_20, "30pct": TH_30},
+        "boards": {
+            "star_prefixes": ["SH688", "SH689"],
+            "chinext_prefixes": ["SZ300", "SZ301", "SZ302"],
+            "bse_prefix": "BJ",
+        },
+        "price_reference": "execution_open_vs_previous_close_original_cny",
+        "tick_size_cny": 0.01,
+    }
 
 
 def board_of(symbol: str) -> str:

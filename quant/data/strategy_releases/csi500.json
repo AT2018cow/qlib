@@ -1,0 +1,46 @@
+{
+  "account_start": "2026-09-30",
+  "authority": "repository operator role",
+  "board_limits": "cn_equity_board_date_aware_v2",
+  "candidate_id": "99627a9d20842f5ac43874593b71b175cc533fe2f09666a9417a589f35c7eb1f",
+  "contract_version": "cn_equity_strategy_contract_v1",
+  "decision_artifact": {
+    "path": "quant/docs/08-current-window-backtest/16-production-cutover-20261102.md",
+    "sha256": "1532b8217cc5456087af1ddecc039922bd2970de528afc14cb8140a7bf79a766"
+  },
+  "dropn": 2,
+  "execution_timing": "T_CLOSE_TO_T1_OPEN",
+  "fees": {
+    "close_cost": 0.0015,
+    "min_cost": 5.0,
+    "open_cost": 0.0005
+  },
+  "initial_cash": 1000000,
+  "known_gaps": [
+    "research_gate_not_passed",
+    "no_shadow_forward_evidence"
+  ],
+  "label_expression": "Ref($close, -20)/$close - 1",
+  "label_horizon": 20,
+  "liquidity_policy": "missing_quote_fail_closed",
+  "listing_exemptions": "board_listing_date_rules",
+  "lot_rule": "cn_equity_board_lot_v1",
+  "manifest_sha256": "cdfc90d6ae46e1331e13f21d746066183e52474937ff2e09a6a193ba5100309d",
+  "market": "csi500",
+  "model_config_sha256": "d49e893ad37c821a6a092fb17baf7ee29c9ff71289bbeb1205132e34e3854c50",
+  "pit_universe": "csi500",
+  "profile": "raw10d_c98856b4_top20_drop2_20d",
+  "reason": "\u6536\u76ca\u4f18\u5148\u53d6\u820d\uff1a\u7814\u7a76 gate \u672a\u5168\u90e8\u901a\u8fc7\uff0c\u4eba\u5de5\u63a5\u53d7\u5df2\u77e5\u98ce\u9669",
+  "release_id": "csi500_raw10d_c98856b4_top20_drop2_20d_risk_accepted_override_v1",
+  "research_contract": {
+    "path": "quant/docs/08-current-window-backtest/15-csi300-csi500-g2-results-20261102.md",
+    "sha256": "36ed5179ff0297ccbe232ce636a0eeeab0515225d7c369e684ace3680f1a9e7c"
+  },
+  "retrain_every_sessions": 20,
+  "schema_version": 1,
+  "scope": "csi500 1M production account only",
+  "status": "RISK_ACCEPTED_OVERRIDE",
+  "strategy_contract_sha256": "4758a4e05f352ad225f4798c5f081d64d7277739ab42b3227a7d4a00a01257ae",
+  "topk": 20,
+  "universe": "csi500"
+}

@@ -78,6 +78,7 @@ def main() -> None:
     from board_execution import research_exchange
     from execution_quote_universe import execution_quote_codes
     from portfolio_performance import portfolio_performance
+    from research_bundle import build_evaluation_bundle
     from stage0_p0_core import apply_cost_stress
     from research_governance import trial_record, digest
     import hashlib
@@ -128,6 +129,11 @@ def main() -> None:
                 key = f"{market}/{spine}/{cell}"
                 if only and key not in only:
                     continue
+                spec = COMBOS[cell]
+                strategy_class = (
+                    "PeriodicTopkDropoutStrategy" if args.rebalance_every > 1 else "DeterministicTopkDropoutStrategy"
+                )
+                strategy_module = "periodic_strategy" if args.rebalance_every > 1 else "deterministic_strategy"
                 trial_identity = {
                     "market": market,
                     "spine": spine,
@@ -139,6 +145,11 @@ def main() -> None:
                     "open_cost": args.open_cost,
                     "close_cost": args.close_cost,
                     "rebalance_every": args.rebalance_every,
+                    "topk": spec["topk"],
+                    "dropn": spec["dropn"],
+                    "benchmark": benchmark,
+                    "strategy_class": strategy_class,
+                    "strategy_module": strategy_module,
                     "st_history_sha256": digest(st_history) if st_history is not None else None,
                     "execution_source_sha256": digest(
                         {
@@ -147,15 +158,16 @@ def main() -> None:
                             ).hexdigest()
                             for name in (
                                 "board_execution.py",
+                                "deterministic_strategy.py",
                                 "execution_limits.py",
                                 "order_quantity.py",
+                                "periodic_strategy.py",
                                 "portfolio_performance.py",
                             )
                         }
                     ),
                 }
                 with trial_record(out_root / "trials", trial_identity) as trial:
-                    spec = COMBOS[cell]
                     strategy_kwargs = {
                         "signal": signal,
                         "topk": spec["topk"],
@@ -163,12 +175,7 @@ def main() -> None:
                         "forbid_all_trade_at_limit": False,
                     }
                     if args.rebalance_every > 1:
-                        strategy_class = "PeriodicTopkDropoutStrategy"
-                        strategy_module = "periodic_strategy"
                         strategy_kwargs["rebalance_every"] = args.rebalance_every
-                    else:
-                        strategy_class = "DeterministicTopkDropoutStrategy"
-                        strategy_module = "deterministic_strategy"
                     exchange_kwargs = research_exchange(
                         exec_start,
                         args.exec_end,
@@ -225,6 +232,9 @@ def main() -> None:
                             "codes": len(codes),
                             "decisions": len(decisions),
                             "rebalance_every": args.rebalance_every,
+                            "cadence": {1: "daily", 5: "weekly", 20: "monthly"}.get(
+                                args.rebalance_every, f"every_{args.rebalance_every}_sessions"
+                            ),
                             "open_cost": args.open_cost,
                             "close_cost": args.close_cost,
                             "mean_turnover": round(float(report["turnover"].mean()), 6),
@@ -255,6 +265,27 @@ def main() -> None:
                     cell_dir.mkdir(parents=True, exist_ok=True)
                     report.to_parquet(cell_dir / "report.parquet")
                     (cell_dir / "metrics.json").write_text(json.dumps(metrics, indent=2, ensure_ascii=False) + "\n")
+                    selection_inputs = {"baseline": [], "overlay_s01": [], "overlay_best": [], "periodic": []}
+                    selection_group = "periodic" if args.rebalance_every > 1 else "baseline"
+                    selection_inputs[selection_group].append(
+                        json.loads(json.dumps(metrics, allow_nan=False, sort_keys=True))
+                    )
+                    report_payload = {
+                        "dates": [str(value.date()) for value in report.index],
+                        "gross_return": [float(value) for value in report["return"]],
+                        "cost": [float(value) for value in report["cost"]],
+                        "benchmark_return": [float(value) for value in report["bench"]],
+                        "account": [float(value) for value in report["account"]],
+                        "turnover": [float(value) for value in report["turnover"]],
+                    }
+                    build_evaluation_bundle(
+                        cell_dir / "evidence_bundle",
+                        g1_bundle_root=signal_path.parent / "evidence_bundle",
+                        report_payload=report_payload,
+                        ledger_payload={"initial_cash": float(args.account)},
+                        execution_contract_sha256=digest(trial_identity),
+                        selection_inputs=selection_inputs,
+                    )
                     rows.append(metrics)
                     print(
                         f"[baseline] {key} CAGR={metrics['strategy_cagr']:.2%} "

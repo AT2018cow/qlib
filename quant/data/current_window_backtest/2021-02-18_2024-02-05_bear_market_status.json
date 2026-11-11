@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "source_path": "quant/data/current_window_backtest/2021-02-18_2024-02-05_bear_market_summary.json",
+  "source_sha256": "c73bffec9f55464da37a44d7d5300243aef6c6ae8b3bff6e0048d8874b0fb667",
+  "status": "GROSS_ONLY_WITHDRAWN",
+  "reason": "legacy bear summary has no complete frozen report/cost evidence; net returns cannot be reconstructed without authorized replay",
+  "certified": false
+}

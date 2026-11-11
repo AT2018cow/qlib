@@ -70,6 +70,13 @@ class SpineJobTests(unittest.TestCase):
         ]
         self.assertEqual(failed_jobs(jobs, results), [jobs[1], jobs[2]])
 
+    def test_partial_or_extra_results_fail_closed(self):
+        jobs = [{"id": 1}, {"id": 2}, {"id": 3}]
+        for results in ([], [{"status": "PASS"}], [{"status": "PASS"}] * 4):
+            with self.assertRaises(ValueError) as caught:
+                failed_jobs(jobs, results)
+            self.assertIn("jobs/results length mismatch", str(caught.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

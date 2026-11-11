@@ -36,6 +36,9 @@ def build_jobs(
     data_start: str = "2015-01-01",
     fit_start: str = "2016-01-01",
     seed: int = 0,
+    kernels: int | None = None,
+    joblib_backend: str | None = None,
+    identity_contexts: dict | None = None,
 ) -> list[dict]:
     """Return deterministic fit jobs; each job predicts [asof, signal_end]."""
     if start not in calendar or end not in calendar:
@@ -54,22 +57,31 @@ def build_jobs(
             index = start_i
             while index <= end_i:
                 signal_end_i = min(index + RETRAIN_EVERY - 1, end_i)
-                jobs.append(
-                    {
-                        "run_id": run_id,
-                        "code_sha": code_sha,
-                        "market": market,
-                        "spine": spine,
-                        "profile": spec["profile"],
-                        "label_horizon": horizon,
-                        "retrain_asof": calendar[index],
-                        "signal_end": calendar[signal_end_i],
-                        "num_threads": int(num_threads),
-                        "data_start": data_start,
-                        "fit_start": fit_start,
-                        "seed": int(seed),
-                    }
-                )
+                job = {
+                    "run_id": run_id,
+                    "run_end": end,
+                    "code_sha": code_sha,
+                    "market": market,
+                    "spine": spine,
+                    "profile": spec["profile"],
+                    "label_horizon": horizon,
+                    "retrain_asof": calendar[index],
+                    "signal_end": calendar[signal_end_i],
+                    "num_threads": int(num_threads),
+                    "data_start": data_start,
+                    "fit_start": fit_start,
+                    "seed": int(seed),
+                    "kernels": kernels,
+                    "joblib_backend": joblib_backend,
+                }
+                if identity_contexts is not None:
+                    from spine_identity import attach_job_identity
+
+                    context = identity_contexts.get((market, spine)) or identity_contexts.get(market)
+                    if context is None:
+                        raise ValueError(f"missing identity context for {market}/{spine}")
+                    job = attach_job_identity(job, context)
+                jobs.append(job)
                 index += RETRAIN_EVERY
     return jobs
 
@@ -91,6 +103,8 @@ def validate_assembly(calendar, start: str, end: str, signal_days) -> None:
 
 def failed_jobs(jobs, results) -> list[dict]:
     """Return jobs whose mapped result is not a successful PASS receipt."""
+    if len(jobs) != len(results):
+        raise ValueError(f"jobs/results length mismatch: jobs={len(jobs)} results={len(results)}")
     failed = []
     for job, result in zip(jobs, results):
         if isinstance(result, BaseException):

@@ -1,0 +1,40 @@
+{
+  "account_start": "2026-09-30",
+  "board_limits": "cn_equity_board_date_aware_v2",
+  "candidate_id": "c98856b460aba687640d422e85a82a545bf5b6ca932e906a180699e0f6cad19b",
+  "contract_version": "cn_equity_strategy_contract_v1",
+  "decision_artifact": {
+    "path": "quant/docs/08-current-window-backtest/16-production-cutover-20261102.md",
+    "sha256": "1532b8217cc5456087af1ddecc039922bd2970de528afc14cb8140a7bf79a766"
+  },
+  "dropn": 1,
+  "execution_timing": "T_CLOSE_TO_T1_OPEN",
+  "fees": {
+    "close_cost": 0.0015,
+    "min_cost": 5.0,
+    "open_cost": 0.0005
+  },
+  "incumbent_since": "2026-11-02",
+  "initial_cash": 1000000,
+  "label_expression": "Ref($close, -20)/$close - 1",
+  "label_horizon": 20,
+  "liquidity_policy": "missing_quote_fail_closed",
+  "listing_exemptions": "board_listing_date_rules",
+  "lot_rule": "cn_equity_board_lot_v1",
+  "manifest_sha256": "74e292269ce47cf9a6ab5c9e6483822a61fbb42d9ec8b21f5a3d438fa8554502",
+  "market": "csi1000",
+  "model_config_sha256": "d49e893ad37c821a6a092fb17baf7ee29c9ff71289bbeb1205132e34e3854c50",
+  "pit_universe": "csi1000",
+  "profile": "c98856b4_top10_drop1",
+  "release_id": "csi1000_c98856b4_top10_drop1_incumbent_retained_v1",
+  "research_contract": {
+    "path": "quant/docs/05-round2-layered-search/60-csi1000-two-round-strategy-research-final-report-20261015.md",
+    "sha256": "a5b7e34d6838de4351f1ae4ba9d1bbffed498c3e1b71bcd8962800627d1a48dc"
+  },
+  "retrain_every_sessions": 20,
+  "schema_version": 1,
+  "status": "INCUMBENT_RETAINED",
+  "strategy_contract_sha256": "36fc0dade7a36fcf46103e129f76551dc722df5448215f5a34ebfe4ee6feac75",
+  "topk": 10,
+  "universe": "csi1000"
+}

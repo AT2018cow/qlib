@@ -10,6 +10,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SOURCE_IDENTITY_VERSION = 2
 WEBSITE_IDENTITY_VERSION = 3
+ENVIRONMENT_IDENTITY_VERSION = 2
+REQUIRED_ENVIRONMENT_PACKAGES = ("numpy", "pandas", "lightgbm", "pyarrow")
 
 
 def file_sha(path):
@@ -56,6 +58,68 @@ def _model_config_paths(keys=None):
     return tuple(sorted(paths))
 
 
+def _qlib_source_digest(repo_root=None):
+    """Hash the actually imported Qlib source and loaded compiled extensions."""
+    import qlib
+
+    actual = Path(qlib.__file__).resolve().parent
+    declared = (Path(repo_root) if repo_root is not None else REPO_ROOT) / "qlib"
+    if declared.is_dir() and declared.resolve() != actual:
+        raise ValueError(f"imported qlib root differs from declared checkout: {actual} != {declared.resolve()}")
+    root = actual
+    patterns = ("*.py", "*.pyx", "*.so")
+    paths = []
+    for pattern in patterns:
+        paths.extend(path for path in root.rglob(pattern) if "__pycache__" not in path.parts)
+    paths = sorted(set(paths))
+    if not paths:
+        raise ValueError("missing Qlib source tree")
+    if not any(path.suffix == ".so" for path in paths):
+        raise ValueError("missing Qlib compiled extension")
+    digest = hashlib.sha256()
+    for path in paths:
+        relative = path.relative_to(root).as_posix()
+        digest.update(relative.encode())
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def _package_version(name):
+    from importlib.metadata import PackageNotFoundError, version
+
+    try:
+        value = version(name)
+    except PackageNotFoundError as exc:
+        raise ValueError(f"required research dependency is missing: {name}") from exc
+    if not value:
+        raise ValueError(f"required research dependency has no version: {name}")
+    return str(value)
+
+
+def environment_manifest(*, repo_root=None):
+    """Bind actual Qlib source and key runtime packages without local paths."""
+    import platform
+
+    python = platform.python_version()
+    qlib_version = _package_version("pyqlib")
+    components = {name: _package_version(name) for name in REQUIRED_ENVIRONMENT_PACKAGES}
+    body = {
+        "schema_version": ENVIRONMENT_IDENTITY_VERSION,
+        "python": python,
+        "qlib": {"version": qlib_version, "source_sha256": _qlib_source_digest(repo_root)},
+        "components": components,
+    }
+    return {**body, "sha256": content_sha(body)}
+
+
+def verify_environment_manifest(expected, *, repo_root=None):
+    if not isinstance(expected, dict) or expected != environment_manifest(repo_root=repo_root):
+        raise ValueError("research environment manifest changed or is missing")
+    return expected["sha256"]
+
+
 def production_model_config_paths():
     """Return every repo-relative YAML referenced by production ``MODEL_CFG``."""
     return _model_config_paths()
@@ -77,7 +141,14 @@ _WEBSITE_CODE_DEPENDENCIES = (
     "quant/code/execution/qlib_audit_fixes.py",
     "quant/code/execution/qlib_live_retrain.py",
     "quant/code/execution/research_identity.py",
+    "quant/code/execution/research_bundle.py",
+    "quant/code/execution/research_governance.py",
+    "quant/code/ops/research_promotion_gate.py",
     "quant/code/execution/st_history.py",
+    "quant/code/execution/strategy_release.py",
+    "quant/data/strategy_releases/csi300.json",
+    "quant/data/strategy_releases/csi500.json",
+    "quant/data/strategy_releases/csi1000.json",
     "quant/code/ops/website_budget.py",
     "quant/code/production/account_boundary.py",
     "quant/code/production/artifact_io.py",

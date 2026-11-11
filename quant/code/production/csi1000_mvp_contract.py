@@ -33,7 +33,6 @@ _REQUIRED_LINEAGE = (
     "candidate_id",
     "profile",
     "model_config_sha256",
-    "stage_b_snapshot_token",
     "contract_version",
 )
 
@@ -362,15 +361,24 @@ def parse_top20_csv(csv_text: str, *, expected_rows: int | None = None) -> list[
 def validate_production_lineage(actual: dict, expected: dict) -> dict:
     if not isinstance(actual, dict) or not isinstance(expected, dict):
         raise ValueError("production lineage must be objects")
+    required = list(_REQUIRED_LINEAGE)
+    if expected.get("stage_b_snapshot_token") is not None:
+        required.append("stage_b_snapshot_token")
+    if expected.get("release_manifest_sha256") is not None:
+        required.extend(("release_manifest_sha256", "strategy_contract_sha256"))
     mismatches = []
-    for key in _REQUIRED_LINEAGE:
+    for key in required:
         if actual.get(key) != expected.get(key):
             mismatches.append(key)
     if mismatches:
         raise ValueError(f"frozen CSI1000 production lineage mismatch: {mismatches}")
     _validate_sha(actual["candidate_id"], "candidate_id")
     _validate_sha(actual["model_config_sha256"], "model_config_sha256")
-    _validate_sha(actual["stage_b_snapshot_token"], "stage_b_snapshot_token")
+    if actual.get("stage_b_snapshot_token") is not None:
+        _validate_sha(actual["stage_b_snapshot_token"], "stage_b_snapshot_token")
+    if actual.get("release_manifest_sha256") is not None:
+        _validate_sha(actual["release_manifest_sha256"], "release_manifest_sha256")
+        _validate_sha(actual["strategy_contract_sha256"], "strategy_contract_sha256")
     if actual.get("profile") not in (
         "stage_b_winner",
         "c98856b4_top10_drop1",

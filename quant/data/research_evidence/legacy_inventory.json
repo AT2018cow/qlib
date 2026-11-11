@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-11",
+  "artifacts": [
+    {
+      "path": "quant/data/current_window_backtest/g1_spine_manifest_20261102.json",
+      "sha256": "c5c848adab77a56477b88f6ccdc42a5a0a23e69461ce98fa31f778f33e6032ff",
+      "status": "LEGACY_MIXED_SOURCE_UNCERTIFIED",
+      "certified": false
+    },
+    {
+      "path": "quant/data/current_window_backtest/g2_csi1000_summary.json",
+      "sha256": "3c227896212185b013dc5657668b682b486e9e7a3fb07ea6f07dede070f23a7d",
+      "status": "LEGACY_INCOMPLETE_EVIDENCE",
+      "certified": false
+    },
+    {
+      "path": "quant/data/current_window_backtest/g2_csi300_summary.json",
+      "sha256": "afe31f9ed0cd8873288013d6eefc9394ee9124da32f1b388f75dabec4c5e0340",
+      "status": "LEGACY_INCOMPLETE_EVIDENCE",
+      "certified": false
+    },
+    {
+      "path": "quant/data/current_window_backtest/g2_csi500_summary.json",
+      "sha256": "73bf36658e77dee6b75f9151ee5b9671f2f3c324407c0a41f969a8afe829b2f8",
+      "status": "LEGACY_INCOMPLETE_EVIDENCE",
+      "certified": false
+    },
+    {
+      "path": "quant/data/current_window_backtest/g2_1m_summary.json",
+      "sha256": "6d8028e7da20e402a6e6a5e8469803c89d81035aa63293aae1a27ac588b3ba6f",
+      "status": "LEGACY_INCOMPLETE_EVIDENCE",
+      "certified": false
+    },
+    {
+      "path": "quant/data/current_window_backtest/2021-02-18_2024-02-05_bear_market_summary.json",
+      "sha256": "c73bffec9f55464da37a44d7d5300243aef6c6ae8b3bff6e0048d8874b0fb667",
+      "status": "GROSS_ONLY_WITHDRAWN",
+      "certified": false
+    },
+    {
+      "path": "quant/data/current_window_backtest/2026-10-16_2026-10-29_candidate_results.json",
+      "sha256": "5f1b32ca91985d4003d37d052bb726571dd3fe04658e3b056a7f5d5769ebba84",
+      "status": "RETAINED",
+      "certified": false
+    }
+  ]
+}

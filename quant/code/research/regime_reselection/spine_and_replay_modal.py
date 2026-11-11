@@ -67,8 +67,12 @@ image = (
                     "mlruns",
                     "__pycache__",
                     "quant/local_backup",
-                    "quant/data",
                 )
+            )
+            or (
+                "quant/data" in str(path)
+                and "quant/data/strategy_releases" not in str(path)
+                and not str(path).endswith("quant/data")
             )
             or str(path).startswith(".git/")
             or "/.git/" in str(path)
@@ -100,11 +104,68 @@ REPO_PATHS = (
     "/root/qlib/quant/code/research/stage_ab",
     "/root/qlib/quant/code/research/layered_search",
     "/root/qlib/quant/code/research/regime_reselection",
+    "/root/qlib/quant/code/ops",
 )
 
 
 def _receipt_dir(job: dict) -> Path:
     return RUN_ROOT / job["run_id"] / job["market"] / job["spine"] / f"asof_{job['retrain_asof']}"
+
+
+def _strategy_contract_sha(job: dict, manifest: dict) -> str:
+    from csi1000_production_config import PAPER_INITIAL_CASH
+    from strategy_release import strategy_contract_sha256
+
+    contract = {
+        "contract_version": "cn_equity_strategy_contract_v1",
+        "market": job["market"],
+        "profile": job["profile"],
+        "candidate_id": manifest.get("candidate_id"),
+        "model_config_sha256": manifest.get("model_config_sha256"),
+        "label_expression": f"Ref($close, -{int(job['label_horizon'])})/$close - 1",
+        "label_horizon": int(job["label_horizon"]),
+        "pit_universe": job["market"],
+        "topk": manifest.get("topk"),
+        "dropn": manifest.get("nd"),
+        "retrain_every_sessions": 20,
+        "execution_timing": "T_CLOSE_TO_T1_OPEN",
+        "board_limits": "cn_equity_board_date_aware_v2",
+        "listing_exemptions": "board_listing_date_rules",
+        "lot_rule": "cn_equity_board_lot_v1",
+        "liquidity_policy": "missing_quote_fail_closed",
+        "fees": {"open_cost": 0.0005, "close_cost": 0.0015, "min_cost": 5.0},
+        "initial_cash": PAPER_INITIAL_CASH,
+        "account_start": "2026-09-30",
+    }
+    return strategy_contract_sha256(contract)
+
+
+def _runtime_identity_context(job: dict, data_dir: Path) -> dict:
+    """Recompute source/environment/provider/config identity from actual files."""
+    import hashlib
+
+    from csi1000_production_config import profile_manifest
+    from qlib_live_retrain import provider_training_fingerprint
+    from research_identity import environment_manifest, source_manifest
+
+    yaml_path = Path("/root/qlib/examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158_csi500.yaml")
+    if not yaml_path.is_file():
+        yaml_path = (
+            Path(__file__).resolve().parents[3]
+            / "examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158_csi500.yaml"
+        )
+    if not yaml_path.is_file():
+        raise FileNotFoundError(f"production model YAML missing: {yaml_path}")
+    manifest = profile_manifest(job["profile"])
+    strategy_contract = _strategy_contract_sha(job, manifest)
+    return {
+        "source_sha256": source_manifest("training")["sha256"],
+        "environment_sha256": environment_manifest()["sha256"],
+        "provider_kind": "chenditc",
+        "provider_fingerprint": provider_training_fingerprint(data_dir, job["market"], job["run_end"]),
+        "model_yaml_sha256": hashlib.sha256(yaml_path.read_bytes()).hexdigest(),
+        "strategy_contract_sha256": strategy_contract,
+    }
 
 
 def _read_peak_memory_mb() -> float | None:
@@ -157,24 +218,32 @@ def fit_slice(job: dict) -> dict:
     from csi1000_production_config import profile_manifest
     from qlib_audit_fixes import last_matured_sample, purge_cfg_splits, read_trading_calendar
     from qlib_live_retrain import apply_lgb_reproducibility
+    import spine_identity
+    from spine_identity import (
+        attach_job_identity,
+        canonical_job_identity,
+        receipt_dir as identity_receipt_dir,
+        seal_receipt,
+        validate_slice_receipt,
+    )
+    from training_window import training_segments
 
-    receipt_dir = _receipt_dir(job)
+    context = _runtime_identity_context(job, DATA_DIR)
+    expected_identity = canonical_job_identity(job, **context)
+    if job.get("job_identity") is not None and job["job_identity"] != expected_identity:
+        raise RuntimeError("job identity differs from actual source/environment/provider/config")
+    job = attach_job_identity(job, context)
+    receipt_dir = identity_receipt_dir(RUN_ROOT, job)
     receipt_path = receipt_dir / "receipt.json"
     prediction_path = receipt_dir / "prediction.parquet"
-    import hashlib as _hashlib
-
     vol.reload()
     if receipt_path.is_file() and prediction_path.is_file():
         try:
             existing = json.loads(receipt_path.read_text())
-        except ValueError:
-            existing = None
-        if (
-            isinstance(existing, dict)
-            and existing.get("status") == "PASS"
-            and existing.get("prediction_sha256") == _hashlib.sha256(prediction_path.read_bytes()).hexdigest()
-        ):
+            validate_slice_receipt(existing, job, prediction_path)
             return existing
+        except (ValueError, OSError):
+            pass
 
     calendar = read_trading_calendar(DATA_DIR)
     asof = job["retrain_asof"]
@@ -194,15 +263,21 @@ def fit_slice(job: dict) -> dict:
     handler = dk["handler"]["kwargs"]
     handler["instruments"] = job["market"]
     handler["label"] = [f"Ref($close, -{horizon})/$close - 1"]
+    fit_start = job.get("fit_start", "2016-01-01")
+    segments = training_segments(
+        calendar,
+        fit_start=fit_start,
+        train_end=train_end,
+        valid_start=calendar[valid_start_i],
+        valid_end=calendar[valid_end_i],
+        asof=asof,
+        signal_end=signal_end,
+    )
     handler["start_time"] = job.get("data_start", "2015-01-01")
     handler["end_time"] = signal_end
-    handler["fit_start_time"] = job.get("fit_start", "2016-01-01")
+    handler["fit_start_time"] = fit_start
     handler["fit_end_time"] = train_end
-    dk["segments"] = {
-        "train": ["2016-01-01", train_end],
-        "valid": [calendar[valid_start_i], calendar[valid_end_i]],
-        "test": [asof, signal_end],
-    }
+    dk["segments"] = {key: segments[key] for key in ("train", "valid", "test")}
     manifest = profile_manifest(job["profile"])
     model_kwargs = cfg["task"]["model"]["kwargs"]
     model_kwargs.update(manifest["model_params"])
@@ -246,9 +321,13 @@ def fit_slice(job: dict) -> dict:
     tmp = prediction_path.with_name(prediction_path.name + ".tmp")
     prediction.to_frame("score").to_parquet(tmp)
     os.replace(tmp, prediction_path)
+    days = sorted({str(day)[:10] for day in prediction.index.get_level_values(0).unique()})
     receipt = {
+        "schema_version": spine_identity.SCHEMA_VERSION,
         "status": "PASS",
-        "kind": "g1_spine_slice",
+        "kind": "g1_spine_slice_v2",
+        "job_identity": job["job_identity"],
+        "job_sha256": job["job_sha256"],
         "run_id": job["run_id"],
         "code_sha": job["code_sha"],
         "market": job["market"],
@@ -260,14 +339,16 @@ def fit_slice(job: dict) -> dict:
         "signal_end": signal_end,
         "train_end": train_end,
         "valid": [calendar[valid_start_i], calendar[valid_end_i]],
+        "days": days,
         "n_rows": int(len(prediction)),
-        "n_days": int(prediction.index.get_level_values(0).nunique()),
+        "n_days": int(len(days)),
         "n_instruments": int(prediction.index.get_level_values(1).nunique()),
         "peak_memory_mb": _read_peak_memory_mb(),
         "prediction_sha256": hashlib.sha256(prediction_path.read_bytes()).hexdigest(),
         "elapsed_s": round(time.time() - started, 1),
     }
-    receipt_path.write_text(json.dumps(receipt, indent=2, ensure_ascii=False) + "\n")
+    receipt = seal_receipt(receipt)
+    receipt_path.write_text(json.dumps(receipt, indent=2, ensure_ascii=False, allow_nan=False) + "\n")
     vol.commit()
     return receipt
 
@@ -279,92 +360,220 @@ def read_calendar() -> list[str]:
 
 
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=1, memory=2048, timeout=900)
+def research_source_identity() -> str:
+    from research_identity import source_manifest
+
+    return source_manifest("training")["sha256"]
+
+
+@app.function(volumes={str(VOL_ROOT): vol}, cpu=1, memory=2048, timeout=900)
+def research_environment_identity() -> str:
+    from research_identity import environment_manifest
+
+    return environment_manifest()["sha256"]
+
+
+@app.function(volumes={str(VOL_ROOT): vol}, cpu=4, memory=8192, timeout=900)
+def provider_fingerprint(market: str, cutoff: str) -> str:
+    """Read-only provider identity for one market through the run end."""
+    from qlib_live_retrain import provider_training_fingerprint
+
+    vol.reload()
+    return provider_training_fingerprint(DATA_DIR, market, cutoff)
+
+
+@app.function(volumes={str(VOL_ROOT): vol}, cpu=1, memory=2048, timeout=900)
 def completed_jobs(jobs: list[dict]) -> list[str]:
-    """Return keys of slices whose receipt and prediction hash are still valid."""
-    import hashlib
+    """Return keys only for v2 receipts matching the full job identity."""
+    from spine_identity import receipt_dir as identity_receipt_dir, validate_slice_receipt
 
     vol.reload()
     done = []
     for job in jobs:
-        directory = _receipt_dir(job)
+        if not job.get("job_sha256"):
+            continue
+        directory = identity_receipt_dir(RUN_ROOT, job)
         receipt_path = directory / "receipt.json"
         prediction_path = directory / "prediction.parquet"
         if not (receipt_path.is_file() and prediction_path.is_file()):
             continue
         try:
             receipt = json.loads(receipt_path.read_text())
-        except ValueError:
+            validate_slice_receipt(receipt, job, prediction_path)
+        except (ValueError, OSError):
             continue
-        if (
-            receipt.get("status") == "PASS"
-            and receipt.get("prediction_sha256") == hashlib.sha256(prediction_path.read_bytes()).hexdigest()
-        ):
-            done.append(f"{job['market']}/{job['spine']}/{job['retrain_asof']}")
+        done.append(f"{job['market']}/{job['spine']}/{job['retrain_asof']}")
     return done
 
 
 @app.function(volumes={str(VOL_ROOT): vol}, cpu=8, memory=16384, timeout=1800)
-def assemble_spine(run_id: str, market: str, spine: str, start: str, end: str) -> dict:
-    """Concatenate slice predictions, validate coverage, persist the spine."""
+def assemble_spine(
+    run_id: str,
+    market: str,
+    spine: str,
+    start: str,
+    end: str,
+    assembly_identity: dict | None = None,
+) -> dict:
+    """Concatenate v2 slices and bind the request, calendar and ordered receipts."""
     import hashlib
 
     import pandas as pd
 
+    from spine_identity import (
+        assembly_receipt,
+        validate_assembly_receipt,
+        validate_assembly_identity,
+        validate_slice_receipt_self,
+        validate_slice_set,
+    )
     from spine_jobs import expected_days
 
     vol.reload()
     root = RUN_ROOT / run_id / market / spine
-    paths = sorted(root.glob("asof_*/prediction.parquet"))
+    calendar = [line.strip() for line in (DATA_DIR / "calendars" / "day.txt").read_text().splitlines() if line.strip()]
+    expected = expected_days(calendar, start, end)
+    paths = sorted(root.glob("job_*/receipt.json"))
+    if not paths:
+        raise RuntimeError(f"no v2 slices for {market}/{spine}")
+    if not isinstance(assembly_identity, dict):
+        raise RuntimeError("assembly identity is required from the coordinator")
+    validate_assembly_identity(assembly_identity)
+    receipts = []
+    for receipt_path in paths:
+        receipt = json.loads(receipt_path.read_text())
+        validate_slice_receipt_self(receipt, receipt_path.with_name("prediction.parquet"))
+        receipts.append(receipt)
+    ordered = validate_slice_set(receipts, assembly_identity=assembly_identity, expected_days=expected)
+    identity_sha = assembly_identity["sha256"]
+    calendar_sha = hashlib.sha256("\n".join(calendar).encode()).hexdigest()
+    out = root / "signal.parquet"
     existing_receipt = root / "spine_receipt.json"
-    if existing_receipt.is_file() and (root / "signal.parquet").is_file():
+    if existing_receipt.is_file() and out.is_file():
         try:
             prior = json.loads(existing_receipt.read_text())
-        except ValueError:
-            prior = None
-        if (
-            isinstance(prior, dict)
-            and prior.get("status") == "PASS"
-            and prior.get("slices") == len(paths)
-            and hashlib.sha256((root / "signal.parquet").read_bytes()).hexdigest() == prior.get("signal_sha256")
-        ):
+            validate_assembly_receipt(
+                prior,
+                run_id=run_id,
+                market=market,
+                spine=spine,
+                start=start,
+                end=end,
+                calendar_sha256=calendar_sha,
+                identity_sha256=identity_sha,
+                slice_receipts=ordered,
+                signal_sha256=hashlib.sha256(out.read_bytes()).hexdigest(),
+                expected_days=expected,
+            )
             return prior
-    if not paths:
-        raise RuntimeError(f"no slices for {market}/{spine}")
-    frames = []
-    for path in paths:
-        frame = pd.read_parquet(path)
-        if "score" not in frame.columns:
-            raise RuntimeError(f"missing score column in {path}")
-        frames.append(frame)
+        except (ValueError, OSError):
+            pass
+    frames = [pd.read_parquet(path.with_name("prediction.parquet")) for path in paths]
     signal = pd.concat(frames).sort_index()
     if signal.index.has_duplicates:
         raise RuntimeError(f"duplicate signal rows for {market}/{spine}")
-    calendar = [line.strip() for line in (DATA_DIR / "calendars" / "day.txt").read_text().splitlines() if line.strip()]
     actual_days = sorted({str(day)[:10] for day in signal.index.get_level_values(0).unique()})
-    expected = expected_days(calendar, start, end)
     if actual_days != expected:
         missing = sorted(set(expected) - set(actual_days))[:5]
         extra = sorted(set(actual_days) - set(expected))[:5]
         raise RuntimeError(f"spine coverage mismatch: missing={missing} extra={extra}")
-    out = root / "signal.parquet"
     tmp = out.with_name(out.name + ".tmp")
     signal.to_parquet(tmp)
     os.replace(tmp, out)
-    receipt = {
-        "status": "PASS",
-        "kind": "g1_spine",
-        "run_id": run_id,
+    receipt = assembly_receipt(
+        run_id=run_id,
+        market=market,
+        spine=spine,
+        start=start,
+        end=end,
+        calendar_sha256=calendar_sha,
+        identity_sha256=identity_sha,
+        expected_days=expected,
+        slice_receipts=ordered,
+        signal_sha256=hashlib.sha256(out.read_bytes()).hexdigest(),
+    )
+    receipt.update(
+        {
+            "n_rows": int(len(signal)),
+            "n_days": len(actual_days),
+            "n_instruments": int(signal.index.get_level_values(1).nunique()),
+            "slices": len(ordered),
+        }
+    )
+    receipt = __import__("spine_identity").seal_receipt(receipt)
+    existing_receipt.write_text(json.dumps(receipt, indent=2, ensure_ascii=False, allow_nan=False) + "\n")
+    from research_bundle import build_bundle, G1_SIGNAL_ROLES, ROLE_KIND, SCHEMA_VERSION as BUNDLE_SCHEMA
+    from csi1000_production_config import profile_manifest
+
+    profile = profile_manifest(assembly_identity["profile"])
+    identity = {
+        "bundle_id": f"{run_id}:{market}:{spine}",
         "market": market,
-        "spine": spine,
-        "start": start,
-        "end": end,
-        "n_rows": int(len(signal)),
-        "n_days": len(actual_days),
-        "n_instruments": int(signal.index.get_level_values(1).nunique()),
-        "slices": len(paths),
-        "signal_sha256": hashlib.sha256(out.read_bytes()).hexdigest(),
+        "profile": assembly_identity["profile"],
+        "candidate_id": profile["candidate_id"],
+        "window_start": start,
+        "window_end": end,
+        "source_sha256": assembly_identity["source_sha256"],
+        "environment_sha256": assembly_identity["environment_sha256"],
+        "provider_fingerprint": assembly_identity["provider_fingerprint"],
+        "model_sha256": assembly_identity["model_yaml_sha256"],
+        "strategy_contract_sha256": assembly_identity["strategy_contract_sha256"],
+        "calendar_sha256": calendar_sha,
+        "signal_sha256": receipt["signal_sha256"],
+        "assembly_receipt_sha256": receipt["receipt_sha256"],
     }
-    (root / "spine_receipt.json").write_text(json.dumps(receipt, indent=2, ensure_ascii=False) + "\n")
+    role_payloads = {
+        "research_contract": {
+            "contract_version": "g1_spine_v2",
+            "assembly_receipt_sha256": receipt["receipt_sha256"],
+        },
+        "source_environment": {
+            "source_sha256": identity["source_sha256"],
+            "environment_sha256": identity["environment_sha256"],
+        },
+        "provider": {
+            "provider_kind": assembly_identity.get("provider_kind"),
+            "fingerprint": identity["provider_fingerprint"],
+        },
+        "calendar": {"calendar_sha256": calendar_sha, "dates": expected},
+        "model": {"model_sha256": identity["model_sha256"]},
+        "strategy": {
+            "strategy_contract_sha256": identity["strategy_contract_sha256"],
+            "candidate_id": identity["candidate_id"],
+        },
+        "slice_receipts": {"receipt_sha256": receipt["slice_receipt_sha256"]},
+        "assembly_receipt": {"receipt_sha256": receipt["receipt_sha256"]},
+        "signal": {"signal_sha256": receipt["signal_sha256"]},
+    }
+    roles_dir = root / "evidence_bundle" / "roles"
+    roles_dir.mkdir(parents=True, exist_ok=True)
+    role_paths = {}
+    for role in G1_SIGNAL_ROLES:
+        role_path = roles_dir / f"{role}.json"
+        role_path.write_text(
+            json.dumps(
+                {
+                    "schema_version": BUNDLE_SCHEMA,
+                    "kind": ROLE_KIND[role],
+                    "status": "PASS",
+                    "identity": identity,
+                    "payload": role_payloads[role],
+                },
+                indent=2,
+                sort_keys=True,
+                allow_nan=False,
+            )
+            + "\n"
+        )
+        role_paths[role] = role_path
+    build_bundle(
+        root / "evidence_bundle",
+        bundle_kind="G1_SIGNAL",
+        bundle_id=identity["bundle_id"],
+        artifacts=role_paths,
+        identity=identity,
+        attachments={"signal": out},
+    )
     vol.commit()
     return receipt
 
@@ -446,31 +655,85 @@ def main(
     except Exception:
         code_sha = os.environ.get("GIT_COMMIT", "working-tree")
     calendar = read_calendar.remote()
+    import hashlib
+
+    from csi1000_production_config import profile_manifest
+    from spine_identity import canonical_assembly_identity
+    from spine_jobs import MARKETS, swapped_horizon
+
+    market_list = tuple(x.strip() for x in markets.split(",") if x.strip())
+    spine_list = tuple(x.strip() for x in spines.split(",") if x.strip())
+    yaml_path = Path("/root/qlib/examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158_csi500.yaml")
+    if not yaml_path.is_file():
+        yaml_path = (
+            Path(__file__).resolve().parents[3]
+            / "examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158_csi500.yaml"
+        )
+    model_yaml_sha = hashlib.sha256(yaml_path.read_bytes()).hexdigest()
+    source_sha = research_source_identity.remote()
+    environment_sha = research_environment_identity.remote()
+    overrides = {}
+    if kernels and kernels > 0:
+        overrides["kernels"] = int(kernels)
+    if joblib_backend:
+        overrides["joblib_backend"] = joblib_backend
+    identity_contexts = {}
+    assembly_identities = {}
+    for market in market_list:
+        provider_sha = provider_fingerprint.remote(market, end)
+        manifest = profile_manifest(MARKETS[market]["profile"])
+        for spine in spine_list:
+            horizon = MARKETS[market]["horizon"] if spine == "A" else swapped_horizon(MARKETS[market]["horizon"])
+            context = {
+                "source_sha256": source_sha,
+                "environment_sha256": environment_sha,
+                "provider_kind": "chenditc",
+                "provider_fingerprint": provider_sha,
+                "model_yaml_sha256": model_yaml_sha,
+                "strategy_contract_sha256": _strategy_contract_sha(
+                    {"market": market, "profile": MARKETS[market]["profile"], "label_horizon": horizon},
+                    manifest,
+                ),
+            }
+            identity_contexts[(market, spine)] = context
+            assembly_identities[(market, spine)] = canonical_assembly_identity(
+                {
+                    "run_id": run_id,
+                    "run_end": end,
+                    "market": market,
+                    "spine": spine,
+                    "profile": MARKETS[market]["profile"],
+                    "label_horizon": horizon,
+                    "data_start": data_start,
+                    "fit_start": fit_start,
+                    "seed": seed,
+                    "num_threads": 8,
+                    "kernels": overrides.get("kernels"),
+                    "joblib_backend": overrides.get("joblib_backend"),
+                },
+                **context,
+            )
     jobs = build_jobs(
         calendar,
         start,
         end,
         run_id,
         code_sha,
-        markets=tuple(x.strip() for x in markets.split(",") if x.strip()),
-        spines=tuple(x.strip() for x in spines.split(",") if x.strip()),
+        markets=market_list,
+        spines=spine_list,
         num_threads=8,
         data_start=data_start,
         fit_start=fit_start,
         seed=seed,
+        kernels=overrides.get("kernels"),
+        joblib_backend=overrides.get("joblib_backend"),
+        identity_contexts=identity_contexts,
     )
     print(
         f"[g1] calendar {start}..{end} | jobs={len(jobs)} | run_id={run_id} | "
         f"data_start={data_start} fit_start={fit_start} max_containers={max_containers} seed={seed}"
     )
-    overrides = {}
-    if kernels and kernels > 0:
-        overrides["kernels"] = int(kernels)
-    if joblib_backend:
-        overrides["joblib_backend"] = joblib_backend
     if overrides:
-        for job in jobs:
-            job.update(overrides)
         print(f"[g1] overrides: {overrides}")
     if smoke_all:
         grouped = {}
@@ -505,6 +768,11 @@ def main(
             print(f"[g1] attempt {attempt} aborted: {type(exc).__name__}: {exc}", flush=True)
             time.sleep(5)
             continue
+        if len(results) != len(pending):
+            raise RuntimeError(
+                f"map returned partial results: jobs={len(pending)} results={len(results)}; "
+                "refusing to declare completion or assemble"
+            )
         for job, result in zip(pending, results):
             if isinstance(result, BaseException):
                 print(
@@ -536,7 +804,7 @@ def main(
     summaries = []
     for market in {job["market"] for job in jobs}:
         for spine in {job["spine"] for job in jobs if job["market"] == market}:
-            summary = assemble_spine.remote(run_id, market, spine, start, end)
+            summary = assemble_spine.remote(run_id, market, spine, start, end, assembly_identities[(market, spine)])
             summaries.append(summary)
             print(
                 f"[g1] assembled {market}/{spine}: days={summary['n_days']} rows={summary['n_rows']} sha={summary['signal_sha256'][:12]}"

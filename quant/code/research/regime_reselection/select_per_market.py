@@ -1,15 +1,23 @@
 """Per-market G1 candidate selection scorecard (three independent accounts).
 
-Reads the frozen baseline/overlay/periodic summaries and applies the
-pre-registered R3 gates within each market.  It never combines markets and
-never refits a model.
+Reads verified baseline/overlay/periodic G2 bundles and applies the
+pre-registered R3 gates within each market. It never consumes legacy summary
+files, combines markets, or refits a model.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
+
+CODE_ROOT = Path(__file__).resolve().parents[2]
+for entry in (CODE_ROOT / "execution", CODE_ROOT / "production"):
+    if str(entry) not in sys.path:
+        sys.path.insert(0, str(entry))
+
+from finite_values import finite_optional
 
 MARKETS = ("csi300", "csi500", "csi1000")
 BENCH = {"csi300": "SH000300", "csi500": "SH000905", "csi1000": "SH000852"}
@@ -17,15 +25,15 @@ BENCH = {"csi300": "SH000300", "csi500": "SH000905", "csi1000": "SH000852"}
 
 def _args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
-    p.add_argument("--root", default="quant/data/current_window_backtest")
     p.add_argument("--out", default="quant/data/current_window_backtest/g1_per_market_selection_20261102.json")
+    p.add_argument(
+        "--g2-bundle",
+        type=Path,
+        required=True,
+        action="append",
+        help="verified G2/PROMOTION evidence bundle; repeat for each evaluation shard",
+    )
     return p.parse_args()
-
-
-def _load(path: Path):
-    if not path.is_file():
-        return []
-    return json.loads(path.read_text())
 
 
 def _base_id(spine: str, cell: str) -> str:
@@ -59,6 +67,19 @@ def _candidate(
     baseline_calmar,
     baseline_sharpe,
 ) -> dict:
+    cagr = finite_optional(cagr, "cagr")
+    mdd = finite_optional(mdd, "mdd")
+    sharpe = finite_optional(sharpe, "sharpe")
+    turnover = finite_optional(turnover, "turnover")
+    cagr10 = finite_optional(cagr10, "cagr10")
+    mdd10 = finite_optional(mdd10, "mdd10")
+    sharpe10 = finite_optional(sharpe10, "sharpe10")
+    cagr20 = finite_optional(cagr20, "cagr20")
+    benchmark_cagr = finite_optional(benchmark_cagr, "benchmark_cagr")
+    benchmark_mdd = finite_optional(benchmark_mdd, "benchmark_mdd")
+    baseline_mdd = finite_optional(baseline_mdd, "baseline_mdd")
+    baseline_calmar = finite_optional(baseline_calmar, "baseline_calmar")
+    baseline_sharpe = finite_optional(baseline_sharpe, "baseline_sharpe")
     calmar = _calmar(cagr, mdd)
     calmar10 = _calmar(cagr10, mdd10)
     d1_abs = (float(mdd) - float(baseline_mdd)) * 100.0 >= 12.0 if mdd is not None else False
@@ -116,11 +137,20 @@ def _candidate(
 
 def main() -> None:
     args = _args()
-    root = Path(args.root)
-    baseline = _load(root / "g1_baseline_summary.json")
-    overlay_s01 = _load(root / "g1_overlay_summary_s01.json")
-    overlay_best = _load(root / "g1_overlay_summary_best.json")
-    periodic = _load(root / "g1_periodic_summary.json")
+    from research_bundle import load_verified_summary
+
+    inputs = {"baseline": [], "overlay_s01": [], "overlay_best": [], "periodic": []}
+    for bundle_root in args.g2_bundle:
+        summary, _manifest = load_verified_summary(bundle_root)
+        selection_inputs = summary.get("selection_inputs")
+        if not isinstance(selection_inputs, dict) or set(selection_inputs) != set(inputs):
+            raise ValueError("verified G2 summary has no canonical selection_inputs")
+        for key in inputs:
+            inputs[key].extend(selection_inputs[key])
+    baseline = inputs["baseline"]
+    overlay_s01 = inputs["overlay_s01"]
+    overlay_best = inputs["overlay_best"]
+    periodic = inputs["periodic"]
 
     base_by = {(r["market"], r["spine"], r["cell"]): r for r in baseline}
     if not base_by:
@@ -259,7 +289,7 @@ def main() -> None:
             )
 
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-    Path(args.out).write_text(json.dumps(out, indent=2, ensure_ascii=False) + "\n")
+    Path(args.out).write_text(json.dumps(out, indent=2, ensure_ascii=False, allow_nan=False) + "\n")
     print(f"\nwrote {args.out}")
 
 

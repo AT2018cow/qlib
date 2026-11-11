@@ -1,0 +1,288 @@
+{
+  "schema_version": 1,
+  "unit_registry_version": "current_window_20261016_20261029_v1",
+  "expected_units_sha256": "2075b89b568415b7b28142f1fda88ae266c0ce7c2addacd586a2fbf4a3e5bfd9",
+  "source_path": "quant/data/current_window_backtest/2026-10-16_2026-10-29_candidate_results.json",
+  "source_sha256": "5f1b32ca91985d4003d37d052bb726571dd3fe04658e3b056a7f5d5769ebba84",
+  "metric_schema_version": "current_window_net_v1",
+  "units": [
+    {
+      "market": "csi1000",
+      "profile": "baseline_control",
+      "topk": 20,
+      "nd": 2,
+      "reported_cumulative_return": -0.14839105100962569,
+      "account_net_return": -0.15041744824540382,
+      "difference": 0.0020263972357781324,
+      "total_cost": 0.00233725381927587,
+      "final_account": 84958255.17545962
+    },
+    {
+      "market": "csi1000",
+      "profile": "baseline_control",
+      "topk": 10,
+      "nd": 1,
+      "reported_cumulative_return": -0.17257796043457874,
+      "account_net_return": -0.17453623130147589,
+      "difference": 0.0019582708668971494,
+      "total_cost": 0.002316030987837366,
+      "final_account": 82546376.86985241
+    },
+    {
+      "market": "csi1000",
+      "profile": "c98856b4_top10_drop1",
+      "topk": 10,
+      "nd": 1,
+      "reported_cumulative_return": -0.13140472232082867,
+      "account_net_return": -0.13357911896449726,
+      "difference": 0.0021743966436685858,
+      "total_cost": 0.002458399960916837,
+      "final_account": 86642088.10355027
+    },
+    {
+      "market": "csi1000",
+      "profile": "c98856b4_top10_drop1",
+      "topk": 20,
+      "nd": 2,
+      "reported_cumulative_return": -0.15104496602680495,
+      "account_net_return": -0.153082137727097,
+      "difference": 0.002037171700292051,
+      "total_cost": 0.0023535964291450085,
+      "final_account": 84691786.2272903
+    },
+    {
+      "market": "csi1000",
+      "profile": "stage_b_winner",
+      "topk": 20,
+      "nd": 2,
+      "reported_cumulative_return": -0.180723210946249,
+      "account_net_return": -0.1827427645904851,
+      "difference": 0.002019553644236116,
+      "total_cost": 0.0024153406300358986,
+      "final_account": 81725723.54095149
+    },
+    {
+      "market": "csi300",
+      "profile": "59b93929_top10_drop1",
+      "topk": 10,
+      "nd": 1,
+      "reported_cumulative_return": -0.1265751101978667,
+      "account_net_return": -0.1285760962423037,
+      "difference": 0.002000986044436992,
+      "total_cost": 0.0022605370504114857,
+      "final_account": 87142390.37576963
+    },
+    {
+      "market": "csi300",
+      "profile": "59b93929_top10_drop1",
+      "topk": 20,
+      "nd": 2,
+      "reported_cumulative_return": -0.08553144120395706,
+      "account_net_return": -0.08781546497073789,
+      "difference": 0.0022840237667808294,
+      "total_cost": 0.0024754001082283802,
+      "final_account": 91218453.50292622
+    },
+    {
+      "market": "csi300",
+      "profile": "baseline_control",
+      "topk": 20,
+      "nd": 2,
+      "reported_cumulative_return": -0.09219640081069291,
+      "account_net_return": -0.0943611348702037,
+      "difference": 0.0021647340595107867,
+      "total_cost": 0.002365626411200607,
+      "final_account": 90563886.51297963
+    },
+    {
+      "market": "csi300",
+      "profile": "baseline_control",
+      "topk": 10,
+      "nd": 1,
+      "reported_cumulative_return": -0.1070263547067587,
+      "account_net_return": -0.1091207585306938,
+      "difference": 0.0020944038239351093,
+      "total_cost": 0.002323226130787181,
+      "final_account": 89087924.14693062
+    },
+    {
+      "market": "csi500",
+      "profile": "baseline_control",
+      "topk": 20,
+      "nd": 2,
+      "reported_cumulative_return": -0.10483825262438184,
+      "account_net_return": -0.10690036734540131,
+      "difference": 0.00206211472101947,
+      "total_cost": 0.0022736180047238782,
+      "final_account": 89309963.26545987
+    },
+    {
+      "market": "csi500",
+      "profile": "baseline_control",
+      "topk": 10,
+      "nd": 1,
+      "reported_cumulative_return": -0.12775501048217897,
+      "account_net_return": -0.1297887942784065,
+      "difference": 0.0020337837962275396,
+      "total_cost": 0.0022957868660871115,
+      "final_account": 87021120.57215935
+    },
+    {
+      "market": "csi500",
+      "profile": "raw10d_c98856b4_top10_drop1",
+      "topk": 10,
+      "nd": 1,
+      "reported_cumulative_return": -0.12436892577487291,
+      "account_net_return": -0.12640873954903875,
+      "difference": 0.002039813774165844,
+      "total_cost": 0.0022975960678641182,
+      "final_account": 87359126.04509613
+    },
+    {
+      "market": "csi500",
+      "profile": "raw10d_c98856b4_top10_drop1",
+      "topk": 20,
+      "nd": 2,
+      "reported_cumulative_return": -0.12544890515703566,
+      "account_net_return": -0.12753902572575093,
+      "difference": 0.00209012056871527,
+      "total_cost": 0.002357705514875395,
+      "final_account": 87246097.42742491
+    }
+  ],
+  "ranking_changed": false,
+  "old_order": [
+    [
+      "csi300",
+      "59b93929_top10_drop1",
+      20
+    ],
+    [
+      "csi300",
+      "baseline_control",
+      20
+    ],
+    [
+      "csi500",
+      "baseline_control",
+      20
+    ],
+    [
+      "csi300",
+      "baseline_control",
+      10
+    ],
+    [
+      "csi500",
+      "raw10d_c98856b4_top10_drop1",
+      10
+    ],
+    [
+      "csi500",
+      "raw10d_c98856b4_top10_drop1",
+      20
+    ],
+    [
+      "csi300",
+      "59b93929_top10_drop1",
+      10
+    ],
+    [
+      "csi500",
+      "baseline_control",
+      10
+    ],
+    [
+      "csi1000",
+      "c98856b4_top10_drop1",
+      10
+    ],
+    [
+      "csi1000",
+      "baseline_control",
+      20
+    ],
+    [
+      "csi1000",
+      "c98856b4_top10_drop1",
+      20
+    ],
+    [
+      "csi1000",
+      "baseline_control",
+      10
+    ],
+    [
+      "csi1000",
+      "stage_b_winner",
+      20
+    ]
+  ],
+  "new_order": [
+    [
+      "csi300",
+      "59b93929_top10_drop1",
+      20
+    ],
+    [
+      "csi300",
+      "baseline_control",
+      20
+    ],
+    [
+      "csi500",
+      "baseline_control",
+      20
+    ],
+    [
+      "csi300",
+      "baseline_control",
+      10
+    ],
+    [
+      "csi500",
+      "raw10d_c98856b4_top10_drop1",
+      10
+    ],
+    [
+      "csi500",
+      "raw10d_c98856b4_top10_drop1",
+      20
+    ],
+    [
+      "csi300",
+      "59b93929_top10_drop1",
+      10
+    ],
+    [
+      "csi500",
+      "baseline_control",
+      10
+    ],
+    [
+      "csi1000",
+      "c98856b4_top10_drop1",
+      10
+    ],
+    [
+      "csi1000",
+      "baseline_control",
+      20
+    ],
+    [
+      "csi1000",
+      "c98856b4_top10_drop1",
+      20
+    ],
+    [
+      "csi1000",
+      "baseline_control",
+      10
+    ],
+    [
+      "csi1000",
+      "stage_b_winner",
+      20
+    ]
+  ]
+}

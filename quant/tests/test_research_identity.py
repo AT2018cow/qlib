@@ -476,3 +476,63 @@ def test_production_code_identity_and_website_daily_use_the_tested_csi500_yaml(e
     assert identity.website_semantic_manifest(repo_root=root)["sha256"] != semantic_before
     with pytest.raises(ValueError, match="different source identities"):
         worker.daily.local(expected_source_sha256=source_before)
+
+
+def test_environment_manifest_binds_qlib_source_and_dependency_versions(tmp_path, monkeypatch):
+    import json as _json
+    import qlib as qlib_module
+
+    root = tmp_path / "checkout"
+    qlib = root / "qlib"
+    (qlib / "data" / "_libs").mkdir(parents=True)
+    (qlib / "__init__.py").write_text("VERSION = 1\n")
+    (qlib / "data" / "ops.py").write_text("def value(): return 1\n")
+    (qlib / "data" / "_libs" / "rolling.pyx").write_text("cdef int value = 1\n")
+    (qlib / "data" / "_libs" / "rolling.so").write_bytes(b"compiled-extension")
+    monkeypatch.setattr(qlib_module, "__file__", str(qlib / "__init__.py"))
+    monkeypatch.setattr(
+        identity,
+        "_package_version",
+        lambda name: {"pyqlib": "1.0", **{n: "2.0" for n in identity.REQUIRED_ENVIRONMENT_PACKAGES}}[name],
+    )
+    first = identity.environment_manifest(repo_root=root)
+    assert first["qlib"]["version"] == "1.0"
+    assert first["components"] == {name: "2.0" for name in identity.REQUIRED_ENVIRONMENT_PACKAGES}
+    assert str(root) not in _json.dumps(first)
+    (qlib / "data" / "_libs" / "rolling.pyx").write_text("cdef int value = 2\n")
+    second = identity.environment_manifest(repo_root=root)
+    assert second["qlib"]["source_sha256"] != first["qlib"]["source_sha256"]
+    assert second["sha256"] != first["sha256"]
+    with pytest.raises(ValueError, match="environment manifest"):
+        identity.verify_environment_manifest(first, repo_root=root)
+    other = tmp_path / "other"
+    (other / "qlib" / "data" / "_libs").mkdir(parents=True)
+    (other / "qlib" / "__init__.py").write_text("VERSION = 1\n")
+    (other / "qlib" / "data" / "ops.py").write_text("def value(): return 1\n")
+    (other / "qlib" / "data" / "_libs" / "rolling.pyx").write_text("cdef int value = 2\n")
+    (other / "qlib" / "data" / "_libs" / "rolling.so").write_bytes(b"compiled-extension")
+    monkeypatch.setattr(qlib_module, "__file__", str(other / "qlib" / "__init__.py"))
+    assert identity.environment_manifest(repo_root=other)["sha256"] == second["sha256"]
+
+
+def test_environment_manifest_rejects_wrong_import_root(tmp_path, monkeypatch):
+    import qlib as qlib_module
+
+    declared = tmp_path / "declared"
+    (declared / "qlib").mkdir(parents=True)
+    (declared / "qlib" / "__init__.py").write_text("VERSION = 1\n")
+    actual = tmp_path / "actual"
+    (actual / "qlib").mkdir(parents=True)
+    (actual / "qlib" / "__init__.py").write_text("VERSION = 1\n")
+    monkeypatch.setattr(qlib_module, "__file__", str(actual / "qlib" / "__init__.py"))
+    with pytest.raises(ValueError, match="differs from declared checkout"):
+        identity.environment_manifest(repo_root=declared)
+
+
+def test_environment_manifest_rejects_missing_package(monkeypatch):
+    def missing(name):
+        raise ValueError(f"required research dependency is missing: {name}")
+
+    monkeypatch.setattr(identity, "_package_version", missing)
+    with pytest.raises(ValueError, match="missing"):
+        identity.environment_manifest()

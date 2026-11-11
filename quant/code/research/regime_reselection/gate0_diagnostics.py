@@ -16,6 +16,8 @@ import statistics
 import sys
 from pathlib import Path
 
+from finite_values import finite_json_dumps, finite_number, validate_dates
+
 
 # --------------------------------------------------------------------------- #
 # Paper artifacts
@@ -43,22 +45,24 @@ def board_exposure(positions: dict) -> dict:
 
 
 def max_drawdown(nav: list[float]) -> float:
-    peak = nav[0]
+    values = [finite_number(value, "nav", positive=True) for value in nav]
+    peak = values[0]
     worst = 0.0
-    for value in nav:
+    for value in values:
         peak = max(peak, value)
-        if peak > 0:
-            worst = min(worst, value / peak - 1.0)
+        worst = min(worst, value / peak - 1.0)
     return worst
 
 
 def annualized_vol(returns: list[float], sessions: int = 238) -> float:
-    if len(returns) < 2:
+    values = [finite_number(value, "return") for value in returns]
+    if len(values) < 2:
         return 0.0
-    return statistics.pstdev(returns) * math.sqrt(sessions)
+    result = statistics.pstdev(values) * math.sqrt(sessions)
+    return finite_number(result, "annualized volatility", nonnegative=True)
 
 
-def reconstruct_paper_series(artifacts: list[dict]) -> dict:
+def reconstruct_paper_series(artifacts: list[dict], *, expected_dates=None, allow_incomplete: bool = False) -> dict:
     """Rebuild close-to-close paper NAV from consecutive daily artifacts.
 
     Each artifact carries the settlement report of the previous execution day;
@@ -73,20 +77,48 @@ def reconstruct_paper_series(artifacts: list[dict]) -> dict:
         day = report.get("date")
         close = report.get("portfolio_value_close")
         pre = report.get("portfolio_value_pre_trade_open")
-        if not isinstance(day, str) or not isinstance(close, (int, float)) or not isinstance(pre, (int, float)):
+        if not isinstance(day, str):
             continue
+        if close is None or pre is None:
+            continue
+        close = finite_number(close, "portfolio_value_close", positive=True)
+        pre = finite_number(pre, "portfolio_value_pre_trade_open", positive=True)
         if day in reports:
             raise ValueError(f"duplicate execution report for {day}")
-        reports[day] = {"pre": float(pre), "close": float(close)}
+        reports[day] = {"pre": pre, "close": close}
     if not reports:
         return {"status": "NO_REPORTS"}
-    days = sorted(reports)
+    input_days = [
+        artifact["execution_report"]["date"]
+        for artifact in artifacts
+        if isinstance(artifact.get("execution_report"), dict)
+        and isinstance(artifact["execution_report"].get("date"), str)
+    ]
+    validate_dates(input_days, "execution report input order")
+    days = validate_dates(sorted(reports), "execution report dates")
+    if expected_dates is not None:
+        expected = validate_dates(expected_dates, "expected paper sessions")
+        missing = sorted(set(expected) - set(days))
+        extra = sorted(set(days) - set(expected))
+        if extra:
+            raise ValueError(f"unexpected paper sessions: {extra[:5]}")
+        if missing:
+            if not allow_incomplete:
+                raise ValueError(f"missing paper sessions: {missing[:5]}")
+            return {
+                "status": "INCOMPLETE",
+                "missing_dates": missing,
+                "present_dates": days,
+                "start": days[0],
+                "end": days[-1],
+            }
     start = reports[days[0]]["pre"]
     closes = [(day, reports[day]["close"]) for day in days]
     nav = [start] + [value for _, value in closes]
-    if start <= 0 or any(value <= 0 for value in nav):
+    if any(value <= 0 for value in nav):
         raise ValueError("non-positive paper NAV")
     returns = [closes[i][1] / closes[i - 1][1] - 1.0 for i in range(1, len(closes))]
+    finite_number(closes[-1][1] / start - 1.0, "paper return")
     return {
         "status": "PASS",
         "start": days[0],
@@ -120,6 +152,18 @@ def read_calendar(provider_dir: Path) -> list[str]:
     return [
         line.strip() for line in (Path(provider_dir) / "calendars" / "day.txt").read_text().splitlines() if line.strip()
     ]
+
+
+def expected_sessions(provider_dir: Path, start: str, end: str) -> list[str]:
+    """Return the exact inclusive provider-calendar window, failing closed."""
+    calendar = read_calendar(provider_dir)
+    if start not in calendar or end not in calendar:
+        raise ValueError(f"expected paper window {start}..{end} is not covered by the provider calendar")
+    start_i = calendar.index(start)
+    end_i = calendar.index(end)
+    if start_i > end_i:
+        raise ValueError("expected paper window is reversed")
+    return calendar[start_i : end_i + 1]
 
 
 def read_bin_field(provider_dir: Path, code: str, field_name: str) -> dict:
@@ -231,27 +275,29 @@ def audit_provider(provider_dir: Path, markets=("csi300", "csi500", "csi1000")) 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--signals", type=Path, required=True)
-    parser.add_argument("--provider", type=Path)
+    parser.add_argument("--provider", type=Path, required=True)
+    parser.add_argument("--start", required=True, help="first expected execution-report session")
+    parser.add_argument("--end", required=True, help="last expected execution-report session")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
+    expected = expected_sessions(args.provider, args.start, args.end)
     result = {}
     for label, suffix in (("csi1000", ""), ("csi500", "_csi500"), ("csi300", "_csi300")):
         artifacts = load_paper_artifacts(args.signals, suffix)
-        result[label] = reconstruct_paper_series(artifacts)
+        result[label] = reconstruct_paper_series(artifacts, expected_dates=expected)
         if artifacts:
             latest = artifacts[-1]
             result[label]["board_exposure"] = board_exposure(latest.get("positions", {}))
-    if args.provider:
-        result["provider_audit"] = audit_provider(args.provider)
-        latest_codes = []
-        for label, suffix in (("csi1000", ""), ("csi500", "_csi500"), ("csi300", "_csi300")):
-            artifacts = load_paper_artifacts(args.signals, suffix)
-            if artifacts:
-                latest_codes.extend(artifacts[-1].get("positions", {}))
-        result["correlation_60d"] = pairwise_correlation_summary(
-            args.provider, sorted(set(latest_codes)), result["provider_audit"]["calendar_end"]
-        )
-    payload = json.dumps(result, indent=2, ensure_ascii=False, default=str)
+    result["provider_audit"] = audit_provider(args.provider)
+    latest_codes = []
+    for label, suffix in (("csi1000", ""), ("csi500", "_csi500"), ("csi300", "_csi300")):
+        artifacts = load_paper_artifacts(args.signals, suffix)
+        if artifacts:
+            latest_codes.extend(artifacts[-1].get("positions", {}))
+    result["correlation_60d"] = pairwise_correlation_summary(
+        args.provider, sorted(set(latest_codes)), result["provider_audit"]["calendar_end"]
+    )
+    payload = finite_json_dumps(result, indent=2, ensure_ascii=False, default=str)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(payload + "\n")
