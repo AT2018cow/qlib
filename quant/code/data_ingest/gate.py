@@ -6,6 +6,10 @@ import math
 from pathlib import Path
 from typing import Iterable, Mapping
 
+import numpy as np
+
+from data_ingest.adjust import FIELDS
+
 from data_ingest.calendar import read_calendar
 from data_ingest.model import CrossCheck, GateReport, Membership
 from data_ingest.overlay import active_members, read_bin_value, read_ranges
@@ -37,6 +41,9 @@ def run_gate(
     require_qlib: bool = False,
     required_symbols: Iterable[str] = (),
     base_symbols: Iterable[str] | None = None,
+    protected_history: Iterable[str] = (),
+    membership_history: Mapping[str, Mapping[str, Membership]] | None = None,
+    suspension_dates: Mapping[str, Iterable[str]] | None = None,
 ) -> GateReport:
     report = GateReport()
     base = Path(base_dir)
@@ -54,38 +61,48 @@ def run_gate(
         f"expected={dates} got={extended[len(baseline):]}",
     )
 
-    for market, membership in memberships.items():
-        path = overlay / "instruments" / f"{market}.txt"
-        if not path.is_file():
-            report.fail("membership.file", f"{market}: {path} missing")
-            continue
-        active = active_members(read_ranges(path), asof)
-        expected = set(membership.members)
-        report.require(
-            membership.asof == asof,
-            f"membership.date.{market}",
-            f"file={membership.asof} asof={asof}",
-        )
-        report.require(
-            active == expected,
-            f"membership.members.{market}",
-            f"active={len(active)} expected={len(expected)} "
-            f"missing={sorted(expected - active)[:5]} extra={sorted(active - expected)[:5]}",
-        )
-
     suspension_set = {str(item).upper() for item in suspensions}
-    for market, membership in memberships.items():
-        missing = []
-        for symbol in membership.members:
-            close = read_bin_value(overlay, symbol, "close", asof)
-            if not _finite(close) and symbol not in suspension_set:
-                missing.append(symbol)
-        report.require(
-            not missing,
-            f"coverage.{market}",
-            f"{len(membership.members) - len(missing)}/{len(membership.members)} priced; "
-            f"unexplained={missing[:10]}",
-        )
+    suspension_by_date = {
+        str(symbol).upper(): {str(day)[:10] for day in days} for symbol, days in (suspension_dates or {}).items()
+    }
+    history_days = membership_history or {asof: memberships}
+    for day in sorted(history_days):
+        day_memberships = history_days[day]
+        suffix = "" if membership_history is None else f".{day}"
+        for market, membership in day_memberships.items():
+            path = overlay / "instruments" / f"{market}.txt"
+            if not path.is_file():
+                report.fail("membership.file", f"{market}: {path} missing")
+                continue
+            active = active_members(read_ranges(path), day)
+            expected = set(membership.members)
+            report.require(
+                membership.asof == day,
+                f"membership.date.{market}{suffix}",
+                f"file={membership.asof} asof={day}",
+            )
+            report.require(
+                active == expected,
+                f"membership.members.{market}{suffix}",
+                f"active={len(active)} expected={len(expected)} "
+                f"missing={sorted(expected - active)[:5]} extra={sorted(active - expected)[:5]}",
+            )
+
+        suspended_today = {symbol for symbol, days in suspension_by_date.items() if day in days}
+        if day == asof:
+            suspended_today |= suspension_set
+        for market, membership in day_memberships.items():
+            missing = []
+            for symbol in membership.members:
+                close = read_bin_value(overlay, symbol, "close", day)
+                if not _finite(close) and symbol not in suspended_today:
+                    missing.append(symbol)
+            report.require(
+                not missing,
+                f"coverage.{market}{suffix}",
+                f"{len(membership.members) - len(missing)}/{len(membership.members)} priced; "
+                f"unexplained={missing[:10]}",
+            )
 
     required_missing = []
     for symbol in {str(item).upper() for item in required_symbols}:
@@ -137,6 +154,33 @@ def run_gate(
                 bad_base.append(f"{symbol}/{field}: finite mismatch")
     report.require(not bad_base, "base_integrity", f"sample={len(sample)} bad={bad_base[:10]}")
 
+    protected = {str(item).upper() for item in protected_history}
+    bad_history = []
+    for symbol in sorted(protected):
+        for field in FIELDS:
+            base_bin = base / "features" / symbol.lower() / f"{field}.day.bin"
+            overlay_bin = overlay / "features" / symbol.lower() / f"{field}.day.bin"
+            if not base_bin.is_file() or not overlay_bin.is_file():
+                bad_history.append(f"{symbol}/{field}: missing bin")
+                continue
+            left = np.fromfile(base_bin, dtype="<f")
+            right = np.fromfile(overlay_bin, dtype="<f")
+            if left.size == 0 or right.size == 0 or int(left[0]) != int(right[0]):
+                bad_history.append(f"{symbol}/{field}: bin start mismatch")
+                continue
+            start = int(left[0])
+            count = baseline.index(base_end) - start + 1
+            if count <= 0 or count + 1 > left.size or count + 1 > right.size:
+                bad_history.append(f"{symbol}/{field}: frozen prefix shorter than base date")
+                continue
+            if not np.array_equal(left[1 : count + 1], right[1 : count + 1], equal_nan=True):
+                bad_history.append(f"{symbol}/{field}: frozen prefix changed")
+    report.require(
+        not bad_history,
+        "history.prefix_integrity",
+        f"symbols={len(protected)} bad={bad_history[:10]}",
+    )
+
     checks = list(crosschecks)
     if len(checks) < min_crosschecks and require_crosscheck:
         report.fail("crosscheck", f"only {len(checks)} comparisons; required {min_crosschecks}")
@@ -152,8 +196,14 @@ def run_gate(
     bad_corp = []
     for item in corp:
         expected = float(item["expected_factor"])
-        actual = float(item["actual_factor"])
-        if not _close_enough(expected, actual, 1e-5):
+        actual = read_bin_value(overlay, str(item["symbol"]), "factor", str(item["date"]))
+        if (
+            not _finite(expected)
+            or not _finite(actual)
+            or expected <= 0
+            or actual <= 0
+            or not math.isclose(expected, actual, rel_tol=1e-5, abs_tol=0.0)
+        ):
             bad_corp.append(f"{item.get('symbol')}/{item.get('date')}: {expected} != {actual}")
     report.require(not bad_corp, "corporate_actions", f"checked={len(corp)} bad={bad_corp[:10]}")
 

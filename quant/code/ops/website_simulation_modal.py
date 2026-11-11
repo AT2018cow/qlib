@@ -340,7 +340,7 @@ def _incremental_prior(source_sha, asset, market, end, calendar):
     from october_backfill_plan import fit_blocks
     from website_simulation import FIRST_EXECUTION, FIRST_SIGNAL, validate_website_series
 
-    if not asset.get("local_path") or end not in calendar:
+    if end not in calendar:
         return None
     end_index = calendar.index(end)
     if end_index < 1:
@@ -523,7 +523,7 @@ def build_market(job):
     sampler = ResourceSampler(interval=2.0)
     sampler.start()
     try:
-        return _build_market_impl(job, sampler=sampler)
+        result = _build_market_impl(job, sampler=sampler)
     except Exception as exc:
         resources = sampler.stop()
         try:
@@ -551,6 +551,12 @@ def build_market(job):
         except Exception as record_exc:  # noqa: BLE001 - do not mask the replay error
             print(f"[website] ⚠️ could not persist failure metrics: {record_exc}", flush=True)
         raise
+    finally:
+        # Success, cache hit and failure all stop the background sampler.  The
+        # implementation stops it before writing the immutable payload; this
+        # finally is idempotent and protects early-return paths.
+        sampler.stop()
+    return result
 
 
 def market_name(job):
@@ -583,7 +589,7 @@ def _build_market_impl(job, sampler=None):
     from modal_qlib_cn_a10g import _load_and_patch_cfg, MODEL_CFG, _cn_trading_calendar
     from october_backfill_plan import fit_blocks
     from october_backfill_modal import download_provider
-    from prelive_revalidation import prepare_data, replay, write_result
+    from prelive_revalidation import execution_quote_symbols, prepare_data, replay, write_result
     from research_identity import verify_source_manifest, content_sha
     from website_simulation import (
         FIRST_EXECUTION,
@@ -603,6 +609,9 @@ def _build_market_impl(job, sampler=None):
     root = Path("/simulation") / source_sha / asset["digest"].split(":")[1]
     smoke_path = root / "smoke.json"
     provider = download_provider(asset)
+    # Candidate checks run before materialization; the replay/QLib path needs a
+    # local provider.  Keep the archive digest identity unchanged.
+    asset = {**asset, "local_path": str(provider)}
     calendar = (provider / "calendars/day.txt").read_text().splitlines()
     verified_calendar = sorted(_cn_trading_calendar())
     now = datetime.now(ZoneInfo("Asia/Shanghai"))
@@ -830,14 +839,24 @@ def _build_market_impl(job, sampler=None):
         signal_dir.mkdir(parents=True, exist_ok=True)
         signal_path = signal_dir / "signal.parquet"
         merged.to_parquet(signal_path)
-        data = prepare_data(provider, [signal_path], market, previous, end)
-        print(f"[website] {market} incremental inputs ready elapsed={time.monotonic() - started:.1f}s", flush=True)
         prior_ledger = _load_prior_ledger(incremental["result_dir"])
+        restored_state = prior_ledger["final_state"]
+        if restored_state != incremental["final_state"]:
+            raise ValueError("incremental ledger checkpoint differs from the validated final state")
+        data = prepare_data(
+            provider,
+            [signal_path],
+            market,
+            previous,
+            end,
+            extra_quote_symbols=execution_quote_symbols(restored_state),
+        )
+        print(f"[website] {market} incremental inputs ready elapsed={time.monotonic() - started:.1f}s", flush=True)
         result = replay(
             data,
             candidate,
             engine_history_limit=120,
-            initial_state=incremental["final_state"],
+            initial_state=restored_state,
             prior=prior_ledger,
         )
         print(f"[website] {market} incremental replay done elapsed={time.monotonic() - started:.1f}s", flush=True)
@@ -890,7 +909,9 @@ def _build_market_impl(job, sampler=None):
         for p in sorted(signal_dir.rglob("*"))
         if p.is_file() and p.name != "result.json"
     }
-    payload["resources"] = sampler.summary() if sampler is not None else None
+    # Stop before the immutable result is written so the persisted resource
+    # summary is the final one, not a snapshot taken while sampling continued.
+    payload["resources"] = sampler.stop() if sampler is not None else None
     write_immutable(finished, json.dumps(payload, indent=2, allow_nan=False) + "\n")
     if mode == "smoke":
         write_immutable(

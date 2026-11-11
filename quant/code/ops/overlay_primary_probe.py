@@ -33,6 +33,8 @@ sys.path.insert(0, str(CODE / "production"))
 
 import modal
 
+from image_filters import should_exclude_from_image
+
 PRODUCTION_VOLUME = "qlib-prod-data"
 PROBE_VOLUME = "qlib-overlay-probe"
 PROBE_APP = "qlib-overlay-primary-probe"
@@ -64,22 +66,7 @@ def _probe_image() -> modal.Image:
             str(_local_repo_root()),
             remote_path="/root/qlib",
             copy=True,
-            ignore=lambda path: (
-                any(
-                    part in str(path)
-                    for part in (
-                        ".venv",
-                        ".git",
-                        "node_modules",
-                        "mlruns",
-                        "__pycache__",
-                        ".pytest_cache",
-                        ".mypy_cache",
-                        "quant/data",
-                    )
-                )
-                or str(path).endswith((".so", ".cpp", ".pyc"))
-            ),
+            ignore=lambda path: should_exclude_from_image(path),
         )
     return image
 

@@ -252,6 +252,76 @@ def read_bin_value(provider_dir: str | Path, symbol: str, field: str, date: str)
         return struct.unpack("<f", payload)[0] if len(payload) == 4 else float("nan")
 
 
+def feature_history_status(base_dir: str | Path, symbol: str) -> str:
+    """Classify a symbol's frozen feature history as absent/partial/complete.
+
+    ``absent`` is the only state eligible for controlled backfill.  A partial
+    directory is a broken frozen input and must fail closed, not be rebuilt.
+    """
+    root = Path(base_dir) / "features" / symbol.lower()
+    if not root.is_dir():
+        return "absent"
+    present = {path.name for path in root.glob("*.day.bin")}
+    expected = {f"{field}.day.bin" for field in FIELDS}
+    return "complete" if expected <= present else "partial"
+
+
+def read_last_finite_features(
+    base_dir: str | Path,
+    symbol: str,
+    date: str,
+    fields: tuple[str, ...] = ("close", "adjclose", "factor"),
+) -> dict | None:
+    """Return the last finite close/adjclose/factor at or before ``date``.
+
+    The frozen bin may have NaN at ``date`` because the stock was suspended or
+    its latest row was not appended.  Rebuilding the whole history would
+    rewrite the frozen prefix; this anchor lets the overlay continue from the
+    last verifiable row instead.
+    """
+    import numpy as np
+
+    base = Path(base_dir)
+    calendar = read_calendar(base)
+    if date not in calendar:
+        return None
+    end_index = calendar.index(date)
+    series = {}
+    start_index = None
+    for field in fields:
+        path = base / "features" / symbol.lower() / f"{field}.day.bin"
+        if not path.is_file():
+            return None
+        data = np.fromfile(path, dtype="<f")
+        if data.size == 0:
+            return None
+        start = int(data[0])
+        values = data[1:]
+        if start_index is None:
+            start_index = start
+        elif start != start_index:
+            return None
+        series[field] = values
+    if start_index is None or start_index > end_index:
+        return None
+    for offset in range(end_index - start_index, -1, -1):
+        values = {}
+        for field in fields:
+            if offset >= len(series[field]):
+                break
+            value = float(series[field][offset])
+            if not np.isfinite(value):
+                break
+            values[field] = value
+        else:
+            if values.get("close", 0) > 0 and values.get("factor", 0) > 0:
+                return {
+                    "date": calendar[start_index + offset],
+                    **values,
+                }
+    return None
+
+
 def write_feature_history(
     out_dir: str | Path,
     symbol: str,
@@ -266,6 +336,8 @@ def write_feature_history(
     base date.  Missing rows become NaN; nothing is fabricated.
     """
     out = Path(out_dir) / "features" / symbol.lower()
+    if out.is_dir() and any(out.glob("*.day.bin")):
+        raise OverlayError(f"refusing to overwrite existing frozen history: {symbol}")
     out.mkdir(parents=True, exist_ok=True)
     written = 0
     for field in FIELDS:
@@ -287,6 +359,7 @@ def build_overlay(
     asof: str,
     history_rows: Mapping[str, Mapping[str, Mapping[str, float]]] | None = None,
     history_start: Mapping[str, int] | None = None,
+    membership_history: Mapping[str, Mapping[str, Membership]] | None = None,
 ) -> dict:
     base = Path(base_dir)
     base_calendar = read_calendar(base)
@@ -314,7 +387,26 @@ def build_overlay(
     metadata["history_symbols"] = sorted(history_rows)
     append_calendar(out_dir, dates)
     metadata["bins_appended"] = append_features(out_dir, rows, start_index=len(base_calendar), dates=dates)
-    metadata["instruments"] = update_instruments(out_dir, memberships, base_end=base_end, asof=asof, row_symbols=rows)
+    if membership_history is None:
+        metadata["instruments"] = update_instruments(
+            out_dir, memberships, base_end=base_end, asof=asof, row_symbols=rows
+        )
+    else:
+        updates = {}
+        previous = base_end
+        for day in dates:
+            day_memberships = membership_history.get(day)
+            if day_memberships is None:
+                raise OverlayError(f"membership history missing for {day}")
+            updates[day] = update_instruments(
+                out_dir,
+                day_memberships,
+                base_end=previous,
+                asof=day,
+                row_symbols=rows,
+            )
+            previous = day
+        metadata["instruments"] = updates
     metadata["base_end"] = base_end
     metadata["asof"] = asof
     metadata["dates"] = list(dates)

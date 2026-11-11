@@ -86,7 +86,17 @@ def _positive_mapping(frame, column):
     return {str(k): float(v) for k, v in values.items() if math.isfinite(float(v)) and float(v) > 0}
 
 
-def prepare_data(provider, signal_paths, market, start, end):
+def execution_quote_symbols(state):
+    """Return restored holdings and pending-order names that need quotes."""
+    state = state or {}
+    symbols = {str(symbol).upper() for symbol in (state.get("positions") or {})}
+    pending = state.get("pending_signal") or {}
+    for key in ("planned_buy", "planned_sell"):
+        symbols.update(str(symbol).upper() for symbol in (pending.get(key) or ()))
+    return symbols
+
+
+def prepare_data(provider, signal_paths, market, start, end, *, extra_quote_symbols=()):
     import qlib
     from qlib.data import D
 
@@ -94,12 +104,17 @@ def prepare_data(provider, signal_paths, market, start, end):
     calendar = [str(d)[:10] for d in D.calendar(start_time="2000-01-01", end_time=end)]
     signal, provenance = load_signal(signal_paths, calendar, start, end)
     names = sorted(set(signal.index.get_level_values("instrument")))
+    quote_names = sorted(set(names) | {str(symbol).upper() for symbol in extra_quote_symbols})
     benchmark = BENCHMARKS[market]
-    print(f"[inputs] {market} frozen signal loaded, names={len(names)} dates={start}..{end}", flush=True)
+    print(
+        f"[inputs] {market} frozen signal loaded, names={len(names)} "
+        f"quote_names={len(quote_names)} dates={start}..{end}",
+        flush=True,
+    )
     root = Path(provider)
     missing_files = [
         f"{name}/{field}"
-        for name in names
+        for name in quote_names
         for field in ("open", "close", "factor", "volume")
         if not (root / "features" / name.lower() / f"{field}.day.bin").is_file()
     ]
@@ -110,7 +125,8 @@ def prepare_data(provider, signal_paths, market, start, end):
     if not (root / "features" / benchmark.lower() / "close.day.bin").is_file():
         raise ValueError("missing benchmark close file")
     fields = ["$open", "$close", "$factor", "Ref($close,1)", "$volume"]
-    quotes = D.features(names + [benchmark], fields, start_time=start, end_time=end, freq="day")
+    quote_request = quote_names + ([] if benchmark in quote_names else [benchmark])
+    quotes = D.features(quote_request, fields, start_time=start, end_time=end, freq="day")
     print(f"[inputs] {market} quotes loaded: {len(quotes)} rows", flush=True)
     if quotes.index.has_duplicates:
         raise ValueError("duplicate quote index")
@@ -127,7 +143,7 @@ def prepare_data(provider, signal_paths, market, start, end):
         f = frame.droplevel("datetime")
         by_day[str(day)[:10]] = {field: _positive_mapping(f, field) for field in fields}
     spans = D.list_instruments(D.instruments("all"), as_list=False)
-    listing = {name: str(min(a for a, _ in spans[name]))[:10] for name in names if spans.get(name)}
+    listing = {name: str(min(a for a, _ in spans[name]))[:10] for name in quote_names if spans.get(name)}
     provider_receipts = {}
     for rel in ("calendars/day.txt", "instruments/all.txt", f"instruments/{market}.txt"):
         p = root / rel
@@ -135,18 +151,20 @@ def prepare_data(provider, signal_paths, market, start, end):
             provider_receipts[rel] = file_sha(p)
     # Bind all price/factor/volume files used, including retired constituents.
     quote_hashes = {}
-    for i, name in enumerate(names + [benchmark], 1):
+    for i, name in enumerate(quote_request, 1):
         for field in ("open", "close", "factor", "volume"):
             p = root / "features" / name.lower() / f"{field}.day.bin"
             if p.is_file():
                 quote_hashes[f"{name}/{field}"] = file_sha(p)
         if i % 500 == 0:
-            print(f"[inputs] {market} quote hashes {i}/{len(names)+1}", flush=True)
+            print(f"[inputs] {market} quote hashes {i}/{len(quote_request)}", flush=True)
     provenance.update(
         {
             "provider_metadata": provider_receipts,
             "quote_files": quote_hashes,
             "n_names": len(names),
+            "n_quote_names": len(quote_names),
+            "extra_quote_symbols": sorted(set(quote_names) - set(names)),
             "execution_rule_version": EXECUTION_RULE_VERSION,
         }
     )

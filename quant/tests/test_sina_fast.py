@@ -132,3 +132,81 @@ def test_fast_path_matches_public_akshare_exactly():
                 date: (bar.open, bar.high, bar.low, bar.close, bar.volume, bar.amount) for date, bar in ours.items()
             }
             assert actual == expected
+
+
+def _alignment_full():
+    return pd.DataFrame(
+        {
+            "open": [10.0, 5.0],
+            "high": [10.0, 5.0],
+            "low": [10.0, 5.0],
+            "close": [10.0, 5.0],
+            "volume": [100.0, 100.0],
+            "amount": [1000.0, 500.0],
+        },
+        index=pd.to_datetime(["2026-11-03", "2026-11-05"]).date,
+    )
+
+
+def test_hfq_keeps_factor_change_on_a_non_trading_date():
+    factor = pd.Series({pd.Timestamp("2026-11-03").date(): 1.0, pd.Timestamp("2026-11-04").date(): 2.0}).sort_index()
+    frame = _hfq_frame(_alignment_full(), factor, "2026-11-03", "2026-11-05")
+    assert frame.loc[pd.Timestamp("2026-11-05").date(), "close"] == 10.0
+
+
+def test_hfq_keeps_factor_recorded_before_the_window():
+    full = pd.DataFrame(
+        {
+            "open": [10.0, 11.0],
+            "high": [10.0, 11.0],
+            "low": [10.0, 11.0],
+            "close": [10.0, 11.0],
+            "volume": [100.0, 100.0],
+            "amount": [1000.0, 1100.0],
+        },
+        index=pd.to_datetime(["2026-11-05", "2026-11-06"]).date,
+    )
+    factor = pd.Series({pd.Timestamp("2026-11-01").date(): 2.0}).sort_index()
+    frame = _hfq_frame(full, factor, "2026-11-05", "2026-11-06")
+    assert frame.loc[pd.Timestamp("2026-11-05").date(), "close"] == 20.0
+    assert frame.loc[pd.Timestamp("2026-11-06").date(), "close"] == 22.0
+
+
+def test_hfq_factor_nan_does_not_silently_use_raw(monkeypatch):
+    factor = pd.Series(
+        {pd.Timestamp("2026-11-03").date(): float("nan"), pd.Timestamp("2026-11-04").date(): 2.0}
+    ).sort_index()
+    frame = _hfq_frame(_alignment_full(), factor, "2026-11-03", "2026-11-05")
+    # 11-03 has no usable factor and is dropped; 11-05 uses the 11-04 factor.
+    assert pd.Timestamp("2026-11-03").date() not in frame.index
+    assert frame.loc[pd.Timestamp("2026-11-05").date(), "close"] == 10.0
+
+
+def test_fast_and_public_paths_use_the_same_factor_alignment(monkeypatch):
+    import akshare as ak
+
+    import data_ingest.sina as sina
+
+    full = _alignment_full()
+    factor = pd.Series({pd.Timestamp("2026-11-03").date(): 1.0, pd.Timestamp("2026-11-04").date(): 2.0}).sort_index()
+
+    monkeypatch.setattr(sina, "_akshare_urls", lambda: ("hist-{}", "factor-{}"))
+    monkeypatch.setattr(sina, "_http_text", lambda url, **kwargs: "ignored")
+    monkeypatch.setattr(sina, "_history_frame", lambda text: full.copy())
+    monkeypatch.setattr(sina, "_factor_series", lambda text: factor.copy())
+    fast = SinaSource(workers=1, retries=1, prefer_fast=True)
+    raw_fast, hfq_fast = fast._fast_pair("SH600000", "2026-11-03", "2026-11-05")
+
+    def public_daily(symbol, start_date, end_date, adjust):
+        if adjust == "hfq-factor":
+            return pd.DataFrame({"date": list(factor.index), "hfq_factor": list(factor.values)})
+        frame = full.reset_index()
+        frame.columns = ["date", *full.columns]
+        return frame
+
+    monkeypatch.setattr(ak, "stock_zh_a_daily", public_daily)
+    public = SinaSource(workers=1, retries=1, prefer_fast=False)
+    raw_public, hfq_public = public._public_pair("SH600000", "2026-11-03", "2026-11-05")
+    assert {date: bar.close for date, bar in raw_fast.items()} == {date: bar.close for date, bar in raw_public.items()}
+    assert {date: bar.close for date, bar in hfq_fast.items()} == {date: bar.close for date, bar in hfq_public.items()}
+    assert hfq_fast["2026-11-05"].close == 10.0

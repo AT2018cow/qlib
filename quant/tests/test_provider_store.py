@@ -188,3 +188,91 @@ def test_seal_legacy_directory_is_content_addressed(tmp_path):
     assert snapshot.digest == receipt["archive"]["sha256"]
     # The frozen directory is untouched.
     assert provider.is_dir()
+
+
+def test_materialize_cache_hit_does_not_read_archive_or_extract(tmp_path, monkeypatch):
+    import data_ingest.store as store
+
+    provider = make_provider(tmp_path / "provider")
+    publish(tmp_path, provider)
+    root = tmp_path / "vol"
+    snapshot = load_snapshot(root, "2026-11-10")
+    assert snapshot is not None
+    calls = []
+    original = store._extract_archive
+
+    def spy(*args, **kwargs):
+        calls.append(1)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(store, "_extract_archive", spy)
+    first = materialize(snapshot, tmp_path / "first", cache_root=tmp_path / "cache")
+    # A cache hit must not read the archive at all: remove it and call again.
+    snapshot.path.unlink()
+    second = materialize(snapshot, tmp_path / "second", cache_root=tmp_path / "cache")
+    assert first == second
+    assert len(calls) == 1
+    assert (second / "calendars" / "day.txt").is_file()
+
+
+def test_materialize_recovers_when_marker_root_is_missing(tmp_path):
+    provider = make_provider(tmp_path / "provider")
+    publish(tmp_path, provider)
+    root = tmp_path / "vol"
+    snapshot = load_snapshot(root, "2026-11-10")
+    assert snapshot is not None
+    cache_root = tmp_path / "cache"
+    local = materialize(snapshot, tmp_path / "first", cache_root=cache_root)
+    marker = cache_root / snapshot.digest / "ready.json"
+    payload = json.loads(marker.read_text())
+    assert payload["relative_root"] == "extract/provider"
+    shutil.rmtree(local)
+    recovered = materialize(snapshot, tmp_path / "second", cache_root=cache_root)
+    assert recovered == local
+    assert (recovered / "calendars" / "day.txt").is_file()
+
+
+def test_materialize_rejects_corrupt_marker_and_reextracts(tmp_path):
+    provider = make_provider(tmp_path / "provider")
+    publish(tmp_path, provider)
+    root = tmp_path / "vol"
+    snapshot = load_snapshot(root, "2026-11-10")
+    assert snapshot is not None
+    cache_root = tmp_path / "cache"
+    materialize(snapshot, tmp_path / "first", cache_root=cache_root)
+    marker = cache_root / snapshot.digest / "ready.json"
+    marker.write_text("{not-json")
+    recovered = materialize(snapshot, tmp_path / "second", cache_root=cache_root)
+    assert (recovered / "calendars" / "day.txt").is_file()
+
+
+@pytest.mark.parametrize("damage", ["truncate", "change_middle", "empty"])
+def test_materialize_rejects_cached_calendar_with_wrong_content_identity(tmp_path, monkeypatch, damage):
+    """S05: ready markers cannot bless a tampered extracted calendar."""
+    import data_ingest.store as store
+
+    provider = make_provider(tmp_path / "provider")
+    publish(tmp_path, provider)
+    snapshot = load_snapshot(tmp_path / "vol", "2026-11-10")
+    assert snapshot is not None
+    calls = []
+    original = store._extract_archive
+
+    def spy(*args, **kwargs):
+        calls.append(1)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(store, "_extract_archive", spy)
+    local = materialize(snapshot, tmp_path / "first", cache_root=tmp_path / "cache")
+    calendar = local / "calendars" / "day.txt"
+    if damage == "truncate":
+        calendar.write_text("2026-11-09\n")
+    elif damage == "change_middle":
+        calendar.write_text("2026-11-08\n2026-11-10\n")
+    else:
+        calendar.write_text("")
+
+    recovered = materialize(snapshot, tmp_path / "second", cache_root=tmp_path / "cache")
+    assert recovered == local
+    assert calendar.read_text() == (provider / "calendars" / "day.txt").read_text()
+    assert len(calls) == 2

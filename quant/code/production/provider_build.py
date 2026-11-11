@@ -45,6 +45,44 @@ def _code_source_sha() -> str:
         return "unavailable"
 
 
+def _build_with_membership_retry(
+    pipeline,
+    base_local: Path,
+    out_local: Path,
+    build_kwargs: dict,
+    target_dates: list[str],
+    trade_date: str,
+):
+    """Retry one same-day CSIndex lag without masking the original error.
+
+    ``pipeline.build`` fails before creating ``out_local`` when the official
+    constituent date is stale.  The retry therefore cleans only an existing
+    staging directory and never replaces a membership/evidence error with a
+    cleanup ``FileNotFoundError``.
+    """
+    try:
+        return pipeline.build(base_local, out_local, **build_kwargs)
+    except PipelineError as exc:
+        match = re.search(r"constituent date (\d{4}-\d{2}-\d{2}) != asof", str(exc))
+        if match is None or len(target_dates) != 1:
+            raise
+        lag_days = (date_cls.fromisoformat(trade_date) - date_cls.fromisoformat(match.group(1))).days
+        if lag_days < 0 or lag_days > 3:
+            raise
+        print(
+            f"[overlay] CSIndex snapshot {match.group(1)} lags asof {trade_date} by {lag_days}d; "
+            "retrying with equality-verified base PIT membership",
+            flush=True,
+        )
+        try:
+            if out_local.exists():
+                shutil.rmtree(out_local)
+        except OSError as cleanup_error:  # pragma: no cover - filesystem boundary
+            print(f"[overlay] staging cleanup failed; keeping original error: {cleanup_error}", flush=True)
+            raise exc
+        return pipeline.build(base_local, out_local, allow_base_membership=True, **build_kwargs)
+
+
 def build_provider_archive(
     root: str | Path,
     trade_date: str,
@@ -153,22 +191,14 @@ def build_provider_archive(
                 "manifest_sha256": base.manifest_sha256,
             },
         )
-        try:
-            manifest = pipeline.build(base_local, out_local, **build_kwargs)
-        except PipelineError as exc:
-            match = re.search(r"constituent date (\d{4}-\d{2}-\d{2}) != asof", str(exc))
-            if match is None or len(target_dates) != 1:
-                raise
-            lag_days = (date_cls.fromisoformat(trade_date) - date_cls.fromisoformat(match.group(1))).days
-            if lag_days < 0 or lag_days > 3:
-                raise
-            print(
-                f"[overlay] CSIndex snapshot {match.group(1)} lags asof {trade_date} by {lag_days}d; "
-                "retrying with equality-verified base PIT membership",
-                flush=True,
-            )
-            shutil.rmtree(out_local)
-            manifest = pipeline.build(base_local, out_local, allow_base_membership=True, **build_kwargs)
+        manifest = _build_with_membership_retry(
+            pipeline,
+            base_local,
+            out_local,
+            build_kwargs,
+            target_dates,
+            trade_date,
+        )
 
         archive_path = work / f"{trade_date}.tar.gz"
         archive_meta = create_provider_archive(out_local, archive_path, read_workers=16)

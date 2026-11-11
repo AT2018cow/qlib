@@ -61,6 +61,8 @@ class ResourceSampler:
         self._started_wall: str | None = None
         self._unavailable: set[str] = set()
         self._stage_stack: list[dict] = []
+        self._cpu_seen: dict[tuple[int, int], float] = {}
+        self._cpu_lifetime_max = 0.0
 
     # ---- low-level readers -------------------------------------------------
     def _children_map(self) -> dict[int, list[int]]:
@@ -94,24 +96,45 @@ class ResourceSampler:
             stack.extend(children.get(current, []))
         return output
 
-    def _proc_cpu_seconds(self, pids: list[int]) -> float | None:
+    def _proc_cpu_entries(self, pids: list[int]) -> dict[tuple[int, int], dict] | None:
+        """Return lifetime CPU per (pid, starttime), including reaped children.
+
+        ``utime+stime`` is the process lifetime CPU; ``cutime+cstime`` is the
+        CPU of already-reaped children.  Keying by starttime avoids treating a
+        reused PID as the same process.
+        """
         ticks = os.sysconf("SC_CLK_TCK")
-        total = 0.0
-        found = False
+        entries: dict[tuple[int, int], dict] = {}
         for pid in pids:
             stat = _read_text(self.proc_root / str(pid) / "stat")
             if not stat:
                 continue
             try:
                 tail = stat.rsplit(")", 1)[1].strip().split()
-                total += (int(tail[11]) + int(tail[12])) / ticks
-                found = True
+                starttime = int(tail[19])
+                entries[(pid, starttime)] = {
+                    "self": (int(tail[11]) + int(tail[12])) / ticks,
+                    "reaped": (int(tail[13]) + int(tail[14])) / ticks,
+                }
             except (IndexError, ValueError):
                 continue
-        if not found:
+        if not entries:
             self._unavailable.add("proc_cpu")
             return None
-        return total
+        return entries
+
+    def _update_cpu(self, entries: dict[tuple[int, int], dict] | None) -> float | None:
+        if entries is None:
+            return None
+        for key, item in entries.items():
+            self._cpu_seen[key] = max(self._cpu_seen.get(key, 0.0), float(item["self"]))
+        # The live tree's self+reaped sum captures children that were reaped
+        # between samples.  The per-key self maximum captures exited children
+        # observed earlier.  Taking the maximum avoids double-counting the same
+        # child; the result is a lower bound, never a negative delta.
+        live_lifetime = sum(float(item["self"]) + float(item["reaped"]) for item in entries.values())
+        self._cpu_lifetime_max = max(self._cpu_lifetime_max, live_lifetime)
+        return max(sum(self._cpu_seen.values()), self._cpu_lifetime_max)
 
     def _proc_memory_kb(self, pids: list[int], field: str) -> int | None:
         total = 0
@@ -179,12 +202,13 @@ class ResourceSampler:
 
     def sample_once(self) -> dict:
         pids = self._tree()
+        entries = self._proc_cpu_entries(pids)
         return {
             "epoch": time.time(),
             "pid_count": len(pids),
             "rss_kb_sum": self._proc_memory_kb(pids, "rss"),
             "pss_kb_sum": self._proc_memory_kb(pids, "pss"),
-            "cpu_seconds_sum": self._proc_cpu_seconds(pids),
+            "cpu_seconds_sum": self._update_cpu(entries),
             "cgroup": self._cgroup(),
         }
 
@@ -263,7 +287,26 @@ class ResourceSampler:
             for item in self._samples
             if (item.get("cgroup") or {}).get("memory_peak_bytes") is not None
         ]
-        cpu_delta = (cpu_values[-1] - cpu_values[0]) if len(cpu_values) >= 2 else None
+        process_cpu_delta = (cpu_values[-1] - cpu_values[0]) if len(cpu_values) >= 2 else None
+        cgroup_start = next(
+            (
+                (item.get("cgroup") or {}).get("cpu_seconds")
+                for item in self._samples
+                if (item.get("cgroup") or {}).get("cpu_seconds") is not None
+            ),
+            None,
+        )
+        cgroup_end = next(
+            (
+                (item.get("cgroup") or {}).get("cpu_seconds")
+                for item in reversed(self._samples)
+                if (item.get("cgroup") or {}).get("cpu_seconds") is not None
+            ),
+            None,
+        )
+        cgroup_delta = cgroup_end - cgroup_start if cgroup_start is not None and cgroup_end is not None else None
+        cpu_delta = cgroup_delta if cgroup_delta is not None else process_cpu_delta
+        cpu_method = "cgroup" if cgroup_delta is not None else "process_lifetime_lower_bound"
         summary = {
             "status": "ok",
             "started_utc": self._started_wall,
@@ -272,6 +315,9 @@ class ResourceSampler:
             "samples": len(self._samples),
             "pid_count_max": max(item.get("pid_count") or 0 for item in self._samples),
             "cpu_seconds": round(cpu_delta, 3) if cpu_delta is not None else None,
+            "cpu_seconds_method": cpu_method,
+            "cpu_seconds_is_lower_bound": cpu_method != "cgroup",
+            "process_cpu_seconds_lower_bound": (round(process_cpu_delta, 3) if process_cpu_delta is not None else None),
             "avg_cores": round(cpu_delta / wall, 3) if cpu_delta is not None and wall else None,
             "rss_kb_max": max(rss_values) if rss_values else None,
             "pss_kb_max": max(pss_values) if pss_values else None,

@@ -32,7 +32,7 @@ from typing import Callable, Iterable, Mapping
 from data_ingest.manifest import canonical_json, sha256_text, write_json
 from data_ingest.model import Bar, FetchBatch, Membership, SymbolSeries
 
-CACHE_CONTRACT = "ingest-cache-v1"
+CACHE_CONTRACT = "ingest-cache-v2"
 
 
 class CacheError(RuntimeError):
@@ -246,7 +246,13 @@ class IngestCache:
         if not rows:
             return None
         frame = pd.DataFrame(rows)
-        path = self.directory / f"sina-{batch_index:06d}-{uuid.uuid4().hex[:8]}.parquet"
+        existing = self._sina_files()
+        next_sequence = 1
+        for path in existing:
+            parts = path.name.split("-", 2)
+            if len(parts) >= 2 and parts[1].isdigit():
+                next_sequence = max(next_sequence, int(parts[1]) + 1)
+        path = self.directory / f"sina-{next_sequence:06d}-{uuid.uuid4().hex[:8]}.parquet"
         tmp = path.with_name(f".{path.name}.tmp")
         frame.to_parquet(tmp, index=False)
         os.replace(tmp, path)

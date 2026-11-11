@@ -232,6 +232,32 @@ def _extract_archive(archive_path: Path, target_dir: Path) -> Path:
     return Path(safe_extract_provider_archive(archive_path, target_dir))
 
 
+def _materialized_identity_error(snapshot: ProviderSnapshot, root: Path) -> str | None:
+    """Return an identity error for an extracted provider, or ``None``."""
+    calendar_path = root / "calendars" / "day.txt"
+    if not calendar_path.is_file():
+        return "materialized provider calendar is missing"
+    if sha256_file(calendar_path) != snapshot.calendar_sha256:
+        return "materialized provider calendar SHA256 mismatch"
+    try:
+        calendar = _calendar(root)
+    except ProviderStoreError as exc:
+        return str(exc)
+    if calendar != sorted(set(calendar)):
+        return "materialized provider calendar is not ordered and unique"
+    if calendar[0] != snapshot.calendar_start or calendar[-1] != snapshot.calendar_end:
+        return (
+            "materialized provider calendar endpoints mismatch: "
+            f"{calendar[0]}..{calendar[-1]} != {snapshot.calendar_start}..{snapshot.calendar_end}"
+        )
+    manifest_path = root / "manifest.json"
+    if snapshot.manifest_sha256 and (
+        not manifest_path.is_file() or sha256_file(manifest_path) != snapshot.manifest_sha256
+    ):
+        return "materialized provider manifest SHA256 mismatch"
+    return None
+
+
 def materialize(
     snapshot: ProviderSnapshot,
     destination: str | Path,
@@ -259,9 +285,20 @@ def materialize(
     if marker.is_file():
         receipt = _read_json(marker)
         if receipt is not None and receipt.get("digest") == snapshot.digest:
-            root = cache / "provider"
-            if (root / "calendars" / "day.txt").is_file():
-                return root
+            relative = receipt.get("relative_root")
+            if (
+                isinstance(relative, str)
+                and relative
+                and not Path(relative).is_absolute()
+                and ".." not in Path(relative).parts
+            ):
+                root = cache / relative
+                marker_identity_ok = (
+                    receipt.get("calendar_sha256") == snapshot.calendar_sha256
+                    and receipt.get("manifest_sha256") == snapshot.manifest_sha256
+                )
+                if marker_identity_ok and _materialized_identity_error(snapshot, root) is None:
+                    return root
     if cache.exists():
         shutil.rmtree(cache)
     cache.mkdir(parents=True)
@@ -279,19 +316,19 @@ def materialize(
         if digest.hexdigest() != snapshot.digest:
             raise ProviderStoreError("archive SHA256 mismatch")
     root = _extract_archive(archive, cache / "extract")
-    manifest_path = root / "manifest.json"
-    manifest_sha256 = sha256_file(manifest_path) if manifest_path.is_file() else None
-    if snapshot.manifest_sha256 and manifest_sha256 != snapshot.manifest_sha256:
-        raise ProviderStoreError("extracted manifest SHA256 mismatch")
-    calendar_end = _calendar(root)[-1]
-    if calendar_end != snapshot.calendar_end:
-        raise ProviderStoreError(f"extracted calendar end {calendar_end} != {snapshot.calendar_end}")
+    identity_error = _materialized_identity_error(snapshot, root)
+    if identity_error is not None:
+        raise ProviderStoreError(identity_error)
+    manifest_sha256 = sha256_file(root / "manifest.json")
+    calendar_end = snapshot.calendar_end
     marker.write_text(
         json.dumps(
             {
                 "digest": snapshot.digest,
+                "relative_root": str(root.relative_to(cache)),
                 "manifest_sha256": manifest_sha256,
                 "calendar_end": calendar_end,
+                "calendar_sha256": snapshot.calendar_sha256,
             },
             sort_keys=True,
         )

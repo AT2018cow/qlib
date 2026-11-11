@@ -274,3 +274,81 @@ marker 的 provider digest 是裸 64 位 hex，而 website `status` 接口要求
 **尚未发生**：11-12 06:00 的首次“从 archive base 追加新交易日 + 信号（预计因 source 变化重训）+ website 增量”调度运行。这是唯一仍未真实验证的主路径；在它通过前，本轮状态应为“切换验收通过，日常新日期构建待首次调度验收”，不能宣布生产已完全稳定。
 
 建议验收：11-12 06:30 检查 `preopen_status/2026-11-12.json`、`provider_builds/` 失败记录、`cn_data_overlay/archives/2026-11-11/` receipt、signal journal/website status、`daily_readonly_check` 09:00 结果；并保存普通日账单。
+
+## 11. 第二轮复审整改（当前未提交工作区，2026-11-11）
+
+本节是后续本地整改记录，不能回写成第 10 节生产 v18 已包含的能力。整改开始和结束时 Git HEAD 仍为
+`41b1c96bde94cde141e906ba70c8295afdeda78b`；第一轮 R01–R10 与本轮 S01–S05 都在同一个**未提交工作区**。
+没有执行 reset/restore/clean，没有提交、推送、部署、Modal 云端实测或生产数据写入。
+
+### 11.1 S01–S05 本地关闭证据
+
+| 编号 | 本地状态 | 实现与数值/失败证据 |
+|---|---|---|
+| S01 | 已关闭 | 生产入口改为有界祖先扫描并优先验证容器代码根；候选不可读时继续，本地/浅层序列化布局均测试，全部缺失时明确报错；不再固定索引 `parents[2]`。 |
+| S02 | 已关闭 | frozen anchor 的真实日期进入逐 session 续接；只向新 provider 写 target 行，旧前缀不改。10→11→12 无公司行为场景得到 close=1.2、factor=0.1；另覆盖连续两次公司行为、停牌桥接和桥接证据缺失拒绝。gate 比较独立生成的 expected factor 与实际物化 `.bin` 中的 factor。 |
+| S03 | 已关闭 | 对缓存与本次新抓取合并后的最终 symbol/date 输入统一校验；每个交易 session 必须有 Sina hfq、BaoStock preclose 或日期化停牌证据。坏缓存→补拉仍坏、首次抓取仍坏均 fail-closed；有效 preclose fallback 记录为 `baostock_preclose`；partial raw 按 symbol/date 合并；篡改落盘 factor 会被独立 gate 拒绝。 |
+| S04 | 已关闭 | 增量分支先加载并核对 prior ledger/final_state，再把恢复持仓及 pending buy/sell 加入 quote universe；signal/ranking universe 保持原 frozen signal。退指持仓经历 blocked sell 后的增量 replay 与 full replay 的逐日 report、session、orders、final_state 精确一致；真实缺价仍产生 gap 并由既有发布门禁拒绝。 |
+| S05 | 已关闭 | cache hit 和首次解包共用实际 calendar/manifest 身份校验；校验本地 `day.txt` 的 SHA256、非空、顺序唯一和首尾日期。截断、同末日篡改中间日期、空日历均重解包；正常命中仍不读远程 archive、不重复 extract。 |
+
+### 11.2 R01–R10 保留情况
+
+第二轮交接已认定 R01、R02、R04、R06、R07、R08、R09、R10 的第一轮实现有效；本轮没有移除这些实现或其测试。
+R03 的历史前缀保护由 dated-anchor 续接进一步补强，R05 的坏 hfq 缓存补拉由“最终合并输入仍需具备调整证据”补齐。
+相关 builder recovery、真实 archive asset、Sina factor 对齐、逐日 PIT、镜像过滤、materialize 命中、进程生命周期 CPU、sampler finally 测试均在完整套件中继续通过。
+
+### 11.3 本地命令与结果
+
+| 验证 | 结果 |
+|---|---|
+| 修复前 S01–S05 正式回归 | 25 passed、10 failed；失败分别命中路径解析、anchor 数值、调整证据、quote universe、calendar 身份 |
+| S01–S05 定向修复后 | 35 passed |
+| gate 实际物化 factor 独立校验 | 修复前 1 failed；修复后 1 passed |
+| data_ingest/store/website/sampler 等相关套件 | 148 passed、1 skipped |
+| `.venv/bin/pytest -q quant/tests` | **1062 passed、2 skipped、50 subtests passed**；12 个 Modal `.local()` 只读警告 |
+| 24 个变更/新增 Python 文件逐文件 Black 120 `--check` | PASS |
+| `git diff --check` | PASS |
+
+本地固定输入证明了价格/factor、blocked-sell 账户现金/持仓/成交/费用/NAV 的路径一致性，也覆盖 archive asset
+候选、builder 恢复和重试短路的既有回归；但本轮没有运行真实全市场 archive→新日期→信号→网站三市场云端链路。
+
+### 11.4 尚未完成和发布边界
+
+- **尚未提交/推送**：HEAD 仍是 `41b1c96bd`，本节代码、测试、第一轮修复和文档均在工作区。
+- **尚未部署**：第 10 节 v18 是整改前历史部署，不含当前 R/S 修复；未查询或改变当前 App 版本/活动任务。
+- **尚未云端/生产验收**：未验证真实全市场新日期构建、三市场信号、网站增量 receipt、09:00 只读检查和账单。
+- **资源结论未更新**：R09 的进程树 CPU 是观测下限，旧 0.68 core 样本仍不能支持进一步缩容。
+- 后续若获授权，只做生产输入只读、隔离输出、有界前台 attached 的集中验证；禁止 `modal run --detach`，不重复付费预热。
+
+因此当前准确状态是：**R01–R10 保留，S01–S05 已本地代码/回归关闭；整个工作区尚未提交、部署或生产验收。**
+
+## 12. 第三轮复权数值整改与最终本地验收（2026-11-11）
+
+第 11 节为前一阶段的历史状态。后续独立复审发现两处仍可错误 PASS 的公司行为边界，本节记录其修复与重新验收。
+用户授权修复后把本轮及此前累积整改一起提交、推送；提交/推送版本以包含本节的 Git 记录和操作回执为准。
+**本轮没有部署 App、运行 Modal 实验或改写生产数据。**
+
+### 12.1 两项 P1 修复
+
+| 问题 | 修复 | 回归证据 |
+|---|---|---|
+| 小 factor 下把真实除权变化当作绝对误差忽略 | `_adjustment_evidence` 使用相对 factor 容差，独立 `build_rows` 的 hfq fallback 同样使用尺度无关容差；落盘 factor gate 改为相对误差校验，避免小 factor 篡改被绝对容差放过 | 归一化 factor 从 `1e-6` 到 `100`；现金分红 `100 → 99.5` 的连续调整价/收益与坐标尺度无关；正常 hfq 舍入噪声仍保留已有 factor |
+| hfq 有限就忽略已取得的精确 BaoStock preclose | 有效、日期化的 BaoStock preclose 优先，记录 `baostock_preclose`；缺失/无效 preclose 时才使用有效 hfq | hfq 正确、滞后、偏高三类输入和多种 factor；均由精确 preclose 得到正确调整价 |
+
+额外保护：一旦 hfq 已与精确调整冲突，后续缺少 preclose 的 hfq-only 行不能撤销已经采用的精确调整，必须 fail-closed。
+后续精确行重新证实 hfq 一致后，可以恢复 hfq fallback；分别有拒绝和恢复回归。
+
+### 12.2 本地验证
+
+- 新增 **35 个参数化回归用例**；初始 31 个场景在修复前为 **24 failed、7 passed**，另补舍入噪声及证据重新一致场景。
+- 完整 `quant/tests`：**1097 passed、2 skipped、50 subtests passed**，12 个 Modal `.local()` 警告。
+- website Node 测试：**30 passed**。
+- 24 个变更/新增 Python 文件 Black 120 列检查通过；`git diff --check` 通过。
+- 独立复审原例重跑：normalized、unit、stale-hfq-with-precise-preclose 三种情形的调整价收益乘数全部为 **1.0**，不再产生虚假 0.5% 亏损。
+- provider 级回归核对实际 `.bin` close/factor、gate PASS、调整来源及冻结历史前缀，不仅检查内存计算结果。
+
+### 12.3 当前边界
+
+本地验收覆盖此前 R01–R10、S01–S05 和本节两项复权边界；交接文档中“未提交”等表述保留其历史时间点，不代表最终 Git 状态。
+真实全市场新日期 archive 构建、三市场信号/网站增量、09:00 只读检查和普通/重训日账单仍需单独的有界云端及生产验收。
+生产 v18 的历史记录不能被解释为已经部署本次修复；不因本地测试通过继续下调资源，也不回写既有不可变快照或账户记录。

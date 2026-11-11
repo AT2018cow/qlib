@@ -388,6 +388,43 @@ def test_incremental_prefix_requires_a_complete_ancestor_ledger(tmp_path, monkey
     assert prefix["previous"] == "2026-10-09"
     assert prefix["result_dir"] == result_dir
 
+    # R02: the real _latest_overlay_asset() archive shape has no local_path.
+    archive_dir = overlays / "archives" / "2026-10-12"
+    archive_dir.mkdir(parents=True)
+    (archive_dir / "calendar.txt").write_text("\n".join(calendar) + "\n")
+    (archive_dir / "manifest.json").write_text(
+        json.dumps({"status": "PASS", "base": {"calendar_end": "2026-10-09", "digest": prior_digest}})
+    )
+    archive_file = archive_dir / f"{current_digest}.tar.gz"
+    archive_file.write_bytes(b"abc")
+    receipt = {
+        "schema_version": 1,
+        "status": "PASS",
+        "date": "2026-10-12",
+        "calendar_end": "2026-10-12",
+        "archive": {
+            "path": f"archives/2026-10-12/{current_digest}.tar.gz",
+            "sha256": current_digest,
+            "size": 3,
+            "content_sha256": "e" * 64,
+        },
+        "manifest": {"sha256": "f" * 64},
+        "base": {"calendar_end": "2026-10-09", "digest": prior_digest},
+    }
+    (archive_dir / "receipt.json").write_text(json.dumps(receipt))
+    archive_asset = module._latest_overlay_asset(expected_end="2026-10-12")
+    assert archive_asset is not None
+    assert archive_asset["kind"] == "archive"
+    assert "local_path" not in archive_asset
+    assert archive_asset["base"]["digest"] == prior_digest
+    payload["provider_source"] = "overlay"
+    (result_dir / "result.json").write_text(json.dumps(payload))
+    archive_prefix = module._incremental_prior(source_sha, archive_asset, "csi300", "2026-10-12", calendar)
+    assert archive_prefix is not None
+    assert archive_prefix["previous"] == "2026-10-09"
+    payload["provider_source"] = "chenditc"
+    (result_dir / "result.json").write_text(json.dumps(payload))
+
     # Plan A: both directions are lineage boundaries.
     overlay_asset = {**asset, "source": "overlay"}
     assert module._incremental_prior(source_sha, overlay_asset, "csi300", "2026-10-12", calendar) is None
@@ -600,3 +637,125 @@ def test_overlay_base_prefers_archive_receipt_identity():
         "calendar_end": "2026-11-09",
         "digest": "d" * 64,
     }
+
+
+class _FakeSampler:
+    instances = []
+
+    def __init__(self, **kwargs):
+        self.started = False
+        self.stopped = False
+        self.stop_count = 0
+        _FakeSampler.instances.append(self)
+
+    def start(self):
+        self.started = True
+        return self
+
+    def stop(self):
+        self.stopped = True
+        self.stop_count += 1
+        return {"status": "ok", "samples": 1}
+
+    def summary(self):
+        return {"status": "ok", "samples": 1}
+
+
+def _website_module():
+    import importlib.util
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[1] / "code/ops/website_simulation_modal.py"
+    spec = importlib.util.spec_from_file_location("website_sampler_lifecycle_test", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_website_worker_stops_sampler_on_success_and_cache_hit(monkeypatch):
+    import resource_sampler
+
+    module = _website_module()
+    _FakeSampler.instances = []
+    monkeypatch.setattr(resource_sampler, "ResourceSampler", _FakeSampler)
+    for result in ({"status": "COMPLETED"}, {"status": "COMPLETED", "cached": True}):
+        monkeypatch.setattr(module, "_build_market_impl", lambda job, sampler=None, result=result: result)
+        assert module.build_market.local({"market": "csi300"}) == result
+    assert len(_FakeSampler.instances) == 2
+    assert all(instance.started and instance.stopped for instance in _FakeSampler.instances)
+
+
+def test_website_worker_stops_sampler_on_failure(monkeypatch):
+    import resource_sampler
+
+    module = _website_module()
+    _FakeSampler.instances = []
+
+    def fail(job, sampler=None):
+        raise RuntimeError("replay failed")
+
+    monkeypatch.setattr(resource_sampler, "ResourceSampler", _FakeSampler)
+    monkeypatch.setattr(module, "_build_market_impl", fail)
+    with pytest.raises(RuntimeError, match="replay failed"):
+        module.build_market.local({"market": "csi300"})
+    assert len(_FakeSampler.instances) == 1
+    assert _FakeSampler.instances[0].started and _FakeSampler.instances[0].stopped
+
+
+def test_archive_asset_skips_smoke_and_reaches_workers_without_local_path(monkeypatch):
+    import types
+
+    module = _website_module()
+    source_sha = "a" * 64
+    archive_asset = {
+        "kind": "archive",
+        "archive_path": "/data/cn_data_overlay/archives/2026-11-10/x.tar.gz",
+        "digest": "sha256:" + "b" * 64,
+        "size": 3,
+        "source": "overlay",
+        "calendar_end": "2026-11-10",
+        "calendar": ["2026-11-09", "2026-11-10"],
+        "base": {"calendar_end": "2026-11-09", "digest": "c" * 64},
+    }
+    monkeypatch.setattr(module, "data_volume", types.SimpleNamespace(reload=lambda: None))
+    monkeypatch.setattr(module, "simulation", types.SimpleNamespace(reload=lambda: None))
+    monkeypatch.setattr(module, "latest_asset", lambda expected_end=None: archive_asset)
+    monkeypatch.setattr(module, "already_published", lambda *args: None)
+    monkeypatch.setattr(module, "_budget_guard", lambda: {"allowed": True})
+    monkeypatch.setattr(module, "_incremental_prior", lambda *args: {"previous": "2026-11-09"})
+    monkeypatch.setattr(
+        module,
+        "build_market",
+        types.SimpleNamespace(
+            remote=lambda job: pytest.fail("incremental path must skip the smoke replay"),
+            map=lambda jobs, **kwargs: [{"market": job["market"], "asset": job["asset"]} for job in jobs],
+        ),
+    )
+    published = {}
+
+    def publish(results, source, asset, *, token):
+        published.update({"results": results, "source": source, "asset": asset})
+        return {"status": "PUBLISHED"}
+
+    monkeypatch.setattr(module, "publish_results", publish)
+    monkeypatch.setattr(
+        module,
+        "source_manifest",
+        lambda kind: {"sha256": source_sha, "schema_version": 2, "kind": kind, "files": {}},
+        raising=False,
+    )
+    # daily() imports source_manifest from research_identity inside the function.
+    import research_identity
+
+    monkeypatch.setattr(
+        research_identity,
+        "source_manifest",
+        lambda kind: {"sha256": source_sha, "schema_version": 2, "kind": kind, "files": {}},
+    )
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+    result = module.daily.local(expected_source_sha256=source_sha, expected_provider_end="2026-11-10")
+    assert result["status"] == "PUBLISHED"
+    assert published["asset"] is archive_asset
+    assert "local_path" not in published["asset"]
+    assert {item["market"] for item in published["results"]} == {"csi300", "csi500", "csi1000"}
+    assert all(item["asset"] is archive_asset for item in published["results"])

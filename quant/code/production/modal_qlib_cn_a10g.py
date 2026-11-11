@@ -25,13 +25,31 @@ from pathlib import Path
 # /root/qlib.  Add the quant code root before importing helper packages such as
 # data_ingest so container imports match local/CI behavior.
 _QUANT_CODE = "/root/qlib/quant/code"
-if os.path.isdir(_QUANT_CODE):
-    if _QUANT_CODE not in sys.path:
-        sys.path.insert(0, _QUANT_CODE)
-    from quant_bootstrap import ensure_quant_import_paths
 
-    ensure_quant_import_paths()
 
+def _resolve_quant_code_root(entrypoint: str | Path, container_root: str | Path = "/root/qlib/quant/code") -> Path:
+    """Resolve the trusted quant code root without fixed parent indexes."""
+    candidates = [Path(container_root), *Path(entrypoint).resolve().parents]
+    for candidate in candidates:
+        try:
+            if (candidate / "quant_bootstrap.py").is_file():
+                return candidate
+        except OSError:
+            # A local sandbox may not be allowed to stat the known container
+            # path.  Continue to the checkout ancestors; absence of every
+            # readable candidate still fails clearly below.
+            continue
+    raise RuntimeError(f"cannot resolve quant code root for entrypoint {entrypoint}")
+
+
+_RESOLVED_QUANT_CODE = _resolve_quant_code_root(__file__)
+if str(_RESOLVED_QUANT_CODE) not in sys.path:
+    sys.path.insert(0, str(_RESOLVED_QUANT_CODE))
+from quant_bootstrap import ensure_quant_import_paths
+
+ensure_quant_import_paths()
+
+from image_filters import should_exclude_from_image
 from daily_pipeline import MAIN_TIMEOUT_SECONDS, BACKUP_TIMEOUT_SECONDS, SIGNAL_WORKER_TIMEOUT_SECONDS
 from qlib_audit_fixes import read_trading_calendar, purge_cfg_splits
 from qlib_live_retrain import (
@@ -158,48 +176,7 @@ image = (
         ".",
         remote_path="/root/qlib",
         copy=True,
-        ignore=lambda path: (
-            str(path).endswith(
-                (
-                    ".cpp",
-                    ".so",
-                    ".pem",
-                    ".key",
-                    ".p12",
-                    ".pfx",
-                    ".netrc",
-                    ".npmrc",
-                    ".pypirc",
-                )
-            )
-            or any(
-                part in str(path)
-                for part in (
-                    ".venv",
-                    ".env",
-                    "secrets",
-                    "credentials",
-                    ".ssh",
-                    ".docker",
-                    "node_modules",
-                    ".worktrees",
-                    "mlruns",
-                    "__pycache__",
-                    "quant/local_backup",
-                    "quant/data",
-                    ".pytest_cache",
-                    ".mypy_cache",
-                    ".ruff_cache",
-                    ".black_cache",
-                    ".codex",
-                    ".agents",
-                    ".aws",
-                )
-            )
-            or str(path).startswith(".git/")
-            or "/.git/" in str(path)
-            or str(path) == "modal_qlib_cn_a10g.py"
-        ),
+        ignore=lambda path: should_exclude_from_image(path) or str(path) == "modal_qlib_cn_a10g.py",
     )
     # --no-deps：上面已预装全部运行时依赖。若不带它，pip 会对 pyqlib 的未锁版本依赖
     # （如 numpy）重新解析并升级到 2.x，导致按 1.26 头文件编译的 Cython 扩展在运行时

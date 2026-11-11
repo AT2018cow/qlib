@@ -155,9 +155,11 @@ def _raw_frame(full, start: str, end: str):
 
 def _hfq_frame(full, factor, start: str, end: str):
     """Reproduce AkShare's hfq-frame pipeline without a second history request."""
-    values = factor.reindex(full.index)
-    # AkShare merges outer, forward-fills, then drops rows without a factor.
-    values = values.ffill()
+    # AkShare merges outer on the raw/factor union, forward-fills, then keeps
+    # the raw dates.  Reindexing directly to the raw index would discard a
+    # factor change recorded on a non-trading date or before the window.
+    union = full.index.union(factor.index)
+    values = factor.reindex(union).ffill().reindex(full.index)
     frame = full.copy()
     frame["hfq_factor"] = values
     frame = frame.dropna()

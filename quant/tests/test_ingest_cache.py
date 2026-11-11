@@ -97,3 +97,18 @@ def test_corrupt_sina_batch_is_reported(tmp_path):
     bad.write_bytes(b"not parquet")
     with pytest.raises(CacheError):
         cache.load_sina()
+
+
+def test_later_retry_batches_override_earlier_rows_regardless_of_caller_index(tmp_path):
+    cache = IngestCache(tmp_path, "2026-11-10")
+    first = make_batch("SH600000", close=10.0)
+    first.series["SH600000"].hfq["2026-11-10"] = Bar(
+        date="2026-11-10", open=1, high=1, low=1, close=float("nan"), volume=0, amount=0
+    )
+    cache.append_sina(first, batch_index=1)
+    second = make_batch("SH600000", close=11.0)
+    cache.append_sina(second, batch_index=1)
+    loaded = cache.load_sina()
+    assert loaded is not None
+    assert loaded.batch.series["SH600000"].raw["2026-11-10"].close == 11.0
+    assert loaded.batch.series["SH600000"].hfq["2026-11-10"].close == 11.0

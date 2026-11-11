@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import json
 import math
 
 import numpy as np
 import pytest
 
 from data_ingest.adjust import build_rows
+from data_ingest.gate import run_gate
 from data_ingest.manifest import canonical_json, sha256_text
 from data_ingest.model import Bar, CrossCheck, FetchBatch, Membership, SymbolSeries
 from data_ingest.overlay import read_bin_value, read_calendar
@@ -164,11 +166,11 @@ class FakeBaoStock:
         return batch
 
 
-def _memberships():
+def _memberships(asof=None):
     return {
         market: Membership(
             market=market,
-            asof=TARGET_DATES[-1],
+            asof=asof or TARGET_DATES[-1],
             members=tuple(NEW_MEMBERS[market]),
             raw_sha256="a" * 64,
             weights_date=TARGET_DATES[-1],
@@ -190,6 +192,10 @@ def _build(tmp_path, monkeypatch, *, sina=None, baostock=None, **kwargs):
         baostock=baostock or FakeBaoStock(market),
         calendar_dates=list(BASE_DATES) + list(TARGET_DATES),
         crosscheck_count=3,
+    )
+    kwargs.setdefault(
+        "membership_history",
+        {day: _memberships(asof=day) for day in TARGET_DATES},
     )
     manifest = pipeline.build(
         base,
@@ -241,6 +247,41 @@ def test_pipeline_rejects_crosscheck_mismatch(tmp_path, monkeypatch):
         )
 
 
+def test_corporate_action_gate_reads_materialized_factor(tmp_path, monkeypatch):
+    """S03: the gate must reject a bad output bin even when the in-memory row was correct."""
+    base, overlay, _, _ = _build(tmp_path, monkeypatch)
+    factor_bin = overlay / "features" / "sh600000" / "factor.day.bin"
+    payload = np.fromfile(factor_bin, dtype="<f")
+    start = int(payload[0])
+    target_index = read_calendar(overlay).index(TARGET_DATES[-1])
+    payload[target_index - start + 1] = 2.0
+    payload.astype("<f").tofile(factor_bin)
+
+    rows = json.loads((overlay / "new_rows.json").read_text())
+    report = run_gate(
+        base,
+        overlay,
+        base_end=BASE_DATES[-1],
+        asof=TARGET_DATES[-1],
+        dates=list(TARGET_DATES),
+        memberships=_memberships(),
+        rows=rows,
+        corporate_actions=[
+            {
+                "symbol": "SH600000",
+                "date": TARGET_DATES[-1],
+                "expected_factor": 1.0,
+                "actual_factor": 1.0,
+            }
+        ],
+        require_crosscheck=False,
+        membership_history={day: _memberships(asof=day) for day in TARGET_DATES},
+    )
+
+    assert report.status == "FAIL"
+    assert any("corporate_actions" in failure for failure in report.failures)
+
+
 def test_build_rows_normal_day_and_ex_date():
     base = {"SH600000": {"close": 10.0, "adjclose": 10.0, "factor": 1.0}}
     normal = Bar("2026-11-05", 10.0, 10.5, 9.5, 10.0, 1000.0, 10000.0)
@@ -264,6 +305,87 @@ def test_build_rows_normal_day_and_ex_date():
     assert rows["2026-11-06"]["factor"] == pytest.approx(1.0)
     assert rows["2026-11-06"]["change"] == pytest.approx(9.0 / 10.0 - 1.0)
     assert rows["2026-11-05"]["volume"] == pytest.approx(10.0)
+
+
+def test_build_rows_uses_dated_anchor_and_bridges_missing_frozen_session():
+    """S02: an old anchor cannot treat a multi-session rise as an ex-date."""
+    anchor = {
+        "SH600000": {
+            "date": "2026-11-03",
+            "close": 1.0,
+            "adjclose": 1.0,
+            "factor": 0.1,
+        }
+    }
+    bridge = Bar("2026-11-04", 11.0, 11.0, 11.0, 11.0, 1000.0, 11000.0)
+    target = Bar("2026-11-05", 12.0, 12.0, 12.0, 12.0, 1000.0, 12000.0)
+    anchor_raw = Bar("2026-11-03", 10.0, 10.0, 10.0, 10.0, 1000.0, 10000.0)
+    source = SymbolSeries(
+        raw={bar.date: bar for bar in (anchor_raw, bridge, target)},
+        hfq={bar.date: bar for bar in (anchor_raw, bridge, target)},
+    )
+    rows = build_rows(
+        {},
+        {"SH600000": source},
+        ["2026-11-05"],
+        base_end="2026-11-04",
+        base_anchors=anchor,
+        preclose={
+            ("SH600000", "2026-11-04"): 10.0,
+            ("SH600000", "2026-11-05"): 11.0,
+        },
+    )["SH600000"]
+    assert rows["2026-11-05"]["close"] == pytest.approx(1.2)
+    assert rows["2026-11-05"]["adjclose"] == pytest.approx(1.2)
+    assert rows["2026-11-05"]["factor"] == pytest.approx(0.1)
+
+
+@pytest.mark.parametrize("coordinate_factor", [1e-6, 0.01, 1.0])
+def test_build_rows_hfq_cash_dividend_is_coordinate_scale_invariant(coordinate_factor):
+    symbol = "SH600000"
+    base_day, target_day = "2026-11-04", "2026-11-05"
+
+    def bar(day, price):
+        return Bar(day, price, price, price, price, 1000.0, price * 1000.0)
+
+    rows = build_rows(
+        {symbol: {"close": 100.0 * coordinate_factor, "adjclose": 200.0, "factor": coordinate_factor}},
+        {
+            symbol: SymbolSeries(
+                raw={base_day: bar(base_day, 100.0), target_day: bar(target_day, 99.5)},
+                hfq={base_day: bar(base_day, 200.0), target_day: bar(target_day, 200.0)},
+            )
+        },
+        [target_day],
+        base_end=base_day,
+    )[symbol]
+    assert rows[target_day]["close"] == pytest.approx(100.0 * coordinate_factor, rel=1e-12, abs=0.0)
+    assert rows[target_day]["change"] == pytest.approx(0.0, abs=1e-12)
+
+
+@pytest.mark.parametrize("expected_factor", [1e-6, 0.01, 1.0])
+def test_corporate_action_gate_uses_relative_factor_tolerance(tmp_path, monkeypatch, expected_factor):
+    base, overlay, _, _ = _build(tmp_path, monkeypatch)
+    factor_bin = overlay / "features" / "sh600000" / "factor.day.bin"
+    payload = np.fromfile(factor_bin, dtype="<f")
+    target_index = read_calendar(overlay).index(TARGET_DATES[-1])
+    payload[target_index - int(payload[0]) + 1] = expected_factor * 0.995
+    payload.astype("<f").tofile(factor_bin)
+    rows = json.loads((overlay / "new_rows.json").read_text())
+    report = run_gate(
+        base,
+        overlay,
+        base_end=BASE_DATES[-1],
+        asof=TARGET_DATES[-1],
+        dates=list(TARGET_DATES),
+        memberships=_memberships(),
+        rows=rows,
+        corporate_actions=[{"symbol": "SH600000", "date": TARGET_DATES[-1], "expected_factor": expected_factor}],
+        require_crosscheck=False,
+        membership_history={day: _memberships(asof=day) for day in TARGET_DATES},
+    )
+    assert report.status == "FAIL"
+    assert any("corporate_actions" in failure for failure in report.failures)
 
 
 def test_canonical_json_and_crosscheck_status():
