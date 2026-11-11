@@ -606,13 +606,27 @@ def seal_directory_snapshot(
     work.mkdir(parents=True)
     archive = work / "provider.tar.gz"
     meta = create_provider_archive(snapshot.path, archive, read_workers=32)
+    base_payload = dict(snapshot.base)
+    prior = latest_snapshot(root, before=date)
+    if prior is not None and prior.calendar_end == str(base_payload.get("calendar_end") or "")[:10]:
+        base_payload = {
+            "kind": prior.kind,
+            "date": prior.date,
+            "digest": prior.digest,
+            "path": str(prior.path),
+            "calendar_start": prior.calendar_start,
+            "calendar_end": prior.calendar_end,
+            "calendar_sha256": prior.calendar_sha256,
+            "archive_sha256": prior.digest,
+            "manifest_sha256": prior.manifest_sha256,
+        }
     receipt = build_receipt(
         snapshot,
         date=date,
         archive=meta,
         manifest_sha256=snapshot.manifest_sha256,
         calendar_sha256=snapshot.calendar_sha256,
-        base=snapshot.base,
+        base=base_payload,
         provenance={
             "builder": "seal-directory",
             "source_directory": str(snapshot.path),

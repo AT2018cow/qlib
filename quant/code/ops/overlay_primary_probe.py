@@ -805,7 +805,12 @@ def repro_main(snapshot_date: str = "2026-11-10", base_date: str = "2026-11-09")
     retries=0,
     max_containers=1,
 )
-def mini_build(snapshot_date: str = "2026-11-10", base_date: str = "2026-11-09", n_symbols: int = 20) -> dict:
+def mini_build(
+    snapshot_date: str = "2026-11-10",
+    base_date: str = "2026-11-09",
+    n_symbols: int = 20,
+    stale_membership: bool = False,
+) -> dict:
     """Bounded real-data rebuild of one session from a frozen archive base."""
     import hashlib
     import shutil
@@ -891,18 +896,25 @@ def mini_build(snapshot_date: str = "2026-11-10", base_date: str = "2026-11-09",
     memberships = {
         market: Membership(
             market=market,
-            asof=snapshot_date,
+            asof=base_date if stale_membership else snapshot_date,
             members=tuple(sorted(selected[market])),
             raw_sha256=hashlib.sha256("\n".join(selected[market]).encode()).hexdigest(),
             source_url=f"probe:frozen:{snapshot_date}",
         )
         for market in selected
     }
+    membership_provider = None
+    if stale_membership:
+        import data_ingest.pipeline as pipeline_module
+
+        pipeline_module.fetch_all_memberships = lambda *args, **kwargs: memberships
+    else:
+        membership_provider = lambda markets: {market: memberships[market] for market in markets}
     result = build_provider_archive(
         root,
         snapshot_date,
         commit_fn=probe.commit,
-        membership_provider=lambda markets: {market: memberships[market] for market in markets},
+        membership_provider=membership_provider,
         extra_symbols=(),
         required_symbols=(),
         require_qlib_smoke=True,
@@ -914,6 +926,9 @@ def mini_build(snapshot_date: str = "2026-11-10", base_date: str = "2026-11-09",
     new_rows = json.loads((new_root / "new_rows.json").read_text())
     old_rows = json.loads((extracted / "new_rows.json").read_text())
     mismatches = []
+    mismatch_records = []
+    relative_errors = []
+    by_field = {}
     for symbol in symbols:
         for date in (snapshot_date,):
             left, right = new_rows.get(symbol, {}).get(date), old_rows.get(symbol, {}).get(date)
@@ -927,9 +942,19 @@ def mini_build(snapshot_date: str = "2026-11-10", base_date: str = "2026-11-09",
                 if a is None or b is None or not np.isfinite(a) or not np.isfinite(b):
                     if a != b:
                         mismatches.append([symbol, date, field, a, b])
+                        mismatch_records.append([symbol, date, field, a, b, None])
+                        by_field[field] = by_field.get(field, 0) + 1
                     continue
                 if not np.isclose(a, b, rtol=1e-6, atol=1e-8):
                     mismatches.append([symbol, date, field, a, b])
+                    by_field[field] = by_field.get(field, 0) + 1
+                    if abs(b) > 1e-8:
+                        relative = abs(a - b) / abs(b)
+                        relative_errors.append(relative)
+                    else:
+                        relative = abs(a - b)
+                    mismatch_records.append([symbol, date, field, a, b, relative])
+    relative_errors.sort()
     report = {
         "status": "COMPARED",
         "snapshot_date": snapshot_date,
@@ -938,7 +963,17 @@ def mini_build(snapshot_date: str = "2026-11-10", base_date: str = "2026-11-09",
         "elapsed_seconds": round(time.monotonic() - started, 3),
         "build": result,
         "row_mismatches": len(mismatches),
+        "row_mismatch_max_relative": max(relative_errors) if relative_errors else 0.0,
+        "row_mismatch_p95_relative": (
+            relative_errors[int(0.95 * (len(relative_errors) - 1))] if relative_errors else 0.0
+        ),
+        "row_mismatch_by_field": dict(sorted(by_field.items())),
         "row_mismatch_sample": mismatches[:20],
+        "row_mismatch_largest": sorted(
+            (item for item in mismatch_records if item[5] is not None),
+            key=lambda item: item[5],
+            reverse=True,
+        )[:20],
     }
     out = Path("/probe/mini") / f"{snapshot_date}-{int(time.time())}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -1111,4 +1146,149 @@ def seal_bench(snapshot_date: str = "2026-11-10") -> dict:
         json.dumps({k: report[k] for k in ("status", "elapsed_seconds", "resolved", "resolved_digest")}, indent=2),
         flush=True,
     )
+    return report
+
+
+PROBE_SIM_VOLUME = "qlib-overlay-probe-sim"
+probe_sim = modal.Volume.from_name(PROBE_SIM_VOLUME, create_if_missing=True)
+
+
+def _asset_from_sealed_receipt(root: Path, date: str) -> dict:
+    receipt = json.loads((root / "archives" / date / "receipt.json").read_text())
+    archive = receipt["archive"]
+    calendar_path = root / "archives" / date / "calendar.txt"
+    calendar = [line.strip() for line in calendar_path.read_text().splitlines() if line.strip()]
+    return {
+        "kind": "archive",
+        "archive_path": str(root / archive["path"]),
+        "digest": f"sha256:{archive['sha256']}",
+        "size": int(archive["size"]),
+        "source": "overlay",
+        "calendar_end": receipt["calendar_end"],
+        "calendar": calendar,
+        "base": receipt.get("base") or {},
+    }
+
+
+def _compare_website_results(baseline_dir: Path, incremental_dir: Path) -> dict:
+    import pandas as pd
+
+    baseline = json.loads((baseline_dir / "result.json").read_text())
+    incremental = json.loads((incremental_dir / "result.json").read_text())
+    report = {
+        "baseline_replay_mode": baseline.get("replay_mode"),
+        "incremental_replay_mode": incremental.get("replay_mode"),
+        "asset_digest_equal": baseline.get("asset_digest") == incremental.get("asset_digest"),
+        "source_equal": baseline.get("source_sha256") == incremental.get("source_sha256"),
+    }
+    report["points_equal"] = baseline["series"]["points"] == incremental["series"]["points"]
+    report["final_state_equal"] = json.loads((baseline_dir / "final_state.json").read_text()) == json.loads(
+        (incremental_dir / "final_state.json").read_text()
+    )
+    baseline_report = pd.read_parquet(baseline_dir / "ledger" / "report.parquet")
+    incremental_report = pd.read_parquet(incremental_dir / "ledger" / "report.parquet")
+    baseline_orders = pd.read_parquet(baseline_dir / "ledger" / "orders.parquet")
+    incremental_orders = pd.read_parquet(incremental_dir / "ledger" / "orders.parquet")
+    report["ledger_report_equal"] = baseline_report.equals(incremental_report)
+    report["ledger_orders_equal"] = baseline_orders.equals(incremental_orders)
+    report["sessions_equal"] = (baseline_dir / "ledger" / "sessions.jsonl").read_text() == (
+        incremental_dir / "ledger" / "sessions.jsonl"
+    ).read_text()
+    report["metrics_equal"] = json.loads((baseline_dir / "ledger" / "metrics.json").read_text()) == json.loads(
+        (incremental_dir / "ledger" / "metrics.json").read_text()
+    )
+    report["baseline_latest"] = baseline["series"].get("latest_date")
+    report["incremental_latest"] = incremental["series"].get("latest_date")
+    report["baseline_points"] = len(baseline["series"]["points"])
+    report["incremental_points"] = len(incremental["series"]["points"])
+    return report
+
+
+@repro_app.function(
+    volumes={"/probe": probe, "/simulation": probe_sim},
+    cpu=8,
+    memory=16384,
+    timeout=60 * 60,
+    retries=0,
+    max_containers=1,
+)
+def website_incremental_repro() -> dict:
+    """Real 11-09/11-10 csi300 full vs incremental website rehearsal.
+
+    All writes go to the isolated probe simulation Volume.  The production
+    data Volume is not mounted here at all.
+    """
+    import shutil
+    import time
+
+    import website_simulation_modal as wsm
+    from research_identity import source_manifest
+
+    started = time.monotonic()
+    wsm.simulation = probe_sim
+    source = source_manifest("training")
+    source_sha = source["sha256"]
+    sealed_root = Path("/probe/seal-root")
+    assets = {
+        "2026-11-09": _asset_from_sealed_receipt(sealed_root, "2026-11-09"),
+        "2026-11-10": _asset_from_sealed_receipt(sealed_root, "2026-11-10"),
+    }
+    source_root = Path("/simulation") / source_sha
+    if source_root.exists():
+        shutil.rmtree(source_root)
+
+    def run(date: str, mode: str) -> dict:
+        job = {
+            "asset": assets[date],
+            "source_manifest": source,
+            "market": "csi300",
+            "mode": mode,
+        }
+        result = wsm._build_market_impl(job, sampler=None)
+        print(
+            f"[incremental-probe] {date} {mode}: {result.get('status')} "
+            f"mode={result.get('replay_mode')} elapsed={result.get('wall_seconds')}",
+            flush=True,
+        )
+        return result
+
+    run("2026-11-10", "smoke")
+    run("2026-11-09", "smoke")
+    baseline = run("2026-11-10", "full")
+    digest_root = Path("/simulation") / source_sha / assets["2026-11-10"]["digest"].split(":")[1]
+    baseline_dir = digest_root / "csi300" / "full-baseline"
+    full_dir = digest_root / "csi300" / "full"
+    if baseline_dir.exists():
+        shutil.rmtree(baseline_dir)
+    shutil.move(str(full_dir), str(baseline_dir))
+    prior = run("2026-11-09", "full")
+    incremental = run("2026-11-10", "full")
+    comparison = _compare_website_results(baseline_dir, full_dir)
+    report = {
+        "status": "COMPARED",
+        "source_sha256": source_sha,
+        "elapsed_seconds": round(time.monotonic() - started, 3),
+        "baseline": {
+            "status": baseline.get("status"),
+            "replay_mode": baseline.get("replay_mode"),
+            "asset_digest": baseline.get("asset_digest"),
+        },
+        "prior": {
+            "status": prior.get("status"),
+            "replay_mode": prior.get("replay_mode"),
+            "asset_digest": prior.get("asset_digest"),
+        },
+        "incremental": {
+            "status": incremental.get("status"),
+            "replay_mode": incremental.get("replay_mode"),
+            "asset_digest": incremental.get("asset_digest"),
+            "incremental_evidence": incremental.get("incremental"),
+        },
+        "comparison": comparison,
+    }
+    out = Path("/probe/website_incremental") / f"csi300-{int(time.time())}.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(report, indent=2, sort_keys=True, allow_nan=False) + "\n")
+    probe.commit()
+    print(json.dumps(report, indent=2, sort_keys=True)[:16000], flush=True)
     return report

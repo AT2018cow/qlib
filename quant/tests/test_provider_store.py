@@ -276,3 +276,28 @@ def test_materialize_rejects_cached_calendar_with_wrong_content_identity(tmp_pat
     assert recovered == local
     assert calendar.read_text() == (provider / "calendars" / "day.txt").read_text()
     assert len(calls) == 2
+
+
+def test_seal_binds_the_resolved_prior_archive_digest(tmp_path):
+    root = tmp_path / "vol"
+    prior_provider = make_provider(tmp_path / "prior", date="2026-11-09")
+    prior_receipt = publish(tmp_path / "prior-publish", prior_provider, date="2026-11-09")
+    source_archives = tmp_path / "prior-publish" / "vol" / "archives" / "2026-11-09"
+    target_archives = root / "archives" / "2026-11-09"
+    target_archives.parent.mkdir(parents=True)
+    shutil.copytree(source_archives, target_archives)
+    current = make_provider(root / "2026-11-10", date="2026-11-10")
+    (current / "manifest.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "status": "PASS",
+                "base": {"path": "/vol/cn_data_overlay/2026-11-09", "calendar_end": "2026-11-09"},
+                "target": {"asof": "2026-11-10", "dates": ["2026-11-10"]},
+            }
+        )
+    )
+    receipt = seal_directory_snapshot(root, "2026-11-10", work_dir=tmp_path / "work")
+    assert receipt["base"]["kind"] == "archive"
+    assert receipt["base"]["digest"] == prior_receipt["archive"]["sha256"]
+    assert receipt["base"]["calendar_end"] == "2026-11-09"
