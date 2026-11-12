@@ -1,0 +1,50 @@
+{
+  "csi300": {
+    "sessions": 25,
+    "baseline_sessions": 25,
+    "max_abs_account_diff": 0.0,
+    "max_abs_cash_diff": 0.0,
+    "baseline_final": 827122.13,
+    "st_final": 827122.13,
+    "baseline_return": -0.17287787,
+    "st_return": -0.17287787,
+    "orders": 58,
+    "blocked_buy": 1,
+    "blocked_sell": 0,
+    "st_active_dates": 0,
+    "st_symbol_dates": 0,
+    "elapsed_seconds": 4.002834796905518
+  },
+  "csi500": {
+    "sessions": 25,
+    "baseline_sessions": 25,
+    "max_abs_account_diff": 0.0,
+    "max_abs_cash_diff": 0.0,
+    "baseline_final": 926696.23,
+    "st_final": 926696.23,
+    "baseline_return": -0.07330376999999999,
+    "st_return": -0.07330376999999999,
+    "orders": 116,
+    "blocked_buy": 13,
+    "blocked_sell": 0,
+    "st_active_dates": 0,
+    "st_symbol_dates": 0,
+    "elapsed_seconds": 3.447171449661255
+  },
+  "csi1000": {
+    "sessions": 25,
+    "baseline_sessions": 25,
+    "max_abs_account_diff": 0.0,
+    "max_abs_cash_diff": 0.0,
+    "baseline_final": 862955.83,
+    "st_final": 862955.83,
+    "baseline_return": -0.13704417000000002,
+    "st_return": -0.13704417000000002,
+    "orders": 58,
+    "blocked_buy": 0,
+    "blocked_sell": 0,
+    "st_active_dates": 0,
+    "st_symbol_dates": 0,
+    "elapsed_seconds": 6.686962127685547
+  }
+}

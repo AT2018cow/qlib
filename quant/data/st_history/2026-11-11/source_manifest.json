@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "created_at_utc": "2026-11-12T03:33:25.810986+00:00",
+  "scope": "website causal simulation 2026-10-08..2026-11-11 active universe",
+  "provider_archive_sha256": "1f0fc68efb017277aa245a1dd218c197711fe72a956ae0eb0ad0119b6cbe02ac",
+  "st_source": "baostock:query_history_k_data_plus(date,code,close,tradestatus,isST; adjustflag=3)",
+  "st_source_range": "2026-09-30..2026-11-11",
+  "active_symbols": 131,
+  "active_symbol_dates": 1096,
+  "files": {
+    "active_by_date.json": {
+      "sha256": "b10a02f9df09e462ce01ad2d80013a4400a71ecd3371d992b6f11cc42b96fc30",
+      "bytes": 18088
+    },
+    "coverage.json": {
+      "sha256": "91d5a91d7fff0ff4bf8640d6c6cf4610147b2ecbde72b796a3e17fc7edae58e0",
+      "bytes": 233
+    },
+    "raw_baostock.json": {
+      "sha256": "942d47f94f51eda1f2f29efc90651da1b16adade6a6837b7641739754fde2a1b",
+      "bytes": 368043
+    },
+    "replay_comparison.json": {
+      "sha256": "e3089f8c3a62f22b15b60319b20ff519e04eb7cfd74850810646fc7176851582",
+      "bytes": 1280
+    },
+    "st_history.json": {
+      "sha256": "30dd50e898fc0211436e207677618f2d1e20e8288658242a76368994065fdcf7",
+      "bytes": 648
+    }
+  }
+}

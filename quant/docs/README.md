@@ -49,6 +49,7 @@
    - Stage-0 至 Stage-3 研究合同及阶段结果；历史研究结论须结合后续执行证据边界阅读。
 8. **[`07-code-review/`](07-code-review/) — 代码审查、整改与生产记录**
    - [`2026-11-12 生产状态`](07-code-review/2026-11-12-production-deployment-status.md)记录部署配置、补跑证据与待验收项。
+   - [`2026-11-12 网站历史 ST 核实`](07-code-review/2026-11-12-website-st-history-verification.md)记录 131 只 active 股票、1096 个 symbol-date 的 BaoStock `isST` 覆盖与零差异重放。
    - [`2026-11-12 v1.4.0 release candidate`](07-code-review/2026-11-12-quant-v1.4.0-release-candidate.md)列出 tag 前的自然周期、website semantic、provider 冷构建与独立复审门禁。
 9. **[`08-current-window-backtest/`](08-current-window-backtest/) — 近期窗口候选策略同期回测**
    - [`01-csi1000-csi300-csi500-current-window-candidate-backtest-20261030.md`](08-current-window-backtest/01-csi1000-csi300-csi500-current-window-candidate-backtest-20261030.md)：2026-10-16 ~ 10-29 三市场、13 个模型/组合构造单元的同期净收益、生产 paper 校验、历史风险收益权衡与“不因 10 天切换”的决策边界。

@@ -27,6 +27,7 @@ from order_quantity import EXECUTION_RULE_VERSION, quantity_rule
 from paper_accounting import verify_ledger
 from paper_portfolio import PaperPortfolio
 from portfolio_performance import portfolio_performance
+from st_history import st_flags as dated_st_flags
 
 BENCHMARKS = {"csi300": "SH000300", "csi500": "SH000905", "csi1000": "SH000852"}
 
@@ -96,7 +97,7 @@ def execution_quote_symbols(state):
     return symbols
 
 
-def prepare_data(provider, signal_paths, market, start, end, *, extra_quote_symbols=()):
+def prepare_data(provider, signal_paths, market, start, end, *, extra_quote_symbols=(), st_history=None):
     import qlib
     from qlib.data import D
 
@@ -176,6 +177,7 @@ def prepare_data(provider, signal_paths, market, start, end, *, extra_quote_symb
         "listing": listing,
         "bench": bench_returns,
         "provenance": provenance,
+        "st_history": st_history,
     }
 
 
@@ -281,16 +283,19 @@ def replay(
         str(day)[:10]: values.droplevel("datetime")
         for day, values in data["signal"].groupby(level="datetime", sort=True)
     }
+    st_history = data.get("st_history")
+    st_evidence = "ST_HISTORY_DATED" if st_history is not None else "ST_HISTORY_MISSING_REFERENCE_ONLY"
     verified_sessions = 0
     started = time.monotonic()
     for i, (signal_day, day) in enumerate(zip(days, days[1:]), 1):
         ranking = [(str(s), float(v)) for s, v in signal_days[signal_day].items()]
-        pp.plan_signal(signal_day, day, ranking, metadata={"evidence": "ST_HISTORY_MISSING_REFERENCE_ONLY"})
+        pp.plan_signal(signal_day, day, ranking, metadata={"evidence": st_evidence})
         active = sorted(
             set(pp.positions) | set(pp.pending_signal["planned_buy"]) | set(pp.pending_signal["planned_sell"])
         )
         q = data["quotes"].get(day, {k: {} for k in ("$open", "$close", "$factor", "Ref($close,1)", "$volume")})
         opens, closes, factors, prevs = (q[k] for k in ("$open", "$close", "$factor", "Ref($close,1)"))
+        flags = dated_st_flags(st_history, active, [day] * len(active)) if st_history is not None else None
         lb, ls = compute_limit_masks(
             active,
             [day] * len(active),
@@ -300,6 +305,7 @@ def replay(
             factors=[factors.get(s, np.nan) for s in active],
             calendar=data["calendar"],
             listing_dates=data["listing"],
+            st_flags=flags,
         )
         opening = copy.deepcopy(pp.positions)
         # Account decisions never read history. Retain every ledger externally,

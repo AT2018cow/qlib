@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "source": "baostock:query_history_k_data_plus(isST)",
+  "start": "2026-09-30",
+  "end": "2026-11-11",
+  "symbols": 131,
+  "active_symbol_dates": 1096,
+  "missing_count": 0,
+  "missing": [],
+  "errors": {}
+}

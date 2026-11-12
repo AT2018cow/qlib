@@ -78,6 +78,35 @@ def test_numpy_limit_mask_blocks_open_at_limit():
     assert result["metrics"]["blocked_buy"] == 1
 
 
+def test_replay_uses_dated_st_flags_to_block_five_percent_limit():
+    """A 2026-01-06 ST name has a 5% limit; the same open is tradable when non-ST."""
+    data = synthetic_data(open_price=10.5)
+    candidate = {"id": "dated-st", "topk": 1, "dropn": 1}
+    baseline = runner.replay(data, candidate, account=10000, progress_every=0)
+    assert baseline["orders"]
+
+    data["st_history"] = {
+        "schema_version": 1,
+        "source": "test:dated-st",
+        "dates": {"2026-01-05": [], "2026-01-06": ["SH600000"]},
+    }
+    st_result = runner.replay(data, candidate, account=10000, progress_every=0)
+    assert not st_result["orders"]
+    assert st_result["metrics"]["blocked_buy"] == 1
+    assert st_result["sessions"][0]["metadata"]["evidence"] == "ST_HISTORY_DATED"
+
+
+def test_replay_rejects_dated_st_history_with_a_missing_execution_date():
+    data = synthetic_data()
+    data["st_history"] = {
+        "schema_version": 1,
+        "source": "test:incomplete",
+        "dates": {"2026-01-05": []},
+    }
+    with pytest.raises(ValueError, match="missing execution dates"):
+        runner.replay(data, {"id": "incomplete-st", "topk": 1, "dropn": 1}, account=10000, progress_every=0)
+
+
 def test_independent_ledger_rejects_hidden_cash_change():
     result = runner.replay(synthetic_data(), {"id": "ledger", "topk": 1, "dropn": 1}, account=10000, progress_every=0)
     report = result["sessions"][0]
@@ -236,6 +265,11 @@ def test_prepare_data_adds_execution_quotes_without_changing_scoring_universe(tm
     benchmark_dir.mkdir(parents=True)
     (benchmark_dir / "close.day.bin").write_bytes(b"fixture")
 
+    st_history = {
+        "schema_version": 1,
+        "source": "test:dated-st",
+        "dates": {day: [] for day in days},
+    }
     prepared = runner.prepare_data(
         tmp_path,
         [tmp_path / "unused.parquet"],
@@ -243,12 +277,14 @@ def test_prepare_data_adds_execution_quotes_without_changing_scoring_universe(tm
         days[0],
         days[-1],
         extra_quote_symbols=[held],
+        st_history=st_history,
     )
     assert set(FakeD.requested) == {scored, held, benchmark}
     assert set(prepared["signal"].index.get_level_values("instrument")) == {scored}
     assert held in prepared["quotes"][days[-1]]["$close"]
     assert prepared["provenance"]["n_names"] == 1
     assert prepared["provenance"]["n_quote_names"] == 2
+    assert prepared["st_history"] == st_history
 
 
 def test_execution_quote_symbols_include_positions_and_pending_orders():
