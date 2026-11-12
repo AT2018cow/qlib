@@ -6,6 +6,7 @@
 > - 已部署 18:00 `daily_cron`、23:00 `daily_postclose_check`、23:15 `daily_evening_retry`、下一交易日 07:00 `daily_readonly_check`；Website App 无 cron。
 > - 已部署 Provider 2 CPU / 8 GiB、独立 Website incremental 4 CPU / 12 GiB；full/smoke/retrain 8/16、Signal 8/16。配置回读不等于自然运行或峰值资源验收。
 > - PC01–PC08、PR01–PR06 及后续五项残余已本地整改；实现见 [`postclose implementation report`](07-code-review/2026-11-11-postclose-implementation-report.md)。11-11 provider/信号/NAV 的手动补跑已完成，v26 自然调度、邮件和新 semantic 首次运行仍待验收；证据边界见[生产状态记录](07-code-review/2026-11-12-production-deployment-status.md)。
+> - 网站历史 ST：10/08–11/11 的 131 只 active 股票、1096 个 symbol-date 已用 BaoStock `isST` 核实，窗口内无 ST；候选代码 `2046ee84a` 已接入日期化 ST 与每日快照，尚未部署。见[ST 核实](07-code-review/2026-11-12-website-st-history-verification.md)。
 > - 安全加固：见 [`2026-11-10-security-hardening.md`](07-code-review/2026-11-10-security-hardening.md)。
 > - 下文旧条目保留为历史记录；其中 v37/v12、06:00/07:30/09:00、11/06 数据、USD budget guard 等描述不再代表当前生产。
 
