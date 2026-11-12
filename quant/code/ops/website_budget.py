@@ -65,6 +65,7 @@ def validate_publication_receipt(
 ):
     """Validate the receipt and every immutable market payload it binds."""
     from datetime import date
+    from website_simulation import validate_website_series
 
     if not isinstance(receipt, dict) or receipt.get("schema_version") != RECEIPT_SCHEMA_VERSION:
         raise ValueError("publication receipt schema is missing or unsupported")
@@ -79,7 +80,11 @@ def validate_publication_receipt(
     if receipt.get("asset_digest") != expected_asset_digest:
         raise ValueError("publication receipt provider digest changed")
     provider_hex = _asset_hex(receipt.get("asset_digest"))
-    release_map = receipt.get("market_release_sha256") or {market: source for market in MARKETS}
+    release_map = (
+        receipt["market_release_sha256"]
+        if "market_release_sha256" in receipt
+        else {market: source for market in MARKETS}
+    )
     if not isinstance(release_map, dict) or set(release_map) != set(MARKETS):
         raise ValueError("publication receipt must bind exactly three market releases")
     for market in MARKETS:
@@ -138,6 +143,18 @@ def validate_publication_receipt(
             or series.get("latest_date") != latest
         ):
             raise ValueError(f"publication receipt {market} immutable result identity mismatch")
+        try:
+            series = validate_website_series(series, market=market)
+        except (KeyError, TypeError, ValueError, OverflowError) as exc:
+            raise ValueError(f"publication receipt {market} immutable series is invalid") from exc
+        if (
+            series.get("source_manifest_sha256") != release_map[market]
+            or series.get("release_source_sha256") != release_map[market]
+            or series.get("website_semantic_sha256") != semantic
+            or series.get("account_contract_sha256") != accounts[market]
+            or series.get("provider_archive_sha256") != provider_hex
+        ):
+            raise ValueError(f"publication receipt {market} immutable series identity mismatch")
         series_bytes = (json.dumps(series, indent=2, ensure_ascii=False, allow_nan=False) + "\n").encode()
         if _sha256(series_bytes) != series_sha:
             raise ValueError(f"publication receipt {market} immutable series hash mismatch")

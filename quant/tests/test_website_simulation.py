@@ -228,6 +228,7 @@ def test_publication_recovers_lost_response_and_does_not_push_twice(tmp_path, mo
     results = []
     for market, profile in CANONICAL_PROFILES_BY_MARKET.items():
         raw, _ = example_series(market)
+        release_sha = "e" * 64 if market == "csi500" else "a" * 64
         raw["market"] = raw["account_identity"]["market"] = market
         identity = raw["account_identity"]
         identity.update(
@@ -239,6 +240,8 @@ def test_publication_recovers_lost_response_and_does_not_push_twice(tmp_path, mo
         )
         raw["fit_receipts"][0]["profile"] = profile
         raw["fit_receipts"][0]["training_contract"]["horizon"] = identity["horizon"]
+        raw["source_manifest_sha256"] = release_sha
+        raw["release_source_sha256"] = release_sha
         cache_sha = hashlib.sha256(("cache-" + market).encode()).hexdigest()
         result_dir = tmp_path / cache_sha / ("b" * 64) / market / "full"
         result_dir.mkdir(parents=True)
@@ -247,7 +250,7 @@ def test_publication_recovers_lost_response_and_does_not_push_twice(tmp_path, mo
         result = {
             "status": "COMPLETED",
             "market": market,
-            "source_sha256": "a" * 64,
+            "source_sha256": release_sha,
             "website_semantic_sha256": raw["website_semantic_sha256"],
             "account_contract_sha256": raw["account_contract_sha256"],
             "semantic_manifest": website_semantic_manifest(),
@@ -301,7 +304,14 @@ def test_publication_recovers_lost_response_and_does_not_push_twice(tmp_path, mo
     monkeypatch.setattr(website_simulation, "write_immutable", original)
     assert module.publish_results(results, {}, asset, token="TEST_ONLY")["status"] == "ALREADY_PUBLISHED"
     assert len(pushes) == 1 and len(published) == 12
-    assert len(list(tmp_path.rglob("publication.json"))) == 1
+    receipts = list(tmp_path.rglob("publication.json"))
+    assert len(receipts) == 1
+    assert json.loads(receipts[0].read_text())["market_release_sha256"] == {
+        "csi300": "a" * 64,
+        "csi500": "e" * 64,
+        "csi1000": "a" * 64,
+    }
+    assert module.publish_results(results, {}, asset, token="TEST_ONLY")["status"] == "ALREADY_PUBLISHED"
     assert all(json.loads(v)["schema_version"] == 3 for v in published.values())
 
 
@@ -961,7 +971,8 @@ def test_missing_incremental_prefix_uses_smoke_and_full_workers(monkeypatch):
         "calendar_end": "2026-11-10",
     }
     monkeypatch.setattr(module, "data_volume_readonly", types.SimpleNamespace(reload=lambda: None))
-    monkeypatch.setattr(module, "simulation", types.SimpleNamespace(reload=lambda: None))
+    events = []
+    monkeypatch.setattr(module, "simulation", types.SimpleNamespace(reload=lambda: events.append("reload")))
     monkeypatch.setattr(module, "latest_asset", lambda expected_end=None: asset)
     monkeypatch.setattr(module, "checked_publication_receipt", lambda **kwargs: None)
     monkeypatch.setattr(module, "_incremental_prior", lambda *args, **kwargs: None)
@@ -972,6 +983,7 @@ def test_missing_incremental_prefix_uses_smoke_and_full_workers(monkeypatch):
         return {"status": "SMOKE_PASS"}
 
     def full_map(jobs, **kwargs):
+        events.append("map")
         full_calls["map"].extend(jobs)
         return [{"market": job["market"]} for job in jobs]
 
@@ -985,7 +997,12 @@ def test_missing_incremental_prefix_uses_smoke_and_full_workers(monkeypatch):
         "build_market_incremental",
         types.SimpleNamespace(map=lambda *args, **kwargs: pytest.fail("full path used incremental worker")),
     )
-    monkeypatch.setattr(module, "publish_results", lambda results, source, asset, token: {"status": "PUBLISHED"})
+
+    def publish_results(results, source, asset, token):
+        events.append("publish")
+        return {"status": "PUBLISHED"}
+
+    monkeypatch.setattr(module, "publish_results", publish_results)
     import research_identity
 
     monkeypatch.setattr(
@@ -1002,6 +1019,7 @@ def test_missing_incremental_prefix_uses_smoke_and_full_workers(monkeypatch):
     assert [job["market"] for job in full_calls["remote"]] == ["csi300", "csi500", "csi1000"]
     assert len(full_calls["map"]) == 3
     assert all("required_replay_mode" not in job for job in full_calls["map"])
+    assert events == ["reload", "map", "reload", "publish"]
 
 
 def test_every_website_data_mount_is_read_only():
