@@ -2,7 +2,7 @@
 
 > 日期：2026-11-12
 >
-> 状态：`LOCAL VERIFIED / NO ACTIVE ST IN WINDOW / PRODUCTION UNCHANGED`
+> 状态：`LOCAL VERIFIED / NO ACTIVE ST IN WINDOW / PRODUCTION STRONG DEPENDENCY WITHDRAWN LOCALLY`
 >
 > 范围：网站三市场因果模拟账户的 25 个执行日、131 只 active 股票、1096 个 symbol-date。
 >
@@ -86,26 +86,34 @@ dates with any ST       0
 - ST 股票在 2026-07-06 前按 5% 涨跌停限制，能阻止一笔非 ST 下可成交的买入；
 - 缺少执行日的 ST 历史被拒绝；
 - `prepare_data` 正确携带 `st_history`；
-- website replay 会记录新的执行日快照，并拒绝与已冻结历史冲突的快照；
-- 新的 series 必须带 `ST_VERIFIED_HISTORY`、`st_history_sha256` 和来源。
+- website 生产路径不自动启用该可选输入，继续明确披露为 reference-only；
+- 真实 ST 合成样例和缺失日期负例保证显式离线 replay 不会把未知状态当成非 ST。
 
-## 6. 生产接入（本地实现，未部署）
+## 6. 生产接入复审与选择性简化
 
-本轮已把日期化 ST 历史接入 website 生产路径：
+提交 `2046ee84a` 曾把日期化 ST 历史提升为 website 生产强依赖，并随两个 App v27 于
+2026-11-12 17:54–17:55 部署。独立复审确认该设计的复杂度与当前纸面模拟收益的实际风险不匹配：
 
-- `quant/code/production/website_st_history.py`：加载生产种子 `quant/data/st_history/seed.json`（11/11 BaoStock 证据 + 11/12 pre-open 快照），合并 `/simulation/st_history/<market>.json` 的追加记录，按日期生成不可变前缀哈希；
-- `website_replay_core._build_market_impl()`：读取 seed + 持久化历史，接收 `job["st_snapshot"]`，记录当日快照，把 `st_history` 传给 `prepare_data`/`replay`；缓存命中和增量 prior 都校验 ST 前缀哈希；
-- `website_simulation.py`：`execution_st_policy` 改为 `ST_VERIFIED_HISTORY`，series 必须绑定 `st_history_sha256` 和 `st_history_source`；
-- `website_simulation_modal.daily()`：接受每日核验快照，校验快照日期必须等于 provider 结束日；三个市场 full/incremental job 都携带快照；
-- `modal_qlib_cn_a10g._update_website_returns()`：从 signal cycle 的 `risk_st` 取完整 `st_symbols` 列表传给 website worker；ST 传输失败时 `st_snapshot=None`，website 会 fail closed；
-- `website_budget.py`：publication receipt 的每个市场 binding 绑定 `st_history_sha256`；
-- 前端接受 `ST_VERIFIED_HISTORY`，并要求 64 位哈希与来源，状态栏显示“逐日 ST 已核实”。
+- 正常首次信号发布没有把完整 ST 快照返回给 website；
+- `top20_st` 可能被当成全市场快照；
+- 快照缺失不会在当晚立即失败，却会让下一交易日因历史缺口失败；
+- ST 名单哈希没有绑定来源和抓取证据；
+- ledger 的 `st_history_verified=false` 与前端“逐日 ST 已核实”互相矛盾。
 
-真实数据契约验证：用 11/11 archive、三市场 signal 和 seed 重新生成 series，三市场均为 `ST_VERIFIED_HISTORY`，`st_history_sha256=9d4e2fc1…`，与当前发布 points 的逐日差异 **0**。证据见 `verified_series_summary.json`。
+因此采用“**撤回生产强依赖、保留离线核验能力**”的选择性简化：
 
-生产种子 `quant/data/st_history/seed.json` 覆盖 10/08–11/12；11/12 使用 11/12 04:36 的 `akshare.stock_zh_a_spot_tx` pre-open 快照（`top20_st=[]`，覆盖 11/12 的全部 active 名称）。11/12 之后由每日 signal cycle 的核验快照追加。
+- 保留本报告、BaoStock 原始证据、覆盖报告、零差异 replay，以及
+  `prepare_data(..., st_history=...)` / `replay()` 的可选日期化 ST 路径；
+- 保留真实 ST 场景的 5% 涨跌停合成回归；
+- 从生产 website 移除每日 ST 快照、持久化历史、前缀哈希、cache/receipt 强绑定和
+  `ST_VERIFIED_HISTORY` 前端声明；
+- website 账户恢复为明确的 `ST_HISTORY_UNVERIFIED_REFERENCE_ONLY`，ST 数据不可用不阻断
+  provider、信号、NAV 或 postclose marker；
+- scheduled paper 账户原有的执行日前 ST 快照和 reference-only fallback 合同不变。
 
-**仍未部署**：当前已发布 JSON 仍是旧的 `ST_HISTORY_UNVERIFIED_REFERENCE_ONLY`；新 semantic 会触发一次 full replay，部署后才会切换到新策略。
+18:00 v27 自然任务先因中证指数权重文件读取超时失败；18:10 恢复调用随后完成 11/12 Provider
+和三市场信号计算，但父调用于 18:28 被取消，尚未调用 Website App。因此没有发布
+`ST_VERIFIED_HISTORY` 网站 series，也没有重写已发布账户。
 
 ## 7. 边界
 
@@ -118,26 +126,24 @@ dates with any ST       0
 3. **BaoStock 是单一历史源。**
    字段语义已用已知 ST/*ST/非 ST 样本验证，但没有对 131 只逐一做交易所公告交叉核对；BaoStock 的 `isST` 仍可能存在个别日期/股票的源误差。
 
-4. **每日快照依赖 ST 源可用。**
-   新的执行日使用当日核验快照；如果 ST 源传输失败且没有可用的历史/备用证据，website 会 fail closed，不会静默退回 reference-only。
+4. **生产网站仍是参考模拟。**
+   日期化 ST 只作为离线核验或显式 replay 输入；生产网站不声明完整逐日 ST 认证，也不把 ST 源可用性提升为每日发布门禁。
 
 5. **不改变生产数据或部署。**
    本轮没有重发网站 JSON、没有改 paper 账户、没有部署 App。
 
 ## 8. 证据
 
-- 生产种子（10/08–11/12）：`quant/data/st_history/seed.json`
 - 逐日 active universe：`quant/data/st_history/2026-11-11/active_by_date.json`
 - 逐日 ST 名单：`quant/data/st_history/2026-11-11/st_history.json`
 - 覆盖报告：`quant/data/st_history/2026-11-11/coverage.json`
 - BaoStock 原始行：`quant/data/st_history/2026-11-11/raw_baostock.json`
 - 重放对比：`quant/data/st_history/2026-11-11/replay_comparison.json`
-- 新 series 契约验证：`quant/data/st_history/2026-11-11/verified_series_summary.json`
 - 文件哈希与来源：`quant/data/st_history/2026-11-11/source_manifest.json`
 
 ## 9. 后续建议
 
 - 若只需要回答“当前 10/08–11/11 收益是否受 ST 影响”：**已关闭，答案为否**。
-- 生产接入代码已就绪，但尚未部署；首次部署会因 semantic 变化执行一次 full replay，之后新交易日走增量。
-- 部署后需要验证：三个市场 full replay 的 points/NAV 与当前发布值一致（本窗口无 ST），下一交易日快照追加成功，后续 4/12 incremental 正常，ST 源失败时 website fail closed。
-- 在此之前，已发布 JSON 保留 `ST_HISTORY_UNVERIFIED_REFERENCE_ONLY` 是准确的；本报告不把它回写成已部署或已全面认证。
+- 生产 website 保持 `ST_HISTORY_UNVERIFIED_REFERENCE_ONLY`；不再为低概率 ST 暴露增加新的跨日状态和发布单点故障。
+- 若未来实际持仓或计划交易明确命中 ST，再以独立、可审计的生产变更提升处置等级。
+- 本报告只关闭 10/08–11/11 已观测窗口的 ST 影响问题，不声称未来窗口或券商成交已经认证。

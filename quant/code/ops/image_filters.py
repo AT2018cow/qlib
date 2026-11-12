@@ -60,11 +60,7 @@ def should_exclude_from_image(path: str | Path) -> bool:
     if any(part in EXCLUDED_PARTS for part in parts):
         return True
     normalized = text.replace("\\", "/")
-    if (
-        normalized.endswith("quant/data")
-        or "quant/data/strategy_releases/" in normalized
-        or "quant/data/st_history/" in normalized
-    ):
+    if normalized.endswith("quant/data") or "quant/data/strategy_releases/" in normalized:
         return False
     if "quant/data/" in normalized or normalized.startswith("quant/data"):
         return True

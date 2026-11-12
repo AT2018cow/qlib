@@ -269,15 +269,11 @@ function normalizeWebsiteSimulation(raw, market = null) {
   const invalid = { status: 'invalid' };
   const identity = raw.account_identity;
   const pool = POOLS[raw.market];
-  const stPolicies = new Set(['ST_HISTORY_UNVERIFIED_REFERENCE_ONLY', 'ST_VERIFIED_HISTORY']);
-  if (!stPolicies.has(raw.execution_st_policy)) return invalid;
-  if (raw.execution_st_policy === 'ST_VERIFIED_HISTORY' &&
-      (!/^[0-9a-f]{64}$/.test(raw.st_history_sha256 || '') ||
-       typeof raw.st_history_source !== 'string' || !raw.st_history_source)) return invalid;
   if (!pool || (market && market !== raw.market) || !identity || identity.market !== raw.market ||
       identity.initial_cash !== 1000000 || identity.topk !== pool.topk || identity.nd !== pool.nd ||
       identity.horizon !== pool.horizonDays || raw.initial_cash !== 1000000 || raw.initial_nav !== 1 ||
       raw.status !== 'active' || raw.data_mode !== 'CAUSAL_SIMULATION' ||
+      raw.execution_st_policy !== 'ST_HISTORY_UNVERIFIED_REFERENCE_ONLY' ||
       raw.start_date !== FORWARD_START || raw.inception_date !== FORWARD_START ||
       typeof raw.source_manifest_sha256 !== 'string' || typeof raw.provider_archive_sha256 !== 'string' ||
       !/^[0-9a-f]{64}$/.test(raw.source_manifest_sha256 || '') ||
@@ -528,9 +524,6 @@ function renderForwardPerformance(data, date = null) {
   if (stale) latest.classList.add('stale');
   status.textContent = '模拟账户 · ' + formatDate(data.inception_date) + ' 起';
   if (data.data_mode === 'CAUSAL_SIMULATION') status.textContent += ' · 历史重建参考 · 含交易费用';
-  status.textContent += data.execution_st_policy === 'ST_VERIFIED_HISTORY'
-    ? ' · 逐日 ST 已核实'
-    : ' · 历史 ST 未核实';
   if (chartPoints.some(p => p.data_mode === 'BACKFILL_RESEARCH') || data.data_mode === 'BACKFILL_RESEARCH') {
     status.textContent += ' · 含历史回填';
   }
@@ -1053,7 +1046,7 @@ function pageShell(dates) {
           <ul class="governance-list">
             <li>CSI300/CSI1000 为 Top10/Drop1，CSI500 为 Top20/Drop2；新进榜单不等于立即买入。</li>
             <li>模型评分为原始回归输出，仅用于横截面排序，不代表预期涨幅或校准收益率。</li>
-            <li>三个独立 100 万元模拟账户自 2026.10.08 开盘建仓，按策略连续调仓并扣费；历史重建使用日期化 ST 历史，但开盘成交量尚未独立核实，收益为模拟参考。</li>
+            <li>三个独立 100 万元模拟账户自 2026.10.08 开盘建仓，按策略连续调仓并扣费；历史重建未核实逐日 ST 和开盘成交量，收益为模拟参考。</li>
           </ul>
         </div>
       </section>

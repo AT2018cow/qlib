@@ -50,6 +50,25 @@ def test_methodology_marks_chinext_production_paused():
     assert "定型主策略 · 参数已锁定" in page
 
 
+def test_website_st_history_remains_optional_research_evidence_not_a_production_gate():
+    """The public NAV stays reference-only while offline replay can accept dated ST evidence."""
+    website = (ROOT / "quant/code/production/website_simulation.py").read_text()
+    replay_core = (ROOT / "quant/code/production/website_replay_core.py").read_text()
+    coordinator = (ROOT / "quant/code/ops/website_simulation_modal.py").read_text()
+    production = (ROOT / "quant/code/production/modal_qlib_cn_a10g.py").read_text()
+    research = (ROOT / "quant/code/research/regime_reselection/prelive_revalidation.py").read_text()
+
+    assert 'ST_POLICY = "ST_HISTORY_UNVERIFIED_REFERENCE_ONLY"' in website
+    assert "ST_VERIFIED_HISTORY" not in website
+    assert "website_st_history" not in replay_core
+    assert "st_history_sha256" not in replay_core
+    assert "st_snapshot" not in coordinator
+    assert 'kwargs["st_snapshot"]' not in production
+    assert "st_snapshot: dict" not in production
+    assert "st_history=None" in research
+    assert "st_flags=flags" in research
+
+
 def test_historical_chinext_files_are_not_deleted_by_runtime():
     cron = _daily_cron_source()
     # Runtime may stop writing new ChiNext files, but it must not contain any
@@ -286,10 +305,10 @@ def test_favicon_is_valid_svg_and_published_on_both_pages():
 def test_st_free_reference_return_is_explicit_not_certified():
     app = (ROOT / "quant" / "website" / "app.js").read_text()
     method = (ROOT / "quant" / "website" / "methodology.html").read_text()
-    for phrase in ("策略累计收益 · 模拟盘参考", "历史重建使用日期化 ST 历史", "ST_IGNORED_REFERENCE_ONLY"):
+    for phrase in ("策略累计收益 · 模拟盘参考", "历史重建未核实逐日 ST 和开盘成交量", "ST_IGNORED_REFERENCE_ONLY"):
         assert phrase in app, f"site missing reference-only disclosure: {phrase}"
     assert "外部接口连接故障时公开标注参考模式" in method
-    assert "网站自 10/08 起重建的历史模拟使用日期化 ST 历史" in method
+    assert "历史模拟未核实逐日 ST" in method
     assert "官方除权日参考价" in method
     assert "不能视为当时实际发布的记录或实盘成交收益" in method
 

@@ -35,7 +35,6 @@ from image_filters import should_exclude_from_image
 def test_sensitive_and_generated_paths_are_excluded(path):
     assert should_exclude_from_image(path) is True
     assert should_exclude_from_image("quant/data/strategy_releases/csi300.json") is False
-    assert should_exclude_from_image("quant/data/st_history/2026-11-11/st_history.json") is False
     assert should_exclude_from_image("quant/data") is False
 
 
