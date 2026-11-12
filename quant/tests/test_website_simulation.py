@@ -58,6 +58,8 @@ def example_series(market="csi300"):
             account_sha=account_contract_manifest(account_contract_for_market(market))["sha256"],
             provider_sha="b" * 64,
             fits=fits,
+            st_history_sha256="e" * 64,
+            st_history_source="test:dated-st",
         ),
         sessions,
     )
@@ -89,6 +91,8 @@ def test_first_open_fill_cost_and_first_close_are_included():
         "future_fit",
         "wrong_profile",
         "changed_total",
+        "missing_st_hash",
+        "old_st_policy",
     ],
 )
 def test_corrupted_website_series_is_rejected(damage):
@@ -107,6 +111,10 @@ def test_corrupted_website_series_is_rejected(damage):
         raw["fit_receipts"][0]["training_contract"]["valid_end"] = "2026-10-08"
     elif damage == "wrong_profile":
         raw["account_identity"]["profile"] = "c98856b4_top10_drop1"
+    elif damage == "missing_st_hash":
+        raw.pop("st_history_sha256")
+    elif damage == "old_st_policy":
+        raw["execution_st_policy"] = "ST_HISTORY_UNVERIFIED_REFERENCE_ONLY"
     else:
         raw["cumulative_return"] += 0.01
     with pytest.raises(ValueError):
@@ -125,6 +133,8 @@ def test_quote_gaps_cannot_be_promoted_to_website_values():
             account_sha=account_contract_manifest(account_contract_for_market("csi300"))["sha256"],
             provider_sha="b" * 64,
             fits=[],
+            st_history_sha256="e" * 64,
+            st_history_source="test:dated-st",
         )
 
 
@@ -950,7 +960,17 @@ def test_archive_asset_skips_smoke_and_reaches_workers_without_local_path(monkey
         lambda kind: {"sha256": source_sha, "schema_version": 2, "kind": kind, "files": {}},
     )
     monkeypatch.setenv("GITHUB_TOKEN", "test-token")
-    result = module.daily.local(expected_source_sha256=source_sha, expected_provider_end="2026-11-10")
+    snapshot = {
+        "date": "2026-11-11",
+        "symbols": ["SH600000"],
+        "source": "akshare.stock_zh_a_st_em",
+        "fetched_at_cst": "2026-11-10T18:30:00+08:00",
+    }
+    result = module.daily.local(
+        expected_source_sha256=source_sha,
+        expected_provider_end="2026-11-10",
+        st_snapshot=snapshot,
+    )
     assert result["status"] == "PUBLISHED"
     assert published["asset"] is archive_asset
     assert "local_path" not in published["asset"]
@@ -958,6 +978,7 @@ def test_archive_asset_skips_smoke_and_reaches_workers_without_local_path(monkey
     assert all(item["asset"] is archive_asset for item in published["results"])
     assert len(incremental_jobs) == 3
     assert all(job["required_replay_mode"] == "INCREMENTAL" for job in incremental_jobs)
+    assert all(job["st_snapshot"] == snapshot for job in incremental_jobs)
 
 
 def test_missing_incremental_prefix_uses_smoke_and_full_workers(monkeypatch):
@@ -1138,6 +1159,29 @@ def test_build_market_impl_passes_cache_identity_to_the_real_incremental_probe(t
     assert captured["simulation_root"] == tmp_path
 
 
+def test_build_market_impl_records_a_verified_st_snapshot(tmp_path, monkeypatch):
+    core, job, *_ = _core_job(tmp_path, monkeypatch)
+    seed = tmp_path / "st_seed.json"
+    seed.write_text(json.dumps({"schema_version": 1, "source": "test:seed", "dates": {"2026-11-05": []}}))
+    monkeypatch.setenv("QUANT_ST_HISTORY_SEED", str(seed))
+    job["st_snapshot"] = {
+        "date": "2026-11-09",
+        "symbols": ["SH600000"],
+        "source": "akshare.stock_zh_a_st_em",
+        "fetched_at_cst": "2026-11-06T18:30:00+08:00",
+    }
+
+    def fake_prior(*args, **kwargs):
+        raise RuntimeError("STOP_AFTER_SNAPSHOT")
+
+    monkeypatch.setattr(core, "_incremental_prior", fake_prior)
+    with pytest.raises(RuntimeError, match="STOP_AFTER_SNAPSHOT"):
+        core._build_market_impl(job, simulation_root=tmp_path)
+    history = json.loads((tmp_path / "st_history" / "csi300.json").read_text())
+    assert history["dates"]["2026-11-09"] == ["SH600000"]
+    assert history["evidence"]["2026-11-09"]["source"] == "akshare.stock_zh_a_st_em"
+
+
 def test_build_market_impl_reaches_full_branch_when_no_ancestor(tmp_path, monkeypatch):
     core, job, cache_sha, semantic_sha, account_sha, _root = _core_job(tmp_path, monkeypatch)
     captured = {}
@@ -1158,11 +1202,18 @@ def test_build_market_impl_reaches_full_branch_when_no_ancestor(tmp_path, monkey
 def test_build_market_impl_reaches_incremental_branch_when_ancestor_exists(tmp_path, monkeypatch):
     core, job, cache_sha, semantic_sha, account_sha, _root = _core_job(tmp_path, monkeypatch)
 
+    from website_st_history import load_seed_history, prefix_sha256
+
     def fake_prior(cache, asset, market, end, calendar, *, semantic_sha, account_sha, simulation_root):
         return {
             "previous": "2026-11-05",
             "signal_path": tmp_path / "prior.parquet",
-            "payload": {"series": {"fit_receipts": []}},
+            "payload": {
+                "series": {
+                    "fit_receipts": [],
+                    "st_history_sha256": prefix_sha256(load_seed_history(), "2026-11-05"),
+                }
+            },
             "asset_digest": "sha256:" + "c" * 64,
             "final_state": {},
             "result_dir": tmp_path,
@@ -1191,6 +1242,32 @@ def test_incremental_worker_without_ancestor_fails_closed_at_real_call_site(tmp_
     monkeypatch.setattr(core, "_incremental_prior", fake_prior)
     with pytest.raises(ValueError, match="incremental worker requires"):
         core._build_market_impl(job, simulation_root=tmp_path)
+
+
+def test_daily_rejects_date_mismatched_st_snapshot(monkeypatch):
+    import types
+
+    module = _website_module()
+    source = __import__("research_identity").source_manifest("training")["sha256"]
+    asset = {
+        "digest": "sha256:" + "b" * 64,
+        "calendar": ["2026-11-09", "2026-11-10"],
+        "calendar_end": "2026-11-10",
+    }
+    monkeypatch.setattr(module, "data_volume_readonly", types.SimpleNamespace(reload=lambda: None))
+    monkeypatch.setattr(module, "simulation", types.SimpleNamespace(reload=lambda: None))
+    monkeypatch.setattr(module, "latest_asset", lambda expected_end=None: asset)
+    with pytest.raises(ValueError, match="ST snapshot"):
+        module.daily.local(
+            expected_source_sha256=source,
+            expected_provider_end="2026-11-10",
+            st_snapshot={
+                "date": "2026-11-09",
+                "symbols": [],
+                "source": "akshare.stock_zh_a_st_em",
+                "fetched_at_cst": "2026-11-09T18:30:00+08:00",
+            },
+        )
 
 
 def test_daily_short_circuit_rejects_invalid_receipt_before_replay(monkeypatch):

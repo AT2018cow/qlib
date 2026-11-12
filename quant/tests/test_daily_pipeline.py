@@ -105,8 +105,9 @@ def test_actual_cron_checks_website_after_signal_fast_path(tmp_path, monkeypatch
         seen.append("signals")
         return {"status": signal_status}
 
-    def website(expected_provider_end=None):
+    def website(expected_provider_end=None, st_snapshot=None):
         assert expected_provider_end == session_date
+        assert st_snapshot is None
         seen.append("website")
         return {"status": "ALREADY_PUBLISHED", "latest_date": session_date}
 
@@ -162,10 +163,20 @@ def test_postclose_cycle_uses_the_self_hosted_provider(tmp_path, monkeypatch):
 
     def signals(allow_lag, **kwargs):
         seen.append(("signals", allow_lag, kwargs))
-        return {"status": "ALREADY_PUBLISHED"}
+        return {
+            "status": "ALREADY_PUBLISHED",
+            "risk_st": {
+                "status": "SOURCE_SNAPSHOT_AVAILABLE",
+                "date": usage_date,
+                "st_symbols": ["SH600000", "SH600002"],
+                "top20_st": ["SH600000"],
+                "source": "akshare.stock_zh_a_st_em",
+                "fetched_at_cst": "2026-11-11T18:30:00+08:00",
+            },
+        }
 
-    def website(expected_provider_end=None):
-        seen.append(("website", expected_provider_end))
+    def website(expected_provider_end=None, st_snapshot=None):
+        seen.append(("website", expected_provider_end, st_snapshot))
         return {"status": "ALREADY_PUBLISHED", "latest_date": session_date}
 
     monkeypatch.setattr(production, "_run_daily_signal_cycle", signals)
@@ -177,7 +188,16 @@ def test_postclose_cycle_uses_the_self_hosted_provider(tmp_path, monkeypatch):
     assert seen[0][0] == "signals"
     assert seen[0][1] is False
     assert seen[0][2]["data_asof_override"] == session_date
-    assert seen[1] == ("website", session_date)
+    assert seen[1] == (
+        "website",
+        session_date,
+        {
+            "date": usage_date,
+            "symbols": ["SH600000", "SH600002"],
+            "source": "akshare.stock_zh_a_st_em",
+            "fetched_at_cst": "2026-11-11T18:30:00+08:00",
+        },
+    )
     marker = json.loads((tmp_path / "postclose_status" / f"{usage_date}.json").read_text())
     assert marker["status"] == "COMPLETED"
     assert marker["provider"]["digest"] == "a" * 64

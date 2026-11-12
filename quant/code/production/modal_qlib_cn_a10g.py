@@ -4032,6 +4032,16 @@ def _current_st_risk_snapshot(instruments: list[str]) -> dict:
             raise RuntimeError("ST source returned empty or missing-code rows")
         return sorted({_normalize_code(value) for value in frame[code_col].tolist()})
 
+    def _prefixed_code(code: str) -> str:
+        digits = str(code).zfill(6)
+        if digits.startswith(("5", "6", "9")):
+            return "SH" + digits
+        if digits.startswith(("0", "1", "2", "3")):
+            return "SZ" + digits
+        if digits.startswith(("4", "8")):
+            return "BJ" + digits
+        raise RuntimeError(f"ST source returned unsupported security code: {code!r}")
+
     def _backup_codes() -> list[str]:
         fetcher = getattr(ak, "stock_zh_a_spot_tx", None)
         if fetcher is None:
@@ -4072,6 +4082,7 @@ def _current_st_risk_snapshot(instruments: list[str]) -> dict:
                     "scope": "current risk-warning board snapshot",
                     "fetched_at_cst": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
                     "source_row_count": len(codes),
+                    "st_symbols": sorted({_prefixed_code(code) for code in codes}),
                     "top20_st": matches,
                     "top20_st_count": len(matches),
                     "selection_filter_applied": False,
@@ -4580,15 +4591,32 @@ def _run_preopen_cycle(
     sampler = ResourceSampler(interval=2.0)
     sampler.start()
     try:
-        result = run_daily_pipeline(
-            lambda: _run_daily_signal_cycle(
-                allow_lag,
-                signal_date_override=usage_date,
-                data_asof_override=session_date,
-            ),
-            lambda: _update_website_returns(expected_provider_end=session_date),
-            sampler=sampler,
-        )
+        signal_result = {}
+
+        def _run_signals():
+            signal_result.update(
+                _run_daily_signal_cycle(
+                    allow_lag,
+                    signal_date_override=usage_date,
+                    data_asof_override=session_date,
+                )
+            )
+            return signal_result
+
+        def _run_website():
+            st = signal_result.get("risk_st") or {}
+            snapshot = None
+            symbols = st.get("st_symbols") if isinstance(st.get("st_symbols"), list) else st.get("top20_st")
+            if st.get("status") == "SOURCE_SNAPSHOT_AVAILABLE" and isinstance(symbols, list):
+                snapshot = {
+                    "date": st.get("date"),
+                    "symbols": symbols,
+                    "source": st.get("source", ""),
+                    "fetched_at_cst": st.get("fetched_at_cst", ""),
+                }
+            return _update_website_returns(expected_provider_end=session_date, st_snapshot=snapshot)
+
+        result = run_daily_pipeline(_run_signals, _run_website, sampler=sampler)
     except Exception as exc:
         resources = sampler.stop()
         _write_preopen_marker(
@@ -4863,7 +4891,7 @@ def daily_readonly_check():
     return _readonly_verify(session_date, usage_date)
 
 
-def _update_website_returns(expected_provider_end: str | None = None):
+def _update_website_returns(expected_provider_end: str | None = None, st_snapshot: dict | None = None):
     """Call the deployed website worker only when both code identities agree."""
     import sys
 
@@ -4877,10 +4905,13 @@ def _update_website_returns(expected_provider_end: str | None = None):
 
     expected_source = source_manifest("training")["sha256"]
     worker = modal.Function.from_name(WEBSITE_APP_NAME, "daily")
-    result = worker.remote(
-        expected_source_sha256=expected_source,
-        expected_provider_end=expected_provider_end or "",
-    )
+    kwargs = {
+        "expected_source_sha256": expected_source,
+        "expected_provider_end": expected_provider_end or "",
+    }
+    if st_snapshot is not None:
+        kwargs["st_snapshot"] = st_snapshot
+    result = worker.remote(**kwargs)
     if (
         not isinstance(result, dict)
         or result.get("status") not in ("PUBLISHED", "ALREADY_PUBLISHED", "RECOVERED_AFTER_PUBLICATION")

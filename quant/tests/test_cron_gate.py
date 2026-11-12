@@ -304,6 +304,7 @@ def test_st_source_prefers_real_valid_snapshot_and_classifies_outage(monkeypatch
     result = fn(["SH600000", "SZ000001", "SH601000"])
     assert result["status"] == "SOURCE_SNAPSHOT_AVAILABLE"
     assert result["top20_st"] == ["SH600000", "SZ000001"]
+    assert result["st_symbols"] == ["SH600000", "SZ000001"]
     assert result["source_row_count"] == 2
     assert result["fetched_at_cst"].startswith("20")
 

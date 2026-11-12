@@ -11,7 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 
 
-def make_job(asset, source, market, mode, *, required_replay_mode=None, semantic=None, account=None):
+def make_job(asset, source, market, mode, *, required_replay_mode=None, semantic=None, account=None, st_snapshot=None):
     """Build a worker job carrying release, semantic and account identities."""
     from research_identity import account_contract_manifest, website_semantic_manifest
     from website_simulation import account_contract_for_market
@@ -28,6 +28,8 @@ def make_job(asset, source, market, mode, *, required_replay_mode=None, semantic
     }
     if required_replay_mode is not None:
         job["required_replay_mode"] = required_replay_mode
+    if st_snapshot is not None:
+        job["st_snapshot"] = st_snapshot
     return job
 
 
@@ -386,6 +388,13 @@ def _build_market_impl(
         write_immutable,
         training_prefix_fingerprint,
     )
+    from website_st_history import (
+        load_merged_history,
+        persisted_path,
+        prefix_sha256,
+        record_snapshot,
+        write_history,
+    )
 
     started = time.monotonic()
     release_sha = verify_source_manifest(job["source_manifest"], "training")
@@ -428,6 +437,14 @@ def _build_market_impl(
         d for d in verified_calendar if FIRST_EXECUTION <= d <= end
     ]:
         raise ValueError("provider/external calendar session mismatch")
+    st_history = load_merged_history(simulation_root, market)
+    st_snapshot = job.get("st_snapshot")
+    if st_snapshot is not None:
+        if str(st_snapshot.get("date") or "")[:10] <= end:
+            raise ValueError("ST snapshot must be for a future execution session")
+        st_history = record_snapshot(st_history, st_snapshot)
+        write_history(persisted_path(simulation_root, market), st_history)
+    st_history_sha256 = prefix_sha256(st_history, end)
     blocks = fit_blocks(calendar, FIRST_EXECUTION, end)
     if blocks[0]["fit_asof"] != FIRST_SIGNAL:
         raise ValueError("October 8 first execution requires September 30 close features")
@@ -445,6 +462,7 @@ def _build_market_impl(
             or cached["series"]["website_semantic_sha256"] != semantic_sha
             or cached["series"]["account_contract_sha256"] != account_sha
             or cached["series"]["provider_archive_sha256"] != asset["digest"].split(":")[1]
+            or cached["series"].get("st_history_sha256") != st_history_sha256
         ):
             raise ValueError("cached website replay input identity mismatch")
         for relative, digest in cached["ledger_file_sha256"].items():
@@ -475,6 +493,10 @@ def _build_market_impl(
         if mode == "full"
         else None
     )
+    if incremental is not None:
+        expected_prior_st = prefix_sha256(st_history, incremental["previous"])
+        if incremental["payload"]["series"].get("st_history_sha256") != expected_prior_st:
+            raise ValueError("incremental ST history prefix mismatch")
     _validate_required_replay_mode(job, "INCREMENTAL" if incremental is not None else "FULL")
     if mode == "full" and incremental is None:
         smoke = json.loads(smoke_path.read_text())
@@ -683,6 +705,7 @@ def _build_market_impl(
             previous,
             end,
             extra_quote_symbols=execution_quote_symbols(restored_state),
+            st_history=st_history,
         )
         print(f"[website] {market} incremental inputs ready elapsed={time.monotonic() - started:.1f}s", flush=True)
         result = replay(
@@ -705,7 +728,7 @@ def _build_market_impl(
         signal_dir.mkdir(parents=True, exist_ok=True)
         signal_path = signal_dir / "signal.parquet"
         merged.to_parquet(signal_path)
-        data = prepare_data(provider, [signal_path], market, FIRST_SIGNAL, end)
+        data = prepare_data(provider, [signal_path], market, FIRST_SIGNAL, end, st_history=st_history)
         result = replay(data, candidate, engine_history_limit=120)
         replay_mode = "FULL"
     _validate_required_replay_mode(job, replay_mode)
@@ -718,6 +741,8 @@ def _build_market_impl(
         account_sha=account_sha,
         provider_sha=asset["digest"].split(":")[1],
         fits=fits,
+        st_history_sha256=st_history_sha256,
+        st_history_source=st_history.get("source"),
     )
     verify_source_manifest(job["source_manifest"], "training")
     ledger_dir = signal_dir / "ledger"
@@ -746,6 +771,8 @@ def _build_market_impl(
         "provider_source": asset.get("source", ""),
         "prefix_prediction_exact": mode == "smoke",
         "replay_mode": replay_mode,
+        "st_history_sha256": st_history_sha256,
+        "st_snapshot": st_snapshot,
         "incremental": incremental_evidence,
         "new_fits": new_fits,
         "series": series,
@@ -863,6 +890,7 @@ def publish_results(results, source, asset, *, token, simulation_root=Path("/sim
             "result_sha256": hashlib.sha256(result_bytes).hexdigest(),
             "ledger_file_sha256": dict(ledger),
             "final_state_sha256": ledger.get("final_state.json"),
+            "st_history_sha256": s["st_history_sha256"],
         }
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
     missing = {}

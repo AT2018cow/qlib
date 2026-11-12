@@ -139,10 +139,19 @@ def existing_publication_result(record, journal, *, recovered=False):
     context = publication_context(files, record["signal_date"])
     if record.get("publication_context") is not None and record["publication_context"] != context:
         raise ValueError("journal provenance differs from immutable metadata")
+    risk_st = None
+    for path, content in files.items():
+        if path.endswith("_mvp_metadata.json"):
+            try:
+                metadata = json.loads(content)
+            except (TypeError, ValueError):
+                break
+            risk_st = (metadata.get("risk") or {}).get("st")
+            break
     status = "RECOVERED" if recovered else "ALREADY_PUBLISHED"
     if context["publication_mode"] != "CANONICAL_T1":
         status += "_OPERATOR_OVERRIDE" if context["publication_mode"] == "OPERATOR_OVERRIDE" else "_UNVERIFIED_LEGACY"
-    return {"status": status, "signal_date": record["signal_date"], **context}
+    return {"status": status, "signal_date": record["signal_date"], **context, "risk_st": risk_st}
 
 
 class DailyPipelineError(RuntimeError):

@@ -153,6 +153,7 @@ def validate_publication_receipt(
             or series.get("website_semantic_sha256") != semantic
             or series.get("account_contract_sha256") != accounts[market]
             or series.get("provider_archive_sha256") != provider_hex
+            or binding.get("st_history_sha256") != series.get("st_history_sha256")
         ):
             raise ValueError(f"publication receipt {market} immutable series identity mismatch")
         series_bytes = (json.dumps(series, indent=2, ensure_ascii=False, allow_nan=False) + "\n").encode()

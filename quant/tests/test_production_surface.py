@@ -286,10 +286,10 @@ def test_favicon_is_valid_svg_and_published_on_both_pages():
 def test_st_free_reference_return_is_explicit_not_certified():
     app = (ROOT / "quant" / "website" / "app.js").read_text()
     method = (ROOT / "quant" / "website" / "methodology.html").read_text()
-    for phrase in ("策略累计收益 · 模拟盘参考", "历史重建未核实逐日 ST 和开盘成交量", "ST_IGNORED_REFERENCE_ONLY"):
+    for phrase in ("策略累计收益 · 模拟盘参考", "历史重建使用日期化 ST 历史", "ST_IGNORED_REFERENCE_ONLY"):
         assert phrase in app, f"site missing reference-only disclosure: {phrase}"
     assert "外部接口连接故障时公开标注参考模式" in method
-    assert "历史模拟未核实逐日 ST" in method
+    assert "网站自 10/08 起重建的历史模拟使用日期化 ST 历史" in method
     assert "官方除权日参考价" in method
     assert "不能视为当时实际发布的记录或实盘成交收益" in method
 

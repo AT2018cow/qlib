@@ -97,7 +97,19 @@ def _metadata_files(mode="OPERATOR_OVERRIDE"):
         "canonical_freshness_gate": f"{mode} lag=1",
     }
     return {
-        f"quant/data/signals/2026-11-06_mvp_metadata{suffix}.json": json.dumps({"publication": publication})
+        f"quant/data/signals/2026-11-06_mvp_metadata{suffix}.json": json.dumps(
+            {
+                "publication": publication,
+                "risk": {
+                    "st": {
+                        "status": "SOURCE_SNAPSHOT_AVAILABLE",
+                        "date": "2026-11-06",
+                        "st_symbols": ["SH600000"],
+                        "source": "test:dated-st",
+                    }
+                },
+            }
+        )
         for suffix in ("", "_csi300", "_csi500")
     }
 
@@ -113,6 +125,7 @@ def test_immutable_legacy_override_recovery_keeps_its_mode_and_is_not_green():
         result = existing_publication_result(record, journal, recovered=recovered)
         assert result["status"].endswith("_OPERATOR_OVERRIDE")
         assert result["signal_data_date"] == "2026-11-04" and result["lag_sessions"] == 1
+        assert result["risk_st"]["st_symbols"] == ["SH600000"]
         seen = []
         with pytest.raises(DailyPipelineError) as caught:
             run_daily_pipeline(lambda: result, lambda: seen.append("website") or {"status": "PUBLISHED"})
@@ -304,6 +317,8 @@ def test_missing_held_quote_is_a_real_gap_and_cannot_reach_website():
             account_sha=account_contract_manifest(account_contract_for_market("csi300"))["sha256"],
             provider_sha="b" * 64,
             fits=[],
+            st_history_sha256="e" * 64,
+            st_history_source="test:dated-st",
         )
 
 

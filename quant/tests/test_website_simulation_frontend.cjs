@@ -31,6 +31,17 @@ test('October 8 first-close return is displayed with correct market identity', (
   assert.equal(normalizeForwardPerformance(series(), 'csi300').status, 'active');
   assert.equal(normalizeForwardPerformance(series(), 'csi500').status, 'invalid');
 });
+test('verified dated ST policy requires a history hash and source', () => {
+  const verified = series();
+  verified.execution_st_policy = 'ST_VERIFIED_HISTORY';
+  assert.equal(normalizeForwardPerformance(verified).status, 'invalid');
+  verified.st_history_sha256 = 'f'.repeat(64);
+  verified.st_history_source = 'test:dated-st';
+  assert.equal(normalizeForwardPerformance(verified).status, 'active');
+  verified.st_history_sha256 = 'not-a-hash';
+  assert.equal(normalizeForwardPerformance(verified).status, 'invalid');
+});
+
 test('incorrect old capital, missing dates and inconsistent fees cannot display a return', () => {
   for (const change of [s => s.initial_cash = 100000000, s => s.trading_dates = [],
     s => s.points[0].nav = null, s => s.total_fees = 0, s => s.points[0].cumulative_return = 0]) {

@@ -25,7 +25,7 @@ INITIAL_CASH = 1_000_000
 FIT_RECEIPT_VERSION = 2
 ACCOUNT_CONTRACT_VERSION = 1
 MODE = "CAUSAL_SIMULATION"
-ST_POLICY = "ST_HISTORY_UNVERIFIED_REFERENCE_ONLY"
+ST_POLICY = "ST_VERIFIED_HISTORY"
 
 
 def account_contract_document():
@@ -139,7 +139,19 @@ def fit_bindings(fits, *, profile, horizon, dates):
     return bindings
 
 
-def build_website_series(market, result, *, calendar, source_sha, semantic_sha, account_sha, provider_sha, fits):
+def build_website_series(
+    market,
+    result,
+    *,
+    calendar,
+    source_sha,
+    semantic_sha,
+    account_sha,
+    provider_sha,
+    fits,
+    st_history_sha256,
+    st_history_source=None,
+):
     """Derive close-to-initial-capital returns from verified session ledgers."""
     if result["gaps"]:
         raise ValueError("website simulation cannot publish missing held quotes")
@@ -194,6 +206,8 @@ def build_website_series(market, result, *, calendar, source_sha, semantic_sha, 
         "points": points,
         "trading_dates": [d for d in calendar if FIRST_EXECUTION <= d <= points[-1]["date"]],
         "execution_st_policy": ST_POLICY,
+        "st_history_sha256": st_history_sha256,
+        "st_history_source": st_history_source or "dated-history",
         "auction_liquidity_verified": False,
         "official_reference_price_verified": False,
         "return_interpretation": "CAUSAL_HISTORICAL_SIMULATION_REFERENCE_ONLY",
@@ -231,6 +245,11 @@ def validate_website_series(raw, *, market=None):
         or raw.get("initial_cash") != INITIAL_CASH
         or raw.get("initial_nav") != 1.0
         or raw.get("execution_st_policy") != ST_POLICY
+        or not isinstance(raw.get("st_history_sha256"), str)
+        or len(raw.get("st_history_sha256", "")) != 64
+        or any(char not in "0123456789abcdef" for char in raw.get("st_history_sha256", ""))
+        or not isinstance(raw.get("st_history_source"), str)
+        or not raw.get("st_history_source")
     ):
         raise ValueError("invalid website simulation identity")
     profile = CANONICAL_PROFILES_BY_MARKET[market]

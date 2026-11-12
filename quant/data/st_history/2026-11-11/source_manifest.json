@@ -27,6 +27,23 @@
     "st_history.json": {
       "sha256": "30dd50e898fc0211436e207677618f2d1e20e8288658242a76368994065fdcf7",
       "bytes": 648
+    },
+    "verified_series_summary.json": {
+      "sha256": "5a9b99de60ce053116a8c1954acd3c8c438251f731f38aeb9c58dc0bff18a5ab",
+      "bytes": 828
     }
+  },
+  "production_integration": {
+    "status": "IMPLEMENTED_LOCAL_NOT_DEPLOYED",
+    "policy": "ST_VERIFIED_HISTORY",
+    "seed_plus_daily_snapshot": true,
+    "missing_evidence": "fail_closed"
+  },
+  "production_seed": {
+    "path": "quant/data/st_history/seed.json",
+    "sha256": "8c027509e74a5fd490aa99832e021a62ced953349cf78c47938aabc98417a651",
+    "bytes": 822,
+    "dates": 26,
+    "last": "2026-11-12"
   }
 }

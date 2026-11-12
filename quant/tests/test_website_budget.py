@@ -97,6 +97,7 @@ def _valid_receipt(tmp_path):
             "result_sha256": _sha(result_bytes),
             "ledger_file_sha256": ledger,
             "final_state_sha256": ledger["final_state.json"],
+            "st_history_sha256": series["st_history_sha256"],
         }
     receipt = {
         "schema_version": 2,

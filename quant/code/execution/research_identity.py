@@ -162,6 +162,7 @@ _WEBSITE_CODE_DEPENDENCIES = (
     "quant/code/production/qlib_runtime.py",
     "quant/code/production/website_replay_core.py",
     "quant/code/production/website_simulation.py",
+    "quant/code/production/website_st_history.py",
     "quant/code/research/regime_reselection/october_backfill_plan.py",
     "quant/code/research/regime_reselection/prelive_revalidation.py",
     "quant/code/research/stage_ab/csi1000_tuner_core.py",

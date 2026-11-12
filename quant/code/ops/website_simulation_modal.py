@@ -376,7 +376,7 @@ def build_market_incremental(job):
     max_containers=1,
     retries=0,
 )
-def daily(expected_source_sha256: str, expected_provider_end: str = ""):
+def daily(expected_source_sha256: str, expected_provider_end: str = "", st_snapshot=None):
     import os
     from research_identity import (
         account_contract_manifest,
@@ -400,6 +400,14 @@ def daily(expected_source_sha256: str, expected_provider_end: str = ""):
     markets = ("csi300", "csi500", "csi1000")
     calendar = _provider_calendar(asset)
     expected_latest = calendar[-1] if calendar else asset.get("calendar_end")
+    if st_snapshot is not None:
+        if (
+            not isinstance(st_snapshot, dict)
+            or str(st_snapshot.get("date") or "")[:10] <= str(expected_latest or "")[:10]
+            or not isinstance(st_snapshot.get("symbols"), list)
+            or not str(st_snapshot.get("source") or "").strip()
+        ):
+            raise ValueError("invalid or non-future ST snapshot")
     simulation.reload()
     receipt = checked_publication_receipt(
         simulation_root="/simulation",
@@ -410,6 +418,13 @@ def daily(expected_source_sha256: str, expected_provider_end: str = ""):
         expected_latest_date=expected_latest,
     )
     if receipt is not None:
+        if st_snapshot is not None:
+            from website_st_history import load_merged_history, persisted_path, record_snapshot, write_history
+
+            for market in markets:
+                history = record_snapshot(load_merged_history("/simulation", market), st_snapshot)
+                write_history(persisted_path("/simulation", market), history)
+            simulation.commit()
         print(f"[website] idempotent short-circuit: {source['sha256'][:12]}/{asset['digest'][:19]}", flush=True)
         return {
             "status": "ALREADY_PUBLISHED",
@@ -456,6 +471,7 @@ def daily(expected_source_sha256: str, expected_provider_end: str = ""):
             required_replay_mode=required_replay_mode,
             semantic=semantic,
             account=accounts[market],
+            st_snapshot=st_snapshot,
         )
         for market in markets
     ]
