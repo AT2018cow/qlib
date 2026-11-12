@@ -3,6 +3,8 @@
 > 日期：2026-11-11  
 > 实施基线：`83f710a76`（交接文档 `2026-11-10-overlay-primary-implementation-handoff.md`）  
 > 状态：本地/隔离验收完成；生产部署与首次切换验收见第 8 节。本文只记录真实命令、测量和产物，不把单元测试数量当作生产稳定证明。
+>
+> **后续状态（2026-11-12）**：下文 v20、06:00 调度和“资源候选未部署”是各节记录时的历史事实；两个生产 App 已部署 v26，当前资源与调度见[生产状态记录](2026-11-12-production-deployment-status.md)。
 
 ## 1. 实施前重新核对（与交接文档的差异）
 
@@ -275,7 +277,7 @@ marker 的 provider digest 是裸 64 位 hex，而 website `status` 接口要求
 
 建议验收：11-12 06:30 检查 `preopen_status/2026-11-12.json`、`provider_builds/` 失败记录、`cn_data_overlay/archives/2026-11-11/` receipt、signal journal/website status、`daily_readonly_check` 09:00 结果；并保存普通日账单。
 
-## 11. 第二轮复审整改（当前未提交工作区，2026-11-11）
+## 11. 第二轮复审整改（当时的未提交工作区，2026-11-11）
 
 本节是后续本地整改记录，不能回写成第 10 节生产 v18 已包含的能力。整改开始和结束时 Git HEAD 仍为
 `41b1c96bde94cde141e906ba70c8295afdeda78b`；第一轮 R01–R10 与本轮 S01–S05 都在同一个**未提交工作区**。
@@ -457,7 +459,7 @@ Modal function stats/calls/logs/billing 和生产 archive receipt；没有启动
 - Modal stats 是 best-effort 时间采样分位数，不是绝对瞬时峰值；首次使用当前 archive builder 的真实新日期
   全市场生产运行仍是后续验收门。
 - 本地 18 股票 mini build 曾记录 4.81 GiB 进程树 RSS；它与 Modal 容器采样口径、工作负载均不同，但已经
-  超过 4 GiB，因此 **2/4 没有安全余量，当前未部署候选保持 2/8**。部署后仍须用真实新日期构建验收 OOM
+  超过 4 GiB，因此 **2/4 没有安全余量，当时未部署候选保持 2/8**。部署后仍须用真实新日期构建验收 OOM
   余量与 2-core wall time。
 
 ### 15.2 本地实现
@@ -486,6 +488,5 @@ Modal function stats/calls/logs/billing 和生产 archive receipt；没有启动
 - `.venv/bin/pytest -q quant/tests`：**1106 passed、2 skipped、50 subtests passed**；16 个 Modal `.local()`
   只读警告。
 
-当前准确状态：**源码和回归已完成，资源调整代码已提交为 `9b5aa359c`，但尚未部署；生产 v20 仍使用 Provider 4/8 与统一 Website 8/16。**
-后续部署前仍需检查 intended diff；部署后先核对 function info，再以真实新日期 receipt 验收 2/8 Provider 和
-4/12 incremental 的耗时、资源余量、三市场 exact output 与失败恢复。
+本节记录时的状态：**源码和回归已完成，资源调整代码已提交为 `9b5aa359c`，当时尚未部署；当时生产 v20 使用 Provider 4/8 与统一 Website 8/16。**
+后续 v26 已回读到 Provider 2/8 和独立 Website incremental 4/12；冷缓存新日期构建、增量耗时与三市场结果等剩余验证见[生产状态记录](2026-11-12-production-deployment-status.md)。

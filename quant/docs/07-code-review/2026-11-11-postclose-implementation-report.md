@@ -2,7 +2,9 @@
 
 > 日期：2026-11-11
 >
-> 状态：`LOCAL REMEDIATED / LOCAL RE-VERIFIED / NOT DEPLOYED / NOT SCHEDULED-VERIFIED`
+> 原实施状态：`LOCAL REMEDIATED / LOCAL RE-VERIFIED / NOT DEPLOYED / NOT SCHEDULED-VERIFIED`。
+>
+> 后续状态（2026-11-12）：相关源码已提交、推送并部署至两个生产 App v26；11-11 数据的手动补跑已完成，v26 自然调度及邮件尚待验收。配置回读和证据边界见[生产状态记录](2026-11-12-production-deployment-status.md)。
 >
 > 性质：本地实现与测试报告，不是部署批准、生产 PASS、收益认证或自然调度验收。
 >
@@ -14,8 +16,8 @@
 
 ## 1. 结论摘要
 
-PC01–PC08 已在本地实现，并完成 PR01–PR06 及其后续五项复验残余整改。当前状态为
-`LOCAL REMEDIATED / LOCAL RE-VERIFIED / NOT DEPLOYED`，保留以下既有合同：
+PC01–PC08 已在本地实现，并完成 PR01–PR06 及其后续五项复验残余整改。原实施阶段的状态为
+`LOCAL REMEDIATED / LOCAL RE-VERIFIED / NOT DEPLOYED`；后续部署状态见页首和第 10 节。保留以下既有合同：
 
 - 唯一自建 overlay provider；日常路径不回退 chenditc，不恢复主备双源。
 - `qlib-prod-daily` / `qlib-prod-website` 两个生产 App；未合并容器、未做镜像瘦身、未增加多容器抓取。
@@ -24,11 +26,11 @@ PC01–PC08 已在本地实现，并完成 PR01–PR06 及其后续五项复验�
 - Provider 2 CPU / 8 GiB、Website incremental 4 CPU / 12 GiB、full/smoke/retrain 8 CPU / 16 GiB、Signal 8 CPU / 16 GiB。
 - R01–R10、S01–S05 与既有复权/来源边界未回退。
 
-本轮**没有**部署、push、运行付费 Modal、写生产 Volume、发布 GitHub 信号或执行归档删除。
+本报告所述的 11-11 本地整改阶段**没有**部署、push、运行付费 Modal、写生产 Volume、发布 GitHub 信号或执行归档删除；后续操作见第 10 节。
 
 ## 2. PC01–PC08 状态
 
-| ID | 本地状态 | 实现要点 | 主要测试 | 剩余外部门 |
+| ID | 本地状态 | 实现要点 | 主要测试 | 原实施时的剩余外部门（后续状态见第 10 节） |
 |---|---|---|---|---|
 | PC01 | 已实现 | 18:00 `daily_cron`；23:00 `daily_postclose_check`；23:15 `daily_evening_retry` 只转发同一 `daily_cron`；U 07:00 `daily_readonly_check`；v2 `postclose_status` marker | `test_cron_gate.py`、`test_daily_pipeline.py`、`test_modal_structure.py` | 部署后核对四个自然时点与邮件实际到达 |
 | PC02 | 已实现 | `release_source_sha256` / `website_semantic_sha256` / `account_contract_sha256`；replay core 移出 Modal launcher；显式语义闭包与运行时未登记 import fail-closed | `test_research_identity.py`、`test_website_simulation.py` | 首轮有界 full + 下一交易日 4/12 incremental 实测 |
@@ -153,7 +155,7 @@ passed
 - 新 receipt schema 首次写入后，`daily()` / `status()` / postclose marker 均会重读三市场 immutable result/series/ledger 哈希；任何旧的最小 receipt 会被拒绝，需按审计流程处理，不得静默覆盖。
 - 旧 `preopen_status` marker、历史 v1 CSV、journal 和账户状态只读保留，不覆盖、不重写。
 
-## 8. 明确未执行
+## 8. 原本地整改阶段未执行
 
 - 未 `modal deploy`，未运行 `modal run`，未执行付费训练/回放。
 - 未 push 到远端，未更新生产 GitHub 信号，未写生产 Volume。
@@ -162,10 +164,14 @@ passed
 - 未验证 Modal 失败邮件实际到达；邮件仍是外部配置，仓库不声称自行发送。
 - 网站收益仍是因果纸面模拟，不是券商成交、逐日 ST、开盘流动性或官方参考价认证。
 
-## 9. 交付状态
+## 9. 原本地整改交付状态
 
 ```text
 LOCAL REMEDIATED / LOCAL RE-VERIFIED / NOT DEPLOYED
 ```
 
-Codex 验收通过且用户另行授权前，不得写成已部署、生产 PASS 或自然调度验收通过。
+该状态是当时的交付边界，不代表后续部署状态；即使源码已部署，也不能仅凭部署声明自然调度或收益认证通过。
+
+## 10. 2026-11-12 后续部署
+
+PC/PR/CR 源码已进入提交历史并推送；两个生产 App 已部署 v26（`1b5ef71ac`），平台已回读四个 cron、资源规格与单协调器限制。11-11 provider/信号/NAV 的手动恢复完成于此前 v25。v26 首次自然周期、对应网站新 semantic cache 的 full 与后续 incremental、邮件和其他外部证据仍须单独核验。详见[生产状态记录](2026-11-12-production-deployment-status.md)。

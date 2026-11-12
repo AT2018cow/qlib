@@ -1,7 +1,8 @@
 # 生产与研究的行情数据 lineage（overlay 引入后）
 
-> 日期：2026-11-11  
-> 适用版本：生产 v20（App commit `3568be937`，最终文档 HEAD 以 Git 为准）  
+> 初版：2026-11-11；状态核对：2026-11-12
+>
+> 适用范围：生产 v26（App commit `1b5ef71ac`）与当前研究入口；部署和验收状态见[生产状态记录](../07-code-review/2026-11-12-production-deployment-status.md)。
 > 性质：数据源与 lineage 说明，不是新的回测、策略选择或生产切换批准。  
 > 相关文档：
 > - `quant/docs/07-code-review/2026-11-10-overlay-primary-implementation-handoff.md`
@@ -43,7 +44,7 @@
   - 发布 `cn_data_overlay/archives/<date>/<sha256>.tar.gz` + `receipt.json`；
   - signal/website 读取 archive 并本地 materialize。
 - 生产 `cn_data_overlay/2026-11-10` 已封存为 archive `658555ec103915ccac5caa7521b218f273abc5c0c862eb10c76ed48fea22ddda`，receipt `fa1744e2…`。
-- 生产 `qlib-prod-data/cn_data` 是迁移遗留目录，不是 06:00 日更链路的数据源；不要把它当作生产 overlay。
+- 生产 `qlib-prod-data/cn_data` 是迁移遗留目录，不是 18:00 日更链路的数据源；不要把它当作生产 overlay。
 
 ### 2.2 研究 chenditc lineage
 
@@ -64,6 +65,7 @@
 | 2026-11-09 | 生产 workspace 迁移；日常信号/网站明确使用 overlay，`cn_data` 基础数据留给研究/训练重新下载 |
 | 2026-11-10 | overlay 11-10 封存为 archive `6585…` |
 | 2026-11-11 | 生产 v20；研究 `qlib-cn-data/cn_data` 仍是 chenditc lineage |
+| 2026-11-12 | 11-11 overlay archive 补跑 PASS；两个生产 App 部署 v26；研究默认 lineage 未切换 |
 
 注意：**2026-11-06 之前的研究结果与生产账户历史可能来自 chenditc 或更早的 provider**；website v20 的全量 replay 是 overlay 11-10 provider 的完整重放，但 paper 账户的历史状态仍保留其当时 journal/provider lineage。以 `publication_journal`、`provider_identity`、website `provider_source` 为准，不能仅按日期推断。
 
@@ -71,7 +73,7 @@
 
 | 消费者 / 入口 | 默认数据源 | 是否使用 overlay | 备注 |
 |---|---|---|---|
-| `daily_standalone`（06:00 生产信号） | `cn_data_overlay` archive/directory | **是，唯一** | `_select_overlay_provider`；缺失即报错，不回退 chenditc |
+| `daily_standalone`（由 18:00 协调器调用） | `cn_data_overlay` archive/directory | **是，唯一** | `_select_overlay_provider`；缺失即报错，不回退 chenditc |
 | `website_simulation_modal`（生产 website） | `cn_data_overlay` archive/directory | **是，唯一** | `latest_asset` / `_latest_overlay_asset`；跨源拒绝增量 |
 | `ensure_chenditc_provider` | chenditc release | 否 | 仅手动历史恢复，无 schedule、无日常调用 |
 | `research/stage_ab/csi1000_stage_b.py` | `qlib-cn-data/cn_data` | 否 | `.chenditc` marker；缺失时 fail-closed，不刷新 |
@@ -82,7 +84,7 @@
 | `research/current_window/current_window_modal.py` | `/tmp/cn_data` 或 `_load_latest_to_local()` | 否 | 优先已有本地副本，否则 chenditc latest |
 | `research/regime_reselection/prelive_modal.py` | `qlib-cn-data` 只读挂载 | 否（默认） | `prelive_revalidation --provider` 可显式传 overlay |
 | `research/regime_reselection/october_backfill_modal.py` | 显式 `asset` | 可选 | `url`（chenditc）/ `local_path` / `archive_path`（overlay） |
-| `backfill_signals` / `daily_signal` / `daily_signal_cpu` | `_load_latest_to_local()` / `_ensure_data()` | 否 | 研究/旧入口，不在 06:00 调度路径 |
+| `backfill_signals` / `daily_signal` / `daily_signal_cpu` | `_load_latest_to_local()` / `_ensure_data()` | 否 | 研究/旧入口，不在 18:00 日常调度路径 |
 | `ops/modal_data_overlay_canary.py` / `dry_run.py` | 冻结 chenditc 11-04 base + overlay | 是（验证工具） | 临时/隔离验证，不是生产调度，也不是策略研究 |
 
 ## 4. 研究复现生产时的强制规则
@@ -179,3 +181,4 @@ rg -n "archive_path|local_path|provider" quant/code/research/regime_reselection/
 | 日期 | 变更 |
 |---|---|
 | 2026-11-11 | 新建本文；记录 v20 生产 overlay 与 chenditc 研究 lineage 的差异、代码入口、复现规则和风险 |
+| 2026-11-12 | 核对 v26 已部署状态与 18:00 调度；研究与生产的数据 lineage 边界不变 |

@@ -57,10 +57,9 @@ jobs:
             --signals quant/data/signals \
             --market csi300 \
             --output _site/signals/available_dates_csi300.json
-          # October is a disclosed BACKFILL_RESEARCH prefix.  Build the live
-          # ledger separately and splice it onto the prefix, so the first live
-          # session continues the 10/30 account instead of resetting the
-          # dashboard to "awaiting first valuation".
+          # Schema v3 website results are an independent continuous account:
+          # both builders validate and pass them through without splicing in
+          # the scheduled paper ledger.  Older schemas retain the legacy merge.
           for market in csi1000 csi500 csi300; do
             python3 quant/code/ops/build_forward_performance.py \
               --signals quant/data/signals \

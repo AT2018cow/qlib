@@ -1,5 +1,7 @@
 # 生产工作区迁移与首轮 T-close 发布（2026-11-09）
 
+> 历史迁移记录：本文的 App 版本与调度为当时状态；当前 v26 部署与待验证边界见[生产状态记录](2026-11-12-production-deployment-status.md)。
+
 状态：`CUTOVER_VERIFIED / MONITORING`
 
 ## 1. 命名与切换

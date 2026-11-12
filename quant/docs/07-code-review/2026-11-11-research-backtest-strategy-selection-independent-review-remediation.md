@@ -4,7 +4,9 @@
 >
 > 验收基线：Git HEAD `4f4163bb1`，叠加 DeepSeek 的 RR01–RR09 未提交工作区修改
 >
-> 状态：`INDEPENDENT REVIEW FAILED / REMEDIATION REQUIRED / LOCAL ONLY / NOT COMMITTED / NOT DEPLOYED`
+> 原独立验收状态：`INDEPENDENT REVIEW FAILED / REMEDIATION REQUIRED / LOCAL ONLY / NOT COMMITTED / NOT DEPLOYED`。
+>
+> 后续状态（2026-11-12）：Codex 的 AR01–AR09 整改已本地复验、提交推送并纳入生产 v26 镜像；研究云端 bounded replay 与策略晋升仍待独立验证。见[最终整改报告](2026-11-12-research-backtest-strategy-selection-codex-remediation-report.md)。下文“待修复”“不得提交”等均指原验收基线。
 >
 > 实施者：DeepSeek；独立验收：Codex
 >
@@ -34,7 +36,7 @@
 LOCAL IMPLEMENTED / INDEPENDENT REVIEW FAILED / NOT COMMITTED / NOT DEPLOYED
 ```
 
-候选变更尚未提交、未部署，当前生产 v20 不受本轮新问题影响，不需要生产回滚；但该候选在再次验收前不得部署。
+原验收时候选变更尚未提交、未部署，当时生产 v20 不受本轮新问题影响，不需要生产回滚；该候选当时在再次验收前不得部署。
 
 ## 2. 工作区与不变边界
 

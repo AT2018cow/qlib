@@ -1,7 +1,9 @@
 # 研究回测与策略择优整改实施交接
 
 > 日期：2026-11-11
-> 状态：`LOCALLY IMPLEMENTED / INDEPENDENT REVIEW FAILED / REMEDIATION REQUIRED / NOT COMMITTED / NOT DEPLOYED`
+> 原交接状态：`LOCALLY IMPLEMENTED / INDEPENDENT REVIEW FAILED / REMEDIATION REQUIRED / NOT COMMITTED / NOT DEPLOYED`。
+>
+> 后续状态（2026-11-12）：AR01–AR09 已本地整改复验并随 `80014b09f` 提交推送，源码包含于生产 v26 镜像；真实研究云端 replay 和策略晋升仍待验收。见[最终整改报告](2026-11-12-research-backtest-strategy-selection-codex-remediation-report.md)。
 >
 > 实施报告：[`2026-11-11-research-backtest-strategy-selection-implementation-report.md`](2026-11-11-research-backtest-strategy-selection-implementation-report.md)
 > 独立验收整改：[`2026-11-11-research-backtest-strategy-selection-independent-review-remediation.md`](2026-11-11-research-backtest-strategy-selection-independent-review-remediation.md)

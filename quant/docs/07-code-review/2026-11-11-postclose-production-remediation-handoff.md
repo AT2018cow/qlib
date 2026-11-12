@@ -2,7 +2,9 @@
 
 > 日期：2026-11-11
 >
-> 状态：`APPROVED PLAN / LOCAL IMPLEMENTED / NOT DEPLOYED`
+> 原交接状态：`APPROVED PLAN / LOCAL IMPLEMENTED / NOT DEPLOYED`。
+>
+> 后续状态（2026-11-12）：相关源码已提交推送并部署至生产 v26；自然调度和外部证据仍待核验，见[生产状态记录](2026-11-12-production-deployment-status.md)。下文未部署描述为交接时的历史边界。
 >
 > 本地实现与测试证据见 [`2026-11-11-postclose-implementation-report.md`](2026-11-11-postclose-implementation-report.md)。
 >
@@ -42,7 +44,7 @@ quant/tests/test_website_simulation.py
 ```
 
 - 上述资源调整代码与测试已经整理为独立检查点提交 `9b5aa359c`：Provider `2 CPU / 8 GiB` 和独立 Website incremental `4 CPU / 12 GiB`；full/smoke/retrain 仍为 `8 CPU / 16 GiB`，Signal 仍为 `8 CPU / 16 GiB`。
-- 生产 v20 仍是 Provider `4/8`、统一 Website `8/16`；不要把本地候选写成已部署事实。
+- 起草交接时生产 v20 为 Provider `4/8`、统一 Website `8/16`；后续部署与回读见页首。
 
 交接文档、实施报告状态和总索引在资源代码检查点之后作为独立文档提交。DeepSeek 开始前应看到干净工作区，并重新运行 `git status --short`、`git log -2 --oneline` 和 `git diff --check`；若实际状态不干净，应先理解并保护新增 diff。禁止 `reset --hard`、`restore`、`clean`、覆盖式 checkout，禁止只在旧纯 HEAD 上重做。不要把 `9b5aa359c` 的实现拆掉后再复制一份相同代码。
 

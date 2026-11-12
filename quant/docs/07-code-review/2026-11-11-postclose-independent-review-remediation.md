@@ -12,7 +12,7 @@
 >
 > 性质：针对 PC01–PC08 本地实现的整改交接；不是部署批准、生产 PASS、收益认证或自然调度验收。
 >
-> 后续状态：PR01–PR06 已由 `001cada22` 整改；第二次复验发现的五项残余已在未提交工作区修复并完成本地禁网复验，见第 12 节。
+> 后续状态：PR01–PR06 已由 `001cada22` 整改；第二次复验的五项残余由 `4f4163bb1` 提交。相关源码已推送并随两个生产 App v26 部署；自然调度仍待验收。见第 12 节及[生产状态记录](2026-11-12-production-deployment-status.md)。下文的未部署状态和待修复表均指原验收基线。
 
 ## 1. 验收结论
 
@@ -40,7 +40,7 @@ LOCAL IMPLEMENTED / INDEPENDENT REVIEW FAILED / NOT DEPLOYED
 - 本地 HEAD：`95b55855e`；`origin/main`：`d90ff2bcb`；本地 `main` 领先 1 个提交。
 - 工作区干净；Codex 本轮只审查，没有修改实现、部署、push 或写生产数据。
 - `95b55855e` 已包含此前 Provider 2 CPU / 8 GiB、Website incremental 4 CPU / 12 GiB 的资源候选，以及 PC01–PC08 实现。
-- 生产仍为 v20：Provider 4/8、统一 Website 8/16、06:00/07:30/09:00 调度。
+- 原验收时生产为 v20：Provider 4/8、统一 Website 8/16、06:00/07:30/09:00 调度。
 
 DeepSeek 接手前先运行：
 
@@ -408,7 +408,7 @@ Provider 2/8、Website incremental 4/12、R01–R10、S01–S05 和复权修复�
 ## 12. 第二次复验残余与 Codex 本地修复
 
 第二次复验没有重新打开已经有效的 PR01、PR04、PR06，而是在 identity、receipt 和 retention 边界发现五项残余。Codex
-按“先失败回归、再修实现”处理，当前仍是未提交、未部署状态：
+按“先失败回归、再修实现”处理；本节记录的是提交及后续部署之前的本地复验状态：
 
 | ID | 级别 | 修复结果 |
 |---|---|---|
@@ -433,5 +433,4 @@ Provider 2/8、Website incremental 4/12、R01–R10、S01–S05 和复权修复�
 禁网全量 quant：1165 passed, 2 skipped, 24 warnings, 50 subtests passed
 ```
 
-边界不变：未 `modal deploy`、未运行 `modal run`、未 push、未写生产 Volume、未发布生产信号、未执行 archive 删除。
-本地复验通过不等于生产验收；首次 identity full、下一交易日 4/12 incremental、Provider 2/8 新日期、自然调度和邮件到达仍是部署后外部门。
+上述本地复验阶段未 `modal deploy`、未运行 `modal run`、未 push、未写生产 Volume、未发布生产信号、未执行 archive 删除。后续已提交推送并部署 v26；v26 首次 identity full、后续 4/12 incremental、冷缓存 Provider 新日期、自然调度和邮件到达仍需单独核验。

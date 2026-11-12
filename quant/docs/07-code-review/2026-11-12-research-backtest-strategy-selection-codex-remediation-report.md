@@ -4,7 +4,7 @@
 >
 > 基线：Git HEAD `4f4163bb1`，叠加此前 RR01–RR09、IR01–IR08 以及本轮 AR01–AR09 未提交工作区修改
 >
-> 状态：`LOCAL REMEDIATED / LOCAL INDEPENDENTLY RE-VERIFIED / COMMITTED LOCALLY / NOT PUSHED / NOT DEPLOYED`
+> 状态（2026-11-12 后续核对）：`LOCAL REMEDIATED / LOCAL INDEPENDENTLY RE-VERIFIED / COMMITTED / PUSHED / SOURCE IN PRODUCTION IMAGE / RESEARCH CLOUD REPLAY NOT VERIFIED`
 >
 > 性质：研究扩展层本地代码、证据链和门禁整改；不是策略晋级、Modal 云端执行、生产部署或券商成交认证。
 
@@ -14,7 +14,7 @@ Codex 已亲自关闭二次独立验收报告中的 AR01–AR09。本轮先加�
 `11 failed`；实现整改后，同一组回归、定向测试和完整 `quant/tests` 均通过。二次验收报告中记录的
 `ACCEPTED` 负向探针现均 fail-closed。
 
-本轮没有执行 Modal、没有写生产 Volume、没有部署两个生产 App，也没有提交或 push。三市场当前 profile、
+整改实施阶段没有执行 Modal、写生产 Volume 或部署两个生产 App；后续由 `80014b09f` 提交并推送，源码包含在 v26 生产镜像中，见[生产状态记录](2026-11-12-production-deployment-status.md)。三市场当前 profile、
 TopK/DropN、三个独立 1M 账户、费用、20-session 重训和 T-close→T+1-open 合同均保持不变。
 
 ## 2. AR01–AR09 关闭矩阵
@@ -116,10 +116,9 @@ verified G2 必须能派生 overlay G2、overlay runner 必须调用 builder、s
 
 ## 6. 尚未完成的外部边界
 
-- `COMMITTED LOCALLY / NOT PUSHED`：本地提交已形成，但未推送远端。
-- `NOT CLOUD-REPLAYED`：未在 Modal worker 中运行真实三市场 bounded replay，也未验证云端 image/import identity。
-- `NOT DEPLOYED`：未更新 Modal App、schedule、Volume、GitHub 信号或网站。
+- `COMMITTED / PUSHED / SOURCE IN PRODUCTION IMAGE`：`80014b09f` 已进入远端 main；两个生产 App v26 已部署包含该源码的镜像。这不是独立研究实验执行或验收。
+- `RESEARCH NOT CLOUD-REPLAYED`：本整改未在 Modal worker 中运行真实三市场研究 bounded replay，也没有该研究入口的云端 image/import identity 验收证据；11-11 生产补跑不替代这一验证。
 - `NOT PRODUCTION-ACCEPTED`：未做生产输入只读、输出隔离的 attached 云端验收。
 - `NOT BROKER-CERTIFIED`：paper/backtest 仍不是券商成交或竞价流动性认证。
 
-因此当前可声明的是“本地代码与回归已关闭 AR01–AR09”，不能声明“已部署”或“生产已验收”。
+因此当前可声明的是“AR01–AR09 本地代码与回归已关闭，源码已推送并纳入生产镜像”；不能据此声明研究云端复验、策略晋升或券商成交认证通过。

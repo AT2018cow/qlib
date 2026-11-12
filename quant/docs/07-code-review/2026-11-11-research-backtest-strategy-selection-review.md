@@ -1,6 +1,6 @@
 # 研究回测与策略择优代码审查（2026-11-11）
 
-> **状态：REVIEW COMPLETE / REMEDIATION OPEN / LOCAL EVIDENCE ONLY / NOT DEPLOYED**
+> **原审查状态：REVIEW COMPLETE / REMEDIATION OPEN / LOCAL EVIDENCE ONLY / NOT DEPLOYED**。后续 AR01–AR09 已本地整改、提交推送并纳入生产镜像；研究云端 replay 和策略晋升仍待独立验证，见[整改报告](2026-11-12-research-backtest-strategy-selection-codex-remediation-report.md)。
 > 审查基线：`4f4163bb1`（`main`，审查开始时工作区干净，领先 `origin/main` 3 个提交）
 > 审查边界：只审 `quant/` 扩展；不审上游 `qlib/` 实现；未运行、部署或修改任何 Modal App；未改变生产 profile、账户、provider 或网站。
 > DeepSeek 实施要求：[`2026-11-11-research-backtest-strategy-selection-remediation-handoff.md`](2026-11-11-research-backtest-strategy-selection-remediation-handoff.md)。

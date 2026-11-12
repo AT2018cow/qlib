@@ -2,7 +2,7 @@
 
 > 日期：2026-11-11
 >
-> 状态：`LOCAL REMEDIATED / LOCAL INDEPENDENTLY RE-VERIFIED / COMMITTED LOCALLY / NOT PUSHED / NOT DEPLOYED`
+> 状态（2026-11-12 后续核对）：`LOCAL REMEDIATED / LOCAL INDEPENDENTLY RE-VERIFIED / COMMITTED / PUSHED / SOURCE IN PRODUCTION IMAGE / RESEARCH CLOUD REPLAY NOT VERIFIED`
 >
 > 交接合同：[`2026-11-11-research-backtest-strategy-selection-remediation-handoff.md`](2026-11-11-research-backtest-strategy-selection-remediation-handoff.md)
 >
@@ -19,7 +19,7 @@
 > 性质：本地代码、测试和证据链整改；不是策略晋升、Modal 执行、生产部署或券商成交认证。
 
 > 历史说明：DeepSeek 两轮完成时，本报告的 `LOCALLY_FIXED` 只是实施者自证，Codex 负向探针仍复现缺口。
-> Codex 后续已亲自完成 AR01–AR09 并本地独立复验；当前仍不得把本地通过写成已提交、已部署或生产验收。
+> Codex 后续已亲自完成 AR01–AR09 并本地独立复验；`80014b09f` 已提交推送，源码包含于生产 v26 镜像。本地通过和源码部署均不能替代研究云端复验或策略晋升验收。
 
 ## 1. RR01–RR09 状态矩阵
 
@@ -35,7 +35,7 @@
 | RR08 | `LOCALLY_FIXED` | `failed_jobs()` 先校验 jobs/results 长度；coordinator map 后长度不等立即抛错，不打印完成、不进入 assembly |
 | RR09 | `LOCALLY_FIXED` | `research_identity.environment_manifest()` 绑定 Python、实际 Qlib 源码 digest、NumPy/Pandas/LightGBM/PyArrow 版本；不写本地绝对路径；job identity 与 bundle 使用 environment SHA |
 
-外部边界保持 `BLOCKED_EXTERNAL`：真实 overlay bounded replay、Modal 执行、部署和券商成交认证本轮均未执行。
+原实施阶段未执行真实 overlay 研究 bounded replay、Modal 部署和券商成交认证；后续生产部署事实见[生产状态记录](2026-11-12-production-deployment-status.md)，研究云端复验与券商认证仍无完成证据。
 
 ## 2. 旧实现失败 → 新实现通过证据
 
@@ -155,8 +155,7 @@ git status --short --branch
 ## 6.1 独立复审二次整改（IR01–IR08）
 
 历史状态：`IMPLEMENTER-CLAIMED LOCALLY_FIXED / INDEPENDENT ACCEPTANCE FAILED`。当前状态已由后续 AR01–AR09
-整改更新为 `LOCAL REMEDIATED / LOCAL INDEPENDENTLY RE-VERIFIED`（仍为
-`COMMITTED LOCALLY / NOT PUSHED / NOT DEPLOYED / NOT CLOUD-REPLAYED / NOT BROKER-CERTIFIED`）。
+整改更新为 `LOCAL REMEDIATED / LOCAL INDEPENDENTLY RE-VERIFIED`；后续已提交推送、源码进入生产镜像，但研究 bounded replay 和券商认证仍未完成。
 
 Codex 二次独立验收当时确认：定向与全量测试虽全绿，但 G1 实际 assembly 参数和 receipt schema 自相矛盾；
 空业务 payload 的 PROMOTION bundle 仍可授权 `GATE_PASS`；G2/selection、Gate0 CLI 仍可绕过新 helper；
@@ -216,11 +215,10 @@ AR01–AR09 均已 `LOCAL PASS`。详细实现矩阵、负向探针、release co
 ## 7. 未验证边界
 
 - `NOT CLOUD-REPLAYED`：未用真实 chenditc/overlay provider 做三市场 bounded replay，也未逐日比较 score/ranking/trades/fees/holdings/cash/NAV。
-- `NOT DEPLOYED`：未部署 Modal App，未改生产 Volume、GitHub 信号、网站或 journal。
+- `SOURCE IN PRODUCTION IMAGE`：后续生产 v26 已部署包含这些源码的镜像；这不表示研究入口已在云端复验，也不代表批准策略晋升。
 - `NOT BROKER-CERTIFIED`：研究/paper 结果仍不是券商成交、竞价流动性或官方参考价认证。
 - RR03 的 `GATE_PASS` 路径只有合成 fixture 覆盖；当前三市场没有新的 gate PASS，CSI300/CSI500 仍必须保持 override 状态。
 - RR05 bundle builder/verifier 已用合成完整 bundle 验证；真实 G1/G2 原件只做 legacy inventory，不补签。
 - RR01/RR09 的真实 Modal worker 环境一致性需要部署前由 Codex 在隔离 probe 中复核。
 
-本轮已随研究整改提交在本地落库；未 push、未运行 Modal、未部署、未写生产 Volume。IR01–IR08 与
-AR01–AR09 已完成本地独立复验，外部边界仍按本节保持关闭。
+IR01–IR08 与 AR01–AR09 已完成本地独立复验；研究整改随 `80014b09f` 提交推送，后续生产 v26 已部署。研究云端 replay 与券商认证边界仍按本节保持关闭。

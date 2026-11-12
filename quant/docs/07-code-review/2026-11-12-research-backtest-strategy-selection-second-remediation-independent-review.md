@@ -6,7 +6,7 @@
 >
 > 原验收状态：`INDEPENDENT ACCEPTANCE FAILED / REMEDIATION REQUIRED`
 >
-> 当前状态：`LOCAL REMEDIATED / LOCAL INDEPENDENTLY RE-VERIFIED / COMMITTED LOCALLY / NOT PUSHED / NOT DEPLOYED`
+> 后续状态（2026-11-12）：`LOCAL REMEDIATED / LOCAL INDEPENDENTLY RE-VERIFIED / COMMITTED / PUSHED / SOURCE IN PRODUCTION IMAGE / RESEARCH CLOUD REPLAY NOT VERIFIED`。
 >
 > 原二次实施者：DeepSeek；原独立验收及 AR01–AR09 后续整改：Codex
 >
@@ -51,8 +51,8 @@ LOCAL IMPLEMENTED / INDEPENDENT ACCEPTANCE FAILED / NOT COMMITTED / NOT DEPLOYED
 - HEAD 仍为 `4f4163bb1`，本地 `main` 领先 `origin/main` 3 个提交；本轮候选仍在未提交工作区。
 - 验收过程中未执行 `reset`、`restore`、`clean`，未覆盖 DeepSeek 或此前修复。
 - 原二次验收时 Codex 只新增/更新审查文档；后续 AR01–AR09 整改已修改候选实现、测试、数据和 release JSON。
-- 未运行 Modal、未部署 App、未写生产 Volume、未提交或 push。
-- 现网生产端不受这些未部署研究候选缺陷影响；这些缺陷阻止的是本轮研究候选提交/部署与未来策略晋级。
+- 原二次验收阶段未运行 Modal、未部署 App、未写生产 Volume、未提交或 push。
+- 当时现网生产端不受这些尚未部署研究候选缺陷影响；后续 AR01–AR09 已整改并随源码部署，研究晋升仍须独立证据。
 
 本地命令结果：
 
@@ -331,7 +331,6 @@ git diff --check：PASS
 | AR08 | `LOCAL PASS` | 真实 Gate0 CLI 从 provider calendar 推导并传入 expected sessions |
 | AR09 | `LOCAL PASS` | resolve 后 root containment 拒绝 release/promotion evidence symlink 越界 |
 
-当前已关闭本地代码与回归并在本地提交；仍未 push、未运行 Modal、未云端 replay、未部署、未生产验收、
-未券商认证。完整
+当前已关闭本地代码与回归、提交推送并纳入生产镜像；真实三市场研究云端 replay、研究晋升验收和券商认证仍未完成。完整
 实现、release 新 SHA、探针和边界见
 [`Codex 整改报告`](2026-11-12-research-backtest-strategy-selection-codex-remediation-report.md)。

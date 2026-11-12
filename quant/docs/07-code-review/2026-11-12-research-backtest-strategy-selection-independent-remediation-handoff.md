@@ -2,14 +2,14 @@
 
 > 日期：2026-11-12
 >
-> 状态：`LOCALLY IMPLEMENTED / INDEPENDENT ACCEPTANCE FAILED / REMEDIATION REQUIRED / NOT COMMITTED / NOT DEPLOYED`
+> 原交接状态：`LOCALLY IMPLEMENTED / INDEPENDENT ACCEPTANCE FAILED / REMEDIATION REQUIRED / NOT COMMITTED / NOT DEPLOYED`
 >
 > 实施结果：[`2026-11-11-research-backtest-strategy-selection-implementation-report.md`](2026-11-11-research-backtest-strategy-selection-implementation-report.md) 的 IR01–IR08 二次整改章节。
 >
 > 独立验收：[`2026-11-12-research-backtest-strategy-selection-second-remediation-independent-review.md`](2026-11-12-research-backtest-strategy-selection-second-remediation-independent-review.md)。本地测试全绿，但真实入口与负向探针仍确认 6 个 P1、3 个 P2，本文中的 `LOCALLY IMPLEMENTED` 不等于验收通过。
 >
 > 后续状态（2026-11-12）：Codex 已亲自完成 AR01–AR09 并本地独立复验通过；见
-> [`Codex 整改报告`](2026-11-12-research-backtest-strategy-selection-codex-remediation-report.md)。现已本地提交，仍未 push、未运行 Modal、未部署。
+> [`Codex 整改报告`](2026-11-12-research-backtest-strategy-selection-codex-remediation-report.md)。整改已提交推送并纳入生产 v26 镜像；真实三市场研究 bounded replay 仍待验证。本文其他 `NOT COMMITTED / NOT DEPLOYED` 为原交接时的状态或实施要求。
 >
 > 问题来源：[`2026-11-11-research-backtest-strategy-selection-independent-review-remediation.md`](2026-11-11-research-backtest-strategy-selection-independent-review-remediation.md)
 >
@@ -84,7 +84,7 @@ git diff --check
   上市日豁免、整手、5bp/15bp 和最低 5 元费用。
 - CSI300/CSI500 保持 `RISK_ACCEPTED_OVERRIDE`；CSI1000 保持 `INCUMBENT_RETAINED`。
 - RR06 `fit_start`、RR08 partial-map、非有限数拒绝、legacy artifact 原字节/SHA 和此前 R/S/PC/PR/CR 修复。
-- Provider 2 CPU / 8 GiB、Website incremental 4 CPU / 12 GiB、full/smoke/retrain 8/16 的未部署资源候选。
+- 原交接时须保留的资源候选：Provider 2 CPU / 8 GiB、Website incremental 4 CPU / 12 GiB、full/smoke/retrain 8/16；这些规格后续已在 v26 回读确认。
 
 明确非目标：
 
@@ -415,7 +415,7 @@ git status --short --branch
 - 需补造 legacy report/ledger/gate 才能形成 bundle；
 - 工作区出现无法安全合并的其他用户修改。
 
-## 18. 发给 DeepSeek 的简短 prompt
+## 18. 原交接时发给 DeepSeek 的简短 prompt（历史，不直接用于当前工作区）
 
 ```text
 请在当前仓库根目录实施研究回测与策略择优的独立复审整改。

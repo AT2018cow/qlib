@@ -1,6 +1,6 @@
 # A 股日线数据源故障转移评估（2026-11-07）
 
-> **历史评估快照（2026-11-07）：** 当前生产已迁移到 `qlib-prod-*` v8，网站 NAV 已到 2026-11-09；本文的状态行与 v31/v6 描述保留为当时的评估记录。
+> **历史评估快照（2026-11-07）：** 本文的状态行、旧 v31/v6 和后续 v8 描述仅保留为当时的评估与迁移记录。现行生产与研究 lineage 见[数据来源说明](02-production-vs-research-data-lineage.md)，部署状态见[生产状态记录](../07-code-review/2026-11-12-production-deployment-status.md)。
 
 状态：`PRODUCTION_OVERLAY_LIVE / PUBLIC_SITE_11-06 / SIGNAL_PAPER_PENDING_11-09 / PAPER_FROZEN`
 
