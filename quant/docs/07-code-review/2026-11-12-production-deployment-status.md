@@ -1,14 +1,16 @@
 # 2026-11-12 生产部署与文档状态
 
-> **18:40 后续事件（晚于本文原核对窗口）：** 两个 App 于 17:54–17:55 部署 v27（Git `3e9f8b8`）。
-> 18:00 `daily_cron` 因中证指数权重文件读取超时失败；18:10 恢复调用完成 11/12 Provider
-> archive `af7d92b8…` 和三市场信号计算，但父调用于 18:28 被取消，尚未进入 Website。
-> `2046ee84a` 的 ST 生产强依赖经复审决定选择性撤回；本地简化实现已通过完整测试，等待提交、
-> 重新部署和当晚补跑。本文原 v26 表格保留为 10:06–10:16 的日期化历史快照。
+> **19:13 最新结论（晚于本文原核对窗口）：** ST 选择性简化已以
+> `31b65fa8a` 提交并推送；Website / Daily 两个生产 App 已部署 v28。18:00 的 v27
+> 自然调度因中证指数 OSS 读取超时失败，18:10 的旧版恢复父调用又在 Website 前被取消；
+> v28 前台 attached 补跑于 19:00:40 成功结束，生产 App 的独立只读检查随后返回
+> `status=OK`。三市场 2026-11-13 信号、纸面账户、Website FULL 产物和 postclose marker
+> 已关联至同一 2026-11-12 Provider archive `af7d92b8…`。Git 远端最终因生产产物提交前进到
+> `caf7f8190`。本文原 v26 表格保留为 10:06–10:16 的日期化历史快照。
 
 > 核对时间：2026-11-12 10:06–10:16，Asia/Shanghai。
 >
-> 性质：只读部署配置、Git 与补跑日志核对；不代表 v26 自然调度、策略晋升或券商成交验收。
+> 原始核对窗口性质：只读部署配置、Git 与补跑日志核对；不代表 v26 自然调度、策略晋升或券商成交验收。
 
 ## 1. 提交与部署
 
@@ -52,8 +54,57 @@ Website App 无 cron。Daily `daily_cron` 的 `max_containers=1`。Modal `functi
 
 ## 4. 仍需验证的边界
 
-- v26 首次自然 18:00 主跑、23:00/23:15 检查与恢复、下一交易日 07:00 检查，以及失败邮件实际送达，尚未在本记录时间点验收。23:00 若主跑尚在运行，应区分运行中与失败；23:15 的恢复调用会在同一协调器后排队。
-- `website_budget.py` 属于 website semantic 闭包；`1b5ef71ac` 因而改变 semantic identity。下一次新日期运行预计进入新 cache root 的逐市场 smoke/full 路径，后续新交易日再验证 4/12 incremental；具体耗时、费用和结果以实际 receipt/日志为准。
-- 2/8 Provider 的冷缓存完整新日期构建、全量 replay 与前版的逐日 score/ranking/成交/费用/持仓/cash/NAV 对照，以及公网静态站点更新，尚无本次 v26 完整验收证据。
+- v28 的前台手工恢复和独立只读检查已通过，但不能替代后续自然调度验收。
+  23:00/23:15 自然检查与恢复、下一交易日 07:00 检查、失败邮件实际送达，以及下一次
+  v28 自然 18:00 主跑仍是独立边界。23:00 若主跑尚在运行，应区分运行中与失败；
+  23:15 的恢复调用会在同一协调器后排队。
+- ST 选择性简化改变了 Website semantic identity，因此本次新 cache root 按设计执行三市场
+  smoke + FULL，而不是复用旧增量祖先。下一个新交易日仍需验证 4 CPU / 12 GiB
+  incremental 实际命中、耗时与费用。
+- 2/8 Provider 的冷缓存完整新日期构建、全量 replay 与前版的逐日 score/ranking/成交/费用/持仓/cash/NAV 对照，以及公网静态站点更新，尚无本次 v28 完整验收证据。
 - 研究 AR01–AR09 整改已随 `80014b09f` 提交并推送，其源码包含在后续生产镜像中；这不表示真实三市场研究 bounded replay、策略 `GATE_PASS` 或独立生产认证已完成。CSI300/CSI500 仍为风险接受 override，CSI1000 为 incumbent retained。
 - 网站收益是因果纸面模拟参考值，不是券商成交、完整历史 ST、开盘竞价流动性或官方参考价认证。归档清理仍仅允许 dry-run，不能因本文推断已授权删除。
+
+## 5. v28 选择性简化与 11 月 12 日补跑验收
+
+### 5.1 实施范围
+
+- 保留离线/历史研究的按日 ST 验证能力，不再把 Website 历史 ST 数据作为日常生产强依赖。
+- 保留调度纸面账户当日/盘前 ST 执行风险校验；它与 Website 历史重放不是同一合同。
+- Website 显式发布 `ST_HISTORY_UNVERIFIED_REFERENCE_ONLY` 和
+  `CAUSAL_HISTORICAL_SIMULATION_REFERENCE_ONLY`，不宣称券商成交或完整历史 ST 认证。
+- 源码提交 `31b65fa8ac722bdaa975eadde604f181621314af`；本地完整验证为
+  `1268 passed, 2 skipped, 50 subtests passed`，Website Node 前端测试 5 个文件全部通过，
+  Black check 和 `git diff --check` 通过。
+
+### 5.2 部署与补跑证据
+
+| App | 部署版本 | 部署时间（Asia/Shanghai） | 源码身份 |
+|---|---:|---|---|
+| `qlib-prod-website` | v28 | 2026-11-12 18:39:37 | `89d44e2d94a9…` |
+| `qlib-prod-daily` | v28 | 2026-11-12 18:41:46 | `89d44e2d94a9…` |
+
+- 补跑以前台 attached 方式执行，未使用 `modal run --detach`。Provider 复用已验证的
+  `2026-11-12` archive，SHA-256 为
+  `af7d92b8fc10b77e7ae31501871542724554390c89a0e09622328271fe98bf31`，calendar end 为 11 月 12 日。
+- 三市场信号 metadata 均记录 `publication.status=PASS`、`lag_sessions=0`、
+  `signal_data_date=2026-11-12`、`usage_date=2026-11-13`、PIT universe PASS 和 label maturity PASS。
+  发布 journal Git commit 为 `f37a520ff83a009994f6bc965b1d075c66d55865`。
+- Website 因 semantic identity 改变执行三市场 smoke + FULL；每个市场生成 26 个交易日点，
+  `latest_date=2026-11-12`，源码身份 `89d44e2d94a9…`，semantic 身份
+  `859e324df8fa…`，Provider 身份与上述 archive 一致。
+- 生产 App 的独立只读 `daily_postclose_check` 返回 `status=OK`，T/U 分别为
+  `2026-11-12` / `2026-11-13`，并回读到同一 provider digest、journal commit、release source、
+  website semantic 和三市场 account contract。
+- 生产产物自动提交为 `f37a520ff`（信号）、`f2b6ffefb`（名称映射）、
+  `caf7f8190`（三市场收益与 Website FULL 产物）；已快进本地分支并通过文件结构/身份校验。
+
+### 5.3 验收边界与运维注意
+
+- 本次的生产输入为只读 Provider archive，输出隔离在发布产物、纸面账户和 Website
+  simulation 路径；未进行真实成交。
+- 一次验收性临时 App 因部署 selector 配置错误指向了 legacy Volume，其“marker 缺失”
+  结果已作废；该临时 App 结束后无遗留容器。最终验收直接调用已部署生产 App
+  的只读函数，不构建新镜像，结果为 `OK`。
+- 不应在已同步生产产物的普通工作区反复使用 `modal run` 做简单只读验收；它会因
+  mount/image 输入身份变化触发不必要的重建与上传。优先直接调用已部署的只读函数。

@@ -2,11 +2,11 @@
 
 > 日期：2026-11-12
 >
-> 状态：`LOCAL VERIFIED / NO ACTIVE ST IN WINDOW / PRODUCTION STRONG DEPENDENCY WITHDRAWN LOCALLY`
+> 状态：`LOCAL VERIFIED / NO ACTIVE ST IN WINDOW / SELECTIVE SIMPLIFICATION DEPLOYED v28 / RERUN PASS`
 >
 > 范围：网站三市场因果模拟账户的 25 个执行日、131 只 active 股票、1096 个 symbol-date。
 >
-> 性质：离线历史 ST 证据核实与重放对照；不是生产部署、账户重发或券商成交认证。
+> 性质：离线历史 ST 证据核实、重放对照与生产选择性简化验收；不是券商成交认证。
 
 ## 1. 结论
 
@@ -115,6 +115,12 @@ dates with any ST       0
 和三市场信号计算，但父调用于 18:28 被取消，尚未调用 Website App。因此没有发布
 `ST_VERIFIED_HISTORY` 网站 series，也没有重写已发布账户。
 
+选择性简化后续以 `31b65fa8ac722bdaa975eadde604f181621314af` 提交并推送，
+Website / Daily 两个 App 已于 18:39–18:41 部署 v28。当晚前台 attached 补跑完成
+2026-11-13 信号、三市场 Website FULL 重放与 postclose marker；生产 App 的独立只读检查
+返回 `status=OK`。新 Website series 均明确为 `ST_HISTORY_UNVERIFIED_REFERENCE_ONLY`，
+未发布被撤回的 `ST_VERIFIED_HISTORY` 声明。
+
 ## 7. 边界
 
 1. **这是 active universe 核实，不是全市场 ST 历史。**
@@ -129,8 +135,9 @@ dates with any ST       0
 4. **生产网站仍是参考模拟。**
    日期化 ST 只作为离线核验或显式 replay 输入；生产网站不声明完整逐日 ST 认证，也不把 ST 源可用性提升为每日发布门禁。
 
-5. **不改变生产数据或部署。**
-   本轮没有重发网站 JSON、没有改 paper 账户、没有部署 App。
+5. **生产只接受简化合同，不自动引入离线证据。**
+   v28 已部署并补跑 Website JSON / paper 账户，但离线 BaoStock 证据没有被提升为
+   日常生产强依赖；已发布收益仍是参考模拟。
 
 ## 8. 证据
 
