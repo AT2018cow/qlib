@@ -4516,11 +4516,52 @@ def _write_preopen_marker(status_path: Path, payload: dict) -> None:
     vol.commit()
 
 
+_INVOCATION_ORIGINS = frozenset({"NATURAL_SCHEDULE", "SCHEDULED_RECOVERY", "OPERATOR_OVERRIDE"})
+
+
+def _validate_invocation_origin(invocation_origin: str) -> str:
+    """Return a supported publication invocation origin or fail closed."""
+    if invocation_origin not in _INVOCATION_ORIGINS:
+        raise ValueError(f"unsupported invocation origin: {invocation_origin!r}")
+    return invocation_origin
+
+
+def _resolve_invocation_origin(
+    invocation_origin: str,
+    *,
+    allow_lag: bool,
+    signal_date_override: str,
+    data_asof_override: str,
+    refresh_provider: bool,
+) -> str:
+    """Derive direct manual calls and reject contradictory natural claims."""
+    has_manual_arguments = bool(allow_lag or signal_date_override or data_asof_override or refresh_provider)
+    if not invocation_origin:
+        return "OPERATOR_OVERRIDE" if has_manual_arguments else "NATURAL_SCHEDULE"
+    origin = _validate_invocation_origin(invocation_origin)
+    if origin == "NATURAL_SCHEDULE" and has_manual_arguments:
+        raise ValueError("NATURAL_SCHEDULE cannot carry operator-only date, lag, or provider-refresh arguments")
+    return origin
+
+
+def _signal_date_audit_message(signal_date: str, invocation_origin: str) -> str:
+    """Build an unambiguous audit message for a coordinator-resolved date."""
+    origin = _validate_invocation_origin(invocation_origin)
+    event = {
+        "NATURAL_SCHEDULE": "RESOLVED_USAGE_DATE",
+        "SCHEDULED_RECOVERY": "SCHEDULED_RECOVERY",
+        "OPERATOR_OVERRIDE": "OPERATOR_OVERRIDE",
+    }[origin]
+    return f"[cron] {event} signal_date={signal_date} origin={origin}"
+
+
 def _run_preopen_cycle(
     allow_lag: bool = False,
     signal_date_override: str = "",
     data_asof_override: str = "",
     refresh_provider: bool = False,
+    *,
+    invocation_origin: str,
 ):
     """Single serialized T-close -> U-open publication coordinator.
 
@@ -4539,6 +4580,7 @@ def _run_preopen_cycle(
     from publication_journal import FilesystemStorage, PublicationJournal
     from resource_sampler import ResourceSampler
 
+    invocation_origin = _validate_invocation_origin(invocation_origin)
     now = datetime.now(ZoneInfo("Asia/Shanghai"))
     calendar = _trading_days()
     dates = resolve_postclose_dates(
@@ -4585,6 +4627,7 @@ def _run_preopen_cycle(
                 allow_lag,
                 signal_date_override=usage_date,
                 data_asof_override=session_date,
+                invocation_origin=invocation_origin,
             ),
             lambda: _update_website_returns(expected_provider_end=session_date),
             sampler=sampler,
@@ -4712,13 +4755,28 @@ def daily_cron(
     signal_date_override: str = "",
     data_asof_override: str = "",
     refresh_provider: bool = False,
+    invocation_origin: str = "",
 ):
-    """18:00 T-close primary publication (single self-hosted provider)."""
+    """18:00 T-close primary publication (single self-hosted provider).
+
+    The scheduler supplies no operator-only arguments, so an omitted origin is
+    natural.  Backward-compatible direct calls with date/lag/refresh arguments
+    are derived as operator overrides; an explicit contradictory natural claim
+    fails before the coordinator performs any production work.
+    """
+    origin = _resolve_invocation_origin(
+        invocation_origin,
+        allow_lag=allow_lag,
+        signal_date_override=signal_date_override,
+        data_asof_override=data_asof_override,
+        refresh_provider=refresh_provider,
+    )
     return _run_preopen_cycle(
         allow_lag,
         signal_date_override=signal_date_override,
         data_asof_override=data_asof_override,
         refresh_provider=refresh_provider,
+        invocation_origin=origin,
     )
 
 
@@ -4830,6 +4888,7 @@ def daily_evening_retry():
         signal_date_override=usage_date,
         data_asof_override=session_date,
         refresh_provider=True,
+        invocation_origin="SCHEDULED_RECOVERY",
     )
 
 
@@ -4894,6 +4953,8 @@ def _run_daily_signal_cycle(
     allow_lag: bool = False,
     signal_date_override: str | None = None,
     data_asof_override: str | None = None,
+    *,
+    invocation_origin: str,
 ):
     """云端全自动每日信号：三池 canonical（csi1000/csi500/csi300）→ GitHub API 提交。
 
@@ -4928,8 +4989,9 @@ def _run_daily_signal_cycle(
     if signal_date_override:
         signal_date = str(signal_date_override)[:10]
         today = date.fromisoformat(signal_date)
-        print(f"[cron] OPERATOR_OVERRIDE signal_date={signal_date}（手动指定）")
+        print(_signal_date_audit_message(signal_date, invocation_origin))
     else:
+        _validate_invocation_origin(invocation_origin)
         signal_date = today.isoformat()
     try:
         cal = _cn_trading_calendar()
@@ -5410,7 +5472,7 @@ def daily_repair_manual():
     The primary publication moved to 18:00 with a 23:15 queued retry; this function is
     retained only for explicit operator recovery.
     """
-    return daily_cron.remote()
+    return daily_cron.remote(invocation_origin="OPERATOR_OVERRIDE")
 
 
 @app.function(
@@ -5486,6 +5548,7 @@ def daily_evening_manual():
         signal_date_override=usage_date,
         data_asof_override=session_date,
         refresh_provider=True,
+        invocation_origin="OPERATOR_OVERRIDE",
     )
 
 
@@ -5522,6 +5585,7 @@ def daily_cron_manual(signal_date_override: str, data_asof_override: str):
         signal_date_override=signal_date_override,
         data_asof_override=data_asof_override,
         refresh_provider=True,
+        invocation_origin="OPERATOR_OVERRIDE",
     )
 
 

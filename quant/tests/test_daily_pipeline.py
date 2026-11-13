@@ -101,7 +101,11 @@ def test_actual_cron_checks_website_after_signal_fast_path(tmp_path, monkeypatch
 
     def signals(allow_lag, **kwargs):
         assert allow_lag is False
-        assert kwargs == {"signal_date_override": usage_date, "data_asof_override": session_date}
+        assert kwargs == {
+            "signal_date_override": usage_date,
+            "data_asof_override": session_date,
+            "invocation_origin": "NATURAL_SCHEDULE",
+        }
         seen.append("signals")
         return {"status": signal_status}
 
@@ -227,6 +231,99 @@ def test_evening_retry_forwards_only_the_single_coordinator(tmp_path, monkeypatc
         "signal_date_override": usage_date,
         "data_asof_override": session_date,
         "refresh_provider": True,
+        "invocation_origin": "SCHEDULED_RECOVERY",
+    }
+
+
+@pytest.mark.parametrize(
+    ("origin", "expected", "forbidden"),
+    [
+        ("NATURAL_SCHEDULE", "RESOLVED_USAGE_DATE", "OPERATOR_OVERRIDE"),
+        ("SCHEDULED_RECOVERY", "SCHEDULED_RECOVERY", "OPERATOR_OVERRIDE"),
+        ("OPERATOR_OVERRIDE", "OPERATOR_OVERRIDE", "RESOLVED_USAGE_DATE"),
+    ],
+)
+def test_signal_date_audit_message_distinguishes_invocation_origin(origin, expected, forbidden):
+    import modal_qlib_cn_a10g as production
+
+    message = production._signal_date_audit_message("2026-11-16", origin)
+    assert expected in message
+    assert forbidden not in message
+    assert "signal_date=2026-11-16" in message
+    assert f"origin={origin}" in message
+
+
+def test_signal_date_audit_message_rejects_unknown_origin():
+    import modal_qlib_cn_a10g as production
+
+    with pytest.raises(ValueError, match="invocation origin"):
+        production._signal_date_audit_message("2026-11-16", "UNKNOWN")
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "expected_origin"),
+    [
+        ({}, "NATURAL_SCHEDULE"),
+        ({"signal_date_override": "2026-11-16"}, "OPERATOR_OVERRIDE"),
+        ({"data_asof_override": "2026-11-13"}, "OPERATOR_OVERRIDE"),
+        ({"allow_lag": True}, "OPERATOR_OVERRIDE"),
+        ({"refresh_provider": True}, "OPERATOR_OVERRIDE"),
+    ],
+)
+def test_public_daily_cron_derives_origin_from_direct_call_arguments(monkeypatch, kwargs, expected_origin):
+    import modal_qlib_cn_a10g as production
+
+    seen = {}
+
+    def run(*args, **forwarded):
+        seen["args"] = args
+        seen["kwargs"] = forwarded
+        return {"status": "TEST"}
+
+    monkeypatch.setattr(production, "_run_preopen_cycle", run)
+    assert production.daily_cron.local(**kwargs) == {"status": "TEST"}
+    assert seen["kwargs"]["invocation_origin"] == expected_origin
+
+
+@pytest.mark.parametrize(
+    "manual_kwargs",
+    [
+        {"signal_date_override": "2026-11-16"},
+        {"data_asof_override": "2026-11-13"},
+        {"allow_lag": True},
+        {"refresh_provider": True},
+    ],
+)
+def test_public_daily_cron_rejects_natural_origin_with_manual_arguments(monkeypatch, manual_kwargs):
+    import modal_qlib_cn_a10g as production
+
+    monkeypatch.setattr(
+        production,
+        "_run_preopen_cycle",
+        lambda *args, **kwargs: pytest.fail("contradictory audit origin must fail before production work"),
+    )
+    with pytest.raises(ValueError, match="NATURAL_SCHEDULE"):
+        production.daily_cron.local(invocation_origin="NATURAL_SCHEDULE", **manual_kwargs)
+
+
+def test_manual_backfill_forwards_operator_origin(monkeypatch):
+    import modal_qlib_cn_a10g as production
+
+    calls = {}
+
+    def remote(**kwargs):
+        calls.update(kwargs)
+        return {"status": "QUEUED"}
+
+    monkeypatch.setattr(production, "daily_cron", SimpleNamespace(remote=remote))
+    result = production.daily_cron_manual.local("2026-11-16", "2026-11-13")
+    assert result == {"status": "QUEUED"}
+    assert calls == {
+        "allow_lag": False,
+        "signal_date_override": "2026-11-16",
+        "data_asof_override": "2026-11-13",
+        "refresh_provider": True,
+        "invocation_origin": "OPERATOR_OVERRIDE",
     }
 
 
@@ -360,8 +457,15 @@ def test_backup_returns_the_same_pipeline_receipt(monkeypatch):
     import modal_qlib_cn_a10g as production
 
     receipt = {"status": "COMPLETED", "stages": {"website": {"status": "SUCCEEDED"}}}
-    monkeypatch.setattr(production, "daily_cron", SimpleNamespace(remote=lambda: receipt))
+    calls = {}
+
+    def remote(**kwargs):
+        calls.update(kwargs)
+        return receipt
+
+    monkeypatch.setattr(production, "daily_cron", SimpleNamespace(remote=remote))
     assert production.daily_repair_manual.local() == receipt
+    assert calls == {"invocation_origin": "OPERATOR_OVERRIDE"}
 
 
 @pytest.mark.parametrize("receipt", [None, {"status": "FAILED"}, {"status": "PUBLISHED", "source_sha256": "b" * 64}])
