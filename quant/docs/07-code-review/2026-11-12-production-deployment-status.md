@@ -108,3 +108,13 @@ Website App 无 cron。Daily `daily_cron` 的 `max_containers=1`。Modal `functi
   的只读函数，不构建新镜像，结果为 `OK`。
 - 不应在已同步生产产物的普通工作区反复使用 `modal run` 做简单只读验收；它会因
   mount/image 输入身份变化触发不必要的重建与上传。优先直接调用已部署的只读函数。
+
+## 6. 生产费用基线
+
+2026-11-13 已按当前 Modal 单价、v28 资源规格、历史函数时长和 Website FULL 实际账单建立独立费用基线。
+普通增量日整条主跑估计 `$0.18–0.30`，Website FULL 日 `$0.30–0.42`，三市场重训日约
+`$1.40–1.60`；证据分类、计算公式和未验收边界见
+[生产 Modal 每日费用估算](2026-11-13-production-modal-cost-estimate.md)。
+
+当前 v28 4/12 incremental 尚无自然生产命中，2/8 Provider 也没有空 ingest cache 的新日期全市场实测；
+以上范围不得标为最终账单或费用上限。

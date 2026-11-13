@@ -1,12 +1,13 @@
 # `quant/docs/` — 研发与生产文档总索引
 
-> **当前状态（2026-11-12 只读核对）**
+> **当前状态（2026-11-13 只读核对）**
 >
-> - 生产 `qlib-prod-daily` / `qlib-prod-website` 均为 v26（部署 commit `1b5ef71ac`）；生产信号与网站使用唯一自建 overlay archive，研究默认数据仍为独立的 chenditc lineage。
+> - 生产 `qlib-prod-daily` / `qlib-prod-website` 均为 v28（运行时代码 `31b65fa8a`）；生产信号与网站使用唯一自建 overlay archive，研究默认数据仍为独立的 chenditc lineage。
 > - 已部署 18:00 `daily_cron`、23:00 `daily_postclose_check`、23:15 `daily_evening_retry`、下一交易日 07:00 `daily_readonly_check`；Website App 无 cron。
 > - 已部署 Provider 2 CPU / 8 GiB、独立 Website incremental 4 CPU / 12 GiB；full/smoke/retrain 8/16、Signal 8/16。配置回读不等于自然运行或峰值资源验收。
-> - PC01–PC08、PR01–PR06 及后续五项残余已本地整改；实现见 [`postclose implementation report`](07-code-review/2026-11-11-postclose-implementation-report.md)。11-11 provider/信号/NAV 的手动补跑已完成，v26 自然调度、邮件和新 semantic 首次运行仍待验收；证据边界见[生产状态记录](07-code-review/2026-11-12-production-deployment-status.md)。
-> - 网站历史 ST：10/08–11/11 的 131 只 active 股票、1096 个 symbol-date 已用 BaoStock `isST` 核实，窗口内无 ST；候选代码 `2046ee84a` 已接入日期化 ST 与每日快照，尚未部署。见[ST 核实](07-code-review/2026-11-12-website-st-history-verification.md)。
+> - v28 已完成 11/12 前台恢复、三市场新 semantic FULL 和只读验收；23:00/23:15 及下一交易日 07:00 自然保护入口已成功，v28 自然 18:00 主跑、4/12 incremental、失败邮件与 2/8 冷缓存构建仍是独立门禁。证据边界见[生产状态记录](07-code-review/2026-11-12-production-deployment-status.md)。
+> - 网站历史 ST：离线日期化核验能力保留；每日生产不再把历史 ST 作为硬依赖，网站明确标为因果模拟参考。见[ST 核实与选择性简化](07-code-review/2026-11-12-website-st-history-verification.md)。
+> - 当前费用估算：普通增量日 `$0.18–0.30`、Website FULL 日 `$0.30–0.42`、三市场重训日 `$1.40–1.60`；v28 4/12 incremental 与 2/8 冷缓存仍待实测。见[生产费用基线](07-code-review/2026-11-13-production-modal-cost-estimate.md)。
 > - 安全加固：见 [`2026-11-10-security-hardening.md`](07-code-review/2026-11-10-security-hardening.md)。
 > - 下文旧条目保留为历史记录；其中 v37/v12、06:00/07:30/09:00、11/06 数据、USD budget guard 等描述不再代表当前生产。
 
@@ -50,6 +51,7 @@
    - Stage-0 至 Stage-3 研究合同及阶段结果；历史研究结论须结合后续执行证据边界阅读。
 8. **[`07-code-review/`](07-code-review/) — 代码审查、整改与生产记录**
    - [`2026-11-12 生产状态`](07-code-review/2026-11-12-production-deployment-status.md)记录部署配置、补跑证据与待验收项。
+   - [`2026-11-13 生产 Modal 费用估算`](07-code-review/2026-11-13-production-modal-cost-estimate.md)区分普通增量、FULL、重训与重训加 FULL 的实测、复算和待验收成本。
    - [`2026-11-12 网站历史 ST 核实`](07-code-review/2026-11-12-website-st-history-verification.md)记录 131 只 active 股票、1096 个 symbol-date 的 BaoStock `isST` 覆盖与零差异重放。
    - [`2026-11-12 v1.4.0 release candidate`](07-code-review/2026-11-12-quant-v1.4.0-release-candidate.md)列出 tag 前的自然周期、website semantic、provider 冷构建与独立复审门禁。
 9. **[`08-current-window-backtest/`](08-current-window-backtest/) — 近期窗口候选策略同期回测**
