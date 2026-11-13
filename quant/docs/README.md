@@ -1,13 +1,13 @@
 # `quant/docs/` — 研发与生产文档总索引
 
-> **当前状态（2026-11-13 只读核对）**
+> **当前状态（2026-11-13）**
 >
-> - 生产 `qlib-prod-daily` / `qlib-prod-website` 均为 v28（运行时代码 `31b65fa8a`）；生产信号与网站使用唯一自建 overlay archive，研究默认数据仍为独立的 chenditc lineage。
+> - 生产 `qlib-prod-daily` / `qlib-prod-website` 均为 v29（部署提交 `d0fdb6d47`）；生产信号与网站使用唯一自建 overlay archive，研究默认数据仍为独立的 chenditc lineage。
 > - 已部署 18:00 `daily_cron`、23:00 `daily_postclose_check`、23:15 `daily_evening_retry`、下一交易日 07:00 `daily_readonly_check`；Website App 无 cron。
 > - 已部署 Provider 2 CPU / 8 GiB、独立 Website incremental 4 CPU / 12 GiB；full/smoke/retrain 8/16、Signal 8/16。配置回读不等于自然运行或峰值资源验收。
-> - v28 已完成 11/12 前台恢复、三市场新 semantic FULL 和只读验收；23:00/23:15 及下一交易日 07:00 自然保护入口已成功，v28 自然 18:00 主跑、4/12 incremental、失败邮件与 2/8 冷缓存构建仍是独立门禁。证据边界见[生产状态记录](07-code-review/2026-11-12-production-deployment-status.md)。
+> - v28 已完成 11/13 自然 18:00 主跑和三市场 4/12 incremental；v29 修复调度/人工日志来源后已部署，其 23:00/23:15 及次日 07:00 自然保护入口需按新版实际调度结果分开验收。严格空 `ingest_cache/` 与失败邮件仍为独立门禁。证据边界见[生产状态记录](07-code-review/2026-11-12-production-deployment-status.md)。
 > - 网站历史 ST：离线日期化核验能力保留；每日生产不再把历史 ST 作为硬依赖，网站明确标为因果模拟参考。见[ST 核实与选择性简化](07-code-review/2026-11-12-website-st-history-verification.md)。
-> - 当前费用估算：普通增量日 `$0.18–0.30`、Website FULL 日 `$0.30–0.42`、三市场重训日 `$1.40–1.60`；v28 4/12 incremental 与 2/8 冷缓存仍待实测。见[生产费用基线](07-code-review/2026-11-13-production-modal-cost-estimate.md)。
+> - 当前费用基线：11/13 普通增量日实际为 `$0.18716212`，规划区间 `$0.18–0.30`；Website FULL 日 `$0.30–0.42`、三市场重训日 `$1.40–1.60`。严格空 `ingest_cache/` 与重训日仍待实测。见[生产费用基线](07-code-review/2026-11-13-production-modal-cost-estimate.md)。
 > - 安全加固：见 [`2026-11-10-security-hardening.md`](07-code-review/2026-11-10-security-hardening.md)。
 > - 下文旧条目保留为历史记录；其中 v37/v12、06:00/07:30/09:00、11/06 数据、USD budget guard 等描述不再代表当前生产。
 

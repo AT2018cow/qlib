@@ -1,17 +1,17 @@
 # 生产 Modal 每日费用估算（2026-11-13）
 
-> 状态：`READ-ONLY ESTIMATE / v28 FULL MEASURED / v28 INCREMENTAL PENDING`
+> 状态：`v28 FULL MEASURED / v28 INCREMENTAL MEASURED / RETRAIN ESTIMATED`
 >
 > 核对时间：2026-11-13，Asia/Shanghai。
 >
-> 本文记录当前 v28 生产资源、Modal 实时单价、历史函数时长和账单证据；本次核对没有启动任务、修改
-> Volume、部署 App 或更改生产输入。金额均为美元、免费额度抵扣前的 Modal 计算费用。
+> 本文记录 v28 自然主跑、当前 v29 资源规格、Modal 实时单价、历史函数时长和账单证据。
+> v29 未改变资源规格；部署/镜像构建费用与自然主跑分列。金额均为美元、免费额度抵扣前。
 
 ## 1. 结论
 
 | 生产场景 | Website 阶段 | 整条每日主跑 |
 |---|---:|---:|
-| 普通日，Website 增量 | **$0.04–0.08** | **$0.18–0.30** |
+| 普通日，Website 增量 | **$0.025–0.05** | **$0.18–0.30** |
 | 增量祖先失效，触发 smoke + FULL | **$0.15–0.17** | **$0.30–0.42** |
 | 三市场重训日，增量祖先有效 | **$0.05–0.10** | **$1.40–1.60** |
 | 三市场重训日，同时触发 FULL | **$0.15–0.20** | **$1.50–1.70** |
@@ -52,6 +52,12 @@ fallback 才进入 8/16 的逐市场 smoke + FULL 路径。
 
 ### 3.1 Provider
 
+随后的 v28 自然新日期主跑在 2/8 规格下用时 `1,373.2172 s`：当日
+`cache_complete=0`、`refetched=1800`，最终 1,800 成员 + 52 个必需执行/持仓股票的
+archive gate PASS。Modal 资源统计内存 p99 约 `0.71 GiB`，receipt 进程树 RSS 峰值约
+`1.21 GiB`。因存在 `history_cache_hits=2`，这是新日期全市场自然证据，仍不是整个
+`ingest_cache/` 物理清空实验。
+
 当前 2/8 Provider 的最近一次成功调用耗时 `953.5268 s`，按请求资源复算约 **$0.0420**。它发生在前一
 次 `473.9834 s` 失败调用之后并复用了已完成 raw batches；两次合计的 Provider 计算约 **$0.0629**，不能
 解释为一次干净冷缓存构建。
@@ -73,14 +79,14 @@ fallback 才进入 8/16 的逐市场 smoke + FULL 路径。
 
 ### 3.3 Website 增量
 
-现有三市场真实 `INCREMENTAL` 收据记录 `new_fits=0`，worker wall time 分别为
-`123.6264 / 160.2398 / 221.9124 s`，合计 `505.7786 s`。按当前 4/12 请求价重算约 **$0.0401**；
-考虑该历史执行并非 v28 独立 4/12 worker 的自然生产命中、减核后 wall time 可能变化，以及 coordinator/
-加载/缩容开销，Website 增量使用 **$0.04–0.08** 区间。
+2026-11-13 v28 自然主跑明确记录 `incremental prefix present for all markets; skipping smoke replay`。
+三个 4/12 worker 分别用时 `40.0956 / 69.0637 / 89.9270 s`，全部成功并生成
+`replay_mode=INCREMENTAL`。Website coordinator 用时 `133.4591 s`。
 
-截至本文件核对时，当前 v28 `build_market_incremental` 仍没有自然生产调用记录；因此上述数字是历史增量
-收据按新规格复算，**不是 v28 4/12 的已结算账单**。下一次自然新日期命中后，应记录三市场 wall time、
-`new_fit`、App 小时账单并替换此估算。
+18:00–19:00 完整账单小时中 Website App 的 CPU `$0.02163376`、内存 `$0.00793249`、egress
+`$0.00004526`，合计 **`$0.02961151`**。这是当前 4/12 自然生产证据，因此普通
+Website 增量阶段的规划区间收窄为 **$0.025–0.05**；遇到 `new_fit=1`、加载抖动或更长数据窗口
+仍可高于本次实测。
 
 ### 3.4 Website FULL
 
@@ -113,10 +119,14 @@ fallback 才进入 8/16 的逐市场 smoke + FULL 路径。
 11 月 12 日 18:00 后的账单小时同时包含 v27 自然失败、旧版恢复、v28 前台 FULL、状态核验及临时 App；
 它是故障恢复总费用证据，不能直接当作普通日或单次 v28 主跑基线。
 
+11 月 13 日 18:00–19:00 只有自然普通主跑：Daily App `$0.15755061`、Website App
+`$0.02961151`，合计 **`$0.18716212`**。这个账单 API 实际值已包含应用加载和缩容窗口，
+与表 1 普通日估算下沿一致。
+
 ## 5. 后续验收与更新规则
 
-1. 下一次 v28 自然 18:00 周期实际命中 4/12 incremental 后，以 App 小时账单和三个 immutable result
-   receipts 更新增量范围；不能仅用函数规格乘 coordinator wall time。
+1. v28 自然 18:00 周期已用 App 小时账单和三市场 immutable publication receipt 关联 4/12
+   incremental；后续自然日应继续观测区间稳定性，不得仅用 coordinator wall time 代替账单。
 2. 当前 2/8 Provider 必须完成一次空 `ingest_cache/` 的全市场新日期构建，才能关闭 `$0.06–0.13`
    的宽区间。
 3. 下一次三市场真实重训应分别记录 Signal 和 Website 的 `new_fit`、wall time、资源采样和账单；不得把

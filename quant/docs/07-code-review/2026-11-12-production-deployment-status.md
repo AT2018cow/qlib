@@ -116,5 +116,28 @@ Website App 无 cron。Daily `daily_cron` 的 `max_containers=1`。Modal `functi
 `$1.40–1.60`；证据分类、计算公式和未验收边界见
 [生产 Modal 每日费用估算](2026-11-13-production-modal-cost-estimate.md)。
 
-当前 v28 4/12 incremental 尚无自然生产命中，2/8 Provider 也没有空 ingest cache 的新日期全市场实测；
-以上范围不得标为最终账单或费用上限。
+11 月 13 日 v28 自然主跑已命中 4/12 incremental，并形成完整账单小时；2/8 Provider 也完成了
+新日期全市场构建，但仍复用 2 个 history cache 条目。以下第 7 节补充其实测结果；严格物理清空
+`ingest_cache/` 的隔离实验和真实三市场重训账单仍未完成，因此规划区间不得解释为费用上限。
+
+## 7. 11 月 13 日自然主跑与 v29 部署
+
+- v28 `daily_cron` 于 18:00:00 自然入队，18:31:19 完成，平台状态为 `success`；
+  T/U 为 `2026-11-13` / `2026-11-16`。Provider、三市场信号、Website 和 postclose marker
+  全部成功，无人工补跑。
+- 2/8 Provider 本次 `cache_complete=0`、`refetched=1800`，用时 `1373.2172 s`，
+  PASS archive digest 为 `18dde7af1218…`。它是有效的新日期全市场自然证据，但因
+  `history_cache_hits=2`，不等同于整个 `ingest_cache/` 物理清空的隔离实验。
+- Website 明确检测到三市场有效增量祖先并跳过 smoke/FULL；三个 4/12 worker
+  分别用时 `40.0956 / 69.0637 / 89.9270 s`，全部为 `INCREMENTAL`。因此 v28
+  4/12 自然 incremental 门禁已通过。
+- 18:00–19:00 Modal 完整账单小时为 Daily `$0.15755061` + Website `$0.02961151`
+  = **`$0.18716212`**（免费额度/抵扣前）。
+- 自然日志曾因协调器内部传递已解析日期而误写 `OPERATOR_OVERRIDE`。修复后显式区分
+  `NATURAL_SCHEDULE`、`SCHEDULED_RECOVERY` 和 `OPERATOR_OVERRIDE`；直接人工调用未传来源时
+  按 date/lag/refresh 参数推导为人工，显式伪装自然调度会在任何生产工作前失败。
+- 本地完整验证为 `1282 passed, 2 skipped, 50 subtests passed`。修复提交
+  `d0fdb6d47`已推送；Website v29 于 22:41:45、Daily v29 于 22:42:30 前台部署，
+  共享镜像 `im-go7O0S3h6TwXQpWYt0jfhB`。四个 cron、两个生产 App、资源和 Volume 合同未变。
+- v29 部署发生在当日 18:00 主跑之后；因此上述业务产物是 v28 自然证据。v29 的
+  23:00/23:15 和次日 07:00 自然保护入口需按实际调度结果分开验收。
