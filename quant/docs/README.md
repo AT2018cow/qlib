@@ -1,11 +1,11 @@
 # `quant/docs/` — 研发与生产文档总索引
 
-> **当前状态（2026-11-13）**
+> **当前状态（2026-11-18）**
 >
 > - 生产 `qlib-prod-daily` / `qlib-prod-website` 均为 v29（部署提交 `d0fdb6d47`）；生产信号与网站使用唯一自建 overlay archive，研究默认数据仍为独立的 chenditc lineage。
 > - 已部署 18:00 `daily_cron`、23:00 `daily_postclose_check`、23:15 `daily_evening_retry`、下一交易日 07:00 `daily_readonly_check`；Website App 无 cron。
 > - 已部署 Provider 2 CPU / 8 GiB、独立 Website incremental 4 CPU / 12 GiB；full/smoke/retrain 8/16、Signal 8/16。配置回读不等于自然运行或峰值资源验收。
-> - v28 已完成 11/13 自然 18:00 主跑和三市场 4/12 incremental；v29 修复调度/人工日志来源后已部署，其 23:00/23:15 及次日 07:00 自然保护入口需按新版实际调度结果分开验收。严格空 `ingest_cache/` 与失败邮件仍为独立门禁。证据边界见[生产状态记录](07-code-review/2026-11-12-production-deployment-status.md)。
+> - v29 已通过 11/16–17 自动恢复与盘前复核，以及 11/17–18 完整自然周期。正式版本采用 `quant-v1.5.0`，tag 目标为部署提交 `d0fdb6d47`。严格空缓存恢复、真实到期重训和失败邮件实际送达仍待独立验证。[发布核对](07-code-review/2026-11-18-quant-v1.5.0-release-readiness.md)
 > - 网站历史 ST：离线日期化核验能力保留；每日生产不再把历史 ST 作为硬依赖，网站明确标为因果模拟参考。见[ST 核实与选择性简化](07-code-review/2026-11-12-website-st-history-verification.md)。
 > - 当前费用基线：11/13 普通增量日实际为 `$0.18716212`，规划区间 `$0.18–0.30`；Website FULL 日 `$0.30–0.42`、三市场重训日 `$1.40–1.60`。严格空 `ingest_cache/` 与重训日仍待实测。见[生产费用基线](07-code-review/2026-11-13-production-modal-cost-estimate.md)。
 > - 安全加固：见 [`2026-11-10-security-hardening.md`](07-code-review/2026-11-10-security-hardening.md)。
@@ -15,7 +15,7 @@
 
 **历史记录（截至 2026-11-06）— 数据源故障转移评估**：[`2026-11-07 评估`](09-data-source/01-data-source-failover-evaluation-20261107.md)记录 chenditc 缺数时的免费源验证与接入实现：Sina raw+hfq 与 11/04 快照 1799/1800 在 float32 精度内一致，完整历史 overlay 在生产镜像中逐位复现 11/04 已发布 Top10；`data_ingest`、manifest、fail-closed gate 与合成测试已实现；因 chenditc 持续缺数、网站瘫痪，曾切换到主应用 v37 overlay-first、网站 v12，11/06 网站数据已发布（CSI300 -24.4058%、CSI500 -11.0430%、CSI1000 -20.2963%，commit `40b57e1e`）。GitHub Actions 恢复后，Cloudflare 公网 `qliba158.pages.dev` 更新到 11/06（workflow `42366583880`）。canary 应用已停止、Volume 已删除；当时生产为 `qlib-cn-daily-a10g` v37 与 `qlib-website-nav` v12，11/09 曾迁移至 `qlib-prod-*` v8。**当时**网站使用预算保护（日上限 $2、月度保留 $2），后续已移除程序内预算阻断。11/09 迁移后生产与实验共用同一 Modal workspace，隔离风险见安全加固文档第 7 节。
 
-**收盘后统一生产（已部署 / 自然调度待验收）**：[`2026-11-11 实施交接`](07-code-review/2026-11-11-postclose-production-remediation-handoff.md)规定 18:00 用 T 数据更新 T NAV、到期重训并发布下一交易日榜单，23:00 当晚只读预警，23:15 通过同一入口恢复，下一交易日 07:00 最终只读核验；同时拆分网站语义 identity、取消程序内 USD 阻断，并使公开 TopK 与账户规划共享完整排名来源。实现和本地测试见 [`postclose implementation report`](07-code-review/2026-11-11-postclose-implementation-report.md)；当前部署事实和外部门见[生产状态记录](07-code-review/2026-11-12-production-deployment-status.md)。
+**收盘后统一生产（已部署 / 自然周期通过）**：[`2026-11-11 实施交接`](07-code-review/2026-11-11-postclose-production-remediation-handoff.md)规定 18:00 用 T 数据更新 T NAV、到期重训并发布下一交易日榜单，23:00 当晚只读预警，23:15 通过同一入口恢复，下一交易日 07:00 最终只读核验；同时拆分网站语义 identity、取消程序内 USD 阻断，并使公开 TopK 与账户规划共享完整排名来源。实现和本地测试见 [`postclose implementation report`](07-code-review/2026-11-11-postclose-implementation-report.md)；当前生产验收见[发布核对](07-code-review/2026-11-18-quant-v1.5.0-release-readiness.md)。
 
 **收盘后实现独立验收整改（本地复验通过 / 源码已部署）**：[`2026-11-11 整改清单`](07-code-review/2026-11-11-postclose-independent-review-remediation.md)记录 PR01–PR06 及第二次复验 CR01–CR05：真实 replay core、模型 YAML identity、receipt/date/release、23:15 timeout、retention reachability 和测试证据边界。源码已提交、推送并进入生产镜像；自然调度与其他生产外部门尚未全部验收。
 
@@ -53,7 +53,7 @@
    - [`2026-11-12 生产状态`](07-code-review/2026-11-12-production-deployment-status.md)记录部署配置、补跑证据与待验收项。
    - [`2026-11-13 生产 Modal 费用估算`](07-code-review/2026-11-13-production-modal-cost-estimate.md)区分普通增量、FULL、重训与重训加 FULL 的实测、复算和待验收成本。
    - [`2026-11-12 网站历史 ST 核实`](07-code-review/2026-11-12-website-st-history-verification.md)记录 131 只 active 股票、1096 个 symbol-date 的 BaoStock `isST` 覆盖与零差异重放。
-   - [`2026-11-12 v1.4.0 release candidate`](07-code-review/2026-11-12-quant-v1.4.0-release-candidate.md)列出 tag 前的自然周期、website semantic、provider 冷构建与独立复审门禁。
+   - [quant-v1.5.0 发布核对](07-code-review/2026-11-18-quant-v1.5.0-release-readiness.md)和 [Release Notes](07-code-review/2026-11-18-quant-v1.5.0-release-notes.md)记录 v29 发布证据与回滚目标。[原 v1.4.0 候选](07-code-review/2026-11-12-quant-v1.4.0-release-candidate.md)保留为历史记录。
 9. **[`08-current-window-backtest/`](08-current-window-backtest/) — 近期窗口候选策略同期回测**
    - [`01-csi1000-csi300-csi500-current-window-candidate-backtest-20261030.md`](08-current-window-backtest/01-csi1000-csi300-csi500-current-window-candidate-backtest-20261030.md)：2026-10-16 ~ 10-29 三市场、13 个模型/组合构造单元的同期净收益、生产 paper 校验、历史风险收益权衡与“不因 10 天切换”的决策边界。
    - [`02-csi300-october-2026-early-baseline-backtest-20261030.md`](08-current-window-backtest/02-csi300-october-2026-early-baseline-backtest-20261030.md)：第一版网站 bank-heavy baseline 应用于 CSI300 的 2026 年 10 月回测（16 个交易日）及与当前 CSI300 生产的对照。
