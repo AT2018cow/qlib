@@ -19,6 +19,7 @@ from data_ingest.cache import IngestCache
 from data_ingest.calendar import fetch_sina_calendar, read_calendar, resolve_target_dates
 from data_ingest.manifest import canonical_json, sha256_file, sha256_text
 from data_ingest.pipeline import OverlayPipeline, PipelineError
+from data_ingest.rebalance import snapshot_rebalance_error
 from data_ingest.sina import SinaSource
 from data_ingest.store import (
     build_receipt,
@@ -120,9 +121,16 @@ def build_provider_archive(
         sampler = ResourceSampler(interval=2.0)
         sampler.start()
     context: dict = {"date": trade_date}
+
+    def load_parent(day):
+        return load_snapshot(root, day)
+
     try:
         existing = load_snapshot(root, trade_date)
         if existing is not None:
+            error = snapshot_rebalance_error(existing, load_parent)
+            if error is not None:
+                raise ProviderBuildError(error)
             if existing.kind == "archive":
                 return {
                     "status": "EXISTS",
@@ -149,6 +157,9 @@ def build_provider_archive(
         base = latest_snapshot(root, before=trade_date)
         if base is None:
             raise ProviderBuildError(f"no PASS provider base before {trade_date}")
+        error = snapshot_rebalance_error(base, load_parent)
+        if error is not None:
+            raise ProviderBuildError(f"existing provider base is invalid: {error}")
         context["base"] = {"kind": base.kind, "date": base.date, "digest": base.digest}
         base_local = materialize(base, work / "base", cache_root=str(work / "cache"))
         base_calendar = read_calendar(base_local)

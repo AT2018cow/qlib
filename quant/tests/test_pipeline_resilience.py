@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import sys
 
 import numpy as np
 import pytest
@@ -260,6 +261,106 @@ def test_membership_lag_with_changed_members_fails_closed(tmp_path, monkeypatch)
             markets=tuple(MARKETS),
             allow_base_membership=True,
         )
+
+
+@pytest.mark.parametrize("asof", ["2026-12-14", "2026-12-15"])
+def test_regular_rebalance_first_open_rejects_an_identical_stale_membership(tmp_path, monkeypatch, asof):
+    from provider_build import _build_with_membership_retry
+
+    # The second Friday is Dec 11. Dec 15 also represents a calendar with Dec 14 closed.
+    calendar = ["2026-12-10", "2026-12-11"]
+    previous = calendar[-1]
+    fixture = sys.modules[__name__]
+    monkeypatch.setattr(fixture, "BASE_DATES", tuple(calendar))
+    monkeypatch.setattr(fixture, "TARGET_DATES", (asof,))
+    monkeypatch.setattr(fixture, "ALL_DATES", (*calendar, asof))
+    base = make_provider(tmp_path / "base", sorted({s for values in MARKETS.values() for s in values}), calendar)
+    sina = FakeSina(dates=(asof,))
+    fetched = []
+
+    def fetch(*args, **kwargs):
+        fetched.append(True)
+        return memberships(previous)
+
+    monkeypatch.setattr("data_ingest.pipeline.fetch_all_memberships", fetch)
+    pipeline = OverlayPipeline(sina=sina, baostock=FakeBaoStock(), calendar_dates=[*calendar, asof], crosscheck_count=3)
+    with pytest.raises(PipelineError, match="rebalance.*current official constituent"):
+        _build_with_membership_retry(
+            pipeline, base, tmp_path / "overlay", {"asof": asof, "markets": tuple(MARKETS)}, [asof], asof
+        )
+    assert fetched == [True]
+    assert sina.calls == []
+    assert not (tmp_path / "overlay").exists()
+
+
+def test_announced_rebalance_retries_with_fresh_lists_and_preserves_removed_holding(tmp_path, monkeypatch):
+    from data_ingest.overlay import active_members, read_ranges
+    from data_ingest.rebalance import ANNOUNCED_EFFECTIVE_SESSIONS
+
+    asof = TARGET_DATES[0]
+    previous = BASE_DATES[-1]
+    removed = "SH600001"
+    added = "SH600010"
+    updated = {**MARKETS, "csi300": ("SH600000", added)}
+    old = memberships(previous)
+    # Only the last market has a late file. All three must be current to publish.
+    partial = {**memberships(asof, updated), "csi1000": old["csi1000"]}
+    responses = iter((partial, memberships(asof, updated)))
+    monkeypatch.setitem(ANNOUNCED_EFFECTIVE_SESSIONS, asof, "https://www.csindex.com.cn/notice/test")
+    monkeypatch.setattr("data_ingest.pipeline.fetch_all_memberships", lambda *args, **kwargs: next(responses))
+    base = make_provider(tmp_path / "base", sorted({s for values in MARKETS.values() for s in values}))
+    cache = IngestCache(tmp_path / "root", asof)
+    cache.save_memberships(old, {})
+    pipeline = OverlayPipeline(sina=FakeSina(), baostock=FakeBaoStock(), crosscheck_count=3, cache=cache)
+    kwargs = dict(
+        asof=asof,
+        dates=[asof],
+        markets=tuple(MARKETS),
+        extra_symbols=[removed],
+        required_extra_symbols=[removed],
+    )
+    out = tmp_path / "overlay"
+    with pytest.raises(PipelineError, match=f"rebalance.*csi1000={previous}"):
+        pipeline.build(base, out, allow_base_membership=True, **kwargs)
+    assert not out.exists()
+
+    report = pipeline.build(base, out, **kwargs)
+    assert report["status"] == "PASS"
+    assert report["membership_policy"]["mode"] == "OFFICIAL"
+    assert "CSIndex notice" in report["membership_policy"]["rebalance_reason"]
+    ranges = read_ranges(out / "instruments/csi300.txt")
+    assert active_members(ranges, previous) == set(MARKETS["csi300"])
+    assert active_members(ranges, asof) == set(updated["csi300"])
+    assert report["history_backfill"]["symbols"] == [added]
+    assert math.isfinite(read_bin_value(out, removed, "close", asof))
+
+
+def test_rebalance_retry_reuses_exact_date_evidence_after_website_rolls_forward(tmp_path, monkeypatch):
+    from data_ingest.rebalance import ANNOUNCED_EFFECTIVE_SESSIONS
+
+    asof = TARGET_DATES[0]
+    monkeypatch.setitem(ANNOUNCED_EFFECTIVE_SESSIONS, asof, "https://www.csindex.com.cn/notice/test")
+    base = make_provider(tmp_path / "base", sorted({s for values in MARKETS.values() for s in values}))
+    cache = IngestCache(tmp_path / "cache", asof)
+    cache.save_memberships(memberships(asof), {})
+    checkpoint = cache.directory / "memberships.json"
+    saved = checkpoint.read_bytes()
+    fetched = []
+
+    def fetch(*args, **kwargs):
+        fetched.append(True)
+        return memberships(TARGET_DATES[1])
+
+    monkeypatch.setattr("data_ingest.pipeline.fetch_all_memberships", fetch)
+    monkeypatch.setattr("data_ingest.cache.time.time", lambda: 2**40)
+    pipeline = OverlayPipeline(sina=FakeSina(), baostock=FakeBaoStock(), crosscheck_count=3, cache=cache)
+    report = pipeline.build(
+        base, tmp_path / "out", asof=asof, dates=[asof], markets=tuple(MARKETS), refresh_memberships=True
+    )
+    assert report["status"] == "PASS"
+    assert report["membership_policy"]["official_asof"] == asof
+    assert not fetched
+    assert checkpoint.read_bytes() == saved
 
 
 def test_multi_day_stale_membership_fails_closed(tmp_path, monkeypatch):

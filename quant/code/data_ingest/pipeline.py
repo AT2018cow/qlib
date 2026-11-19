@@ -25,6 +25,7 @@ from data_ingest.overlay import (
     read_last_finite_features,
     read_ranges,
 )
+from data_ingest.rebalance import rebalance_reason
 from data_ingest.sina import SinaSource
 
 
@@ -162,19 +163,30 @@ class OverlayPipeline:
         self._memberships: dict[str, Membership] | None = None
         self.membership_provider = membership_provider
 
-    def _load_memberships(self, markets: tuple[str, ...], asof: str, refresh: bool) -> dict[str, Membership]:
+    def _load_memberships(
+        self, markets: tuple[str, ...], asof: str, refresh: bool, *, require_current: bool = False
+    ) -> dict[str, Membership]:
         if self.membership_provider is not None:
             return self.membership_provider(markets)
-        if self._memberships is not None and not refresh:
+
+        def usable(items: Mapping[str, Membership], *, exact: bool) -> bool:
+            return all(market in items and (not exact or items[market].asof == asof) for market in markets)
+
+        use_cache = require_current or not refresh
+        if use_cache and self._memberships is not None and usable(self._memberships, exact=require_current):
             return {market: self._memberships[market] for market in markets}
-        cached = None if self.cache is None or refresh else self.cache.load_memberships()
-        if cached is not None and all(market in cached["parsed"] for market in markets):
+        cached = None
+        if self.cache is not None and use_cache:
+            cached = (
+                self.cache.load_memberships(max_age_seconds=None) if require_current else self.cache.load_memberships()
+            )
+        if cached is not None and usable(cached["parsed"], exact=require_current):
             self._memberships = cached["parsed"]
             print(f"[overlay] memberships reused from cache: {cached.get('fetched_at_utc')}", flush=True)
             return {market: self._memberships[market] for market in markets}
         memberships = fetch_all_memberships(markets, fetch=self.csindex_fetch, require_weights=self.require_weights)
         self._memberships = dict(memberships)
-        if self.cache is not None:
+        if self.cache is not None and (not require_current or usable(memberships, exact=True)):
             evidence = {
                 market: {
                     "raw_sha256": item.raw_sha256,
@@ -564,6 +576,8 @@ class OverlayPipeline:
                         raise PipelineError(
                             f"membership history {market} asof {membership.asof} != evidence date {day}"
                         )
+                    if membership.source_url.startswith("base_pit:"):
+                        raise PipelineError(f"membership history {market} at {day} reuses a lagged base snapshot")
             memberships = {market: membership_history[asof][market] for market in markets}
             membership_policy = {
                 "mode": "MULTI_DAY_EVIDENCE",
@@ -571,14 +585,22 @@ class OverlayPipeline:
                 "official_asof": asof,
             }
         else:
-            memberships = self._load_memberships(markets, asof, refresh_memberships)
-            membership_policy = {"mode": "OFFICIAL", "official_asof": memberships[markets[0]].asof}
             if len(target_dates) > 1:
                 raise PipelineError(
                     "multi-day gap requires per-day membership evidence; refusing to apply one "
                     f"snapshot to {target_dates}"
                 )
+            reason = rebalance_reason(asof, base_end)
+            memberships = self._load_memberships(markets, asof, refresh_memberships, require_current=reason is not None)
+            membership_policy = {"mode": "OFFICIAL", "official_asof": memberships[markets[0]].asof}
             mismatched = [market for market, membership in memberships.items() if membership.asof != asof]
+            if reason is not None:
+                if mismatched:
+                    dated = ", ".join(f"{market}={memberships[market].asof}" for market in mismatched)
+                    raise PipelineError(
+                        f"rebalance {asof} ({reason}) requires current official constituent files; got {dated}"
+                    )
+                membership_policy["rebalance_reason"] = reason
             if mismatched:
                 if not allow_base_membership:
                     first = memberships[mismatched[0]]
@@ -864,10 +886,12 @@ class OverlayPipeline:
             else {
                 "path": str(base),
                 "calendar_end": base_end,
-                "calendar_sha256": sha256_text("\n".join(base_calendar) + "\n"),
+                "calendar_sha256": _sha(base / "calendars" / "day.txt"),
                 "archive_sha256": base_archive_sha256,
             }
         )
+        if base_identity is None and (base / "manifest.json").is_file():
+            base_payload["manifest_sha256"] = _sha(base / "manifest.json")
         manifest = {
             "schema_version": 1,
             "status": report.status,

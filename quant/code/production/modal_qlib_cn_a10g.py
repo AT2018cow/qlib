@@ -4432,6 +4432,7 @@ def _postclose_marker_valid(marker, session_date: str, usage_date: str, *, verif
 
     from csi1000_mvp_contract import sha256_file
     from data_ingest.manifest import canonical_json, sha256_text
+    from data_ingest.rebalance import snapshot_rebalance_error
     from data_ingest.store import load_snapshot
     from publication_journal import FilesystemStorage, PublicationJournal
 
@@ -4450,6 +4451,9 @@ def _postclose_marker_valid(marker, session_date: str, usage_date: str, *, verif
     snapshot = load_snapshot(OVERLAY_PROVIDER_ROOT, session_date)
     if snapshot is None:
         return False, "provider snapshot is missing"
+    rebalance_error = snapshot_rebalance_error(snapshot, lambda day: load_snapshot(OVERLAY_PROVIDER_ROOT, day))
+    if rebalance_error is not None:
+        return False, rebalance_error
     provider = marker.get("provider") or {}
     snapshot_digest = _asset_digest(snapshot.digest)
     if _asset_digest(provider.get("digest")) != snapshot_digest:

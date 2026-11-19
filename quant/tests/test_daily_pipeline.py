@@ -404,7 +404,9 @@ def test_postclose_marker_rejects_unverified_receipts(tmp_path, monkeypatch):
 
     monkeypatch.setattr(production, "VOL_ROOT", tmp_path)
     monkeypatch.setattr(production, "vol", SimpleNamespace(reload=lambda: None, commit=lambda: None))
-    snapshot = SimpleNamespace(digest="a" * 64, calendar_end="2026-11-10")
+    snapshot = SimpleNamespace(
+        digest="a" * 64, calendar_end="2026-11-10", read_sessions=lambda: ("2026-11-09", "2026-11-10")
+    )
     monkeypatch.setattr(store, "load_snapshot", lambda root, date: snapshot)
     monkeypatch.setattr(production, "_code_source_sha", lambda: "c" * 64)
     base = {
@@ -431,6 +433,34 @@ def test_postclose_marker_rejects_unverified_receipts(tmp_path, monkeypatch):
     valid, reason = production._postclose_marker_valid(legacy, "2026-11-10", "2026-11-11", verify_github=False)
     assert not valid
     assert "schema" in reason
+
+
+def test_postclose_marker_rejects_rebalance_snapshot_built_from_yesterday(monkeypatch):
+    import data_ingest.store as store
+    import modal_qlib_cn_a10g as production
+
+    session = "2026-12-14"
+    usage = "2026-12-15"
+    snapshot = SimpleNamespace(
+        calendar_end=session,
+        read_sessions=lambda: ("2026-12-11", session),
+        digest="a" * 64,
+        manifest={"membership_policy": {"mode": "BASE_PIT_LAG", "official_asof": "2026-12-11"}},
+    )
+    monkeypatch.setattr(store, "load_snapshot", lambda root, date: snapshot)
+    marker = {
+        "schema_version": 2,
+        "status": "COMPLETED",
+        "session_date": session,
+        "usage_date": usage,
+        "provider_calendar_end": session,
+        "website_latest_date": session,
+        "journal_signal_date": usage,
+        "provider": {"digest": snapshot.digest, "calendar_end": session},
+    }
+    valid, reason = production._postclose_marker_valid(marker, session, usage, verify_github=False)
+    assert not valid
+    assert "requires current official constituent evidence" in reason
 
 
 def test_checkers_are_read_only_and_have_no_publication_secret():
@@ -653,7 +683,9 @@ def test_postclose_marker_rejects_semantic_account_or_latest_mismatch(tmp_path, 
     _committed_journal(tmp_path, usage_date)
     monkeypatch.setattr(production, "VOL_ROOT", tmp_path)
     monkeypatch.setattr(production, "vol", SimpleNamespace(reload=lambda: None, commit=lambda: None))
-    snapshot = SimpleNamespace(digest="a" * 64, calendar_end=session_date)
+    snapshot = SimpleNamespace(
+        digest="a" * 64, calendar_end=session_date, read_sessions=lambda: ("2026-11-09", session_date)
+    )
     monkeypatch.setattr(store, "load_snapshot", lambda root, date: snapshot)
     monkeypatch.setattr(production, "_code_source_sha", lambda: "c" * 64)
     accounts = {market: "f" * 64 for market in ("csi300", "csi500", "csi1000")}

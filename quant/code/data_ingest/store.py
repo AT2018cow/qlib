@@ -81,6 +81,21 @@ class ProviderSnapshot:
     def base(self) -> dict:
         return dict(self.manifest.get("base") or {})
 
+    def read_sessions(self) -> tuple[str, ...]:
+        """Read the small, hash-bound calendar without materializing the archive."""
+        path = (
+            self.receipt_path.parent / "calendar.txt"
+            if self.receipt_path is not None
+            else self.path / "calendars" / "day.txt"
+        )
+        raw = path.read_bytes()
+        if hashlib.sha256(raw).hexdigest() != self.calendar_sha256:
+            raise ProviderStoreError(f"snapshot calendar changed for {self.calendar_end}")
+        calendar = tuple(line.strip() for line in raw.decode().splitlines() if line.strip())
+        if not calendar or calendar[-1] != self.calendar_end or list(calendar) != sorted(set(calendar)):
+            raise ProviderStoreError(f"snapshot calendar is not valid for {self.calendar_end}")
+        return calendar
+
     def identity(self) -> dict:
         """Stable provider identity embedded in signal publication metadata."""
         base = self.base

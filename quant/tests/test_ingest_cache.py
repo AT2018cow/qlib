@@ -59,6 +59,17 @@ def test_membership_roundtrip_and_staleness(tmp_path):
     assert cache.load_memberships(max_age_seconds=0) is None
 
 
+def test_later_official_response_cannot_overwrite_same_session_evidence(tmp_path):
+    cache = IngestCache(tmp_path, "2026-12-14")
+    current = Membership("csi300", "2026-12-14", ("SH600000",), raw_sha256="a" * 64)
+    later = Membership("csi300", "2026-12-15", ("SH600001",), raw_sha256="b" * 64)
+    cache.save_memberships({"csi300": current}, {})
+    saved = (cache.directory / "memberships.json").read_bytes()
+    cache.save_memberships({"csi300": later}, {})
+    assert (cache.directory / "memberships.json").read_bytes() == saved
+    assert cache.load_memberships(max_age_seconds=None)["parsed"]["csi300"].raw_sha256 == current.raw_sha256
+
+
 def test_baostock_roundtrip_preserves_preclose_and_status(tmp_path):
     cache = IngestCache(tmp_path, "2026-11-10")
     batch = FetchBatch()

@@ -110,26 +110,33 @@ class IngestCache:
     def _request(self) -> dict | None:
         return _read_json(self.directory / "request.json")
 
-    def load_memberships(self, *, max_age_seconds: float = 3600.0) -> dict | None:
+    def load_memberships(self, *, max_age_seconds: float | None = 3600.0) -> dict | None:
+        """Read dated evidence. Only callers validating its exact session may bypass the TTL."""
         path = self.directory / "memberships.json"
         payload = _read_json(path)
-        if payload is None or payload.get("contract") != self.contract:
+        if payload is None or payload.get("contract") != self.contract or payload.get("trade_date") != self.trade_date:
             return None
         fetched = payload.get("fetched_at_epoch")
-        if not isinstance(fetched, (int, float)) or time.time() - float(fetched) > max_age_seconds:
+        if not isinstance(fetched, (int, float)) or (
+            max_age_seconds is not None and time.time() - float(fetched) > max_age_seconds
+        ):
             return None
         memberships = {}
         try:
             for market, item in (payload.get("memberships") or {}).items():
+                source_evidence = (payload.get("evidence") or {}).get(market) or {}
                 memberships[market] = Membership(
                     market=market,
-                    asof=str(item["asof"])[:10],
+                    asof=str(item["asof"]),
                     members=tuple(item["members"]),
                     weights_date=item.get("weights_date"),
                     raw_sha256=item.get("raw_sha256", ""),
+                    raw_bytes=item.get("raw_bytes", source_evidence.get("raw_bytes")),
                     weights_sha256=item.get("weights_sha256"),
+                    weights_bytes=item.get("weights_bytes", source_evidence.get("weights_bytes")),
                     source_url=item.get("source_url", ""),
                     weights_source_url=item.get("weights_source_url"),
+                    fetched_at_utc=item.get("fetched_at_utc") or payload.get("fetched_at_utc"),
                 )
         except (KeyError, TypeError, ValueError) as exc:
             raise CacheError(f"cached membership payload is invalid: {exc}") from exc
@@ -137,6 +144,14 @@ class IngestCache:
         return payload
 
     def save_memberships(self, memberships: Mapping[str, Membership], evidence: Mapping[str, dict]) -> dict:
+        existing = self.load_memberships(max_age_seconds=None)
+        if existing is not None and any(
+            item.asof == self.trade_date and (market not in memberships or memberships[market].asof != self.trade_date)
+            for market, item in existing["parsed"].items()
+        ):
+            # An endpoint can roll to another session before a rerun. Keep the
+            # original evidence for this date, even if the ordinary TTL expired.
+            return {key: value for key, value in existing.items() if key != "parsed"}
         payload = {
             "schema_version": 1,
             "contract": self.contract,
@@ -149,9 +164,12 @@ class IngestCache:
                     "members": list(item.members),
                     "weights_date": item.weights_date,
                     "raw_sha256": item.raw_sha256,
+                    "raw_bytes": item.raw_bytes,
                     "weights_sha256": item.weights_sha256,
+                    "weights_bytes": item.weights_bytes,
                     "source_url": item.source_url,
                     "weights_source_url": item.weights_source_url,
+                    "fetched_at_utc": item.fetched_at_utc,
                 }
                 for market, item in sorted(memberships.items())
             },
