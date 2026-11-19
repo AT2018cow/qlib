@@ -16,8 +16,8 @@
     "nd": 2,
     "horizon": 20
   },
-  "latest_date": "2026-11-18",
-  "cumulative_return": -0.13589929,
+  "latest_date": "2026-11-19",
+  "cumulative_return": -0.13846599000000004,
   "points": [
     {
       "date": "2026-10-08",
@@ -1861,6 +1861,69 @@
       "signal_date": "2026-11-17",
       "fit_asof": "2026-10-26",
       "model_sha256": "c8d602a3031b08ebda5e90ff706b140d302e240cdfd5e15e2551b6ed913ccde4"
+    },
+    {
+      "date": "2026-11-19",
+      "nav": 0.86153401,
+      "daily_return": -0.0029703713586810565,
+      "cumulative_return": -0.13846599000000004,
+      "portfolio_value_close": 861534.01,
+      "cash": 5747.1,
+      "cost": 169.21,
+      "data_mode": "CAUSAL_SIMULATION",
+      "opening_state": {
+        "cash": 10658.44,
+        "shares": {
+          "SH600392": 4960.994457518447,
+          "SH688266": 34908.11926265688,
+          "SZ300620": 704.5365108527335,
+          "SH688318": 23143.040256475488,
+          "SH600988": 4368.711329642719,
+          "SH688234": 60961.49954580143,
+          "SZ001309": 2119.637378263289,
+          "SH688052": 47967.70769569917,
+          "SZ000032": 25206.97592520863,
+          "SH688002": 19433.970447470485,
+          "SH600377": 7452.507374079548,
+          "SH688172": 29670.32876108557,
+          "SZ301536": 18913.826786427846,
+          "SZ000893": 4961.70578172033,
+          "SH688777": 51819.27983046211,
+          "SH603979": 11853.061584947716,
+          "SZ301526": 18363.4867799968,
+          "SZ300604": 409.83505981793877,
+          "SZ002138": 7637.486827679985,
+          "SZ002126": 8253.417029063932
+        }
+      },
+      "closing_state": {
+        "cash": 5747.1,
+        "shares": {
+          "SH600392": 4960.994457518447,
+          "SH688266": 34908.11926265688,
+          "SZ300620": 704.5365108527335,
+          "SH688318": 23143.040256475488,
+          "SH600988": 4368.711329642719,
+          "SH688234": 60961.49954580143,
+          "SZ001309": 2119.637378263289,
+          "SH688052": 47967.70769569917,
+          "SZ000032": 25206.97592520863,
+          "SH688002": 19433.970447470485,
+          "SH600377": 7452.507374079548,
+          "SZ301536": 18913.826786427846,
+          "SZ000893": 4961.70578172033,
+          "SH688777": 51819.27983046211,
+          "SH603979": 11853.061584947716,
+          "SZ301526": 18363.4867799968,
+          "SZ002138": 7637.486827679985,
+          "SZ002126": 8253.417029063932,
+          "SH688336": 57532.296222759986,
+          "SZ002203": 26976.23570873221
+        }
+      },
+      "signal_date": "2026-11-18",
+      "fit_asof": "2026-10-26",
+      "model_sha256": "c8d602a3031b08ebda5e90ff706b140d302e240cdfd5e15e2551b6ed913ccde4"
     }
   ],
   "trading_dates": [
@@ -1893,18 +1956,19 @@
     "2026-11-13",
     "2026-11-16",
     "2026-11-17",
-    "2026-11-18"
+    "2026-11-18",
+    "2026-11-19"
   ],
   "execution_st_policy": "ST_HISTORY_UNVERIFIED_REFERENCE_ONLY",
   "auction_liquidity_verified": false,
   "official_reference_price_verified": false,
   "return_interpretation": "CAUSAL_HISTORICAL_SIMULATION_REFERENCE_ONLY",
-  "source_manifest_sha256": "d6959c9ebaeeb14a4440c4ee654a03bca3153cc314f763e7bc1b4d41f5e36f58",
-  "release_source_sha256": "d6959c9ebaeeb14a4440c4ee654a03bca3153cc314f763e7bc1b4d41f5e36f58",
+  "source_manifest_sha256": "8227077396cd88f3258a7e2ea7408b4b39ecb1cde52a0e553f0a854127534185",
+  "release_source_sha256": "8227077396cd88f3258a7e2ea7408b4b39ecb1cde52a0e553f0a854127534185",
   "website_semantic_sha256": "859e324df8fa9e6ae2183869723c066697b6dc006ce5e753ec2e3342d530af5a",
   "account_contract_sha256": "ceba7b6932ba49a387100285e1578d1592297fe36c32b1353d2314145aef3458",
   "identity_schema_version": 2,
-  "provider_archive_sha256": "50edc990242ec4a13b2a2878d5173c2465666fe3c8f3e1a2ea29f3a85297e2e2",
+  "provider_archive_sha256": "f1971ed25d2c1490977dd186005b3b1cdf252aa3a5bc3e47880161e328f40f50",
   "fit_receipts": [
     {
       "fit_asof": "2026-09-30",
@@ -1922,7 +1986,7 @@
     },
     {
       "fit_asof": "2026-10-26",
-      "signal_end": "2026-11-18",
+      "signal_end": "2026-11-19",
       "profile": "raw10d_c98856b4_top20_drop2_20d",
       "model_sha256": "c8d602a3031b08ebda5e90ff706b140d302e240cdfd5e15e2551b6ed913ccde4",
       "training_contract": {
@@ -1936,7 +2000,7 @@
     }
   ],
   "fit_receipt_version": 2,
-  "total_fees": 5581.99,
+  "total_fees": 5751.2,
   "broker_fills_certified": false,
   "live_trading_approved": false
 }
