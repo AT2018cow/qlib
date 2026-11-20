@@ -1,0 +1,133 @@
+{
+  "contract_version": "csi1000_mvp_daily_v1",
+  "label_maturity": {
+    "fit_asof": "2026-11-11",
+    "horizon_sessions": 10,
+    "signal_data_date": "2026-11-20",
+    "status": "PASS",
+    "train_end": "2025-09-19",
+    "train_label_last_observation": "2025-10-13",
+    "train_start": "2016-01-01",
+    "train_start_effective": "2016-01-04",
+    "train_start_resolution": "FROZEN_HOLIDAY_TO_NEXT_SESSION",
+    "valid_end": "2026-10-27",
+    "valid_label_last_observation": "2026-11-10",
+    "valid_start": "2025-10-14"
+  },
+  "market": "csi300",
+  "paper": {
+    "execution_date": "2026-11-23",
+    "execution_st_policy": "ST_VERIFIED_PREOPEN",
+    "n_positions": 10,
+    "pending_execution_date": "2026-11-23",
+    "pending_signal_date": "2026-11-20",
+    "planned_buy_count": 1,
+    "planned_sell_count": 1,
+    "prior_execution_blocked_order_count": 0,
+    "prior_execution_report": "present",
+    "real_fill_execution": "NOT_CERTIFIED_PAPER_ONLY",
+    "return_interpretation": "PAPER_ONLY",
+    "signal_date": "2026-11-20",
+    "status": "planned"
+  },
+  "pit_universe": {
+    "asof": "2026-11-20",
+    "expected_count": 300,
+    "member_count": 300,
+    "membership_sha256": "6e4a273b8665d2ba9a34e90a3c261be1d1eda370657563e3f267c01cee868e05",
+    "source_sha256": "4f344bc1a6a93ade8b8e3ca6c02b5701810bf5c78bd9d93e82cce6e89b042fe7",
+    "status": "PASS"
+  },
+  "production_lineage": {
+    "candidate_id": "59b93929bff1e736228d31403a167781aff433d27da1870bcf9fe34e04b6bbb9",
+    "contract_version": "cn_equity_strategy_contract_v1",
+    "model_config_sha256": "b97bc44d1c02acb4d85c344d2d570e00ef9ff365228c8a9550fa45393859ae67",
+    "profile": "59b93929_top10_drop1_10d"
+  },
+  "provider": {
+    "archive_sha256": "4c21a46aaaf5a44c3cb5bee9b40591eeec2ee1a7bea020447ef94017ea8379dc",
+    "base_archive_sha256": "f1971ed25d2c1490977dd186005b3b1cdf252aa3a5bc3e47880161e328f40f50",
+    "calendar_end": "2026-11-20",
+    "calendar_sha256": "4a27e79887770c960cec596fba6b04890cf98d1efcc14d979e11cfe0b83a0b30",
+    "name": "overlay",
+    "overlay_content_sha256": "4a4f1a916fe783c43736cc863813fcb01bad623ff9f74b52830f2a9a32172d8b",
+    "overlay_manifest_sha256": "06733d9f6fe2bacf5ef353fe137c267aee03c16f6e7908c0f67359d0c4e71833",
+    "provider_date": "2026-11-20",
+    "provider_kind": "archive",
+    "provider_receipt_sha256": "8236871bd8326e467150613f585c1313fd38f84eef3be5216777affe7f09fd49",
+    "source_url": "overlay:cn_data_overlay:archive"
+  },
+  "publication": {
+    "canonical_freshness_gate": "multi-market canonical freshness PASS: csi1000/csi500/csi300 data_date=2026-11-20 lag=0, archive=4c21a46aaaf5, calendar=4a27e7988777 identical",
+    "lag_sessions": 0,
+    "publication_mode": "CANONICAL_T1",
+    "same_day_revision_policy": "EXPLICIT_VERSIONED_AMENDMENT_ONLY",
+    "signal_data_date": "2026-11-20",
+    "status": "PASS",
+    "usage_date": "2026-11-23"
+  },
+  "risk": {
+    "execution_st_policy": "ST_VERIFIED_PREOPEN",
+    "st": {
+      "date": "2026-11-23",
+      "fetched_at_cst": "2026-11-20T18:20:22.189222+08:00",
+      "scope": "current risk-warning board snapshot",
+      "selection_filter_applied": false,
+      "signal_data_date": "2026-11-20",
+      "source": "akshare.stock_zh_a_spot_tx",
+      "source_row_count": 196,
+      "status": "SOURCE_SNAPSHOT_AVAILABLE",
+      "top20_st": [],
+      "top20_st_count": 0,
+      "tradeability_certified": false
+    },
+    "tradeability_certified": false,
+    "usage_day_suspension": {
+      "note": "Execution-day suspension cannot be certified from the prior close package. Paper settlement waits for the later provider refresh and records blocked orders.",
+      "scope": "2026-11-23",
+      "selection_filter_applied": false,
+      "status": "NOT_INDEPENDENTLY_VERIFIED_PREOPEN",
+      "tradeability_certified": false
+    }
+  },
+  "signal_lineage": {
+    "display_surface": "raw_model_topk_no_close_limit_filter",
+    "display_top20_instruments": [
+      "SH688008",
+      "SH688521",
+      "SZ002938",
+      "SH603986",
+      "SZ301165",
+      "SZ300476",
+      "SZ300408",
+      "SH601138",
+      "SH600522",
+      "SZ002916"
+    ],
+    "display_top20_sha256": "9a77cf71bb179687ab02da293773e7ae46f16ba3d364cc6a821780707780f944",
+    "paper_planner_source": "raw_ranking_full",
+    "paper_ranking_count": 300,
+    "paper_ranking_full_sha256": "c9eb042de39bd7465d085d40e24bd350da44d22d894b301b80d2ebbe8fbfeb13",
+    "published_selection_instruments": [
+      "SH688008",
+      "SH688521",
+      "SZ002938",
+      "SH603986",
+      "SZ301165",
+      "SZ300476",
+      "SZ300408",
+      "SH601138",
+      "SH600522",
+      "SZ002916"
+    ],
+    "published_selection_sha256": "bb1b17d3403767d3cae74a721eb826772d87ebd1d52771d2dcd623d8752af748",
+    "ranking_contract_version": 2,
+    "t_close_limit_annotations": {
+      "informational_only": true,
+      "instruments": [
+        "SH600160",
+        "SH600584"
+      ]
+    }
+  }
+}
