@@ -1,11 +1,11 @@
 # `quant/docs/` — 研发与生产文档总索引
 
-> **当前状态（2026-11-19）**
+> **当前状态（2026-11-20）**
 >
-> - 生产 `qlib-prod-daily` / `qlib-prod-website` 均为 v30（部署提交 `10f297641`）。调样日成分校验补丁已部署，`quant-v1.5.1` 待 v30 首轮自然周期验收后正式发布。生产使用唯一自建 overlay archive，研究默认仍使用独立的 chenditc lineage。[v30 发布核对](07-code-review/2026-11-19-quant-v1.5.1-release-readiness.md)
+> - 生产 `qlib-prod-daily` / `qlib-prod-website` 均为 v30（部署提交 `10f297641`）。`quant-v1.5.1` 对应的首轮自然周期已于 11 月 20 日盘前验收通过，实际调样生效日仍待验证。生产使用唯一自建 overlay archive，研究默认仍使用独立的 chenditc lineage。[v30 发布核对](07-code-review/2026-11-19-quant-v1.5.1-release-readiness.md)
 > - 已部署 18:00 `daily_cron`、23:00 `daily_postclose_check`、23:15 `daily_evening_retry`、下一交易日 07:00 `daily_readonly_check`；Website App 无 cron。
 > - 已部署 Provider 2 CPU / 8 GiB、独立 Website incremental 4 CPU / 12 GiB；full/smoke/retrain 8/16、Signal 8/16。配置回读不等于自然运行或峰值资源验收。
-> - v29 已通过 11/16–17 自动恢复与盘前复核，以及 11/17–18 完整自然周期。当前正式版本 `quant-v1.5.0` 指向 `d0fdb6d47`，也是 v30 的配对回滚目标。严格空缓存恢复、真实到期重训和失败邮件实际送达仍待独立验证。[v29 发布核对](07-code-review/2026-11-18-quant-v1.5.0-release-readiness.md)
+> - v29 已通过 11/16–17 自动恢复与盘前复核，以及 11/17–18 完整自然周期。`quant-v1.5.0` 指向 `d0fdb6d47`，是 v30 的配对回滚目标。严格空缓存恢复、真实到期重训和失败邮件实际送达仍待独立验证。[v29 发布核对](07-code-review/2026-11-18-quant-v1.5.0-release-readiness.md)
 > - 网站历史 ST：离线日期化核验能力保留；每日生产不再把历史 ST 作为硬依赖，网站明确标为因果模拟参考。见[ST 核实与选择性简化](07-code-review/2026-11-12-website-st-history-verification.md)。
 > - 当前费用基线：11/13 普通增量日实际为 `$0.18716212`，规划区间 `$0.18–0.30`；Website FULL 日 `$0.30–0.42`、三市场重训日 `$1.40–1.60`。严格空 `ingest_cache/` 与重训日仍待实测。见[生产费用基线](07-code-review/2026-11-13-production-modal-cost-estimate.md)。
 > - 安全加固：见 [`2026-11-10-security-hardening.md`](07-code-review/2026-11-10-security-hardening.md)。
