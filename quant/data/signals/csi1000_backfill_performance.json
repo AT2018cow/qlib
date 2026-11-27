@@ -16,8 +16,8 @@
     "nd": 1,
     "horizon": 20
   },
-  "latest_date": "2026-11-26",
-  "cumulative_return": -0.37294635,
+  "latest_date": "2026-11-27",
+  "cumulative_return": -0.28068697,
   "points": [
     {
       "date": "2026-10-08",
@@ -1555,6 +1555,49 @@
       "signal_date": "2026-11-25",
       "fit_asof": "2026-11-23",
       "model_sha256": "1fa98f31e11182454e39ed2518b0cb5b556f338652078d37ccf1fb40b240a954"
+    },
+    {
+      "date": "2026-11-27",
+      "nav": 0.71931303,
+      "daily_return": 0.14713155724394555,
+      "cumulative_return": -0.28068697,
+      "portfolio_value_close": 719313.03,
+      "cash": 3965.7,
+      "cost": 151.94,
+      "data_mode": "CAUSAL_SIMULATION",
+      "opening_state": {
+        "cash": 3673.38,
+        "shares": {
+          "SH605376": 14494.129854833669,
+          "SZ300131": 24844.232726650363,
+          "SH603950": 44796.74177344076,
+          "SH688333": 32932.396630256335,
+          "SH601020": 43439.01560715969,
+          "SH688382": 94629.80857580503,
+          "SH688503": 69127.85077009274,
+          "SH688147": 30634.33734058166,
+          "SZ002859": 15998.92814187816,
+          "SH688800": 94477.78155214888
+        }
+      },
+      "closing_state": {
+        "cash": 3965.7,
+        "shares": {
+          "SH605376": 14494.129854833669,
+          "SZ300131": 24844.232726650363,
+          "SH688333": 32932.396630256335,
+          "SH601020": 43439.01560715969,
+          "SH688382": 94629.80857580503,
+          "SH688503": 69127.85077009274,
+          "SH688147": 30634.33734058166,
+          "SZ002859": 15998.92814187816,
+          "SH688800": 94477.78155214888,
+          "SH688449": 121706.81275657567
+        }
+      },
+      "signal_date": "2026-11-26",
+      "fit_asof": "2026-11-23",
+      "model_sha256": "1fa98f31e11182454e39ed2518b0cb5b556f338652078d37ccf1fb40b240a954"
     }
   ],
   "trading_dates": [
@@ -1593,7 +1636,8 @@
     "2026-11-23",
     "2026-11-24",
     "2026-11-25",
-    "2026-11-26"
+    "2026-11-26",
+    "2026-11-27"
   ],
   "execution_st_policy": "ST_HISTORY_UNVERIFIED_REFERENCE_ONLY",
   "auction_liquidity_verified": false,
@@ -1604,7 +1648,7 @@
   "website_semantic_sha256": "859e324df8fa9e6ae2183869723c066697b6dc006ce5e753ec2e3342d530af5a",
   "account_contract_sha256": "fd4ca78d2072ed18b726c53d3b0679952d6a68c88e3e0944485d6266f09a3197",
   "identity_schema_version": 2,
-  "provider_archive_sha256": "14cdc202baa52e78eaf34a35255061488c8a4d4b1ec9441f8acaafd710120380",
+  "provider_archive_sha256": "0cb4080627381349380cb3bd1f1eb588210d557e491fc8ab2aaee4e32123242b",
   "fit_receipts": [
     {
       "fit_asof": "2026-09-30",
@@ -1636,7 +1680,7 @@
     },
     {
       "fit_asof": "2026-11-23",
-      "signal_end": "2026-11-26",
+      "signal_end": "2026-11-27",
       "profile": "c98856b4_top10_drop1",
       "model_sha256": "1fa98f31e11182454e39ed2518b0cb5b556f338652078d37ccf1fb40b240a954",
       "training_contract": {
@@ -1650,7 +1694,7 @@
     }
   ],
   "fit_receipt_version": 2,
-  "total_fees": 6343.299999999999,
+  "total_fees": 6495.239999999999,
   "broker_fills_certified": false,
   "live_trading_approved": false
 }
